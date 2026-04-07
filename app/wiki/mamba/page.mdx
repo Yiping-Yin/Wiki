@@ -1,0 +1,84 @@
+export const metadata = { title: 'Mamba & State Space Models · LLM Wiki' };
+
+<ChapterShell slug="mamba">
+
+# Mamba & State Space Models
+
+Mamba is a sequence model built on **selective state space models (SSMs)** that matches Transformer quality while scaling **linearly** in sequence length instead of quadratically. Where attention compares every token to every other token, an SSM maintains a fixed-size hidden state $h_t$ that is updated recurrently as it sweeps through the sequence — closer in spirit to an RNN than to attention, but parameterized so it can be unrolled as a global convolution at training time and run as a fast recurrence at inference time.
+
+The line of work started with **S4** (Gu, Goel, Ré, 2021), which showed that a carefully initialized linear SSM could handle sequences of length 16k+ on the Long Range Arena benchmark. The breakthrough for language came with **Mamba** (Albert Gu and Tri Dao, December 2023, arXiv 2312.00752), which made the SSM parameters **input-dependent** — the model can decide what to remember and what to forget based on the current token. Mamba and its successor Mamba-2 now power long-context language models, DNA models (HyenaDNA, Caduceus), and hybrid architectures like Jamba and Zamba that interleave SSM and attention layers.
+
+## Key idea
+
+A continuous-time linear SSM maps a 1-D input $x(t)$ to output $y(t)$ via a hidden state $h(t) \in \mathbb{R}^N$:
+
+$$
+h'(t) = A\,h(t) + B\,x(t), \qquad y(t) = C\,h(t).
+$$
+
+Discretizing with step size $\Delta$ gives a linear recurrence that is also a convolution:
+
+$$
+h_t = \bar{A}\,h_{t-1} + \bar{B}\,x_t, \qquad y_t = C\,h_t, \qquad \bar{A} = \exp(\Delta A),\ \bar{B} = (\Delta A)^{-1}(\exp(\Delta A) - I)\,\Delta B.
+$$
+
+The trick of Mamba is to make $\Delta$, $B$, and $C$ **functions of the input** $x_t$, breaking linear time-invariance but giving the model content-based gating.
+
+## How it works
+
+In a vanilla SSM, $A$, $B$, $C$, and $\Delta$ are fixed parameters, so the whole thing is linear time-invariant (LTI). That lets you precompute a giant convolution kernel $K = (CB,\ CAB,\ CA^2B,\dots)$ and apply it with an FFT — fast, but the model cannot selectively ignore irrelevant tokens or focus on relevant ones, because the same kernel is applied everywhere. Empirically this is why pre-Mamba SSMs underperformed Transformers on language: language needs **content-dependent** routing.
+
+Mamba's selectivity makes $\Delta_t = \text{softplus}(\text{Linear}(x_t))$, $B_t = \text{Linear}(x_t)$, $C_t = \text{Linear}(x_t)$. Now $\bar{A}_t$ and $\bar{B}_t$ vary per timestep, the model is no longer LTI, and the convolutional view is gone. To keep training fast, Mamba implements a **parallel scan** in CUDA: the recurrence $h_t = \bar{A}_t h_{t-1} + \bar{B}_t x_t$ is an associative operation, so it can be computed in $O(\log T)$ depth on a GPU using a Blelloch scan, fused with the SRAM-resident state to avoid materializing the $T \times N$ hidden states in HBM. The matrix $A$ is kept diagonal (real or complex), so $\bar{A}_t$ is just an elementwise exponentiation — no $N \times N$ matmul per step.
+
+A Mamba **block** wraps this SSM in a gated MLP-style structure: input is projected up, passed through a short causal Conv1d (for local mixing), through the selective SSM, multiplied by a SiLU gate, and projected back down. Stacking ~24–64 such blocks gives a full language model with no attention at all.
+
+<Mermaid chart={`flowchart LR
+  X[x_t] --> P[Linear up-proj]
+  P --> C1[Causal Conv1d]
+  C1 --> S[Selective SSM<br/>Δ,B,C = f x_t]
+  P --> G[SiLU gate]
+  S --> M[multiply]
+  G --> M
+  M --> O[Linear down-proj]
+`} />
+
+## Code
+
+```python
+import torch, torch.nn.functional as F
+
+def selective_scan(x, delta, A, B, C):
+    # x:(B,L,D)  delta:(B,L,D)  A:(D,N)  B,C:(B,L,N)
+    Bsz, L, D = x.shape; N = A.shape[-1]
+    dA = torch.exp(delta.unsqueeze(-1) * A)            # (B,L,D,N)
+    dB = delta.unsqueeze(-1) * B.unsqueeze(2)          # (B,L,D,N)
+    h  = x.new_zeros(Bsz, D, N)
+    ys = []
+    for t in range(L):                                 # sequential ref impl
+        h = dA[:, t] * h + dB[:, t] * x[:, t].unsqueeze(-1)
+        ys.append((h * C[:, t].unsqueeze(1)).sum(-1))  # (B,D)
+    return torch.stack(ys, dim=1)                      # (B,L,D)
+
+D, N, L = 64, 16, 128
+x     = torch.randn(2, L, D)
+A     = -torch.rand(D, N).exp()                        # negative-real, stable
+delta = F.softplus(torch.randn(2, L, D))               # input-dependent step
+B_in  = torch.randn(2, L, N); C_in = torch.randn(2, L, N)
+print(selective_scan(x, delta, A, B_in, C_in).shape)   # torch.Size([2,128,64])
+```
+
+## Why it matters
+
+At inference, Mamba's per-token cost is **constant in context length** — the state $h_t$ is a fixed $D \times N$ tensor regardless of how many tokens preceded it. A Transformer's KV cache, by contrast, grows linearly with context, so generating token 100k costs ~100× more memory bandwidth than generating token 1k. This makes SSMs structurally attractive for long-context regimes: million-token DNA sequences, audio at the sample level, and long-document summarization. Mamba-2 (2024) reformulated the selective SSM as a **structured state-space duality** with attention, allowing matmul-heavy implementations that map better to tensor cores and unlocking larger state dimensions $N$.
+
+The honest caveat is that pure SSMs lag attention on tasks requiring precise associative recall — copying a random key from earlier in the context, or in-context learning with many exemplars. The fixed-size state is a bottleneck the way an RNN's is, just a much larger and better-managed one. The current frontier is **hybrids**: AI21's Jamba and Zyphra's Zamba interleave a few attention layers among many Mamba layers, getting the recall of attention and the throughput of SSMs.
+
+<Callout type="tip">
+The discretization $\bar{A} = \exp(\Delta A)$ is not cosmetic. Because $A$ is constrained negative-real and $\Delta > 0$, every eigenvalue of $\bar{A}$ lies in $(0,1)$ — the recurrence is **automatically stable** and gradients neither vanish nor explode. This is why SSMs train cleanly at depth 64+ where vanilla RNNs collapse.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2312.00752" title="Gu & Dao — Mamba: Linear-Time Sequence Modeling with Selective State Spaces (2023)" />
+
+</ChapterShell>

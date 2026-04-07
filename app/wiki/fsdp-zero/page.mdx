@@ -1,0 +1,86 @@
+export const metadata = { title: 'FSDP & ZeRO Sharding · LLM Wiki' };
+
+<ChapterShell slug="fsdp-zero">
+
+# FSDP & ZeRO Sharding
+
+Training a 100B+ parameter model on a single GPU is impossible — not because of compute, but because of memory. A naive Adam-trained model in mixed precision needs roughly 16 bytes per parameter: 2 for fp16 weights, 2 for fp16 gradients, 4 for fp32 master weights, and 8 for Adam's first and second moments. A 7B model already eats ~112 GB before you even allocate activations. Standard data parallelism replicates *all* of this on every GPU, which is catastrophically wasteful.
+
+ZeRO (Zero Redundancy Optimizer), introduced by Samyam Rajbhandari et al. at Microsoft in 2019, observed that under data parallelism each rank holds an identical copy of these tensors and only ever uses a fraction of them at any given step. The fix: shard them across ranks. PyTorch later upstreamed the same idea as **FSDP** (Fully Sharded Data Parallel), which is now the default backbone for training Llama, Mistral, and most open-weight LLMs alongside DeepSpeed's original ZeRO implementation.
+
+## Key idea
+
+Let $N$ be the number of data-parallel ranks and $\Psi$ the parameter count. Standard DP stores $16\Psi$ bytes per rank (mixed-precision Adam). ZeRO partitions the state into three tiers, each removing a layer of redundancy:
+
+$$
+M_{\text{ZeRO-1}} = 4\Psi + \frac{12\Psi}{N}, \quad
+M_{\text{ZeRO-2}} = 2\Psi + \frac{14\Psi}{N}, \quad
+M_{\text{ZeRO-3}} = \frac{16\Psi}{N}
+$$
+
+As $N \to \infty$, ZeRO-3 / FSDP drives per-rank memory to zero. The catch is communication: parameters must be reconstructed on-the-fly during forward and backward passes.
+
+## How it works
+
+ZeRO comes in three stages, each sharding more state. **Stage 1** shards optimizer states (Adam moments + fp32 master weights). Each rank only updates its slice of parameters; a final all-gather distributes the updated fp16 weights. **Stage 2** additionally shards gradients: instead of an all-reduce, gradients are reduce-scattered so each rank ends up with only the slice it needs to apply its optimizer step. **Stage 3** (= FSDP) shards the parameters themselves. Before a layer's forward pass, an `all_gather` reconstructs its full weights; after the forward, the non-owned shards are freed. The same gather happens in backward, followed by a `reduce_scatter` on the gradients.
+
+The communication volume is the key trade-off. Standard DP uses one all-reduce per step ($2\Psi$ bytes moved). ZeRO-3 uses two all-gathers (forward + backward) plus one reduce-scatter, totaling $3\Psi$ — only 1.5× the baseline traffic for unbounded memory savings. Overlapping the gather of layer $L+1$ with the compute of layer $L$ hides most of this latency, which is why FSDP wraps the model in *units* (typically one transformer block per unit) rather than sharding parameter-by-parameter.
+
+<Mermaid chart={`sequenceDiagram
+  participant R0 as Rank 0
+  participant R1 as Rank 1
+  Note over R0,R1: Each holds 1/N of layer L params
+  R0->>R1: all_gather(params_L)
+  R1->>R0: all_gather(params_L)
+  Note over R0,R1: forward(L), free non-owned shards
+  Note over R0,R1: backward(L): re-gather, compute grads
+  R0->>R1: reduce_scatter(grads_L)
+  Note over R0,R1: optimizer step on local shard only
+`} />
+
+## Code
+
+```python
+import torch
+import torch.nn as nn
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
+from functools import partial
+
+torch.distributed.init_process_group("nccl")
+torch.cuda.set_device(torch.distributed.get_rank())
+
+class Block(nn.Module):
+    def __init__(self, d=4096):
+        super().__init__()
+        self.attn = nn.Linear(d, d)
+        self.mlp  = nn.Linear(d, 4 * d)
+
+model = nn.Sequential(*[Block() for _ in range(32)]).cuda()
+
+# Wrap each Block as its own FSDP unit -> shard params across ranks
+policy = partial(transformer_auto_wrap_policy, transformer_layer_cls={Block})
+model = FSDP(model, auto_wrap_policy=policy, use_orig_params=True)
+
+opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
+x = torch.randn(8, 4096, device="cuda")
+loss = model(x).sum()
+loss.backward()       # reduce_scatter happens here
+opt.step()            # each rank updates only its shard
+```
+
+## Why it matters
+
+FSDP/ZeRO is what makes frontier training economically tractable on commodity 8×A100 or 8×H100 nodes. Compared to tensor parallelism (which shards individual matmuls and demands high-bandwidth NVLink within a node) and pipeline parallelism (which introduces bubble overhead and complex scheduling), FSDP requires no model surgery — you wrap and go. It composes cleanly with the others: the modern recipe for training a 70B model is FSDP across nodes, tensor parallelism within a node, and selective activation checkpointing on top.
+
+The remaining bottleneck is activation memory, which ZeRO does not address. ZeRO-Offload and ZeRO-Infinity push optimizer states and even parameters to CPU/NVMe, trading bandwidth for capacity, and enable single-GPU fine-tuning of models that would otherwise require a cluster.
+
+<Callout type="tip">
+Wrap **per transformer block**, not per parameter. A too-fine wrap policy creates one all-gather per linear layer and destroys throughput; a too-coarse wrap (whole model = one unit) defeats sharding entirely. The block-level granularity is the sweet spot where comm/compute overlap actually works.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1910.02054" title="Rajbhandari et al. — ZeRO: Memory Optimizations Toward Training Trillion Parameter Models (2019)" />
+
+</ChapterShell>

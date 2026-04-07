@@ -1,0 +1,97 @@
+export const metadata = { title: 'GQA & MQA — Grouped/Multi-Query Attention · LLM Wiki' };
+
+<ChapterShell slug="gqa-mqa">
+
+# GQA & MQA — Grouped/Multi-Query Attention
+
+Grouped-Query Attention (GQA) and Multi-Query Attention (MQA) are variants of multi-head attention that shrink the **KV cache** by sharing key and value projections across query heads. In vanilla multi-head attention (MHA), every head has its own $W_Q, W_K, W_V$, so a decoder must cache $2 \cdot L \cdot H \cdot d_h$ floats per token during autoregressive generation. MQA collapses all heads to a **single** shared K/V pair; GQA interpolates by splitting $H$ query heads into $G$ groups that each share one K/V head.
+
+MQA was introduced by Noam Shazeer in 2019 ("Fast Transformer Decoding: One Write-Head is All You Need") as a memory-bandwidth fix for inference. GQA was proposed by Ainslie et al. at Google in 2023 as a quality-preserving middle ground, and was adopted by **Llama-2 34B/70B**, **Llama-3 (all sizes)**, **Mistral**, **Mixtral**, **Falcon**, and essentially every modern production LLM. The motivation is not FLOPs — attention FLOPs are unchanged — it's that decoding is **memory-bandwidth bound**, and shrinking KV traffic directly speeds up token generation.
+
+## Key idea
+
+Let $H$ be the number of query heads and $G$ the number of KV groups, with $G \mid H$. Each query head $i$ attends against the K/V of group $\lfloor i \cdot G / H \rfloor$:
+
+$$
+\text{head}_i = \text{softmax}\!\left(\frac{Q_i K_{g(i)}^\top}{\sqrt{d_h}}\right) V_{g(i)}, \qquad g(i) = \left\lfloor \frac{i G}{H} \right\rfloor
+$$
+
+The three regimes are $G = H$ (MHA, no sharing), $G = 1$ (MQA, maximal sharing), and $1 < G < H$ (GQA). The KV cache size per token becomes:
+
+$$
+\text{KV bytes} = 2 \cdot L \cdot G \cdot d_h \cdot \text{bytes}(\text{dtype})
+$$
+
+a factor $H/G$ smaller than MHA. Llama-2 70B uses $H=64, G=8$, an **8×** reduction.
+
+## How it works
+
+The only change from MHA is the shape of the K and V projection matrices. $W_Q \in \mathbb{R}^{d \times H d_h}$ stays the same, but $W_K, W_V \in \mathbb{R}^{d \times G d_h}$ instead of $\mathbb{R}^{d \times H d_h}$. At attention time you reshape $Q$ to $(B, H, T, d_h)$ and $K,V$ to $(B, G, T, d_h)$, then **repeat** (broadcast, not copy) each KV head $H/G$ times along the head axis before the $QK^\top$ matmul. The attention scores and output then look identical to MHA from the outside.
+
+Computationally, GQA has almost the same FLOPs as MHA — you still do $H$ separate attention computations — but only $G$ distinct K/V tensors live in HBM. During autoregressive decoding, each new token must stream the entire KV cache through the SMs to compute attention against history; the arithmetic intensity is roughly $O(1)$ per cached token, so wall-clock is dominated by HBM reads. Cutting KV volume by $8\times$ cuts decode latency by nearly $8\times$ in the memory-bound regime, and lets you fit much longer contexts or larger batch sizes in the same VRAM.
+
+GQA is typically obtained via **uptraining**: take an existing MHA checkpoint, mean-pool the K and V heads within each group to initialize the smaller projections, then continue pretraining for ~5% of the original steps. Ainslie et al. show this recovers MHA-level quality while MQA alone suffers a measurable perplexity hit and training instability on larger models.
+
+<Mermaid chart={`graph LR
+  Q[Q: 8 heads] --> A1[head 0]
+  Q --> A2[head 1]
+  Q --> A3[head 2]
+  Q --> A4[head 3]
+  Q --> A5[head 4]
+  Q --> A6[head 5]
+  Q --> A7[head 6]
+  Q --> A8[head 7]
+  KV1[KV group 0] --> A1
+  KV1 --> A2
+  KV1 --> A3
+  KV1 --> A4
+  KV2[KV group 1] --> A5
+  KV2 --> A6
+  KV2 --> A7
+  KV2 --> A8
+`} />
+
+## Code
+
+```python
+import torch
+import torch.nn.functional as F
+
+def gqa(x, Wq, Wk, Wv, H, G):
+    B, T, d = x.shape
+    dh = d // H
+    q = (x @ Wq).view(B, T, H, dh).transpose(1, 2)        # (B, H, T, dh)
+    k = (x @ Wk).view(B, T, G, dh).transpose(1, 2)        # (B, G, T, dh)
+    v = (x @ Wv).view(B, T, G, dh).transpose(1, 2)        # (B, G, T, dh)
+    # Broadcast each KV group to H/G query heads (no memory copy with expand)
+    reps = H // G
+    k = k.repeat_interleave(reps, dim=1)                  # (B, H, T, dh)
+    v = v.repeat_interleave(reps, dim=1)
+    att = (q @ k.transpose(-2, -1)) / dh**0.5
+    att = att.masked_fill(torch.ones(T, T).tril() == 0, float('-inf'))
+    return (F.softmax(att, -1) @ v).transpose(1, 2).reshape(B, T, d)
+
+d, H, G = 512, 8, 2                                       # MQA: G=1, MHA: G=H
+Wq = torch.randn(d, H * (d // H)) * 0.02
+Wk = torch.randn(d, G * (d // H)) * 0.02                  # shrunk
+Wv = torch.randn(d, G * (d // H)) * 0.02
+print(gqa(torch.randn(1, 16, d), Wq, Wk, Wv, H, G).shape) # (1, 16, 512)
+```
+
+## Why it matters
+
+KV cache is the dominant memory cost of long-context inference. For Llama-2 70B at 4k context, MHA would require ~10 GB of KV cache per sequence in fp16; GQA with $G=8$ brings that to ~1.25 GB, making batched serving and 32k+ contexts tractable on a single H100. The quality delta versus MHA is within noise on standard benchmarks, while MQA alone typically costs 0.1–0.3 perplexity and degrades more on tasks requiring fine-grained head specialization like long-document QA.
+
+GQA is now the default. Alternative approaches target the same bottleneck from different angles: **Multi-Latent Attention (MLA)** in DeepSeek-V2 compresses KV into a low-rank latent; **sliding-window attention** in Mistral bounds cache size by truncating history; **SSMs / Mamba** eliminate the KV cache entirely. GQA remains the lowest-risk win — a one-line shape change that composes cleanly with FlashAttention, RoPE, and every existing MHA kernel.
+
+<Callout type="tip">
+GQA saves **zero** training FLOPs — the $QK^\top$ matmul is still $O(H T^2 d_h)$ because you broadcast K/V back to $H$ heads. The win is entirely in **HBM bandwidth during decode**, where each generated token must re-read the full KV history. If you profile and find your model is compute-bound (e.g. prefill on long sequences), GQA will not help you; if it's memory-bound (single-token decode), GQA is nearly free throughput.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2305.13245" title="Ainslie et al. — GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints (2023)" />
+
+<PDFNotes src="https://arxiv.org/pdf/1911.02150" title="Shazeer — Fast Transformer Decoding: One Write-Head is All You Need (2019)" />
+
+</ChapterShell>

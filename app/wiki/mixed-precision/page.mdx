@@ -1,0 +1,86 @@
+export const metadata = { title: 'Mixed Precision — bf16 / fp8 · LLM Wiki' };
+
+<ChapterShell slug="mixed-precision">
+
+# Mixed Precision — bf16 / fp8
+
+Mixed precision training stores and computes most tensors in a narrow floating-point format (fp16, bf16, or fp8) while keeping a few numerically sensitive pieces — typically the master weights and the optimizer state — in fp32. The goal is simple: modern accelerators run low-precision matmuls 2–8× faster than fp32 and use proportionally less memory and bandwidth, but naive fp16 training diverges because gradients underflow and activations overflow. Mixed precision is the set of tricks that makes the fast path numerically safe.
+
+The technique was formalized by Micikevicius et al. at NVIDIA and Baidu in 2017 ("Mixed Precision Training", arXiv:1710.03740), introducing the fp32 master copy and loss scaling. Google's bfloat16 (TPU, 2018) replaced fp16 with a format that has fp32's exponent range, removing the need for loss scaling entirely. NVIDIA's Hopper (H100, 2022) added native fp8 with two variants (E4M3, E5M2) and the Transformer Engine library, which is now the default for training frontier models like GPT-4-class systems and Llama 3.
+
+## Key idea
+
+A floating point number splits its bits into sign, exponent (range), and mantissa (precision). fp16 has 5 exponent bits, bf16 has 8 (same as fp32), and fp8 splits its 8 bits as either E4M3 (forward) or E5M2 (backward). The representable range matters more than mantissa precision for deep learning, because gradients span many orders of magnitude:
+
+$$
+x_{\text{fp16}} \in [\,6 \times 10^{-8},\; 6.5 \times 10^{4}\,], \qquad x_{\text{bf16}} \in [\,1.2 \times 10^{-38},\; 3.4 \times 10^{38}\,]
+$$
+
+Loss scaling (needed for fp16, not bf16) multiplies the loss by a constant $S$ before backprop, shifting all gradients into the representable range, then divides them out before the optimizer step:
+
+$$
+g_{\text{fp32}} = \frac{1}{S}\,\nabla_\theta\bigl(S \cdot \mathcal{L}(\theta)\bigr)_{\text{fp16}}
+$$
+
+## How it works
+
+The canonical recipe keeps an fp32 **master copy** of weights. Each step casts weights to bf16/fp16, runs the forward pass in low precision, scales the loss, runs backward in low precision, unscales the resulting gradients into fp32, and applies the optimizer update to the master weights. The low-precision weights are re-derived from the master copy at the start of the next step. Without the master copy, tiny updates like $w \mathrel{+}= 10^{-7} \cdot g$ silently round to zero in fp16 because the update is smaller than the ULP of $w$.
+
+For fp16, the loss scale $S$ is chosen dynamically: start at $2^{15}$, double it every $N$ steps with no overflow, halve it (and skip the step) on any inf/nan in the gradients. bf16 skips this entirely — its 8-bit exponent matches fp32, so underflow is rare and overflow even rarer. The price is 7 mantissa bits (vs fp16's 10), meaning slightly noisier matmul accumulation, which is mitigated by accumulating in fp32 inside the tensor core.
+
+fp8 is more aggressive. Hopper's tensor cores accept E4M3 inputs (4-bit exponent, 3-bit mantissa, range $\sim 448$) for the forward pass and weights, and E5M2 (5-bit exponent, 2-bit mantissa, range $\sim 57344$) for gradients which need wider dynamic range. Because the representable range is so narrow, every tensor needs a **per-tensor scaling factor** updated from a running history of amax (absolute max) values — this is what NVIDIA's Transformer Engine automates.
+
+<Mermaid chart={`flowchart LR
+  A[fp32 master W] -->|cast| B[bf16/fp8 W]
+  B --> C[fwd: low-prec matmul, fp32 accum]
+  C --> D[loss * S]
+  D --> E[bwd: low-prec grads]
+  E -->|unscale 1/S| F[fp32 grads]
+  F --> G[Adam update] --> A`} />
+
+## Code
+
+```python
+import torch
+from torch.cuda.amp import autocast, GradScaler
+
+model = MyTransformer().cuda()
+opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
+
+# fp16 path: needs a GradScaler for loss scaling
+scaler = GradScaler()
+for x, y in loader:
+    opt.zero_grad(set_to_none=True)
+    with autocast(dtype=torch.float16):
+        logits = model(x.cuda())
+        loss = F.cross_entropy(logits, y.cuda())
+    scaler.scale(loss).backward()       # scale loss -> shift grads up
+    scaler.unscale_(opt)                # divide grads by S in-place
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    scaler.step(opt)                    # skips step on inf/nan
+    scaler.update()                     # adapts S
+
+# bf16 path: no scaler needed, exponent range matches fp32
+for x, y in loader:
+    opt.zero_grad(set_to_none=True)
+    with autocast(dtype=torch.bfloat16):
+        loss = F.cross_entropy(model(x.cuda()), y.cuda())
+    loss.backward()
+    opt.step()
+```
+
+## Why it matters
+
+Mixed precision is the single biggest reason a 70B-parameter model fits on a node of 8 GPUs. Halving activation memory directly doubles the maximum batch size or sequence length you can train; halving weight and gradient bandwidth roughly doubles step throughput on memory-bound layers. fp8 on H100 doubles it again over bf16, with measured end-to-end speedups of 1.4–1.6× on Llama-class training when using Transformer Engine.
+
+bf16 has effectively won for training. fp16 survives mostly in inference and on older hardware (V100, consumer cards) where bf16 tensor cores are absent. fp8 is now the production default on H100/B200 for the largest runs, with E4M3 forward / E5M2 backward and per-tensor delayed scaling. Looking forward, Blackwell adds fp4 and microscaling formats (MXFP8, MXFP6, MXFP4) where each block of 32 elements shares an exponent — pushing the same per-tensor scaling idea down to per-block granularity.
+
+<Callout type="tip">
+The fp32 master weights are not optional even in bf16 training. The reason is not range — it's precision. Adam's update is often 4–6 orders of magnitude smaller than the weight itself, and bf16's 7 mantissa bits cannot represent $w + \eta \cdot \hat{m}/\sqrt{\hat{v}}$ when $\eta \cdot \hat{m}/\sqrt{\hat{v}} \ll \text{ulp}(w)$. The update silently rounds to zero and training stalls. Always keep the master copy in fp32 (or at least fp32 momentum + a stochastic-rounding cast).
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1710.03740" title="Micikevicius et al. — Mixed Precision Training (2017)" />
+
+</ChapterShell>

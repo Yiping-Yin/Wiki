@@ -1,0 +1,83 @@
+export const metadata = { title: 'DPO — Direct Preference Optimization · LLM Wiki' };
+
+<ChapterShell slug="dpo">
+
+# DPO — Direct Preference Optimization
+
+Direct Preference Optimization (DPO) is a method for aligning language models to human preferences without training a separate reward model and without running reinforcement learning. Given a dataset of prompts with a preferred response $y_w$ and a dispreferred response $y_l$, DPO fine-tunes the policy directly with a simple classification-style loss. It was introduced by Rafailov, Sharma, Mitchell, Ermon, Manning, and Finn at Stanford in May 2023 ("Direct Preference Optimization: Your Language Model is Secretly a Reward Model", arXiv 2305.18290).
+
+DPO has since become the default alignment recipe outside of frontier labs. Llama 2/3 used PPO-style RLHF, but Llama 3 also reports DPO variants; Zephyr, Tulu 2, Mistral-Instruct, Qwen, and most open-weight chat models are trained or polished with DPO or one of its descendants (IPO, KTO, ORPO, SimPO). It collapses a fragile multi-stage pipeline (SFT → reward model → PPO) into a single supervised objective.
+
+## Key idea
+
+RLHF maximizes expected reward under a KL constraint to a reference policy $\pi_\text{ref}$:
+
+$$\max_{\pi_\theta}\;\mathbb{E}_{x,\,y\sim\pi_\theta}[r(x,y)] \;-\; \beta\,\mathrm{KL}\!\left[\pi_\theta(y\mid x)\,\|\,\pi_\text{ref}(y\mid x)\right].$$
+
+This problem has a known closed form: $\pi^*(y\mid x) \propto \pi_\text{ref}(y\mid x)\,\exp\!\big(r(x,y)/\beta\big)$. Inverting this gives the reward implicitly defined by *any* policy:
+
+$$r(x,y) \;=\; \beta\,\log\frac{\pi_\theta(y\mid x)}{\pi_\text{ref}(y\mid x)} \;+\; \beta\log Z(x).$$
+
+Plug this into the Bradley–Terry preference model $P(y_w\succ y_l) = \sigma(r(x,y_w)-r(x,y_l))$ and the partition function $Z(x)$ cancels. The reward model disappears; only the policy remains.
+
+## How it works
+
+The resulting DPO loss is a binary cross-entropy on the difference of two log-ratios:
+
+$$\mathcal{L}_\text{DPO}(\pi_\theta;\pi_\text{ref}) = -\,\mathbb{E}_{(x,y_w,y_l)}\!\left[\log\sigma\!\left(\beta\log\frac{\pi_\theta(y_w\mid x)}{\pi_\text{ref}(y_w\mid x)} - \beta\log\frac{\pi_\theta(y_l\mid x)}{\pi_\text{ref}(y_l\mid x)}\right)\right].$$
+
+Mechanically: for each preference pair you compute the sequence log-probability of the chosen and rejected responses under both the trainable policy and a frozen reference (typically the SFT checkpoint). The model is pushed to *increase* the log-probability margin of $y_w$ over $y_l$ relative to the reference. The hyperparameter $\beta$ (typically 0.1–0.5) plays the role of the KL temperature: small $\beta$ allows the policy to drift further from $\pi_\text{ref}$, large $\beta$ keeps it tethered.
+
+The gradient has an intuitive shape. Let $\hat r_\theta(x,y)=\beta\log\pi_\theta(y\mid x)/\pi_\text{ref}(y\mid x)$ be the implicit reward. Then
+
+$$\nabla_\theta\mathcal{L}_\text{DPO} = -\beta\,\mathbb{E}\!\left[\sigma\!\big(\hat r_\theta(x,y_l)-\hat r_\theta(x,y_w)\big)\,\big(\nabla_\theta\log\pi_\theta(y_w\mid x) - \nabla_\theta\log\pi_\theta(y_l\mid x)\big)\right].$$
+
+The sigmoid term is an automatic difficulty weight: pairs the model already gets right contribute almost nothing; pairs where the implicit reward is wrong dominate the gradient. No sampling, no value network, no PPO clipping, no reward model — just two forward passes through a frozen copy and one through the trainable copy.
+
+<Mermaid chart={`flowchart LR
+  A[SFT model] --> B[Freeze as π_ref]
+  A --> C[Trainable π_θ]
+  D[Preference pairs<br/>x, y_w, y_l] --> C
+  D --> B
+  C --> E[log π_θ ratios]
+  B --> E
+  E --> F[DPO loss<br/>−log σ β·Δ]
+  F --> C`} />
+
+## Code
+
+```python
+import torch, torch.nn.functional as F
+
+def seq_logprob(model, input_ids, labels, mask):
+    # sum log p(y_t | x, y_<t) over response tokens only
+    logits = model(input_ids).logits[:, :-1]
+    logp   = F.log_softmax(logits, dim=-1)
+    tok_lp = logp.gather(-1, labels[:, 1:, None]).squeeze(-1)
+    return (tok_lp * mask[:, 1:]).sum(-1)
+
+def dpo_loss(policy, ref, batch, beta=0.1):
+    pi_w  = seq_logprob(policy, batch.ids_w, batch.ids_w, batch.mask_w)
+    pi_l  = seq_logprob(policy, batch.ids_l, batch.ids_l, batch.mask_l)
+    with torch.no_grad():
+        rf_w = seq_logprob(ref, batch.ids_w, batch.ids_w, batch.mask_w)
+        rf_l = seq_logprob(ref, batch.ids_l, batch.ids_l, batch.mask_l)
+    logits = beta * ((pi_w - rf_w) - (pi_l - rf_l))
+    return -F.logsigmoid(logits).mean()
+```
+
+## Why it matters
+
+DPO removed the two parts of RLHF that practitioners hated most: maintaining a separately-trained reward model that drifts from the policy, and tuning PPO, which is sample-inefficient and unstable on long sequences. A DPO run is just supervised fine-tuning on a frozen reference — fits in standard trainers, runs on the same gradient accumulation tricks as SFT, and converges in hours on a few GPUs for 7B-class models. The Zephyr-7B paper (Tunstall et al., 2023) showed a small SFT + DPO pipeline reaching MT-Bench scores competitive with much larger RLHF-tuned models, which essentially started the open-weight DPO era.
+
+Its limitations spawned a small zoo of successors. DPO can over-fit the Bradley–Terry assumption and *decrease* the likelihood of chosen responses while pushing rejected ones down even harder; IPO (Azar et al.) replaces the log-sigmoid with a squared loss to fix this. KTO drops pairwise data entirely and uses prospect-theoretic single-sided signals. ORPO folds preference learning into SFT itself. SimPO removes the reference model. All of them inherit DPO's central trick: rewriting preference learning as a closed-form objective on log-probability ratios.
+
+<Callout type="tip">
+The reference model is doing more work than it looks. If you DPO without a frozen $\pi_\text{ref}$ (or set $\beta\to 0$), the loss degenerates into "make $y_w$ likely, make $y_l$ unlikely" and the policy collapses — repetitions, degeneracy, length hacking. The KL anchor isn't a regularizer bolted on; it's what makes the implicit reward well-defined.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2305.18290" title="Rafailov et al. — Direct Preference Optimization: Your Language Model is Secretly a Reward Model (2023)" />
+
+</ChapterShell>

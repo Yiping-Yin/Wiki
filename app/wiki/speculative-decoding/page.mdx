@@ -1,0 +1,103 @@
+export const metadata = { title: 'Speculative Decoding · LLM Wiki' };
+
+<ChapterShell slug="speculative-decoding">
+
+# Speculative Decoding
+
+Speculative decoding is an inference-time trick that makes autoregressive LLMs generate tokens 2–3× faster **without changing the output distribution**. The idea: use a small, cheap "draft" model to guess the next $k$ tokens, then have the large "target" model verify all $k$ guesses in a single parallel forward pass. Correct guesses are kept for free; wrong ones are rejected and resampled. Because a transformer forward pass is memory-bandwidth-bound — the weights have to be streamed from HBM regardless of how many tokens you score — verifying $k$ tokens costs almost the same as generating one.
+
+The technique was introduced concurrently in late 2022 by Leviathan, Kalman & Matias at Google (arXiv 2211.17192) and by Chen et al. at DeepMind (arXiv 2302.01318), who proved the sampling procedure is **exactly equivalent** to sampling from the target model. It now ships in vLLM, TensorRT-LLM, llama.cpp, and is the backbone of Medusa, EAGLE, and Meta's production Llama serving stack.
+
+## Key idea
+
+Let $p(x)$ be the target model's next-token distribution and $q(x)$ the draft's. The draft proposes token $x \sim q$. We accept it with probability
+
+$$
+\alpha = \min\!\left(1, \frac{p(x)}{q(x)}\right)
+$$
+
+If rejected, we resample from the **residual distribution**
+
+$$
+p'(x) = \frac{\max(0,\, p(x) - q(x))}{\sum_{x'} \max(0,\, p(x') - q(x'))}
+$$
+
+This is a modified rejection sampler. The marginal distribution of accepted tokens is provably $p$, so speculative decoding is lossless — temperature, top-$p$, and logprobs are all preserved exactly.
+
+## How it works
+
+At each step the draft model $M_q$ autoregressively generates $k$ candidate tokens $x_1,\dots,x_k$ (typically $k=4\text{–}8$). We then run the target model $M_p$ **once** on the prefix plus all $k$ drafts in parallel, obtaining $p(\cdot \mid \text{prefix}, x_{<i})$ for every $i \in [1,k+1]$ in a single forward pass thanks to the causal mask.
+
+We walk left-to-right: token $x_i$ is accepted with probability $\min(1, p_i(x_i)/q_i(x_i))$. On the first rejection at position $j$, we discard $x_j,\dots,x_k$ and sample one replacement from the residual $p'_j$. Crucially, even on a full rejection we still get **one** free token from the target's own distribution, so each round produces between $1$ and $k+1$ tokens. The expected number of accepted tokens per round is
+
+$$
+\mathbb{E}[\text{tokens}] = \frac{1 - \alpha^{k+1}}{1 - \alpha}
+$$
+
+where $\alpha$ is the average acceptance rate. For a well-matched draft ($\alpha \approx 0.7$) and $k=5$, this gives ~3.4 tokens per target forward pass.
+
+<Mermaid chart={`flowchart LR
+  A[Prefix] --> B[Draft M_q<br/>k autoregressive steps]
+  B --> C[x1,x2,...,xk]
+  C --> D[Target M_p<br/>1 parallel forward]
+  D --> E{Accept/Reject<br/>per token}
+  E -->|accepted| F[Extend prefix]
+  E -->|reject at j| G[Resample from p'_j]
+  G --> F
+  F --> A`} />
+
+The speedup ceiling is set by the cost ratio $c = T_q/T_p$ and $\alpha$: total wall-clock improvement is $(1-\alpha^{k+1})/((1-\alpha)(ck+1))$. You want a draft that is both cheap **and** well-aligned with the target — a 1B draft for a 70B target is a common sweet spot.
+
+## Code
+
+```python
+import torch
+from torch.nn.functional import softmax
+
+@torch.no_grad()
+def speculative_step(target, draft, prefix, k=5, temp=1.0):
+    # 1. Draft proposes k tokens autoregressively
+    draft_ids, q_probs = prefix.clone(), []
+    for _ in range(k):
+        logits = draft(draft_ids).logits[:, -1] / temp
+        q = softmax(logits, dim=-1)
+        tok = torch.multinomial(q, 1)
+        q_probs.append(q.gather(-1, tok))
+        draft_ids = torch.cat([draft_ids, tok], dim=-1)
+
+    # 2. Target scores all k drafts in ONE forward pass
+    p_logits = target(draft_ids).logits[:, -(k+1):] / temp
+    p_all = softmax(p_logits, dim=-1)
+
+    # 3. Walk left-to-right, accept/reject
+    out = prefix
+    for i in range(k):
+        x = draft_ids[:, prefix.shape[1] + i : prefix.shape[1] + i + 1]
+        p_x, q_x = p_all[:, i].gather(-1, x), q_probs[i]
+        if torch.rand(1) < min(1.0, (p_x / q_x).item()):
+            out = torch.cat([out, x], dim=-1)
+        else:
+            resid = torch.clamp(p_all[:, i] - softmax(draft(out).logits[:,-1]/temp, -1), min=0)
+            resid /= resid.sum()
+            return torch.cat([out, torch.multinomial(resid, 1)], dim=-1)
+    # All k accepted — bonus token from p_{k+1}
+    return torch.cat([out, torch.multinomial(p_all[:, k], 1)], dim=-1)
+```
+
+## Why it matters
+
+Speculative decoding broke the assumption that autoregressive generation must be strictly sequential at the model's native granularity. Unlike quantization or distillation, it is **lossless** — bit-for-bit equivalent in expectation to vanilla sampling — so it composes freely with every other inference optimization. This is why every serious serving stack ships it.
+
+Follow-ups compressed the draft further: **Medusa** (2024) replaces the separate draft model with extra prediction heads on the target itself; **EAGLE** drafts in feature space rather than token space, pushing acceptance rates above 0.8; **Lookahead decoding** drops the draft model entirely and uses Jacobi iteration. The common thread is the Leviathan/Chen acceptance rule — it turns out to be the right primitive for "verify many, commit the prefix."
+
+<Callout type="tip">
+The lossless guarantee holds **only** if you sample the residual $p'$ on rejection. A surprising number of implementations skip this and just resample from $p$ directly — this is subtly biased and will shift your output distribution away from the target, especially at low temperatures where $q$ and $p$ disagree sharply on the tail.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2211.17192" title="Leviathan, Kalman, Matias — Fast Inference from Transformers via Speculative Decoding (2022)" />
+
+<PDFNotes src="https://arxiv.org/pdf/2302.01318" title="Chen et al. — Accelerating Large Language Model Decoding with Speculative Sampling (2023)" />
+
+</ChapterShell>

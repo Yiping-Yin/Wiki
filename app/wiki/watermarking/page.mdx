@@ -1,0 +1,85 @@
+export const metadata = { title: 'LLM Watermarking & Detection · LLM Wiki' };
+
+<ChapterShell slug="watermarking">
+
+# LLM Watermarking & Detection
+
+LLM watermarking is the practice of biasing a language model's sampling distribution in a statistically detectable but perceptually invisible way, so that a third party holding a secret key can later decide whether a given piece of text was produced by that model. Unlike post-hoc classifiers (GPTZero, OpenAI's now-retired detector) which try to guess machine origin from surface statistics, watermarking *embeds* the signal at generation time, turning detection into a hypothesis test with calibrated false-positive rates.
+
+The modern formulation was introduced by Kirchenbauer, Geiping, Wen, Katz, Miers, and Goldstein in *A Watermark for Large Language Models* (Maryland, January 2023). Their "green list / red list" scheme became the reference design and spawned a family of variants (Aaronson's Gumbel trick at OpenAI, SynthID-Text from DeepMind deployed in Gemini, Unigram-Watermark, DiPmark). Watermarking is now a policy lever — cited in the EU AI Act and the US Executive Order on AI — because content provenance is the cheapest defense against mass-generated spam, academic fraud, and model-training contamination.
+
+## Key idea
+
+At each decoding step, hash the previous token (or a short window) with a secret key $k$ to pseudo-randomly partition the vocabulary $V$ into a "green" set $G_t \subset V$ of size $\gamma|V|$ and a "red" set $R_t = V \setminus G_t$. Then add a constant bias $\delta$ to the logits of green tokens before softmax:
+
+$$
+\tilde{\ell}_t(v) = \ell_t(v) + \delta \cdot \mathbb{1}[v \in G_t], \qquad p_t(v) = \frac{\exp\tilde{\ell}_t(v)}{\sum_{v'} \exp\tilde{\ell}_t(v')}
+$$
+
+A human writing the same text hits green tokens at rate $\gamma$ (typically $0.5$); a watermarked model hits them far more often. Detection is a one-proportion $z$-test on the count $|s|_G$ of green tokens in a sequence of length $T$:
+
+$$
+z = \frac{|s|_G - \gamma T}{\sqrt{T\,\gamma(1-\gamma)}}
+$$
+
+Rejecting $H_0$ at $z > 4$ gives a false-positive rate below $3\times 10^{-5}$ while needing only $\sim 25$ watermarked tokens at $\delta=2$.
+
+## How it works
+
+The hash function makes the green list *context-dependent*, so the same vocabulary token is green in some positions and red in others — this is what makes the watermark invisible to a reader and robust to partial paraphrase. Kirchenbauer's "soft" variant (above) is preferred over a "hard" variant that zeroes red tokens, because hard watermarking destroys quality on low-entropy spans (code, proper nouns, math) where the model *must* emit a specific token. With the soft rule, high-entropy steps absorb the bias cheaply while low-entropy steps let the correct token dominate regardless of color.
+
+The two knobs trade off quality vs. detectability. Larger $\delta$ increases the green fraction and shortens the detection window but raises perplexity; smaller $\gamma$ concentrates the signal on fewer tokens, improving $z$ per token but making the watermark more fragile to edits. Robustness to paraphrase attacks is the main weakness: because the green list depends on the previous token, rewriting even a fraction of tokens scrambles the hash chain. Follow-ups (Kirchenbauer et al. 2023b, "On the Reliability…") use longer context windows hashed with min-hash, and SynthID-Text uses a tournament sampling scheme that's provably distortion-free in expectation.
+
+<Mermaid chart={`flowchart LR
+  A[logits l_t] --> B[hash prev token with key k]
+  B --> C[partition V into green / red]
+  C --> D[add delta to green logits]
+  D --> E[softmax and sample]
+  E --> F[next token]
+  F -.-> B
+  G[detector + key] --> H[recompute green sets]
+  H --> I[count green / z-test]
+`} />
+
+## Code
+
+```python
+import hashlib, math, torch
+
+def green_mask(prev_id: int, vocab_size: int, key: int, gamma: float = 0.5):
+    seed = int(hashlib.sha256(f"{key}-{prev_id}".encode()).hexdigest(), 16) % (2**31)
+    g = torch.Generator().manual_seed(seed)
+    perm = torch.randperm(vocab_size, generator=g)
+    k = int(gamma * vocab_size)
+    mask = torch.zeros(vocab_size, dtype=torch.bool)
+    mask[perm[:k]] = True
+    return mask
+
+def watermarked_sample(logits, prev_id, key, delta=2.0, gamma=0.5):
+    mask = green_mask(prev_id, logits.size(-1), key, gamma)
+    logits = logits.clone()
+    logits[mask] += delta
+    return torch.distributions.Categorical(logits=logits).sample().item()
+
+def detect(token_ids, key, gamma=0.5):
+    greens = sum(green_mask(p, 32000, key, gamma)[t].item()
+                 for p, t in zip(token_ids[:-1], token_ids[1:]))
+    T = len(token_ids) - 1
+    return (greens - gamma*T) / math.sqrt(T*gamma*(1-gamma))   # z-score
+```
+
+## Why it matters
+
+Watermarking is the only provenance technique with a *provable* false-positive guarantee that doesn't require retaining every generation in a database (the alternative being retrieval-based detection, as OpenAI briefly ran). Post-hoc classifiers degrade catastrophically on out-of-distribution text — they flag non-native English writing and Shakespeare as AI-written — whereas a $z$-test has calibrated error regardless of content. The cost is almost zero: a few percent perplexity increase and a vocabulary-sized hash per step. DeepMind's SynthID-Text, shipped in Gemini in 2024, is the first production deployment at scale; it replaces the additive bias with a tournament over $k$ candidate tokens sampled from the true distribution, which makes the watermark distortion-free in expectation (the marginal distribution of any single token is unchanged).
+
+The open problem is paraphrase robustness. A determined attacker running the output through a second LLM can strip any known watermark down to chance; Sadasivan et al. (2023) proved that *any* watermark with bounded quality loss is removable given enough compute. In practice this is an arms race, and watermarking is best understood as raising the cost of abuse rather than providing cryptographic certainty.
+
+<Callout type="tip">
+The detection $z$-score grows as $\sqrt{T}$, so watermarks need length to work — a single tweet is undetectable at any reasonable $\delta$. This is why watermarking schemes are evaluated at $T \geq 200$ tokens, and why short-form content (captions, chat replies) is essentially unprotectable by this family of methods.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2301.10226" title="Kirchenbauer et al. — A Watermark for Large Language Models (2023)" />
+
+</ChapterShell>

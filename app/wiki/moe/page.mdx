@@ -1,0 +1,96 @@
+export const metadata = { title: 'Mixture of Experts (MoE) · LLM Wiki' };
+
+<ChapterShell slug="moe">
+
+# Mixture of Experts (MoE)
+
+Mixture of Experts is a neural network architecture where, instead of every input passing through every parameter, a lightweight **router** selects a small subset of specialized subnetworks ("experts") to process each token. The result is a model with a huge *total* parameter count but a small *active* parameter count per token — you get the representational capacity of a giant dense model at the FLOP cost of a much smaller one. In a typical modern LLM, the feed-forward (MLP) block of each transformer layer is replaced with $N$ parallel MLPs plus a router that sends each token to its top-$k$ experts (usually $k=1$ or $k=2$).
+
+The conditional-computation idea goes back to Jacobs & Jordan (1991), but the modern sparse form was introduced by Shazeer et al. in 2017 ("Outrageously Large Neural Networks") and scaled up by **GShard** (2020), **Switch Transformer** (2021), **GLaM**, **Mixtral 8x7B** (2023), and **DeepSeek-MoE** (2024). Today MoE underpins many frontier models — Mixtral, DeepSeek-V3, Qwen-MoE, and reportedly GPT-4 — because it's the cleanest known way to keep scaling parameters without paying linearly in compute.
+
+## Key idea
+
+Given an input token representation $x \in \mathbb{R}^d$ and $N$ experts $\{E_i\}_{i=1}^N$, a gating network produces scores $g(x) = W_g x \in \mathbb{R}^N$. We keep only the top-$k$ entries, softmax-normalize them, and take a weighted sum of the selected experts' outputs:
+
+$$
+\text{MoE}(x) = \sum_{i \in \mathcal{T}_k(x)} \underbrace{\frac{\exp(g(x)_i)}{\sum_{j \in \mathcal{T}_k(x)} \exp(g(x)_j)}}_{\text{gate weight } p_i(x)} \; E_i(x)
+$$
+
+Because $|\mathcal{T}_k(x)| = k \ll N$, the per-token FLOPs depend on $k$, not $N$. Total parameters scale with $N$; active parameters scale with $k$.
+
+## How it works
+
+**Routing.** The router is just a linear layer $W_g \in \mathbb{R}^{N \times d}$. For each token it picks the top-$k$ experts by score. Switch Transformer uses $k=1$ (maximally sparse, simplest); Mixtral and GShard use $k=2$ (slightly more compute, smoother gradients through the gate). Because top-$k$ is non-differentiable w.r.t. which experts were *chosen*, gradients flow only through the gate weights $p_i(x)$ of the selected experts — this is fine in practice because the softmax over selected logits still learns to reweight.
+
+**Load balancing.** Left alone, the router collapses: it sends most tokens to a few favored experts, and the others starve. To counteract this, Switch Transformer adds an auxiliary loss per layer:
+
+$$
+\mathcal{L}_{\text{aux}} = \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i
+$$
+
+where $f_i$ is the fraction of tokens dispatched to expert $i$ and $P_i$ is the mean router probability for expert $i$ across the batch. Minimizing this product encourages a uniform distribution (it's minimized when both are $1/N$). Typical $\alpha \approx 10^{-2}$. Additional tricks: **capacity factor** (cap each expert at $\lceil C \cdot T/N \rceil$ tokens per batch, dropping overflow via residual), **router z-loss** (penalize large logits to stabilize fp16 training), and **expert parallelism** (shard experts across devices via all-to-all).
+
+**DeepSeek-MoE** pushed this further with *fine-grained* experts (many small experts instead of few big ones) plus always-active *shared* experts that handle common patterns, freeing routed experts to specialize.
+
+<Mermaid chart={`flowchart LR
+  X[token x] --> G[Router W_g]
+  G -->|top-k| S[softmax over selected]
+  X --> E1[Expert 1]
+  X --> E2[Expert 2]
+  X --> E3[Expert ...]
+  X --> EN[Expert N]
+  S -->|p_i| SUM[weighted sum]
+  E1 --> SUM
+  E2 --> SUM
+  EN --> SUM
+  SUM --> Y[output]`} />
+
+## Code
+
+```python
+import torch, torch.nn as nn, torch.nn.functional as F
+
+class MoE(nn.Module):
+    def __init__(self, d, n_experts=8, k=2, hidden=None):
+        super().__init__()
+        hidden = hidden or 4 * d
+        self.k, self.n = k, n_experts
+        self.gate = nn.Linear(d, n_experts, bias=False)
+        self.experts = nn.ModuleList(
+            nn.Sequential(nn.Linear(d, hidden), nn.GELU(), nn.Linear(hidden, d))
+            for _ in range(n_experts))
+
+    def forward(self, x):                       # x: (B*T, d)
+        logits = self.gate(x)                   # (B*T, N)
+        top_val, top_idx = logits.topk(self.k, dim=-1)
+        weights = F.softmax(top_val, dim=-1)    # (B*T, k)
+        out = torch.zeros_like(x)
+        for slot in range(self.k):
+            idx = top_idx[:, slot]              # which expert per token
+            for e in range(self.n):
+                mask = (idx == e).nonzero(as_tuple=True)[0]
+                if mask.numel() == 0: continue
+                out[mask] += weights[mask, slot:slot+1] * self.experts[e](x[mask])
+        # load-balancing loss
+        probs = F.softmax(logits, dim=-1)
+        f = F.one_hot(top_idx[:, 0], self.n).float().mean(0)
+        P = probs.mean(0)
+        aux = self.n * (f * P).sum()
+        return out, aux
+```
+
+## Why it matters
+
+MoE decouples **capacity** from **compute**. A dense 70B model costs 70B params of FLOPs per token; Mixtral 8x7B has ~47B total params but only ~13B active per token, giving dense-70B-class quality at dense-13B inference cost. This is the most compute-efficient scaling axis known for transformers — on a per-FLOP basis, sparse models consistently beat dense ones on language modeling loss (Switch Transformer showed 4–7× speedup to reach the same perplexity).
+
+The tradeoff is **memory and systems complexity**. Total parameters still live in VRAM (Mixtral needs ~90GB in bf16), so MoE helps training/inference FLOPs but not memory. Expert parallelism requires all-to-all communication, which is bandwidth-hungry; routing imbalance wastes compute; and small-batch inference can't amortize the all-to-all, making MoE awkward for single-user latency. Techniques like expert parallelism, grouped-GEMM kernels, and fine-grained routing (DeepSeek) have steadily chipped away at these costs.
+
+<Callout type="tip">
+The router is tiny — a single $d \times N$ linear — yet it's the most delicate part of the model. Forget the load-balancing loss and you'll train $N$ experts only to have 2 of them do all the work. Monitor per-expert token counts during training; a healthy run has roughly uniform $f_i$ within a factor of 2.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2101.03961" title="Fedus, Zoph, Shazeer — Switch Transformer (2021)" />
+
+</ChapterShell>

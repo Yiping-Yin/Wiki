@@ -1,0 +1,82 @@
+export const metadata = { title: 'Constitutional AI & RLAIF · LLM Wiki' };
+
+<ChapterShell slug="constitutional-ai">
+
+# Constitutional AI & RLAIF
+
+Constitutional AI (CAI) is Anthropic's recipe for training a harmless assistant without a human ever labeling a harmful output. Instead of collecting tens of thousands of "which response is safer?" comparisons from crowdworkers, CAI hands that job to another language model, guided by a short written **constitution** — a list of natural-language principles like "choose the response that is least harmful" or "prefer the answer that a thoughtful person would endorse." The model critiques and revises its own outputs against those principles, and a preference model trained on *AI-generated* comparisons then drives RL. This last piece — RL from AI Feedback — is where the acronym **RLAIF** comes from.
+
+The method was introduced by Bai et al. at Anthropic in December 2022 (arXiv 2212.08073) and was used to train early Claude models. Since then the pattern has spread widely: Google's RLAIF paper (Lee et al. 2023) showed AI labels match human labels on summarization, Meta's Llama 2 used a mix of human and AI preferences, and essentially every modern "self-improvement" and "self-rewarding" pipeline (DPO on synthetic preferences, Self-Rewarding LMs, RLHF-free alignment) is a descendant of this idea. The motivation is twofold: human labels are expensive and slow, and — more subtly — humans disagree, get fatigued, and struggle to judge subtle harms consistently, while a capable LM prompted with an explicit rule can be surprisingly uniform.
+
+## Key idea
+
+CAI has two stages. **Stage 1 (SL-CAI):** sample a response from a helpful-only model, ask the *same* model to critique it against a randomly sampled constitutional principle, then ask it to revise. Fine-tune on the revised responses. **Stage 2 (RL-CAI / RLAIF):** for each prompt, sample two responses, and ask a *feedback model* which one better satisfies a principle. Train a preference model $r_\phi$ on those AI labels, then run PPO against it. Formally, given principle $c$ and responses $y_1,y_2$ to prompt $x$, the AI label is
+
+$$p(y_1 \succ y_2 \mid x, c) = \frac{\exp \ell(y_1)}{\exp \ell(y_1) + \exp \ell(y_2)}$$
+
+where $\ell(y_i) = \log p_{\text{LM}}(\text{"(A)"} \mid x, y_1, y_2, c)$ is the log-prob the feedback model assigns to picking option $i$. The preference model is then fit via the standard Bradley–Terry loss
+
+$$\mathcal{L}(\phi) = -\mathbb{E}_{(x,y_w,y_l)}\big[\log \sigma(r_\phi(x,y_w) - r_\phi(x,y_l))\big].$$
+
+## How it works
+
+The supervised stage is a self-distillation loop. Start from a helpful RLHF model (deliberately *not* harmless, so it will actually produce objectionable outputs on red-team prompts). For each red-team prompt $x$, sample $y_0 \sim \pi_{\text{helpful}}$. Then sample a principle $c_k$ from the constitution — 16 principles in the original paper — and prompt the same model: *"Identify specific ways in which the assistant's last response is harmful with respect to: $c_k$."* This produces a critique $q$. Then prompt again: *"Rewrite the response to remove the harmful content."* This yields $y_1$. Iterate a few times, then fine-tune the base model on $(x, y_{\text{final}})$ pairs. Empirically a single revision captures most of the gain; further revisions give diminishing returns and can over-hedge.
+
+The RL stage replaces human comparison labels entirely. Given the SL-CAI model, sample pairs $(y_1, y_2)$ for each prompt, build a multiple-choice prompt *"Consider helpfulness and harmlessness. Which response is better? (A) … (B) …"* conditioned on a sampled principle, and read off the softmax over the tokens "(A)" and "(B)". Those soft labels train the preference model; PPO against $r_\phi$ with a KL penalty to the SL-CAI reference policy closes the loop:
+
+$$\max_{\pi_\theta}\ \mathbb{E}_{x,y\sim\pi_\theta}[r_\phi(x,y)] - \beta\, \mathrm{KL}(\pi_\theta \Vert \pi_{\text{ref}}).$$
+
+A crucial detail: the paper also uses **chain-of-thought** in the feedback model — letting it reason *before* committing to (A) or (B) — which materially improves label quality on subtle cases. Anthropic additionally found that scaling the feedback model helps more than scaling the labelers (humans) ever did.
+
+<Mermaid chart={`flowchart LR
+  A[Red-team prompt] --> B[Helpful model samples y0]
+  B --> C[Self-critique vs principle c_k]
+  C --> D[Self-revision → y_final]
+  D --> E[SFT on revisions → SL-CAI]
+  E --> F[Sample pair y1,y2]
+  F --> G[Feedback LM picks A/B]
+  G --> H[Train preference model r_phi]
+  H --> I[PPO → RL-CAI policy]
+`} />
+
+## Code
+
+```python
+import torch, torch.nn.functional as F
+
+CONSTITUTION = [
+    "Choose the response that is least harmful and most honest.",
+    "Prefer the response a thoughtful, ethical person would endorse.",
+    "Avoid content that is toxic, illegal, or deceptive.",
+]
+
+def ai_preference(lm, tok, prompt, y1, y2, principle):
+    template = (
+        f"Principle: {principle}\n\nPrompt: {prompt}\n\n"
+        f"(A) {y1}\n(B) {y2}\n\nWhich is better? Answer (A) or (B):"
+    )
+    ids = tok(template, return_tensors="pt").input_ids
+    with torch.no_grad():
+        logits = lm(ids).logits[0, -1]
+    a_id, b_id = tok(" (A)").input_ids[-1], tok(" (B)").input_ids[-1]
+    return F.softmax(logits[[a_id, b_id]], dim=-1)  # soft label over (A,B)
+
+def bt_loss(r_w, r_l):
+    return -F.logsigmoid(r_w - r_l).mean()
+```
+
+## Why it matters
+
+CAI decouples alignment scale from human-labeling scale. Before it, improving harmlessness meant hiring more annotators; after it, you can run more GPUs. On Anthropic's own evaluations, RL-CAI matched or beat RLHF on harmlessness *while being less evasive* — a known failure mode of human-labeled harmlessness training, where models learn that "I can't help with that" is a safe bet. Because the constitution is written text, it's also auditable and editable: changing behavior means editing a paragraph, not relabeling a dataset.
+
+The idea has since generalized beyond safety. DPO on synthetic preferences, Self-Rewarding Language Models (Yuan et al. 2024), RLAIF for summarization and code, and nearly all "LLM-as-a-judge" evaluation pipelines rest on the same wager CAI made first: that a sufficiently capable LM, given an explicit rubric, is a usable stand-in for a human rater. The main caveats are also well-known — reward hacking against the judge, sycophancy amplification, and principle under-specification — which is why modern systems often mix AI and human labels rather than going fully synthetic.
+
+<Callout type="tip">
+The non-obvious win of CAI isn't cost — it's *consistency*. A single feedback model applies the same rubric to a million comparisons without drift, fatigue, or disagreement. This makes the reward model sharper, and a sharper reward model makes PPO converge faster and hack less.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2212.08073" title="Bai et al. — Constitutional AI: Harmlessness from AI Feedback (2022)" />
+
+</ChapterShell>

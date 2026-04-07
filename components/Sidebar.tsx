@@ -2,11 +2,14 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { chapters } from '../lib/nav';
+import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchBox } from './SearchBox';
 
 export function Sidebar() {
   const [open, setOpen] = useState(false);
+  const [llmOpen, setLlmOpen] = useState(false);
+  const [knowOpen, setKnowOpen] = useState(true);
   const sections = Array.from(new Set(chapters.map((c) => c.section)));
 
   return (
@@ -32,26 +35,49 @@ export function Sidebar() {
       <aside
         className={`sidebar ${open ? 'open' : ''}`}
         style={{
-          width: 270, borderRight: '1px solid var(--border)',
+          width: 280, borderRight: '1px solid var(--border)',
           padding: '1.5rem 1.1rem', position: 'sticky', top: 0,
           height: '100vh', overflowY: 'auto', background: 'var(--bg)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <Link href="/" style={{ fontWeight: 800, fontSize: '1.05rem' }}>📚 LLM Wiki</Link>
+          <Link href="/" style={{ fontWeight: 800, fontSize: '1.05rem' }}>📚 My Wiki</Link>
           <ThemeToggle />
         </div>
         <SearchBox />
-        <Link href="/graph" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--muted)', margin: '0.6rem 0 0.4rem' }}>
-          🕸 Knowledge graph
-        </Link>
-        <Link href="/demo" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '0.8rem' }}>
-          🎛 Feature demo
-        </Link>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0' }}>
+          <Link href="/atlas" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🗺 Knowledge atlas</Link>
+          <Link href="/graph" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🕸 Knowledge graph</Link>
+          <Link href="/demo" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🎛 Feature demo</Link>
+        </div>
+
+        {/* Personal knowledge — at top, expanded by default */}
+        <Section title={`📚 My Knowledge (${knowledgeTotal})`} open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}>
+          <Link
+            href="/knowledge"
+            onClick={() => setOpen(false)}
+            style={{ display: 'block', padding: '0.25rem 0.4rem', borderRadius: 4, fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600 }}
+          >
+            All categories
+          </Link>
+          {knowledgeCategories.map((c) => (
+            <Link
+              key={c.slug}
+              href={`/knowledge/${c.slug}`}
+              onClick={() => setOpen(false)}
+              style={{ display: 'block', padding: '0.22rem 0.4rem', borderRadius: 4, fontSize: '0.83rem', color: 'var(--fg)' }}
+            >
+              {c.label} <span style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>· {c.count}</span>
+            </Link>
+          ))}
+        </Section>
+
+        {/* LLM reference wiki — collapsed by default */}
+        <Section title={`🤖 LLM Reference (${chapters.length})`} open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
           {sections.map((sec) => (
-            <div key={sec} style={{ marginTop: '0.7rem' }}>
-              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '0.3rem' }}>
+            <div key={sec} style={{ marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '0.2rem' }}>
                 {sec}
               </div>
               {chapters.filter((c) => c.section === sec).map((c) => (
@@ -59,15 +85,35 @@ export function Sidebar() {
                   key={c.slug}
                   href={`/wiki/${c.slug}`}
                   onClick={() => setOpen(false)}
-                  style={{ display: 'block', padding: '0.25rem 0.4rem', borderRadius: 4, fontSize: '0.88rem', color: 'var(--fg)' }}
+                  style={{ display: 'block', padding: '0.2rem 0.4rem', borderRadius: 4, fontSize: '0.82rem', color: 'var(--fg)' }}
                 >
                   {c.title}
                 </Link>
               ))}
             </div>
           ))}
-        </nav>
+        </Section>
       </aside>
     </>
+  );
+}
+
+function Section({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%', textAlign: 'left', background: 'transparent', border: 0,
+          fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase',
+          letterSpacing: '0.08em', cursor: 'pointer', padding: '0.3rem 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}
+      >
+        <span>{title}</span>
+        <span style={{ fontSize: '0.7rem' }}>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && <div style={{ display: 'flex', flexDirection: 'column' }}>{children}</div>}
+    </div>
   );
 }

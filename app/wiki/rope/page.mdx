@@ -1,0 +1,81 @@
+export const metadata = { title: 'RoPE — Rotary Position Embeddings · LLM Wiki' };
+
+<ChapterShell slug="rope">
+
+# RoPE — Rotary Position Embeddings
+
+Rotary Position Embeddings (RoPE) are a way to inject token positions into a transformer by **rotating** the query and key vectors in 2D subspaces, instead of adding a learned or sinusoidal vector to the token embedding. The trick is that after rotation, the dot product $\langle q_m, k_n \rangle$ depends only on the **relative** offset $m-n$, not the absolute positions $m$ and $n$ — so you get relative-position behavior with the cost and simplicity of an absolute scheme.
+
+RoPE was introduced by Jianlin Su and collaborators in the RoFormer paper (Su et al., 2021, arXiv:2104.09864). It has since become the de facto positional encoding in modern open LLMs: Llama 1/2/3, GPT-NeoX, PaLM, Qwen, Mistral, DeepSeek, and most decoder-only models trained after 2022 use RoPE, often with extensions like NTK-aware scaling, YaRN, or position interpolation to extend context windows beyond the training length.
+
+## Key idea
+
+Split each $d$-dimensional query/key vector into $d/2$ pairs, treat each pair $(x_{2i}, x_{2i+1})$ as a complex number, and multiply it by a phase $e^{i m \theta_i}$ that depends on the token position $m$ and a frequency $\theta_i = 10000^{-2i/d}$. The dot product between a rotated query at position $m$ and a rotated key at position $n$ then becomes a function of $m - n$:
+
+$$
+\langle R_m q,\; R_n k \rangle = \mathrm{Re}\!\left[\sum_{i=0}^{d/2-1} q_i \bar{k}_i\, e^{i(m-n)\theta_i}\right]
+$$
+
+$$
+R_{m,i} = \begin{pmatrix} \cos m\theta_i & -\sin m\theta_i \\ \sin m\theta_i & \phantom{-}\cos m\theta_i \end{pmatrix}
+$$
+
+## How it works
+
+Concretely, for a head dimension $d$, you precompute frequencies $\theta_i = 10000^{-2i/d}$ for $i = 0,\dots,d/2-1$. For a token at position $m$, the angle applied to the $i$-th pair is $m\theta_i$. Low-index pairs rotate fast (high frequency, capturing fine-grained local order); high-index pairs rotate slowly (long wavelengths, encoding coarse position). This is the same frequency schedule as sinusoidal embeddings, but it's applied as a rotation rather than an addition.
+
+The rotation is applied **inside attention**, after the $W_Q$ and $W_K$ projections but before the dot product, and **only** to queries and keys — not to values. Because rotations are orthogonal, vector norms are preserved, so you don't perturb the magnitudes that softmax cares about. And because $R_m^\top R_n = R_{n-m}$, the resulting attention logit $q_m^\top R_{n-m} k$ is purely a function of relative offset, giving you translation-equivariant attention almost for free.
+
+A subtle but important property: RoPE has no learned parameters. You can change context length at inference time just by feeding larger $m$ values — though out-of-distribution positions degrade quality, which is why tricks like position interpolation (dividing $m$ by a scale factor) and NTK-aware base rescaling (changing $10000$ to a larger base) work to extend the usable window.
+
+<Mermaid chart={`flowchart LR
+  X[token x_m] --> Q[W_Q · x]
+  X --> K[W_K · x]
+  Q --> RQ[rotate by mθ]
+  K --> RK[rotate by mθ]
+  RQ --> DOT[q · k]
+  RK --> DOT
+  DOT --> SM[softmax]
+`} />
+
+## Code
+
+```python
+import torch
+
+def precompute_freqs(dim, end, base=10000.0):
+    # dim = head dim, end = max seq len
+    theta = 1.0 / (base ** (torch.arange(0, dim, 2).float() / dim))
+    t = torch.arange(end).float()
+    freqs = torch.outer(t, theta)              # (end, dim/2)
+    return torch.polar(torch.ones_like(freqs), freqs)  # complex e^{i m θ}
+
+def apply_rope(x, freqs_cis):
+    # x: (batch, seq, n_heads, head_dim)
+    xc = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
+    freqs_cis = freqs_cis[: x.shape[1]].unsqueeze(0).unsqueeze(2)
+    x_rot = torch.view_as_real(xc * freqs_cis).flatten(-2)
+    return x_rot.type_as(x)
+
+# usage inside attention
+freqs_cis = precompute_freqs(dim=64, end=2048)
+q = apply_rope(q, freqs_cis)
+k = apply_rope(k, freqs_cis)
+attn = (q @ k.transpose(-2, -1)) / (q.shape[-1] ** 0.5)
+```
+
+## Why it matters
+
+Before RoPE, transformers used either learned absolute embeddings (which don't extrapolate beyond training length), sinusoidal embeddings (which extrapolate poorly in practice), or relative-position schemes like T5's bias and Shaw et al.'s relative attention (which add memory and compute overhead and complicate efficient kernels). RoPE is cheap — it's just a pointwise complex multiply on Q and K — and it composes cleanly with FlashAttention because it doesn't touch the attention matrix itself, only the inputs to it.
+
+The combination of "no parameters, relative behavior, kernel-friendly, and tunable post-hoc" is why essentially every frontier open-weight LLM now ships with RoPE. The long-context race of 2023–2024 (32k, 100k, 1M tokens) was largely a story of stretching RoPE: linear interpolation, NTK-aware scaling, YaRN, and LongRoPE all reinterpret the base frequency $10000$ or rescale the position index $m$ to make a model trained at, say, 4k tokens, behave reasonably at 128k.
+
+<Callout type="tip">
+RoPE's frequencies form a geometric series, so the lowest-frequency pair has wavelength $2\pi \cdot 10000$ — about 63k tokens. That's why naively running a model past ~64k positions breaks: the slowest-rotating dimensions have never completed a full cycle during training and the model has no idea what those phases mean. NTK-aware scaling fixes this by *increasing* the base, lengthening all wavelengths proportionally.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2104.09864" title="Su et al. — RoFormer: Enhanced Transformer with Rotary Position Embedding (2021)" />
+
+</ChapterShell>

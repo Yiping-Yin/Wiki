@@ -1,0 +1,88 @@
+export const metadata = { title: 'LLM-as-a-Judge · LLM Wiki' };
+
+<ChapterShell slug="llm-as-judge">
+
+# LLM-as-a-Judge
+
+LLM-as-a-Judge is the practice of using a strong language model (typically GPT-4) as an automated evaluator that scores or ranks the outputs of other models. Instead of paying humans to read thousands of completions, you hand the prompt and one or two candidate answers to a judge model and ask it to either assign a numeric score or pick a winner. The technique was formalized by Zheng et al. in the MT-Bench / Chatbot Arena paper (2023), which showed that GPT-4 agrees with human preferences ~80% of the time — roughly the same rate humans agree with each other.
+
+It exists because traditional NLP metrics (BLEU, ROUGE, perplexity) are useless for open-ended chat: they reward surface n-gram overlap, not helpfulness, correctness, or style. Today LLM-judges power nearly every public leaderboard and RLHF pipeline: MT-Bench, AlpacaEval, Arena-Hard, WildBench, and the reward-model-free variants of DPO evaluation. They are also baked into production eval harnesses at OpenAI, Anthropic, and most frontier labs as the default offline regression signal.
+
+## Key idea
+
+Given a prompt $x$ and two candidate responses $y_A, y_B$, a judge model $J$ produces a preference $J(x, y_A, y_B) \in \{A, B, \text{tie}\}$. The win rate of model $M$ against a baseline $B$ over a prompt distribution $\mathcal{D}$ is:
+
+$$
+\text{WR}(M) = \mathbb{E}_{x \sim \mathcal{D}}\big[\, \mathbb{1}[J(x, M(x), B(x)) = A] \,\big]
+$$
+
+For single-answer grading the judge instead returns a scalar $s \in [1, 10]$, and the metric is $\mathbb{E}_x[J(x, M(x))]$. Both reduce human evaluation to a Monte Carlo estimate over a fixed eval set, with the judge as a noisy but cheap oracle whose calibration must be measured against human labels.
+
+## How it works
+
+A judge prompt has three pieces: an instruction template (rubric), the user question, and the candidate answer(s). The judge is asked to reason briefly, then emit a structured verdict — usually `[[A]]`, `[[B]]`, `[[C]]` for tie, or `Rating: 7`. Chain-of-thought before the verdict empirically improves agreement with humans by 5–10 points because it forces the judge to actually inspect the answer rather than pattern-match on superficial features.
+
+Zheng et al. catalogued three biases that make naive judging unreliable. **Position bias**: GPT-4 prefers the first answer it sees ~60% of the time when the two are equally good. Mitigation is to evaluate both orderings and only count a win if the model is consistent: $\text{win}(A) = \mathbb{1}[J(x,A,B)=A \land J(x,B,A)=A]$. **Length bias**: judges systematically prefer longer answers, even when length adds nothing — AlpacaEval 2.0 introduced a length-controlled win rate that regresses out the length effect via logistic regression. **Self-enhancement bias**: GPT-4 prefers GPT-4's own outputs by ~10%, so you should never use a model as judge for its own family without disclosing it.
+
+A fourth, subtler problem is **rubric leakage**: if the judge's instruction lists "be concise, factual, and well-formatted," the candidate that mentions those words wins. The fix is to keep rubrics behavior-focused and to validate judge–human agreement on a held-out set before trusting any new prompt.
+
+<Mermaid chart={`flowchart LR
+  P[Prompt x] --> A[Model A]
+  P --> B[Model B]
+  A --> J[Judge LLM]
+  B --> J
+  J --> V1[Verdict A→B]
+  P --> J2[Judge LLM swap]
+  B --> J2
+  A --> J2
+  J2 --> V2[Verdict B→A]
+  V1 --> C{Consistent?}
+  V2 --> C
+  C -->|yes| W[Win counted]
+  C -->|no| T[Tie]`} />
+
+## Code
+
+```python
+import os, json, itertools
+from openai import OpenAI
+
+client = OpenAI()
+RUBRIC = """You are an impartial judge. Compare the two assistant answers to the
+user question. Consider helpfulness, correctness, and clarity. Ignore length and
+position. Reply with exactly one token: A, B, or T (tie)."""
+
+def judge(question, ans_a, ans_b, model="gpt-4o"):
+    msg = f"[Question]\n{question}\n\n[A]\n{ans_a}\n\n[B]\n{ans_b}"
+    r = client.chat.completions.create(
+        model=model, temperature=0,
+        messages=[{"role":"system","content":RUBRIC},
+                  {"role":"user","content":msg}])
+    return r.choices[0].message.content.strip()[:1]
+
+def pairwise(question, a, b):
+    v1, v2 = judge(question, a, b), judge(question, b, a)
+    if v1 == "A" and v2 == "B": return "A"   # consistent A win
+    if v1 == "B" and v2 == "A": return "B"   # consistent B win
+    return "T"                                # inconsistent → tie
+
+print(pairwise("Explain entropy in one sentence.",
+               "Entropy measures average surprise of a distribution.",
+               "Entropy is a number related to information."))
+```
+
+## Why it matters
+
+LLM-judges collapsed the cost of model evaluation by roughly three orders of magnitude. A full MT-Bench run costs about $10 in API calls versus thousands of dollars and weeks of latency for a comparable human study. This is what made rapid open-source iteration — Vicuna, Zephyr, Tulu, Nous-Hermes — possible: every fine-tune could get a credible quality signal overnight. They also unblocked **process supervision** and **constitutional AI**, where a judge model scores intermediate reasoning steps or critiques outputs against a written principle, feeding signal back into RLHF or DPO without human labelers in the loop.
+
+The honest comparison: judges are biased and gameable (Goodhart's law applies — train against AlpacaEval and you learn to write long, confident, GPT-4-flavored prose), but they are reproducible, scale linearly with compute, and correlate with human preference well enough to catch regressions. The current best practice is a **panel of judges** (multiple models voting) plus length control plus a small human-labeled calibration set, treating the judge score as an estimator with quantifiable bias rather than ground truth.
+
+<Callout type="tip">
+If your eval shows model X beating model Y by 2 points on a single-judge benchmark, it almost certainly means nothing. The noise floor of GPT-4-as-judge is around 3–5 points; treat differences below that as ties and demand consistency under judge swaps and prompt-order swaps before believing any ranking.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2306.05685" title="Zheng et al. — Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena (2023)" />
+
+</ChapterShell>

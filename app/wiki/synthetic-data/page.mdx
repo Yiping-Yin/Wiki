@@ -1,0 +1,93 @@
+export const metadata = { title: 'Synthetic Data & Distillation · LLM Wiki' };
+
+<ChapterShell slug="synthetic-data">
+
+# Synthetic Data & Distillation
+
+Synthetic data and distillation are two tightly linked techniques for compressing the knowledge of a large, expensive model (the *teacher*) into a smaller, cheaper one (the *student*) — or for bootstrapping training data when human-written text runs out. Knowledge distillation was formalized by Hinton, Vinyals & Dean in 2015 ("Distilling the Knowledge in a Neural Network"), building on Buciluă et al. 2006. The core move: instead of training the student on hard one-hot labels, train it on the teacher's full output distribution, which carries much richer "dark knowledge" about how classes relate.
+
+Synthetic data is the modern generalization: rather than matching logits token-by-token, you let a strong model *generate* training examples — instructions, solutions, textbooks, dialogues — and train a smaller model on that corpus. Self-Instruct (Wang et al. 2022), Alpaca, Orca (Mukherjee et al. 2023), and Microsoft's Phi series (Gunasekar et al. 2023, *Textbooks Are All You Need*) all showed that a few billion parameters trained on carefully filtered, model-generated "textbook-quality" data can match 10–100× larger models on reasoning benchmarks. Today essentially every frontier post-training pipeline — RLHF, RLAIF, constitutional AI, reasoning distillation from o1/R1-style traces — is downstream of these ideas.
+
+## Key idea
+
+Classical distillation minimizes the KL divergence between a temperature-softened teacher distribution $p_T$ and student distribution $p_S$ over the vocabulary:
+
+$$
+p_T(i) = \frac{\exp(z_i^T / \tau)}{\sum_j \exp(z_j^T / \tau)}, \qquad p_S(i) = \frac{\exp(z_i^S / \tau)}{\sum_j \exp(z_j^S / \tau)}
+$$
+
+$$
+\mathcal{L} = \alpha\,\tau^2\,\mathrm{KL}\!\left(p_T \,\|\, p_S\right) \;+\; (1-\alpha)\,\mathcal{L}_{\text{CE}}(y, p_S)
+$$
+
+The temperature $\tau > 1$ flattens the distribution so the student sees relative preferences among non-argmax tokens — the "dark knowledge." The $\tau^2$ factor keeps gradient magnitudes comparable to the hard-label term.
+
+## How it works
+
+There are three regimes in practice. **Logit distillation** (white-box) requires access to the teacher's full vocabulary logits; you compute KL at every position of every sequence. This is maximally information-dense but only works when teacher and student share a tokenizer and you control both. **Sequence-level distillation** (Kim & Rush 2016) drops the logits and just trains the student on greedy or sampled teacher outputs with standard cross-entropy — a special case of synthetic data where the "dataset" is the teacher's own generations.
+
+**Synthetic data generation** is sequence distillation taken to its logical extreme: the teacher is prompted to produce entire curricula. Self-Instruct seeds a pool with ~175 human tasks, then repeatedly asks the teacher "generate a new instruction like these, then solve it," filtering for diversity with ROUGE and for validity with heuristic checks. Orca adds *explanation traces* — the teacher is asked to think step-by-step, and the student imitates the reasoning, not just the answer. Phi goes further by filtering web data for "educational value" with a classifier and supplementing with GPT-3.5/4-generated textbook passages and exercises.
+
+The math of why this works is essentially that the teacher defines a lower-entropy, higher-signal distribution than raw web text. If $H(p_{\text{web}}) \gg H(p_{\text{teacher}})$ over the same support, each teacher token carries more bits of usable supervision per FLOP of student training.
+
+<Mermaid chart={`flowchart LR
+  A[Seed tasks] --> B[Teacher LLM]
+  B --> C[Generate instruction]
+  C --> D[Generate solution + rationale]
+  D --> E{Filter: dedupe, validity, difficulty}
+  E -->|keep| F[Synthetic corpus]
+  E -->|drop| B
+  F --> G[Train small student]
+  G --> H[Evaluate]
+  H -->|weak areas| A`} />
+
+A subtle failure mode: if you train the student only on teacher-sampled outputs, you inherit the teacher's biases and hallucinations, and errors compound when the student is later used to generate its *own* synthetic data (model collapse, Shumailov et al. 2023). Mitigations include mixing real data, rejection sampling against verifiers (unit tests, math checkers), and using multiple teachers.
+
+## Code
+
+```python
+import torch
+import torch.nn.functional as F
+
+def distill_loss(student_logits, teacher_logits, labels,
+                 tau: float = 2.0, alpha: float = 0.5):
+    # student_logits, teacher_logits: [B, T, V]; labels: [B, T]
+    s = F.log_softmax(student_logits / tau, dim=-1)
+    t = F.softmax(teacher_logits / tau, dim=-1)
+    kl = F.kl_div(s, t, reduction="batchmean") * (tau ** 2)
+
+    ce = F.cross_entropy(
+        student_logits.view(-1, student_logits.size(-1)),
+        labels.view(-1),
+        ignore_index=-100,
+    )
+    return alpha * kl + (1 - alpha) * ce
+
+# Sequence-level / synthetic-data variant: no teacher logits at train time,
+# just pre-generate (prompt, teacher_completion) pairs and train with CE.
+def self_instruct_step(teacher, seed_tasks, k=8):
+    prompt = "Write a new, diverse instruction and a correct answer:\n"
+    prompt += "\n".join(f"- {t}" for t in seed_tasks[-k:])
+    new = teacher.generate(prompt, max_new_tokens=256)
+    return new  # filter for dedup / length / validity downstream
+```
+
+## Why it matters
+
+Distillation and synthetic data are the reason a 3B-parameter Phi-3 can beat a 70B Llama-2 on MMLU, and the reason DeepSeek-R1 could distill its chain-of-thought into 1.5B students that outperform GPT-4o on math. For practitioners, the economics are brutal: one night of teacher generation plus a week of student training is often cheaper and better than scaling the student 10×. For the field, it is how post-training now dominates pre-training in marginal capability gains — RLHF, RLAIF, and rejection-sampling fine-tuning are all synthetic-data pipelines with a preference model in the loop.
+
+The comparison with pure scaling is telling. Chinchilla told us the compute-optimal frontier for a fixed data budget; Phi told us the frontier moves when you *choose* the data. Quality beats quantity once you have a teacher that is better than the web.
+
+<Callout type="tip">
+The $\tau^2$ scaling in the KL term is not cosmetic — without it, as $\tau$ grows the soft-target gradients shrink like $1/\tau^2$ and the hard-label term silently dominates. Forgetting it is the single most common distillation bug.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1503.02531" title="Hinton, Vinyals, Dean — Distilling the Knowledge in a Neural Network (2015)" />
+
+<PDFNotes src="https://arxiv.org/pdf/2306.11644" title="Gunasekar et al. — Textbooks Are All You Need (2023)" />
+
+<PDFNotes src="https://arxiv.org/pdf/2306.02707" title="Mukherjee et al. — Orca: Progressive Learning from Complex Explanation Traces of GPT-4 (2023)" />
+
+</ChapterShell>

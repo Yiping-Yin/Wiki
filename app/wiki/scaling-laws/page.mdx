@@ -1,0 +1,89 @@
+export const metadata = { title: 'Scaling Laws — Kaplan & Chinchilla · LLM Wiki' };
+
+<ChapterShell slug="scaling-laws">
+
+# Scaling Laws — Kaplan & Chinchilla
+
+Scaling laws are empirical power-law relationships that predict how the cross-entropy loss of a language model decreases as you grow three knobs: parameters $N$, training tokens $D$, and compute $C$. They exist because, when you sweep these knobs over many orders of magnitude and plot loss on a log-log axis, the points fall on remarkably straight lines. That regularity turns "should we train a bigger model or train longer?" from a guessing game into an optimization problem with a closed-form answer.
+
+The first systematic study was Kaplan et al. (OpenAI, 2020), which argued that for a fixed compute budget you should spend most of it making the model bigger and relatively little making the dataset bigger — roughly $N \propto C^{0.73}$, $D \propto C^{0.27}$. Two years later Hoffmann et al. (DeepMind, 2022), the "Chinchilla" paper, redid the experiments with a better learning-rate schedule and a wider sweep, and concluded the opposite: parameters and tokens should scale in lockstep, giving the now-famous **N ≈ 20 D** rule of thumb. Every frontier lab today (GPT-4, Llama, Gemini, Claude) plans pretraining runs against some descendant of these curves.
+
+## Key idea
+
+Both papers fit a parametric form to measured loss. Chinchilla's is the cleaner one to remember:
+
+$$
+L(N, D) \;=\; E \;+\; \frac{A}{N^{\alpha}} \;+\; \frac{B}{D^{\beta}}
+$$
+
+with fitted constants $E \approx 1.69$, $A \approx 406.4$, $B \approx 410.7$, $\alpha \approx 0.34$, $\beta \approx 0.28$. $E$ is the irreducible entropy of natural language; the other two terms are the finite-model and finite-data penalties. Given a compute budget $C \approx 6 N D$ (the standard FLOPs-per-token estimate for a dense transformer), minimizing $L$ subject to that constraint yields:
+
+$$
+\begin{aligned}
+N_{\text{opt}}(C) &\propto C^{a}, \quad a = \tfrac{\beta}{\alpha+\beta} \approx 0.46 \\
+D_{\text{opt}}(C) &\propto C^{b}, \quad b = \tfrac{\alpha}{\alpha+\beta} \approx 0.54
+\end{aligned}
+$$
+
+So $N$ and $D$ scale at nearly the same rate, and the optimal tokens-per-parameter ratio sits around 20.
+
+## How it works
+
+The derivation is a Lagrange multiplier on $C = 6ND$. Take $\partial L / \partial N$ and $\partial L / \partial D$, set their ratio equal to the ratio of the constraint's partial derivatives, and you get $\alpha A / N^{\alpha} = \beta B / D^{\beta}$ at the optimum. Plugging fitted constants in gives $D / N \approx 20$ across a wide range of $C$. The reason Kaplan got a different exponent is mostly that his runs used a fixed learning rate schedule that wasn't decayed to match each run's token count, so longer runs were artificially penalized — the loss curve flattened prematurely and made data look less valuable than it really is.
+
+A second mechanism worth understanding: the law is predictive *out of distribution in scale*. You can fit the constants on a few dozen small runs (millions of params, billions of tokens) and extrapolate four orders of magnitude up. This is what makes the law operationally useful — you do not have to do the expensive run to know what loss it will reach. Frontier labs run "scaling ladders" of 20–50 small models specifically to refit $A, B, \alpha, \beta$ for their own architecture and data mix before committing to a $10^{25}$-FLOP run.
+
+The compute-optimal frontier is not the same as the inference-optimal frontier. If you will serve a model to billions of queries, the marginal cost of training more tokens on a *smaller* model is dwarfed by inference savings. This is why Llama 3 8B was trained on 15T tokens — roughly **1875 tokens per parameter**, almost 100× the Chinchilla ratio. Chinchilla tells you the cheapest way to reach a given loss; it does not tell you the cheapest way to *deploy* a given loss.
+
+<Mermaid chart={`flowchart LR
+  C[Compute budget C] --> S{Optimize}
+  S --> N[N* ~ C^0.46]
+  S --> D[D* ~ C^0.54]
+  N --> R[D/N ~ 20]
+  D --> R
+  R --> L[Predicted loss L*]
+`} />
+
+## Code
+
+```python
+import numpy as np
+from scipy.optimize import minimize_scalar
+
+# Chinchilla fitted constants (Hoffmann et al. 2022, Table A3)
+E, A, B, alpha, beta = 1.69, 406.4, 410.7, 0.34, 0.28
+
+def loss(N, D):
+    return E + A / N**alpha + B / D**beta
+
+def optimal_split(C):
+    # C = 6 * N * D  =>  D = C / (6N).  Minimize L(N) over N.
+    f = lambda logN: loss(np.exp(logN), C / (6 * np.exp(logN)))
+    res = minimize_scalar(f, bounds=(np.log(1e6), np.log(1e13)), method='bounded')
+    N = np.exp(res.x); D = C / (6 * N)
+    return N, D, loss(N, D)
+
+for C in [1e19, 1e21, 1e23, 1e25]:
+    N, D, L = optimal_split(C)
+    print(f"C={C:.0e}  N={N:.2e}  D={D:.2e}  D/N={D/N:5.1f}  L={L:.3f}")
+```
+
+Run this and the `D/N` column hovers near 20 across eight orders of magnitude in compute — that's the Chinchilla rule falling out of a one-line optimization.
+
+## Why it matters
+
+Before scaling laws, model sizing was folklore. After Kaplan, GPT-3 (175B params, 300B tokens, ratio ≈ 1.7) was sized assuming you should pour compute into parameters. After Chinchilla, the same compute would have built a ~70B model trained on 1.4T tokens — and indeed Chinchilla itself (70B / 1.4T) beat Gopher (280B / 300B) on almost every benchmark while being 4× cheaper at inference. This single result rewrote every frontier lab's training recipe within months and is the reason Llama 2, Llama 3, Mistral, and Gemma all train far more tokens per parameter than the GPT-3 era.
+
+Scaling laws also give you a cheap, principled go/no-go for architecture changes. If a new attention variant shifts the loss curve down by a constant on a ladder of small runs, that improvement (almost always) survives extrapolation. If it only helps at one scale, it's noise. This is how labs decide which of dozens of candidate tweaks to ship into a billion-dollar run.
+
+<Callout type="tip">
+The "20 tokens per parameter" rule is **compute-optimal for training**, not deployment-optimal. If your model will serve a lot of inference traffic, deliberately overtrain a smaller model — Llama 3 8B used ≈1875 tok/param. The Chinchilla loss is slightly higher in theory but the per-query cost is dramatically lower, and in practice the overtrained small model often wins on downstream tasks too because the loss-to-capability mapping is non-linear.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2203.15556" title="Hoffmann et al. — Training Compute-Optimal Large Language Models (2022)" />
+
+<PDFNotes src="https://arxiv.org/pdf/2001.08361" title="Kaplan et al. — Scaling Laws for Neural Language Models (2020)" />
+
+</ChapterShell>

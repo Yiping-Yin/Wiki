@@ -1,0 +1,84 @@
+export const metadata = { title: 'RMSNorm · LLM Wiki' };
+
+<ChapterShell slug="rmsnorm">
+
+# RMSNorm
+
+Root Mean Square Layer Normalization (RMSNorm) is a stripped-down variant of LayerNorm that normalizes activations by their root mean square instead of by mean and variance. It was proposed by Biao Zhang and Rico Sennrich in 2019 as a way to keep the re-scaling benefit of LayerNorm while dropping the re-centering step, which they argued was the expensive but less important half of the computation.
+
+The simplification turned out to matter. RMSNorm is now the default normalization in most modern open-weight LLMs — Llama 1/2/3, Mistral, Gemma, Qwen, DeepSeek, and the T5 family all use it (T5 shipped a mean-less variant before the paper formalized it). The motivation is partly numerical, partly compute: fewer reductions per token, no subtraction of a running mean, and in practice a measurable speedup on long sequences, with downstream quality indistinguishable from — or slightly better than — LayerNorm.
+
+## Key idea
+
+LayerNorm re-centers and re-scales. RMSNorm only re-scales. Given an activation vector $x \in \mathbb{R}^d$, RMSNorm computes
+
+$$
+\text{RMS}(x) = \sqrt{\frac{1}{d} \sum_{i=1}^{d} x_i^2}, \qquad \bar{x}_i = \frac{x_i}{\text{RMS}(x) + \epsilon} \cdot g_i
+$$
+
+where $g \in \mathbb{R}^d$ is a learned gain (the only parameter — there is no bias). Compare with LayerNorm, which first subtracts the mean $\mu = \frac{1}{d}\sum_i x_i$ and divides by the standard deviation $\sigma$. RMSNorm is LayerNorm with $\mu \equiv 0$ assumed.
+
+## How it works
+
+The claim Zhang & Sennrich make is that the *re-scaling invariance* of LayerNorm — the fact that scaling the input by a constant leaves the output unchanged — is what stabilizes training, and that the *re-centering invariance* (translation of the input by a constant) contributes little. If that is true, you can drop the mean and lose nothing. Their experiments across machine translation, language modeling, and image classification back the claim: matched or slightly better quality, ~7–64% faster depending on model and hardware, because each normalization is one reduction ($\sum x_i^2$) instead of two ($\sum x_i$ and $\sum x_i^2$), and the backward pass has fewer terms.
+
+Mechanically, the forward pass is: square, mean, sqrt, divide, multiply by gain. The backward pass is cleaner than LayerNorm's because there is no $\partial \mu / \partial x$ term. For an input $x_i$, the gradient through the normalization is
+
+$$
+\frac{\partial \bar{x}_i}{\partial x_j} = \frac{g_i}{\text{RMS}(x)}\left(\delta_{ij} - \frac{x_i x_j}{d \cdot \text{RMS}(x)^2}\right)
+$$
+
+which is symmetric and cheap to fuse into a single CUDA kernel — one of the reasons frameworks like Flash-style fused ops ship it natively.
+
+Placement matters too. Modern transformers use **pre-norm**: RMSNorm is applied to the input of each sub-block (attention, MLP) before the projection, not after the residual add. Llama places one RMSNorm before attention, one before the MLP, and a final one before the output projection. The learned gain $g$ is typically initialized to 1.
+
+<Mermaid chart={`flowchart LR
+  X[x] --> S[square & mean]
+  S --> R[sqrt + eps]
+  X --> D[divide]
+  R --> D
+  D --> G[multiply by g]
+  G --> Y[output]`} />
+
+## Code
+
+```python
+import torch
+import torch.nn as nn
+
+class RMSNorm(nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-6):
+        super().__init__()
+        self.eps = eps
+        self.gain = nn.Parameter(torch.ones(dim))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # compute in fp32 for numerical stability, cast back at the end
+        dtype = x.dtype
+        x32 = x.float()
+        rms = x32.pow(2).mean(dim=-1, keepdim=True).add(self.eps).rsqrt()
+        return (x32 * rms).to(dtype) * self.gain
+
+if __name__ == "__main__":
+    norm = RMSNorm(8)
+    x = torch.randn(2, 4, 8) * 10 + 3  # arbitrary scale/shift
+    y = norm(x)
+    print("input rms: ", x.pow(2).mean(-1).sqrt())
+    print("output rms:", y.pow(2).mean(-1).sqrt())  # ~1 per row
+```
+
+## Why it matters
+
+At Llama-scale, normalization is called twice per transformer block times dozens of blocks times every token — small constant-factor wins compound. Dropping the mean reduction is not just faster; it removes a source of cross-device communication in tensor-parallel setups, because computing a mean requires an all-reduce across the sharded feature dimension, and halving the number of such reductions is meaningful on multi-GPU training runs.
+
+The quality story is the more interesting one. The original ablations, plus follow-ups in the Llama and T5 codebases, show that the mean-subtraction step in LayerNorm is essentially dead weight for transformer language models — the residual stream is already approximately zero-mean because of how the weights initialize and how the residual accumulates. Once you accept that, RMSNorm is strictly a Pareto improvement: fewer FLOPs, fewer parameters (no bias), simpler kernel, same loss curves. This is why effectively every open-weight LLM released after 2022 uses it, and why "LayerNorm vs RMSNorm" is one of the few architectural decisions that has quietly converged across the field.
+
+<Callout type="tip">
+Always do the squaring and mean in fp32 even if the model runs in bf16/fp16. At long context the sum of squares can overflow or lose precision in half-precision, and a single bad RMS computation at any layer will silently wreck training. The cast-up/cast-down pattern costs almost nothing and is what every production LLM trainer does.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1910.07467" title="Zhang & Sennrich — Root Mean Square Layer Normalization (2019)" />
+
+</ChapterShell>

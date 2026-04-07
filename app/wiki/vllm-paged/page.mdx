@@ -1,0 +1,83 @@
+export const metadata = { title: 'vLLM & PagedAttention · LLM Wiki' };
+
+<ChapterShell slug="vllm-paged">
+
+# vLLM & PagedAttention
+
+vLLM is a high-throughput LLM inference and serving engine built around **PagedAttention**, an attention algorithm that manages the key/value cache the way an operating system manages virtual memory: in fixed-size blocks ("pages") that are allocated on demand and referenced through an indirection table. It was introduced by Woosuk Kwon, Zhuohan Li, and collaborators at UC Berkeley in the SOSP 2023 paper *"Efficient Memory Management for Large Language Model Serving with PagedAttention"*.
+
+The problem it solves is brutal and specific. In a naive transformer server, each request pre-reserves a contiguous KV cache buffer sized to the maximum possible sequence length. Most requests never reach that length, so 60–80% of precious GPU memory sits idle as **internal fragmentation**, and the gaps between buffers create **external fragmentation**. Fewer requests fit on the GPU, batch sizes shrink, and throughput collapses. Today vLLM (and its PagedAttention descendants in TensorRT-LLM, SGLang, TGI, and Hugging Face's own stack) is the de facto serving layer for open LLMs — it powers inference at Anyscale, Databricks, LMSYS's Chatbot Arena, and most self-hosted deployments of Llama, Qwen, and Mistral.
+
+## Key idea
+
+Split the KV cache of every sequence into fixed-size blocks of $B$ tokens (typically $B=16$). A sequence of length $L$ is represented not as a contiguous tensor but as a **block table** — a list of physical block indices. Logically, token $i$ lives in block $\lfloor i/B \rfloor$ at offset $i \bmod B$. Memory waste per sequence drops from $O(L_{\max} - L)$ to at most $B-1$ tokens:
+
+$$
+\text{waste}_{\text{naive}} = L_{\max} - L, \qquad \text{waste}_{\text{paged}} \le B - 1.
+$$
+
+Attention is then computed by gathering K and V through the block table:
+
+$$
+\text{Attn}(q_t, K_{1:t}, V_{1:t}) = \text{softmax}\!\left(\frac{q_t K_{1:t}^\top}{\sqrt{d}}\right) V_{1:t}, \quad K_{1:t}[i] = K_{\text{phys}}[\text{BT}[\lfloor i/B\rfloor],\, i \bmod B].
+$$
+
+## How it works
+
+The GPU KV memory is carved once at startup into a pool of physical blocks, each shaped $[B, \text{num\_heads}, \text{head\_dim}]$ for K and another for V. A scheduler hands out block IDs to sequences as they generate tokens. When a sequence grows past the current last block, vLLM allocates one more physical block and appends its ID to that sequence's block table — no copies, no reallocation. When a sequence finishes, its blocks return to the free pool.
+
+A custom CUDA kernel performs attention directly on this layout: given the query for the current step and the sequence's block table, it loops over logical positions, translates each to a physical address via the table, and accumulates the softmax-weighted value. Because blocks are small and reused across sequences, the kernel is careful about coalesced loads and uses per-block tiling similar to FlashAttention.
+
+Paging enables two further wins. **Continuous batching** (also called iteration-level scheduling) means the server runs one decode step across *all* active sequences, then at every step can evict finished sequences and admit new ones mid-batch — no waiting for the slowest request in a static batch. **Copy-on-write sharing** lets multiple sequences with a common prefix (beam search siblings, parallel samples, a shared system prompt) point their block tables at the *same* physical blocks; only when a branch diverges is a block copied. For a prompt of length $P$ shared by $n$ samples, KV memory drops from $nP$ to $P + n\cdot(\text{new tokens})$.
+
+<Mermaid chart={`flowchart LR
+  S1[Seq A logical tokens] --> BT1[Block Table A: 3,7,2]
+  S2[Seq B logical tokens] --> BT2[Block Table B: 3,7,5]
+  BT1 --> P[(Physical KV Block Pool)]
+  BT2 --> P
+  P --> K[CUDA PagedAttention kernel]
+`} />
+
+When the pool is exhausted, vLLM either **swaps** blocks to CPU RAM or **recomputes** them from the prompt — a policy choice made per request based on length.
+
+## Code
+
+```python
+import torch
+from vllm import LLM, SamplingParams
+
+llm = LLM(
+    model="meta-llama/Llama-3.1-8B-Instruct",
+    gpu_memory_utilization=0.90,
+    block_size=16,            # tokens per KV page
+    max_num_seqs=256,         # continuous-batching width
+    enable_prefix_caching=True,
+)
+
+prompts = [
+    "Explain PagedAttention in one sentence:",
+    "Write a haiku about KV caches:",
+    "List three causes of GPU memory fragmentation:",
+]
+params = SamplingParams(temperature=0.7, max_tokens=128)
+
+# One call -> iteration-level scheduling across all 3 requests.
+for out in llm.generate(prompts, params):
+    print(out.prompt[:40], "->", out.outputs[0].text[:60])
+```
+
+## Why it matters
+
+The original paper reports 2–4× higher throughput than FasterTransformer and HuggingFace TGI at the same latency, with the gap widening for long outputs, large batches, and parallel sampling (where prefix sharing turns linear memory into near-constant). Those numbers have held up: every serious inference engine released since 2023 — TensorRT-LLM, SGLang, LMDeploy, MLC-LLM — ships some form of block-based KV cache, and prefix caching has become a standard API surface because PagedAttention made it cheap.
+
+The deeper lesson is that LLM serving is a **memory systems** problem, not a compute problem. Once you accept a small indirection cost on every attention load, you unlock OS-style tricks — paging, sharing, swapping, COW — that shrink the working set enough to keep the tensor cores fed. vLLM is essentially `mmap` for transformers.
+
+<Callout type="tip">
+Prefix caching is not free: the hash/lookup runs on the CPU scheduler and can dominate at very high QPS with short prompts. If you see the scheduler thread pegged, raise `block_size` to 32 — fewer blocks per sequence means fewer hash ops, at the cost of slightly more internal fragmentation.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2309.06180" title="Kwon et al. — Efficient Memory Management for Large Language Model Serving with PagedAttention (2023)" />
+
+</ChapterShell>

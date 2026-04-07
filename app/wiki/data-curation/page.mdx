@@ -1,0 +1,95 @@
+export const metadata = { title: 'Pretraining Data Curation · LLM Wiki' };
+
+<ChapterShell slug="data-curation">
+
+# Pretraining Data Curation
+
+Pretraining data curation is the pipeline that turns raw web scrapes into the trillions of tokens a modern LLM actually trains on. It spans extraction (WARC → text), language ID, quality filtering, deduplication, decontamination against eval sets, and finally mixing sources at chosen ratios. The unglamorous truth of modern LLMs is that **most of the quality gap between labs is data, not architecture** — Llama, GPT, Claude, and Gemini all use variants of the same transformer, but their corpora are wildly different.
+
+The lineage goes back to Common Crawl filtering in GPT-2 (Radford et al., 2019) and C4 (Raffel et al., 2019, T5), which introduced the "Colossal Clean Crawled Corpus" with heuristic filters like the infamous bad-words list and punctuation-ending rule. The Pile (Gao et al., 2020) pushed curated sources (arXiv, PubMed, GitHub). RefinedWeb (Penedo et al., 2023) showed web-only could beat curated mixes if deduped aggressively. FineWeb and FineWeb-Edu (Penedo et al., 2024, HuggingFace) are the current open state of the art at 15T tokens. Dolma (AI2, 2024) is the other major open corpus. Every serious pretraining run today — open or closed — reimplements some subset of this pipeline.
+
+## Key idea
+
+Curation is **lossy compression of the internet toward the distribution you want the model to imitate**. You start with ~petabytes of Common Crawl WARCs and end with ~15T tokens — a reduction of roughly 90–99% at each major stage. The two mathematical workhorses are (1) near-duplicate detection via MinHash + LSH, and (2) learned quality classifiers that score documents.
+
+For MinHash, each document $d$ is shingled into $k$-grams $S(d)$, and for $h$ random hash functions we compute the signature $m_i(d) = \min_{x \in S(d)} h_i(x)$. The Jaccard similarity is estimated by:
+
+$$
+J(d_1, d_2) = \frac{|S(d_1) \cap S(d_2)|}{|S(d_1) \cup S(d_2)|} \approx \frac{1}{H}\sum_{i=1}^{H} \mathbb{1}[m_i(d_1) = m_i(d_2)]
+$$
+
+LSH then bands the signature into $b$ bands of $r$ rows so that the probability of two documents colliding in at least one band is:
+
+$$
+P(\text{collision}) = 1 - (1 - J^r)^b
+$$
+
+which gives the characteristic S-curve — tune $(b, r)$ to place the threshold near $J \approx 0.8$.
+
+## How it works
+
+A realistic pipeline (FineWeb-style) runs: **URL filtering** (block domains on adult/spam/malware lists) → **trafilatura** or **resiliparse** text extraction from HTML → **fastText language ID** keeping docs with $p(\text{en}) > 0.65$ → **Gopher quality heuristics** (mean word length 3–10, fraction of lines ending in ellipsis < 0.3, fraction of alphabetic words > 0.8, etc.) → **repetition filters** (reject if top-2gram frequency > 0.18) → **MinHash dedup** across the entire corpus, usually per-snapshot then global → **PII redaction** → **decontamination** (13-gram overlap with benchmarks like MMLU, HumanEval) → optionally a **quality classifier** (FineWeb-Edu trains a Llama-3-70B-labeled classifier on "educational value" 0–5 and keeps score ≥ 3).
+
+Deduplication is the single highest-leverage step. Lee et al. (2021) showed that deduping drops memorization by 10× and improves perplexity even though it *removes* tokens. The intuition: repeated documents are equivalent to upsampling, and most web duplication is boilerplate (cookie banners, navigation, mirrored articles) that the model wastes capacity memorizing.
+
+Quality classifiers are the newer innovation. Rather than hand-tuning heuristics, you use a strong LLM to annotate ~500k documents, train a small classifier (fastText or a tiny BERT) on those labels, and run it over the full corpus for cents per million docs. FineWeb-Edu went from 15T → 1.3T tokens this way and matched or beat the full corpus on knowledge benchmarks.
+
+<Mermaid chart={`flowchart LR
+  A[CC WARCs] --> B[Text Extract]
+  B --> C[Lang ID]
+  C --> D[Heuristic Filters]
+  D --> E[MinHash Dedup]
+  E --> F[PII + Decontam]
+  F --> G[Quality Classifier]
+  G --> H[Mix + Shuffle]
+  H --> I[Training Tokens]`} />
+
+## Code
+
+```python
+from datasketch import MinHash, MinHashLSH
+import re
+
+def shingles(text, k=5):
+    toks = re.findall(r"\w+", text.lower())
+    return {" ".join(toks[i:i+k]) for i in range(len(toks) - k + 1)}
+
+def signature(text, num_perm=128):
+    m = MinHash(num_perm=num_perm)
+    for sh in shingles(text):
+        m.update(sh.encode())
+    return m
+
+lsh = MinHashLSH(threshold=0.8, num_perm=128)  # ~S-curve at J=0.8
+docs = {
+    "a": "the quick brown fox jumps over the lazy dog in the park",
+    "b": "the quick brown fox jumps over the lazy dog in the yard",  # near-dup
+    "c": "pretraining data curation is lossy compression of the web",
+}
+kept, seen = [], set()
+for doc_id, text in docs.items():
+    sig = signature(text)
+    if lsh.query(sig):          # collides with an already-kept doc
+        continue
+    lsh.insert(doc_id, sig)
+    kept.append(doc_id)
+print("kept:", kept)  # -> ['a', 'c']
+```
+
+## Why it matters
+
+The Chinchilla scaling laws assume IID tokens of uniform quality; real corpora violate both. A 7B model trained on FineWeb-Edu beats the same model on C4 by ~10 points on MMLU at identical compute — no architectural change, just better data. Conversely, RedPajama-v1 (a naive Common Crawl recipe) underperforms RefinedWeb by a similar margin despite being larger. For frontier labs, data curation is the main lever left once you've saturated FLOPs: you can't 10× the GPUs next quarter, but you can 2× the effective token quality.
+
+The alternative — training on raw Common Crawl — does not work at scale. It produces models that fluently generate SEO spam, hallucinate boilerplate disclaimers, and memorize entire Wikipedia mirrors. The alternative in the other direction — hand-curated corpora like The Pile — hits a ceiling around a few hundred billion tokens, which is no longer enough.
+
+<Callout type="tip">
+Global dedup beats per-shard dedup by a surprising margin, but it's quadratic in the naive implementation. The trick is a two-pass MinHashLSH: first cluster within each CC snapshot (cheap, parallel), then cluster the surviving cluster representatives across snapshots. This is what FineWeb actually does, and it's why naive reimplementations on a single node run out of RAM at ~1T tokens.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2306.01116" title="Penedo et al. — The RefinedWeb Dataset for Falcon LLM (2023)" />
+
+<PDFNotes src="https://arxiv.org/pdf/2107.06499" title="Lee et al. — Deduplicating Training Data Makes Language Models Better (2021)" />
+
+</ChapterShell>

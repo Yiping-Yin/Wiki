@@ -1,0 +1,83 @@
+export const metadata = { title: 'Instruction Tuning Datasets · LLM Wiki' };
+
+<ChapterShell slug="instruction-tuning">
+
+# Instruction Tuning Datasets
+
+Instruction tuning is the supervised fine-tuning step that turns a raw next-token predictor into a model that follows natural-language instructions. Instead of training on arbitrary web text, you train on `(instruction, response)` pairs — sometimes with an optional `input` field — so the model learns the conditional distribution $p(\text{response} \mid \text{instruction})$. The technique was crystallized by Google's **FLAN** (Wei et al., 2021) and BigScience's **T0** (Sanh et al., 2021), which showed that fine-tuning on a mixture of NLP tasks phrased as instructions induces zero-shot generalization to unseen tasks.
+
+The dataset landscape splits into three eras. **Academic mixtures** (FLAN, T0, Super-NaturalInstructions, ~1.6k tasks) are templated reformulations of existing NLP datasets. **Self-distilled** sets (Alpaca, Self-Instruct, OpenHermes, WizardLM) are bootstrapped by prompting a stronger teacher model to generate synthetic instructions and answers from a small seed pool. **Human conversational** sets (ShareGPT, OpenAssistant, Dolly) are scraped or crowdsourced multi-turn dialogues. Every modern open-weights chat model is built on some blend of these.
+
+## Key idea
+
+Given a pretrained LM with parameters $\theta$, instruction tuning minimizes the negative log-likelihood of the response tokens only, masking out the prompt:
+
+$$
+\mathcal{L}(\theta) = -\sum_{(x,y)\in\mathcal{D}} \sum_{t=1}^{|y|} \log p_\theta\!\left(y_t \mid x, y_{<t}\right)
+$$
+
+The crucial design choice is the loss mask: tokens of the instruction $x$ contribute zero gradient, so the model is not rewarded for memorizing prompts. Dataset quality dominates quantity. **LIMA** (Zhou et al., 2023) showed that 1,000 carefully curated examples beat 52k Alpaca samples, formalizing the *Superficial Alignment Hypothesis*: pretraining already learned the knowledge; fine-tuning only teaches **format and style**.
+
+$$
+\text{Quality} \;\propto\; \text{diversity}(\mathcal{D}) \times \text{response fidelity} \;\gg\; |\mathcal{D}|
+$$
+
+## How it works
+
+A typical pipeline starts with a **seed set** of ~175 human-written instructions (Self-Instruct's recipe). You sample 6 seeds, prompt a teacher model "generate 20 more diverse tasks like these," filter for ROUGE-L overlap below 0.7 against existing entries to enforce diversity, then have the teacher answer each new instruction. Alpaca generated 52k examples this way for ~$500 of OpenAI credits. WizardLM added **Evol-Instruct**, recursively rewriting instructions to be deeper, broader, or harder.
+
+The training objective is plain causal LM with a chat template wrapping each turn. Llama-3 uses `<|start_header_id|>user<|end_header_id|>...<|eot_id|>`; ChatML uses `<|im_start|>role\n...<|im_end|>`. Whatever the template, the loss mask covers only assistant tokens. Sequence packing concatenates multiple short examples into one context window with attention masks preventing cross-contamination, raising throughput 3–5×.
+
+Mixture weights matter. The **Tülu** recipe (Allen AI) found that blending FLAN-style task data, ShareGPT conversations, and a slice of code/math yields the best generalist — pure ShareGPT overfits to chatty verbosity, pure FLAN underfits open-ended generation.
+
+<Mermaid chart={`graph LR
+  A[175 seed tasks] --> B[Teacher LM]
+  B --> C[Synthetic instructions]
+  C --> D[ROUGE diversity filter]
+  D --> E[Teacher answers]
+  E --> F[Quality filter & dedupe]
+  F --> G[SFT on base LM]
+`} />
+
+## Code
+
+```python
+import torch
+from datasets import load_dataset
+from transformers import AutoTokenizer
+
+tok = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B")
+ds  = load_dataset("tatsu-lab/alpaca", split="train")
+
+IGNORE = -100  # CrossEntropyLoss skips these positions
+
+def format_and_mask(ex, max_len=1024):
+    prompt = (f"### Instruction:\n{ex['instruction']}\n\n"
+              f"### Input:\n{ex['input']}\n\n### Response:\n")
+    full   = prompt + ex["output"] + tok.eos_token
+    p_ids  = tok(prompt, add_special_tokens=False)["input_ids"]
+    f_ids  = tok(full,   add_special_tokens=False)["input_ids"][:max_len]
+    labels = f_ids.copy()
+    labels[:len(p_ids)] = [IGNORE] * len(p_ids)   # mask the prompt
+    return {"input_ids": f_ids, "labels": labels}
+
+train = ds.map(format_and_mask, remove_columns=ds.column_names)
+batch = {k: torch.tensor([train[0][k]]) for k in ("input_ids", "labels")}
+print("trainable tokens:", (batch["labels"] != IGNORE).sum().item())
+```
+
+## Why it matters
+
+Instruction tuning is the cheapest, highest-leverage step in the post-training stack. A single A100-day on 50k examples converts a base model that produces plausible-but-aimless continuations into one that answers questions, writes code, and refuses obvious misuse. It is also the gateway to preference optimization: DPO and RLHF both assume an instruction-tuned starting point because they need a model that already emits coherent candidate responses to rank.
+
+Compared to alternatives, raw few-shot prompting wastes context and degrades on long inputs; full RLHF is 10–100× more expensive and unstable. Modern open recipes (Tülu 3, OpenHermes 2.5, Nous Capybara) ship 200k–1M filtered examples and spend more compute on **decontamination** (removing test-set leakage from MMLU, GSM8K) and **deduplication** (MinHash on instructions) than on the gradient updates themselves.
+
+<Callout type="tip">
+The loss mask is load-bearing. If you accidentally train on prompt tokens, the model learns to *generate* user turns — it will hallucinate the next question instead of answering the current one. This bug is silent at training time and only shows up during sampling.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2305.11206" title="Zhou et al. — LIMA: Less Is More for Alignment (2023)" />
+
+</ChapterShell>

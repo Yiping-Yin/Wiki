@@ -1,0 +1,91 @@
+export const metadata = { title: 'Mechanistic Interpretability · LLM Wiki' };
+
+<ChapterShell slug="interpretability">
+
+# Mechanistic Interpretability
+
+Mechanistic interpretability (mech interp) is the project of reverse-engineering trained neural networks into human-understandable algorithms — not just asking "what does the model predict?" but "what computation, expressed in weights and activations, produces that prediction?". The framing was crystallized by Chris Olah and collaborators, first at Distill (2020, "Zoom In: An Introduction to Circuits" on InceptionV1) and then at Anthropic from 2021 onward through the *transformer-circuits.pub* thread. The foundational transformer paper in this lineage is Elhage et al., "A Mathematical Framework for Transformer Circuits" (2021), followed by the discovery of **induction heads** (Olsson et al., 2022) and the **sparse autoencoder** (SAE) feature-extraction line (Bricken et al., "Towards Monosemanticity," 2023; Templeton et al., "Scaling Monosemanticity," 2024).
+
+Today mech interp is used inside frontier labs (Anthropic, DeepMind, OpenAI) for alignment auditing, jailbreak analysis, deception detection, and steering models via feature clamping. Unlike saliency maps or probing classifiers — which tell you *where* information lives — mech interp aims to recover the actual *circuit*: a subgraph of attention heads and MLP neurons whose composition implements a specific behavior like in-context copying or indirect-object identification.
+
+## Key idea
+
+A transformer is a **residual stream** $x \in \mathbb{R}^d$ that every layer reads from and writes to additively. Each attention head and MLP is a function whose output is *added* back, so the final logits decompose linearly across components:
+
+$$
+x_{L} = x_0 + \sum_{\ell=1}^{L} \Big( \sum_{h} \text{Attn}^{\ell,h}(x_{\ell-1}) + \text{MLP}^{\ell}(x_{\ell-1}) \Big)
+$$
+
+This linearity is what makes circuits tractable. A single attention head's contribution to the output logits factors as $W_U \, W_O^h \, W_V^h \, x$, with attention pattern controlled independently by $W_Q^h, W_K^h$. Mech interp studies the **OV circuit** (what gets written) and the **QK circuit** (where it's read from) separately:
+
+$$
+\text{QK}^h = W_E^\top W_Q^{h\,\top} W_K^h W_E, \qquad \text{OV}^h = W_U W_O^h W_V^h W_E
+$$
+
+## How it works
+
+**Circuits.** Pick a behavior (e.g. "complete `Mary and John went to the store. John gave a drink to ___`"). Use *activation patching*: run the model on a clean prompt and a corrupted one, then swap activations at specific (layer, position, head) sites and measure the recovered logit difference. Sites whose patching restores behavior are part of the circuit. Wang et al. (2022) used this to map the IOI circuit in GPT-2 small to ~26 heads playing roles like "name mover," "duplicate token," and "S-inhibition."
+
+**Induction heads** are the canonical circuit: a pair of heads across two layers that implement `[A][B] ... [A] -> [B]`. Layer-1 head shifts each token's identity one position forward via the QK circuit attending to the previous token; layer-2 head's query at the second `[A]` matches the shifted-key `[A]` and copies `[B]` through its OV. Olsson et al. showed these heads form abruptly during training, coinciding with the in-context learning bump in the loss curve.
+
+**Sparse autoencoders** address *superposition*: because $d_\text{model} \ll$ number of concepts, features are packed into non-orthogonal directions and individual neurons are polysemantic. An SAE learns an overcomplete dictionary $D \in \mathbb{R}^{d \times m}$, $m \gg d$, with sparse codes:
+
+$$
+z = \text{ReLU}(W_e x + b_e), \quad \hat{x} = D z, \quad \mathcal{L} = \|x - \hat{x}\|_2^2 + \lambda \|z\|_1
+$$
+
+The columns of $D$ become *monosemantic features* — "Golden Gate Bridge," "DNA sequences," "code with bugs" — that can be inspected and clamped at inference time.
+
+<Mermaid chart={`graph LR
+  A[Residual stream x] --> B[SAE encoder]
+  B --> C[Sparse features z]
+  C --> D[Decoder D]
+  D --> E[Reconstruction]
+  C --> F[Inspect / clamp / steer]
+`} />
+
+## Code
+
+```python
+import torch, torch.nn as nn, torch.nn.functional as F
+
+class SAE(nn.Module):
+    def __init__(self, d_model, d_hidden, l1=1e-3):
+        super().__init__()
+        self.enc = nn.Linear(d_model, d_hidden)
+        self.dec = nn.Linear(d_hidden, d_model, bias=False)
+        self.b_pre = nn.Parameter(torch.zeros(d_model))
+        self.l1 = l1
+        with torch.no_grad():
+            self.dec.weight.data /= self.dec.weight.data.norm(dim=0, keepdim=True)
+
+    def forward(self, x):
+        z = F.relu(self.enc(x - self.b_pre))
+        x_hat = self.dec(z) + self.b_pre
+        recon = (x_hat - x).pow(2).sum(-1).mean()
+        sparse = z.abs().sum(-1).mean()
+        return x_hat, z, recon + self.l1 * sparse
+
+# train on cached residual-stream activations from layer L of a transformer
+sae = SAE(d_model=768, d_hidden=768 * 16)
+opt = torch.optim.Adam(sae.parameters(), lr=3e-4)
+for acts in activation_loader:           # acts: [batch, 768]
+    _, _, loss = sae(acts)
+    opt.zero_grad(); loss.backward(); opt.step()
+```
+
+## Why it matters
+
+Mech interp is the only line of alignment work that aspires to *prove* properties about a model rather than measure them behaviorally. Behavioral evals can be gamed by a deceptive model; a circuit-level audit cannot, in principle, because the computation itself is exposed. Anthropic's 2024 "Scaling Monosemanticity" extracted ~34M features from Claude 3 Sonnet and demonstrated that clamping a single "sycophancy" or "scam-email" feature changed model behavior in the predicted direction — concrete evidence that SAE features are causal handles, not just correlational.
+
+Compared to alternatives — attention-rollout heatmaps, gradient saliency, linear probes — mech interp is dramatically more expensive (training an SAE on a frontier model costs millions of dollars in activations and compute) but produces objects you can edit. It is also the substrate for newer work on **attribution graphs** and **transcoders**, which trace token-level computations end-to-end across layers.
+
+<Callout type="tip">
+The residual stream is a *communication channel*, not a representation. Heads don't "store" anything in it — they read subspaces written by earlier heads. This is why circuit analysis works at all: composition is literally addition, so you can decompose any logit into a sum of per-head contributions and ask which terms dominate.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2209.11895" title="Olsson et al. — In-context Learning and Induction Heads (2022)" />
+
+</ChapterShell>

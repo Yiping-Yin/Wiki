@@ -1,0 +1,91 @@
+export const metadata = { title: 'YaRN & Long Context RoPE Scaling · LLM Wiki' };
+
+<ChapterShell slug="yarn-rope-scaling">
+
+# YaRN & Long Context RoPE Scaling
+
+YaRN ("Yet another RoPE extensioN method") is a training-efficient technique for extending the context window of transformer LLMs that use Rotary Position Embeddings (RoPE), without retraining from scratch. Introduced by Bowen Peng, Jeffrey Quesnelle, Honglu Fan, and Enrico Shippole in September 2023, it grew out of the open-source LLaMA community's scramble to push 2K/4K context models to 32K, 64K, and beyond. The core insight: different frequency components of RoPE need to be stretched differently, not uniformly.
+
+YaRN is now the de facto long-context recipe. It ships in Qwen2/Qwen2.5 (up to 1M tokens), DeepSeek-V2/V3, Mistral variants, Nous/Hermes fine-tunes, and countless community long-context models. When you see a `rope_scaling` config entry with `"type": "yarn"` in a Hugging Face model, this is the paper.
+
+## Key idea
+
+RoPE rotates query/key pairs at a set of frequencies $\theta_i = b^{-2i/d}$ for $i \in [0, d/2)$ with base $b{=}10000$. Naive **Position Interpolation** (PI, Chen et al. 2023) linearly rescales positions $m \to m/s$ where $s = L'/L$ is the target-over-original length ratio. This works but crushes high-frequency (small $i$) rotations that the model uses for local, token-level distinctions. **NTK-aware** scaling instead rescales the base: $b' = b \cdot s^{d/(d-2)}$, which barely touches high frequencies but may under-interpolate the lowest ones. YaRN unifies both with a per-dimension **ramp**:
+
+$$
+\theta_i^{\text{YaRN}} = (1 - \gamma_i)\,\frac{\theta_i}{s} + \gamma_i\,\theta_i,
+$$
+
+$$
+\gamma_i = \mathrm{clip}\!\left(\frac{r_i - \alpha}{\beta - \alpha},\,0,\,1\right),\quad r_i = \frac{L}{2\pi/\theta_i}.
+$$
+
+Here $r_i$ is the number of full rotations dimension $i$ performs over the original context $L$. Low-frequency dims ($r_i < \alpha$) get fully interpolated; high-frequency dims ($r_i > \beta$) are left alone; a smooth ramp blends the middle. Peng et al. use $\alpha{=}1, \beta{=}32$ for LLaMA.
+
+## How it works
+
+YaRN has two pieces. The first is the **"NTK-by-parts" interpolation** above, which fixes the frequency-mixing problem. Fully-rotated dimensions encode absolute-ish long-range position — those we want to stretch. Partially-rotated dimensions encode fine-grained relative offsets — those we must preserve, otherwise the model's attention patterns on adjacent tokens collapse.
+
+The second piece is the **attention temperature fix**. Extending context increases the expected magnitude of attention logits (more tokens to dot-product against, and rescaled rotations change the distribution of $q \cdot k$). YaRN compensates by scaling logits with a length-dependent temperature:
+
+$$
+\mathrm{softmax}\!\left(\frac{q_m^\top k_n}{t\sqrt{d}}\right),\qquad \sqrt{1/t} = 0.1\ln(s) + 1.
+$$
+
+The elegant trick is that this can be folded into RoPE itself by multiplying $q$ and $k$ rotations by $\sqrt{1/t}$ — zero runtime cost, zero kernel changes. That is why YaRN drops into existing FlashAttention pipelines without modification.
+
+In practice you apply YaRN and then fine-tune on a small amount (~400 steps, ~64B tokens for LLaMA-7B) of long-context data. Compared to PI's ~1000 steps and worse perplexity, and NTK-aware's inability to be fine-tuned cleanly, YaRN gets both better zero-shot extension and better post-fine-tune perplexity at 2×–16× the original length.
+
+<Mermaid chart={`flowchart LR
+  A["RoPE freq θ_i"] --> B{"rotations r_i over L"}
+  B -->|"r_i < α: low freq"| C["full interpolate θ_i/s"]
+  B -->|"α ≤ r_i ≤ β"| D["ramp blend γ_i"]
+  B -->|"r_i > β: high freq"| E["keep θ_i"]
+  C --> F["× √(1/t) temp fix"]
+  D --> F
+  E --> F
+  F --> G["extended-context RoPE"]`} />
+
+## Code
+
+```python
+import torch, math
+
+def yarn_rope_freqs(dim, base=10000.0, orig_ctx=4096, new_ctx=32768,
+                    alpha=1, beta=32):
+    s = new_ctx / orig_ctx
+    i = torch.arange(0, dim, 2, dtype=torch.float32)
+    theta = 1.0 / (base ** (i / dim))                 # original freqs
+    wavelen = 2 * math.pi / theta                     # period in tokens
+    r = orig_ctx / wavelen                            # rotations over L
+    ramp = ((r - alpha) / (beta - alpha)).clamp(0, 1) # γ_i
+    theta_scaled = (1 - ramp) * (theta / s) + ramp * theta
+    # attention temperature, folded into the rotation magnitude
+    inv_t_sqrt = 0.1 * math.log(s) + 1.0
+    return theta_scaled, inv_t_sqrt
+
+def apply_yarn(q, k, pos, theta, scale):
+    freqs = pos[:, None] * theta[None, :] * scale
+    cos, sin = freqs.cos(), freqs.sin()
+    q1, q2 = q[..., ::2], q[..., 1::2]
+    k1, k2 = k[..., ::2], k[..., 1::2]
+    qr = torch.stack([q1*cos - q2*sin, q1*sin + q2*cos], -1).flatten(-2)
+    kr = torch.stack([k1*cos - k2*sin, k1*sin + k2*cos], -1).flatten(-2)
+    return qr, kr
+```
+
+## Why it matters
+
+Before YaRN, the long-context playbook was ugly: either retrain with larger $L$ from scratch (expensive), use PI and eat a perplexity hit, or use NTK-aware and hope fine-tuning didn't destabilize. YaRN made it routine to take a 4K model and produce a competent 32K–128K model with a modest fine-tune budget. Combined with FlashAttention-2 and sliding-window tricks, it is what unlocked the current generation of 1M-token models. Alternative approaches — LongRoPE (per-dim search), CLEX (continuous length extrapolation), and ABF (adjusted base frequency) — all build on or compete with the same NTK-by-parts insight YaRN crystallized.
+
+The method also matters because it exposed how RoPE actually encodes position: not as one monolithic signal but as a bank of oscillators, each doing a different job. Treating them uniformly was the bug; treating them by wavelength is the fix.
+
+<Callout type="tip">
+The logit temperature $\sqrt{1/t} = 0.1\ln(s) + 1$ is not derived from theory — Peng et al. found it empirically by fitting perplexity curves across scale factors. It happens to be near-optimal across model sizes and families, which is why it's hardcoded in every implementation you'll read.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2309.00071" title="Peng, Quesnelle, Fan, Shippole — YaRN: Efficient Context Window Extension of Large Language Models (2023)" />
+
+</ChapterShell>

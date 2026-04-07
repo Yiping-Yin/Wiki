@@ -1,0 +1,93 @@
+export const metadata = { title: 'μP — Maximal Update Parametrization · LLM Wiki' };
+
+<ChapterShell slug="muP">
+
+# μP — Maximal Update Parametrization
+
+Maximal Update Parametrization (μP) is a way of parametrizing a neural network — initialization scales, per-layer learning rates, and output multipliers — so that the *optimal* hyperparameters (learning rate, init scale, etc.) become **invariant to width**. Train a small proxy model, sweep its HPs, then copy them verbatim to a 100× wider model and they remain near-optimal. This is called **μ-Transfer**.
+
+It was introduced by Greg Yang and Edward Hu in *"Tensor Programs V: Tuning Large Neural Networks via Zero-Shot Hyperparameter Transfer"* (2022), built on the Tensor Programs framework Yang developed at Microsoft Research. μP is now standard practice anywhere you cannot afford to sweep HPs at full scale: it has been used in training runs at Microsoft (MT-NLG follow-ups), Cerebras (Cerebras-GPT), EleutherAI, and is baked into many open-source training stacks (`mup`, `nanotron`, `levanter`).
+
+## Key idea
+
+Under the standard parametrization (SP), as you scale width $n \to \infty$, activations, gradients, and feature updates blow up or vanish at *different* rates in different layers. The optimal LR therefore drifts with width. μP picks initialization variances, forward multipliers, and per-parameter LR scalings so that **every layer's features get a $\Theta(1)$ update per step**, independent of $n$:
+
+$$
+\Delta h_\ell = \eta \cdot \frac{\partial \mathcal{L}}{\partial h_\ell} \cdot \frac{\partial h_\ell}{\partial W_\ell} \cdot W_\ell^{\text{update}} = \Theta(1).
+$$
+
+Concretely, for a hidden weight $W \in \mathbb{R}^{n \times n}$ between two width-$n$ layers, μP prescribes
+
+$$
+\begin{aligned}
+\text{init:}\quad & W_{ij} \sim \mathcal{N}(0,\, \sigma^2/n), \\
+\text{LR (Adam):}\quad & \eta_W = \eta_{\text{base}} / n, \\
+\text{output layer:}\quad & y = (1/n)\, W_{\text{out}} h.
+\end{aligned}
+$$
+
+Embeddings and the unembedding (readout) get different scalings than hidden matrices — that asymmetry is the whole trick.
+
+## How it works
+
+The derivation comes from the **Tensor Programs** infinite-width limit. In SP, the NTK regime makes features *frozen* at infinite width — the network behaves like a kernel method and learns no features. μP is the unique parametrization (up to symmetry) where features evolve nontrivially *and* remain $\Theta(1)$ as $n \to \infty$. Yang calls this the "feature learning limit." Because the limit exists and is non-degenerate, finite-width networks at different $n$ are all approximately samples from the same well-defined dynamical system, so their loss landscapes — and hence optimal HPs — agree.
+
+The practical recipe has three parts. **(1) Multipliers:** scale the *forward* output of certain layers by $1/\text{fan\_in}$ (output layer) or by a constant (embeddings stay $\Theta(1)$). **(2) Initialization:** hidden weights init variance $1/\text{fan\_in}$, output layer init variance $1/\text{fan\_in}^2$ (or zero), embeddings init $\Theta(1)$. **(3) Per-layer learning rates:** under Adam, hidden weights get LR $\eta/\text{width\_mult}$ where `width_mult = n / n_base`; embeddings and biases keep base LR; output weights get $\eta/\text{width\_mult}$. Under SGD the scalings differ (LR for hidden is $\eta \cdot \text{width\_mult}$).
+
+The workflow:
+
+<Mermaid chart={`flowchart LR
+  A[Define base shapes<br/>n_base=256] --> B[Define target shapes<br/>n=4096]
+  B --> C[Compute width_mult<br/>per tensor]
+  C --> D[Sweep LR, init, etc.<br/>on small proxy]
+  D --> E[Train large model<br/>with same HPs]
+  E --> F[Optimal at scale ✓]`} />
+
+The only thing that changes between proxy and target is the width (and optionally depth, with caveats). Data, batch size, and the *numerical* HP values stay fixed.
+
+## Code
+
+```python
+import torch, torch.nn as nn
+
+class MuPLinear(nn.Module):
+    """Hidden linear layer in μP. fan_in = n, fan_out = n."""
+    def __init__(self, fan_in, fan_out, base_fan_in):
+        super().__init__()
+        self.W = nn.Parameter(torch.randn(fan_out, fan_in) / fan_in**0.5)
+        self.width_mult = fan_in / base_fan_in   # = n / n_base
+    def forward(self, x):
+        return x @ self.W.T
+
+class MuPReadout(nn.Module):
+    def __init__(self, fan_in, vocab, base_fan_in):
+        super().__init__()
+        self.W = nn.Parameter(torch.zeros(vocab, fan_in))   # zero init
+        self.width_mult = fan_in / base_fan_in
+        self.out_mult = 1.0 / self.width_mult              # 1/n forward scale
+    def forward(self, x):
+        return (x @ self.W.T) * self.out_mult
+
+def mup_param_groups(model, base_lr):
+    groups = []
+    for m in model.modules():
+        if isinstance(m, (MuPLinear, MuPReadout)):
+            groups.append({"params": [m.W], "lr": base_lr / m.width_mult})
+    return groups   # feed to torch.optim.Adam(groups)
+```
+
+## Why it matters
+
+Hyperparameter sweeps dominate the cost of any frontier training run: a single LR sweep at 70B parameters can cost more than the final run itself. μP collapses that cost by orders of magnitude — you sweep at, say, 40M parameters and transfer to 7B+. Cerebras-GPT (2023) was the first widely publicized open replication, showing μ-Transfer holds across three orders of magnitude of width. Compared to alternatives — heuristic LR scaling rules (linear, square-root), or expensive partial sweeps at scale — μP is the only approach with a *theoretical* guarantee of width-invariance, derived from a well-defined infinite-width limit.
+
+The limitations: μ-Transfer across **depth** is much weaker than across width (depth-μP exists but is fragile, and most practitioners only transfer width). Batch size, sequence length, and dataset must be held fixed. And the bookkeeping is annoying — you have to track `base_shapes` for every parameter, which is why libraries like `mup` and the built-in support in `nanotron` exist.
+
+<Callout type="tip">
+The single most common μP bug: forgetting that under **Adam** the hidden LR scales as $1/\text{width\_mult}$, while under **SGD** it scales as $\text{width\_mult}$. They go in opposite directions because Adam normalizes gradients to unit RMS, so the raw update size is set by $\eta$, not by the gradient magnitude. Get the optimizer family wrong and your "transferred" LR is off by $n^2$.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2203.03466" title="Yang et al. — Tensor Programs V: Tuning Large Neural Networks via Zero-Shot Hyperparameter Transfer (2022)" />
+
+</ChapterShell>

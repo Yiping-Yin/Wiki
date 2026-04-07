@@ -1,0 +1,83 @@
+export const metadata = { title: 'ALiBi — Attention with Linear Biases · LLM Wiki' };
+
+<ChapterShell slug="alibi">
+
+# ALiBi — Attention with Linear Biases
+
+ALiBi (Attention with Linear Biases) is a positional encoding scheme that injects position information not by adding embeddings to token vectors, but by adding a static, non-learned linear penalty to attention scores based on the distance between query and key. It was introduced by Ofir Press, Noah A. Smith, and Mike Lewis in 2021 in *"Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation"*. The motivation was simple and embarrassing for the field at the time: Transformers trained with sinusoidal or learned positional embeddings catastrophically fail when evaluated on sequences longer than they were trained on. ALiBi fixes this with a one-line change to the attention kernel.
+
+Today ALiBi is used in BLOOM, MPT (MosaicML's Pretrained Transformer family), Replit Code, BloombergGPT, and Falcon's earlier variants. It has largely been supplanted by RoPE + YaRN/NTK scaling in frontier models, but it remains the cleanest and cheapest way to get reasonable length extrapolation with zero parameters and zero runtime overhead.
+
+## Key idea
+
+Remove positional embeddings from the input entirely. Instead, before the softmax in each attention head, subtract a penalty proportional to the query–key distance:
+
+$$
+\text{softmax}\!\left(\mathbf{q}_i \mathbf{K}^\top + m \cdot [-(i-1), \dots, -2, -1, 0]\right)
+$$
+
+For a causal head with slope $m > 0$, the bias matrix $B_{ij} = -m \cdot (i - j)$ for $j \le i$ and $-\infty$ otherwise. Each head $h$ in a model with $H$ heads gets a fixed, geometrically-spaced slope:
+
+$$
+m_h = 2^{-8h/H}, \qquad h = 1, 2, \dots, H
+$$
+
+So for $H=8$ the slopes are $2^{-1}, 2^{-2}, \dots, 2^{-8}$. Small slopes give heads that attend globally; large slopes give heads that attend locally.
+
+## How it works
+
+The change at the kernel level is trivial. Standard causal attention computes $\text{softmax}(QK^\top/\sqrt{d} + M)$ where $M$ is the causal mask ($0$ on/below diagonal, $-\infty$ above). ALiBi replaces $M$ with $M + B$, where $B$ is the linear-distance bias scaled by the head's slope. There are no learned parameters added, no embedding table, and no change to $Q$, $K$, $V$ projections. The penalty acts as a soft recency prior: tokens further in the past contribute exponentially less to the softmax, with the decay rate set per-head.
+
+Why does this extrapolate? Sinusoidal embeddings encode absolute position; the model overfits to the specific frequency patterns it saw during training, and out-of-distribution positions produce out-of-distribution activations. Learned embeddings are even worse — positions beyond training length simply don't exist. ALiBi, by contrast, encodes only *relative* distance, and the function is monotonic and unbounded: a distance of 5000 just produces a slightly more negative bias than a distance of 2000. Nothing about the computation is qualitatively different at longer lengths, so perplexity degrades gracefully rather than exploding.
+
+The geometric slope schedule is the one piece of voodoo. Press et al. tried learning the slopes and found it hurt extrapolation — fixed slopes generalize better. The $2^{-8h/H}$ formula was chosen empirically so that the smallest slope head can still see the full training context without saturating, and the largest slope head behaves like a local window of a few dozen tokens.
+
+<Mermaid chart={`graph LR
+  Q[Q · Kᵀ] --> A[+ causal mask]
+  A --> B[+ m · distance bias]
+  B --> S[softmax]
+  S --> O[· V]
+`} />
+
+## Code
+
+```python
+import torch
+
+def alibi_slopes(n_heads: int) -> torch.Tensor:
+    # geometric sequence m_h = 2^(-8h/H)
+    return torch.tensor([2 ** (-8 * (h + 1) / n_heads) for h in range(n_heads)])
+
+def alibi_bias(seq_len: int, n_heads: int) -> torch.Tensor:
+    # shape: (n_heads, seq_len, seq_len)
+    slopes = alibi_slopes(n_heads)                      # (H,)
+    pos    = torch.arange(seq_len)
+    dist   = pos[None, :] - pos[:, None]                # (T, T), negative below diag
+    dist   = dist.clamp(max=0).float()                  # only past tokens
+    return slopes[:, None, None] * dist                 # (H, T, T)
+
+def causal_alibi_attn(Q, K, V):
+    # Q, K, V: (B, H, T, d)
+    B, H, T, d = Q.shape
+    scores = (Q @ K.transpose(-2, -1)) / d ** 0.5       # (B, H, T, T)
+    scores = scores + alibi_bias(T, H).to(Q.device)
+    causal = torch.triu(torch.full((T, T), float('-inf')), diagonal=1)
+    scores = scores + causal
+    return torch.softmax(scores, dim=-1) @ V
+```
+
+## Why it matters
+
+ALiBi was the first method to demonstrate clean length extrapolation: a model trained on 1024-token contexts could be evaluated on 2048 or 4096 tokens with monotonically improving perplexity, while sinusoidal baselines diverged. This unlocked a practical workflow — train short and cheap, deploy long — that was previously impossible without expensive long-context fine-tuning. MPT-7B famously trained on 2k contexts and served at 65k+ tokens with no architectural change.
+
+Compared to RoPE (Rotary Position Embeddings), ALiBi is simpler, parameter-free, and extrapolates out of the box, but it has a structural ceiling: the linear penalty enforces a strong recency bias, which hurts tasks requiring precise long-range retrieval (e.g. needle-in-a-haystack). RoPE preserves relative position information without a decay prior, which is why frontier models converged on RoPE + scaling tricks (NTK-aware, YaRN, longrope) despite needing more engineering. ALiBi remains the right choice when you want a robust baseline with zero positional machinery.
+
+<Callout type="tip">
+ALiBi's "extrapolation" isn't magic — it's just that the model learns to ignore distant tokens because the bias makes them irrelevant. So extrapolation is really *graceful degradation into a local-attention model*. This is why ALiBi models often underperform on tasks needing genuine long-range reasoning even when their perplexity looks fine.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2108.12409" title="Press, Smith, Lewis — Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation (2021)" />
+
+</ChapterShell>

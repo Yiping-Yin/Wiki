@@ -1,0 +1,84 @@
+export const metadata = { title: 'GRPO — Group Relative Policy Optimization · LLM Wiki' };
+
+<ChapterShell slug="grpo">
+
+# GRPO — Group Relative Policy Optimization
+
+Group Relative Policy Optimization (GRPO) is a reinforcement learning algorithm for fine-tuning language models that throws away the value network entirely. Instead of learning a critic to estimate $V(s)$ as PPO does, GRPO samples a *group* of completions for the same prompt and uses the group's own reward statistics as the baseline. The advantage of each sample is just its reward standardized against its siblings. This is shockingly simple, halves memory (no critic), and works remarkably well for tasks with verifiable rewards like math and code.
+
+GRPO was introduced by Shao et al. at DeepSeek in the **DeepSeekMath** paper (Feb 2024) and became famous as the RL backbone of **DeepSeek-R1** and **DeepSeek-R1-Zero**, which demonstrated that pure RL with rule-based rewards can elicit long chain-of-thought reasoning in base models without any SFT bootstrap. It is now the default RL algorithm in most open-source reasoning pipelines (Qwen, Kimi, OpenRLHF, TRL, verl).
+
+## Key idea
+
+For each prompt $q$, sample $G$ completions $\{o_1, \dots, o_G\}$ from the old policy $\pi_{\theta_{\text{old}}}$ and score each with a reward $r_i$. The advantage is computed *within the group* by z-scoring:
+
+$$
+\hat{A}_i = \frac{r_i - \text{mean}(\{r_1, \dots, r_G\})}{\text{std}(\{r_1, \dots, r_G\})}
+$$
+
+This replaces the GAE+critic machinery of PPO. The objective is the standard PPO clipped surrogate plus a KL penalty to a frozen reference policy $\pi_{\text{ref}}$:
+
+$$
+\begin{aligned}
+\mathcal{J}_{\text{GRPO}}(\theta) = \mathbb{E}\Big[ \frac{1}{G}\sum_{i=1}^{G} \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} \Big( & \min\big(\rho_{i,t}\hat{A}_i,\ \text{clip}(\rho_{i,t}, 1-\epsilon, 1+\epsilon)\hat{A}_i\big) \\
+& - \beta\, \mathbb{D}_{\text{KL}}[\pi_\theta \,\|\, \pi_{\text{ref}}] \Big) \Big]
+\end{aligned}
+$$
+
+where $\rho_{i,t} = \pi_\theta(o_{i,t} \mid q, o_{i,<t}) / \pi_{\theta_{\text{old}}}(o_{i,t} \mid q, o_{i,<t})$ is the per-token importance ratio.
+
+## How it works
+
+The training loop is: roll out $G$ completions per prompt under $\pi_{\theta_{\text{old}}}$, score them with a reward function (rule-based for R1: +1 if the boxed answer matches ground truth, plus a small format reward), z-score the rewards inside each group to get a scalar advantage $\hat{A}_i$ that is broadcast to every token in completion $i$, then take a few PPO-style gradient steps on the clipped objective. After the inner steps, the old policy is refreshed and the next batch of prompts is rolled out.
+
+The KL term deserves attention. GRPO uses an unbiased low-variance estimator from Schulman's blog, $\mathbb{D}_{\text{KL}} \approx \frac{\pi_{\text{ref}}}{\pi_\theta} - \log\frac{\pi_{\text{ref}}}{\pi_\theta} - 1$, which is always positive and computed *per token* against the frozen reference, not against $\pi_{\theta_{\text{old}}}$. This anchors the policy to the SFT model and prevents reward hacking through mode collapse. In DeepSeek-R1-Zero this KL is what keeps the model writing coherent English while it learns to reason; remove it and you get language mixing and gibberish.
+
+Why does the group baseline work? Subtracting any function of the prompt from the reward leaves the policy gradient unbiased (it is a control variate). The group mean is exactly such a function — it depends only on $q$ — so $\hat{A}_i$ is a valid, low-variance estimator. Standardizing by std additionally normalizes the gradient scale across prompts of varying difficulty, so easy prompts (where all $G$ samples succeed) contribute zero and hard prompts (where one of $G$ succeeds) get a large positive signal on the winner.
+
+<Mermaid chart={`flowchart LR
+  P[Prompt q] --> R[Rollout G samples]
+  R --> S[Reward each: r_i]
+  S --> A["Group z-score → Â_i"]
+  A --> L[PPO-clip + KL loss]
+  L --> U[Update θ]
+  U -.refresh.-> R`} />
+
+## Code
+
+```python
+import torch, torch.nn.functional as F
+
+def grpo_loss(logp_new, logp_old, logp_ref, rewards, mask, eps=0.2, beta=0.04):
+    # logp_*: (G, T) per-token log-probs of sampled tokens; mask: (G, T)
+    # rewards: (G,) scalar reward per completion in the group
+    adv = (rewards - rewards.mean()) / (rewards.std() + 1e-6)        # group baseline
+    adv = adv.unsqueeze(1)                                            # (G, 1) → broadcast over T
+
+    ratio = torch.exp(logp_new - logp_old)                            # (G, T)
+    surr1 = ratio * adv
+    surr2 = torch.clamp(ratio, 1 - eps, 1 + eps) * adv
+    pg_loss = -torch.min(surr1, surr2)                                # PPO clip
+
+    # Schulman unbiased KL estimator vs frozen reference
+    log_r = logp_ref - logp_new
+    kl = torch.exp(log_r) - log_r - 1                                 # >= 0
+
+    loss = ((pg_loss + beta * kl) * mask).sum() / mask.sum()
+    return loss
+```
+
+## Why it matters
+
+Dropping the critic is not a minor optimization. In PPO for LLMs the value network is typically the same size as the policy, so removing it nearly halves optimizer state and activation memory — the difference between fitting a 32B RL run on a node and not. It also removes a notoriously finicky hyperparameter surface (value loss coefficient, GAE $\lambda$, value clipping) and the chronic problem that the critic lags the policy on long, sparse-reward sequences where bootstrapping is unreliable anyway. For reasoning tasks the reward only arrives at the final answer, so a learned $V$ buys you very little; the group baseline gets you the same variance reduction for free.
+
+The cost is sample efficiency: you pay $G\times$ rollouts per prompt (typically $G=8$ to $64$), and the per-token advantage is constant across the trajectory, so credit assignment is coarse. In practice this is fine for verifiable-reward domains but weaker than PPO+critic when rewards are dense. Variants now in the wild — DAPO, Dr. GRPO, GSPO — tweak the normalization, clipping, and length bias, but the core "group as baseline" idea is unchanged and is currently the dominant recipe for open reasoning models.
+
+<Callout type="tip">
+The std normalization secretly biases toward *easy* prompts of mixed difficulty: if 7 of 8 samples are correct, the one failure gets a huge negative advantage and dominates the update. Dr. GRPO drops the std divisor for exactly this reason — worth knowing before you debug a run that suddenly collapses on its easiest problems.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2402.03300" title="Shao et al. — DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models (2024)" />
+
+</ChapterShell>

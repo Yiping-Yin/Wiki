@@ -1,0 +1,85 @@
+export const metadata = { title: 'ReAct & Tool-Using Agents · LLM Wiki' };
+
+<ChapterShell slug="react-agents">
+
+# ReAct & Tool-Using Agents
+
+ReAct ("Reasoning + Acting") is a prompting pattern that interleaves free-form chain-of-thought with external **actions** — tool calls whose results are fed back into the model's context. Instead of asking an LLM to answer in one shot, you ask it to emit a `Thought:` (private reasoning), then an `Action:` (a structured tool invocation), then read the `Observation:` returned by the environment, and loop until it emits a final answer. The pattern was introduced by Yao et al. at Princeton/Google in October 2022 and showed that interleaving thought with action beats both pure chain-of-thought (which hallucinates facts) and pure action policies (which lack planning) on HotpotQA, FEVER, ALFWorld, and WebShop.
+
+ReAct is the conceptual ancestor of essentially every modern LLM agent: OpenAI function calling, Anthropic tool use, LangChain/LangGraph agents, Cursor, Claude Code, and browser-using agents all run some variant of the ReAct loop. The "reasoning trace as scratchpad" idea also underpins newer paradigms like Toolformer, Reflexion, and the entire o1/R1 reasoning-model lineage.
+
+## Key idea
+
+Treat the LLM as a policy $\pi_\theta(a_t \mid c_t)$ over an *augmented* action space that includes both ordinary text tokens and a special set of tool-invocation tokens. At each step the context $c_t$ contains the task plus the entire trajectory of prior thoughts, actions, and observations:
+
+$$
+c_t = (\text{task},\, \tau_1, a_1, o_1,\, \dots,\, \tau_{t})
+$$
+
+$$
+a_t \sim \pi_\theta(\cdot \mid c_t), \qquad o_t = \text{Env}(a_t)
+$$
+
+The "thought" $\tau_t$ is just text the model generates before committing to an action — it has no effect on the environment, but it conditions the next-token distribution and dramatically improves which $a_t$ gets sampled.
+
+## How it works
+
+A ReAct agent is a `while` loop around a single LLM call. The prompt contains (1) a system description of available tools with their JSON schemas, (2) a few-shot demonstration of the `Thought / Action / Observation` format, and (3) the running trajectory. At each iteration the model generates until it emits an `Action:` line, the runtime parses the tool name and arguments, executes the tool, appends `Observation: <result>` to the context, and re-invokes the model. The loop terminates when the model emits `Action: finish[...]`.
+
+Two practical details matter. First, the **stop sequence**: you must stop generation right after the action so the model doesn't hallucinate the observation itself. With OpenAI/Anthropic function calling this is automatic — the API returns a `tool_use` block — but with raw completions you set `stop=["\nObservation:"]`. Second, **context growth**: trajectories balloon quickly, so production agents truncate or summarize old observations. The original paper also showed that fine-tuning a small model on ReAct trajectories distilled from a larger one can outperform much larger zero-shot models, foreshadowing today's tool-use SFT recipes.
+
+<Mermaid chart={`flowchart LR
+  T[Task] --> M[LLM]
+  M -->|Thought + Action| P[Parser]
+  P -->|tool call| E[Tools]
+  E -->|Observation| M
+  M -->|finish| A[Answer]`} />
+
+## Code
+
+```python
+import re, anthropic
+client = anthropic.Anthropic()
+
+def search(q):
+    return {"Eiffel Tower": "324 m tall, built 1889"}.get(q, "no result")
+
+TOOLS = {"search": search}
+SYSTEM = """You are a ReAct agent. Use this format:
+Thought: <reasoning>
+Action: search[<query>]   OR   Action: finish[<answer>]
+Then wait for Observation."""
+
+def run(task, max_steps=6):
+    traj = f"Task: {task}\n"
+    for _ in range(max_steps):
+        r = client.messages.create(
+            model="claude-opus-4-6", max_tokens=300, system=SYSTEM,
+            messages=[{"role": "user", "content": traj}],
+            stop_sequences=["\nObservation:"])
+        step = r.content[0].text
+        traj += step
+        m = re.search(r"Action:\s*(\w+)\[(.*?)\]", step)
+        if not m: break
+        tool, arg = m.group(1), m.group(2)
+        if tool == "finish": return arg
+        traj += f"\nObservation: {TOOLS[tool](arg)}\n"
+
+print(run("How tall is the Eiffel Tower?"))
+```
+
+## Why it matters
+
+Before ReAct, "LLM + tools" meant either pure chain-of-thought (fluent but ungrounded) or hard-coded pipelines that called a retriever once and stuffed the result into the prompt. ReAct unified them: the model itself decides *when* to think, *when* to call a tool, and *which* tool to call, conditioned on what it has already seen. Every agent framework now sits on this substrate. OpenAI's function calling (June 2023) and Anthropic's tool use are essentially ReAct with the parsing moved server-side and the format upgraded from regex-on-text to structured JSON. LangGraph, AutoGen, and CrewAI add multi-agent orchestration but each node is still a ReAct loop. Coding agents like Claude Code and Cursor are ReAct loops where the tools are `read_file`, `edit`, `bash`, and `grep`.
+
+The main failure modes are worth knowing: error cascades (one bad observation poisons all future thoughts), tool-call loops (the model keeps re-searching the same query), and context explosion. Modern systems mitigate these with reflection steps, observation summarization, and explicit iteration budgets.
+
+<Callout type="tip">
+The "Thought:" line is doing real work — it's not decorative logging. Ablations in the original paper show that removing thoughts (Act-only) collapses HotpotQA accuracy by ~10 points. The thought tokens act as a learned planning scratchpad that conditions the action distribution; this is the same mechanism that later gave us o1-style inference-time reasoning.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2210.03629" title="Yao et al. — ReAct: Synergizing Reasoning and Acting in Language Models (2022)" />
+
+</ChapterShell>

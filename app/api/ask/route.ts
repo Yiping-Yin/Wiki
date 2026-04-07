@@ -2,20 +2,48 @@ import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { chapters } from '../../../lib/nav';
+import { allDocs } from '../../../lib/knowledge';
 
 export const runtime = 'nodejs';
 
-async function loadCorpus() {
-  const root = path.join(process.cwd(), 'app', 'wiki');
-  const out: { slug: string; title: string; content: string }[] = [];
+type Source = { id: string; title: string; content: string; href: string };
+
+async function loadCorpus(): Promise<Source[]> {
+  const out: Source[] = [];
+
+  // 1. LLM wiki chapters
+  const wikiRoot = path.join(process.cwd(), 'app', 'wiki');
   for (const c of chapters) {
     try {
-      const p = path.join(root, c.slug, 'page.mdx');
+      const p = path.join(wikiRoot, c.slug, 'page.mdx');
       const content = await fs.readFile(p, 'utf-8');
-      out.push({ slug: c.slug, title: c.title, content });
+      out.push({ id: `wiki/${c.slug}`, title: c.title, content, href: `/wiki/${c.slug}` });
     } catch {}
   }
+
+  // 2. Personal knowledge — load body files
+  const docsDir = path.join(process.cwd(), 'public', 'knowledge', 'docs');
+  for (const d of allDocs) {
+    try {
+      const raw = await fs.readFile(path.join(docsDir, `${d.id}.json`), 'utf-8');
+      const body = JSON.parse(raw).body ?? '';
+      out.push({
+        id: `know/${d.id}`,
+        title: `${d.title} (${d.category})`,
+        content: body.slice(0, 6000),
+        href: `/knowledge/${d.categorySlug}/${d.fileSlug}`,
+      });
+    } catch {}
+  }
+
   return out;
+}
+
+let _corpusCache: Source[] | null = null;
+async function corpus() {
+  if (_corpusCache) return _corpusCache;
+  _corpusCache = await loadCorpus();
+  return _corpusCache;
 }
 
 function score(content: string, q: string) {
@@ -30,9 +58,13 @@ export async function POST(req: Request) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return Response.json({ error: 'ANTHROPIC_API_KEY not set in .env.local' }, { status: 500 });
 
-  const corpus = await loadCorpus();
-  const ranked = corpus.map((c) => ({ ...c, s: score(c.content, q) })).sort((a, b) => b.s - a.s).slice(0, 4);
-  const context = ranked.map((c) => `## ${c.title}\n${c.content.slice(0, 2500)}`).join('\n\n---\n\n');
+  const c = await corpus();
+  const ranked = c.map((s) => ({ ...s, score: score(s.content, q) }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
+
+  const context = ranked.map((r) => `## ${r.title}\n${r.content.slice(0, 2000)}`).join('\n\n---\n\n');
 
   const client = new Anthropic({ apiKey: key });
   const msg = await client.messages.create({
@@ -40,9 +72,12 @@ export async function POST(req: Request) {
     max_tokens: 800,
     messages: [{
       role: 'user',
-      content: `You are an assistant grounded in the LLM Wiki below. Answer the user's question concisely (under 200 words) using ONLY this context. Cite chapters by name.\n\n<wiki>\n${context}\n</wiki>\n\nQuestion: ${q}`,
+      content: `You are an assistant grounded in the user's personal wiki below. Answer concisely (under 250 words) using ONLY this context. Cite sources by their title in [brackets].\n\n<wiki>\n${context || '(no relevant docs found)'}\n</wiki>\n\nQuestion: ${q}`,
     }],
   });
   const text = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
-  return Response.json({ answer: text, sources: ranked.map((c) => c.slug) });
+  return Response.json({
+    answer: text,
+    sources: ranked.map((r) => ({ id: r.id, title: r.title, href: r.href })),
+  });
 }

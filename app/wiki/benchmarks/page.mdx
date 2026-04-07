@@ -1,0 +1,80 @@
+export const metadata = { title: 'LLM Benchmarks Tour · LLM Wiki' };
+
+<ChapterShell slug="benchmarks">
+
+# LLM Benchmarks Tour
+
+Benchmarks are the standardized exams we give language models to compare them on a common axis. They exist because "this model feels smarter" is not a research result — you need a fixed dataset, a fixed scoring rule, and a fixed prompt format so that two labs in two countries can report numbers that mean roughly the same thing. The modern benchmark landscape grew out of NLP shared tasks (GLUE in 2018, SuperGLUE in 2019, both from Wang et al. at NYU), then exploded once GPT-3 showed that a single model could plausibly attempt every task at once.
+
+Today the canonical suite for a frontier-model release looks roughly like: **MMLU** (Hendrycks 2020, 57-subject multiple choice), **GPQA** (Rein 2023, "Google-proof" graduate science MCQs), **MATH** (Hendrycks 2021, competition math), **HumanEval** (Chen 2021, Python function synthesis), **BBH** (Suzgun 2022, the hard slice of BIG-Bench), **IFEval** (Zhou 2023, verifiable instruction following), **MT-Bench** (Zheng 2023, LLM-as-judge multi-turn), and **Chatbot Arena** (LMSYS 2023, human pairwise votes turned into Elo). Each one targets a different failure mode, and none of them alone is sufficient.
+
+## Key idea
+
+A benchmark is a triple $(\mathcal{D}, f, s)$: a dataset of items $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$, a prompting/decoding function $f$ that turns $x_i$ into a model response $\hat{y}_i$, and a scoring function $s(\hat{y}_i, y_i) \in [0,1]$. The reported number is just the empirical mean
+
+$$\mathrm{Score}(M) = \frac{1}{N}\sum_{i=1}^N s\big(f(M, x_i),\, y_i\big).$$
+
+For pairwise human preference benchmarks like Chatbot Arena there is no $y_i$; instead votes between models $A$ and $B$ are fit to a Bradley–Terry model and converted to Elo:
+
+$$P(A \succ B) = \frac{1}{1 + 10^{(R_B - R_A)/400}}.$$
+
+## How it works
+
+The devil is in $f$. For MMLU, the "official" scoring asks the model for a single token A/B/C/D and compares the logprobs of those four tokens — this is *loglikelihood scoring*. Chat-tuned models, however, want to answer in prose ("The answer is C because..."), so labs increasingly report a *generative* MMLU number with a regex extractor. The two can disagree by 5+ points on the same model, which is why "MMLU 82" without a harness reference is nearly meaningless. The two reference harnesses are EleutherAI's `lm-evaluation-harness` and Stanford's HELM.
+
+For code benchmarks, scoring is execution-based: HumanEval runs the model's completion against held-out unit tests and reports **pass@k**, which uses an unbiased estimator over $n \geq k$ samples to avoid the high variance of just sampling $k$ times:
+
+$$\text{pass@}k = \mathbb{E}_{\text{problems}}\left[1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}\right],$$
+
+where $c$ is the number of correct samples out of $n$. MATH uses a symbolic equality check on the boxed final answer. IFEval is clever: every instruction ("respond in exactly 3 bullet points, each starting with the letter K") comes with a deterministic Python verifier, sidestepping LLM-as-judge entirely.
+
+The hardest problem in the field is **contamination**. Pretraining corpora are scraped from the same web that hosts the benchmarks, so a model can memorize test items verbatim. Detection methods include n-gram overlap against the pretraining set (when you have it), the Min-K% Prob test, and *canary strings* deliberately embedded in benchmark releases. GPQA was explicitly designed to be Google-proof — the questions are written by domain PhDs and validated to be unanswerable in 30+ minutes of web search by non-experts — partly as a contamination-resistance strategy.
+
+<Mermaid chart={`flowchart LR
+  D[Dataset x_i, y_i] --> P[Prompt template]
+  P --> M[Model M]
+  M --> R[Response]
+  R --> E[Extractor / verifier]
+  Y[Gold y_i] --> S[Score s]
+  E --> S
+  S --> A[Mean over N]`} />
+
+## Code
+
+```python
+# pass@k unbiased estimator from the HumanEval paper (Chen et al. 2021)
+import numpy as np
+from math import comb
+
+def pass_at_k(n: int, c: int, k: int) -> float:
+    """n samples drawn, c correct, want pass@k."""
+    if n - c < k:
+        return 1.0
+    return 1.0 - comb(n - c, k) / comb(n, k)
+
+# Simulate: model with true success prob p=0.3, draw n=20 samples per problem
+rng = np.random.default_rng(0)
+problems, p, n = 164, 0.30, 20
+correct_counts = rng.binomial(n, p, size=problems)
+
+for k in (1, 5, 10):
+    score = np.mean([pass_at_k(n, c, k) for c in correct_counts])
+    print(f"pass@{k:<2} = {score:.3f}")
+# pass@1 ~ 0.30, pass@10 ~ 0.97 — sampling budget matters enormously
+```
+
+## Why it matters
+
+Benchmarks drive the field in a literal sense: capabilities that get measured get optimized, and capabilities that don't, don't. MMLU went from ~25% (random) in 2020 to >88% by 2024, at which point it stopped discriminating frontier models and was effectively retired in favor of MMLU-Pro and GPQA Diamond. The same saturation happened to GLUE, SuperGLUE, and HellaSwag before it. This is the *benchmark treadmill*: every two years the hardest eval becomes the easiest, and the community has to invent something harder.
+
+Static benchmarks are also being supplemented by **live, preference-based** evaluation. Chatbot Arena collects millions of blind pairwise human votes and is currently the closest thing to a ground-truth ranking of chat quality, though it has its own biases (length, formatting, refusal rates). LLM-as-judge benchmarks like MT-Bench and AlpacaEval are cheaper but inherit the judge's preferences — GPT-4 judges famously favor GPT-4-style answers.
+
+<Callout type="tip">
+When you see a benchmark number, always ask three questions: (1) Which harness and prompt template? (2) Was it few-shot, zero-shot, or chain-of-thought? (3) Is the test set in the model's training data? A 5-point gap between two models can easily be explained by any one of these without either model being "better."
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2009.03300" title="Hendrycks et al. — Measuring Massive Multitask Language Understanding (MMLU, 2020)" />
+
+</ChapterShell>

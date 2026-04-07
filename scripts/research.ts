@@ -1,88 +1,98 @@
 /**
- * Auto-research: generate a new MDX chapter from a topic.
+ * Auto-research a single chapter using a LOCAL CLI (claude or codex).
  *
  * Usage:
- *   ANTHROPIC_API_KEY=... npm run research "FlashAttention-3"
+ *   npx tsx scripts/research.ts <slug> "<title>" "<hint>" [--cli claude|codex] [--model <id>]
+ *
+ * Examples:
+ *   npx tsx scripts/research.ts rope "RoPE — Rotary Position Embeddings" "rotary position embedding..."
+ *   npx tsx scripts/research.ts mamba "Mamba" "selective state space" --cli codex
  */
-import Anthropic from '@anthropic-ai/sdk';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { spawn } from 'node:child_process';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
-const topic = process.argv.slice(2).join(' ').trim();
-if (!topic) {
-  console.error('Usage: npm run research "<topic>"');
+type CLI = 'claude' | 'codex';
+
+const args = process.argv.slice(2);
+if (args.length < 3) {
+  console.error('Usage: tsx scripts/research.ts <slug> "<title>" "<hint>" [--cli claude|codex] [--model <id>]');
   process.exit(1);
 }
+const [slug, title, hint, ...rest] = args;
+let cli: CLI = 'claude';
+let model: string | undefined;
+for (let i = 0; i < rest.length; i++) {
+  if (rest[i] === '--cli') cli = rest[++i] as CLI;
+  else if (rest[i] === '--model') model = rest[++i];
+}
 
-const slug = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const apiKey = process.env.ANTHROPIC_API_KEY;
-if (!apiKey) { console.error('ANTHROPIC_API_KEY not set'); process.exit(1); }
+function runCLI(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let bin: string;
+    let cliArgs: string[];
+    if (cli === 'claude') {
+      bin = 'claude';
+      cliArgs = ['-p', prompt, '--output-format', 'text'];
+      if (model) cliArgs.push('--model', model);
+    } else {
+      bin = 'codex';
+      cliArgs = ['exec', prompt];
+      if (model) cliArgs.push('--model', model);
+    }
+    const proc = spawn(bin, cliArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    proc.stdout.on('data', (d) => (out += d.toString()));
+    proc.stderr.on('data', (d) => (err += d.toString()));
+    proc.on('close', (code) => {
+      if (code === 0) resolve(out);
+      else reject(new Error(`${cli} exited ${code}\n${err}`));
+    });
+    proc.on('error', reject);
+  });
+}
 
-const client = new Anthropic({ apiKey });
+function cleanMDX(raw: string): string {
+  let s = raw.trim();
+  // strip leading/trailing fences if model wrapped output
+  s = s.replace(/^```(?:mdx|markdown)?\s*\n/, '').replace(/\n```\s*$/, '');
+  // drop anything before "export const"
+  const start = s.indexOf('export const');
+  if (start > 0) s = s.slice(start);
+  // drop anything after final </ChapterShell>
+  const end = s.lastIndexOf('</ChapterShell>');
+  if (end >= 0) s = s.slice(0, end + '</ChapterShell>'.length);
+  return s.trim() + '\n';
+}
 
-const prompt = `You are writing one chapter of a Notion-style LLM wiki. The chapter is on: "${topic}".
+async function main() {
+  const tpl = await fs.readFile(
+    path.join(process.cwd(), 'scripts', 'prompts', 'chapter.md'),
+    'utf-8',
+  );
+  const prompt = tpl
+    .replaceAll('{{TITLE}}', title)
+    .replaceAll('{{SLUG}}', slug)
+    .replaceAll('{{HINT}}', hint);
 
-Output STRICT MDX only — no preamble, no fencing, no explanation. Follow this exact skeleton:
+  console.log(`🔎 [${cli}] researching: ${title} (${slug})`);
+  const t0 = Date.now();
+  const raw = await runCLI(prompt);
+  const mdx = cleanMDX(raw);
 
-export const metadata = { title: '${topic} · LLM Wiki' };
+  if (!mdx.includes('<ChapterShell') || !mdx.includes('</ChapterShell>')) {
+    console.error('❌ Generated content is missing ChapterShell — aborting write');
+    console.error(raw.slice(0, 500));
+    process.exit(2);
+  }
 
-<ChapterShell slug="${slug}">
+  const dir = path.join(process.cwd(), 'app', 'wiki', slug);
+  await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, 'page.mdx');
+  await fs.writeFile(file, mdx, 'utf-8');
 
-# ${topic}
+  const dt = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log(`✅ wrote ${file}  (${mdx.length} chars, ${dt}s)`);
+}
 
-(2-paragraph intro: what it is, why it matters, who invented it, year)
-
-## Key idea
-
-(1 paragraph + 1-2 LaTeX block formulas using $$...$$)
-
-## How it works
-
-(2-3 paragraphs, may include 1 mermaid diagram via <Mermaid chart={\`...\`} />)
-
-## Code
-
-\`\`\`python
-# 10-25 line illustrative snippet
-\`\`\`
-
-<Callout type="tip">
-(one non-obvious insight)
-</Callout>
-
-## Reading
-
-<PDFNotes src="https://arxiv.org/pdf/XXXX.XXXXX" title="Authors — Title (Year)" />
-
-</ChapterShell>
-
-Rules:
-- Use real arXiv IDs you are confident about. If unsure, omit the PDFNotes line.
-- LaTeX must be valid KaTeX.
-- Do NOT wrap the output in code fences.
-- Do NOT add any text before "export" or after "</ChapterShell>".
-`;
-
-console.log(`🔎 Researching: ${topic}`);
-const msg = await client.messages.create({
-  model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-6',
-  max_tokens: 2500,
-  messages: [{ role: 'user', content: prompt }],
-});
-
-const mdx = msg.content
-  .filter((b: any) => b.type === 'text')
-  .map((b: any) => b.text)
-  .join('\n')
-  .trim()
-  .replace(/^```(?:mdx)?\n?/, '')
-  .replace(/\n?```$/, '');
-
-const dir = path.join(process.cwd(), 'app', 'wiki', slug);
-await fs.mkdir(dir, { recursive: true });
-const file = path.join(dir, 'page.mdx');
-await fs.writeFile(file, mdx + '\n', 'utf-8');
-
-console.log(`✅ Wrote ${file}`);
-console.log(`👉 Add to lib/nav.ts to surface in the sidebar:`);
-console.log(`   { slug: '${slug}', title: '${topic}', section: 'Frontier' },`);
+main().catch((e) => { console.error(e); process.exit(1); });

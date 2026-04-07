@@ -1,0 +1,128 @@
+export const metadata = { title: 'Tensor & Pipeline Parallelism · LLM Wiki' };
+
+<ChapterShell slug="tensor-pipeline-parallel">
+
+# Tensor & Pipeline Parallelism
+
+When a model no longer fits on a single GPU — or when a single GPU's compute would take months to finish a step — you split the model itself across devices. **Tensor parallelism (TP)** shards individual matrix multiplications across GPUs within a layer; **pipeline parallelism (PP)** assigns different layers to different GPUs and streams microbatches through them like an assembly line. Combined with **data parallelism (DP)**, the three axes form what NVIDIA calls **3D parallelism**, the standard recipe for training models from GPT-3 onward.
+
+Tensor parallelism was introduced by Shoeybi et al. in **Megatron-LM (2019)** at NVIDIA, specifically to train multi-billion-parameter transformers on DGX clusters. Pipeline parallelism in its modern microbatched form comes from **GPipe (Huang et al., Google, 2018)** and **PipeDream (Narayanan et al., MSR, 2019)**. Today every frontier training stack — Megatron-DeepSpeed, NeMo, MaxText, Llama's internal training code — uses some blend of TP+PP+DP+ZeRO+sequence parallelism. TP lives *inside* a node (NVLink, high bandwidth); PP spans *across* nodes (slower InfiniBand is fine because activations cross stage boundaries only once per microbatch).
+
+## Key idea
+
+Tensor parallelism rewrites a single `Y = XA` so that the weight matrix $A$ is split column-wise across $N$ devices, $A = [A_1, A_2, \dots, A_N]$. Each device computes its shard locally and the outputs are concatenated:
+
+$$
+Y = X A = X [A_1, \dots, A_N] = [X A_1, \dots, X A_N].
+$$
+
+For a two-layer MLP $Y = \mathrm{GeLU}(XA)B$, Megatron splits $A$ column-wise (no comm needed before GeLU because it's elementwise) and $B$ row-wise, so the only communication is a single **all-reduce** at the end:
+
+$$
+Y = \sum_{i=1}^{N} \mathrm{GeLU}(X A_i)\, B_i.
+$$
+
+## How it works
+
+For attention, Megatron shards on the head dimension: each TP rank owns a contiguous subset of heads, computes their $Q,K,V$ projections and softmax locally, and an all-reduce combines the output projection. So one transformer block needs exactly **two all-reduces in forward** (one for attention out, one for MLP out) and two in backward. Activations are fully replicated across TP ranks, which is why **sequence parallelism** (Korthikanti et al., 2022) was later added: it shards the LayerNorm/dropout activations along the sequence axis, trading the all-reduces for cheaper reduce-scatter + all-gather pairs.
+
+Pipeline parallelism slices the model **depth-wise**. With $P$ stages and $m$ microbatches, naive PP leaves a "bubble" where stages sit idle while the pipe fills and drains. The bubble fraction is
+
+$$
+t_{\text{bubble}} / t_{\text{ideal}} = \frac{P-1}{m},
+$$
+
+so you want $m \gg P$. GPipe does all forwards then all backwards (high memory: must stash $m$ activation sets). **1F1B** (PipeDream / Megatron) interleaves forward and backward so each stage holds at most $P$ activation stashes — same bubble, far less memory. **Interleaved 1F1B** further chops each stage into $v$ virtual chunks, shrinking the bubble to $(P-1)/(v \cdot m)$ at the cost of $v\times$ more pipeline communication.
+
+The three axes compose multiplicatively: total GPUs $= \text{TP} \times \text{PP} \times \text{DP}$. A typical 70B-class run might use TP=8 (one node), PP=8 (eight nodes deep), DP=64 (replicated 64×), totaling 4096 GPUs.
+
+<Mermaid chart={`gantt
+    title 1F1B Pipeline (4 stages, 4 microbatches)
+    dateFormat X
+    axisFormat %s
+    section GPU0
+    F1 :0,1
+    F2 :1,2
+    F3 :2,3
+    F4 :3,4
+    B1 :4,5
+    B2 :5,6
+    B3 :6,7
+    B4 :7,8
+    section GPU1
+    F1 :1,2
+    F2 :2,3
+    F3 :3,4
+    B1 :4,5
+    F4 :5,6
+    B2 :6,7
+    B3 :7,8
+    section GPU2
+    F1 :2,3
+    F2 :3,4
+    B1 :4,5
+    F3 :5,6
+    B2 :6,7
+    F4 :7,8
+    section GPU3
+    F1 :3,4
+    B1 :4,5
+    F2 :5,6
+    B2 :6,7
+    F3 :7,8
+`} />
+
+## Code
+
+```python
+import torch
+import torch.distributed as dist
+
+# Megatron-style column-parallel Linear: Y = X @ A, A split column-wise.
+class ColumnParallelLinear(torch.nn.Module):
+    def __init__(self, in_features, out_features, tp_group):
+        super().__init__()
+        self.tp_size = dist.get_world_size(tp_group)
+        assert out_features % self.tp_size == 0
+        self.shard = out_features // self.tp_size
+        self.weight = torch.nn.Parameter(
+            torch.empty(self.shard, in_features).normal_(0, 0.02)
+        )
+        self.tp_group = tp_group
+
+    def forward(self, x):
+        # x is replicated across TP ranks; output is sharded on last dim.
+        return torch.nn.functional.linear(x, self.weight)
+
+# Row-parallel: weight split row-wise; needs all-reduce on output.
+class RowParallelLinear(torch.nn.Module):
+    def __init__(self, in_features, out_features, tp_group):
+        super().__init__()
+        self.tp_size = dist.get_world_size(tp_group)
+        self.shard = in_features // self.tp_size
+        self.weight = torch.nn.Parameter(
+            torch.empty(out_features, self.shard).normal_(0, 0.02)
+        )
+        self.tp_group = tp_group
+
+    def forward(self, x):
+        y = torch.nn.functional.linear(x, self.weight)
+        dist.all_reduce(y, group=self.tp_group)  # sum partial outputs
+        return y
+```
+
+## Why it matters
+
+Without model parallelism the largest trainable model is bounded by a single GPU's HBM (~80 GB on H100), which caps you below 10B parameters even with mixed precision and activation checkpointing. TP+PP push that to trillions. The split between TP and PP is dictated by **interconnect topology**: TP needs every-step all-reduces of full activation tensors, so it must live on NVLink (≈900 GB/s); PP only sends boundary activations between adjacent stages, tolerating slow inter-node links. Sequence parallelism, ZeRO-3 (which shards optimizer state across DP), and FSDP are all refinements of the same theme — find a dimension to shard, minimize the communication it forces.
+
+The alternative — pure data parallelism with ZeRO-3 / FSDP — is simpler and now competitive for many workloads, but it fundamentally requires gathering full layer weights on every step. For very large models where weights themselves dwarf activations, TP+PP still wins, which is why Megatron-style 3D parallelism remains the backbone of frontier training runs.
+
+<Callout type="tip">
+The pipeline bubble shrinks like $1/m$, but increasing microbatches $m$ also increases activation memory and shrinks per-microbatch arithmetic intensity. The sweet spot is usually $m \approx 4P$ — small enough to keep activations bounded, large enough to make the bubble negligible (~20%). Interleaved 1F1B is what you reach for when you can't afford even that.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1909.08053" title="Shoeybi et al. — Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism (2019)" />
+
+</ChapterShell>

@@ -1,0 +1,93 @@
+export const metadata = { title: 'Reasoning Models — o1, R1, Test-Time Compute · LLM Wiki' };
+
+<ChapterShell slug="reasoning-models">
+
+# Reasoning Models — o1, R1, Test-Time Compute
+
+Reasoning models are LLMs trained to spend compute *at inference* by generating long internal chains of thought before emitting a final answer. Instead of the usual "prompt in, answer out" regime where a model burns a fixed ~$O(n)$ forward passes per token, a reasoning model is explicitly optimized to produce thousands of "thinking" tokens — exploring, backtracking, self-correcting — and only then committing to a response. The quality of the answer scales smoothly with the number of thinking tokens, giving a new axis of capability that is orthogonal to pretraining scale.
+
+OpenAI's **o1** (September 2024) was the first production system to demonstrate this cleanly, showing monotonic improvement on math and code benchmarks as test-time compute increased. DeepSeek's **R1** (January 2025) replicated and open-sourced the recipe, and crucially showed via **R1-Zero** that the reasoning behavior can emerge from pure RL on a base model with *no* supervised chain-of-thought data — only a rule-based reward on final-answer correctness. Today this paradigm drives frontier math (AIME, IMO), competitive programming, and agentic tool use, and has been adopted by essentially every frontier lab (Gemini 2.5 Thinking, Claude extended thinking, Qwen QwQ, etc.).
+
+## Key idea
+
+Classical decoding samples $y \sim p_\theta(y \mid x)$ in one shot. Reasoning models instead marginalize over a latent trace $z$ (the "thoughts"):
+
+$$
+p_\theta(y \mid x) \;=\; \sum_{z} p_\theta(z \mid x)\, p_\theta(y \mid x, z).
+$$
+
+Training maximizes expected reward over *full* $(z, y)$ rollouts under a verifiable reward $r(y, y^\star)$:
+
+$$
+\mathcal{J}(\theta) \;=\; \mathbb{E}_{(z,y) \sim \pi_\theta(\cdot\mid x)}\bigl[\, r(y, y^\star) \,\bigr] \;-\; \beta\, \mathrm{KL}\!\left[\pi_\theta \,\|\, \pi_{\text{ref}}\right].
+$$
+
+The critical property: $r$ depends only on the final answer, yet gradients flow through every thinking token, so the model learns *which patterns of thought* causally produce correct answers.
+
+## How it works
+
+**Rollouts and rewards.** For each prompt $x$ (typically a math or coding problem with a checkable answer), the policy samples $G$ full trajectories. Each trajectory is scored by a deterministic verifier: `==` against the ground truth for math, unit tests for code. No learned reward model is needed — this sidesteps the reward hacking that plagues RLHF.
+
+**GRPO, the R1 optimizer.** DeepSeek uses *Group Relative Policy Optimization*, which drops the value network entirely. For a group of $G$ samples with rewards $\{r_i\}$, the advantage of sample $i$ is just the group-normalized reward:
+
+$$
+A_i \;=\; \frac{r_i - \mathrm{mean}(\mathbf{r})}{\mathrm{std}(\mathbf{r})},
+$$
+
+and the PPO-style clipped objective is applied token-wise using $A_i$ as a constant baseline across all tokens in trajectory $i$. This is roughly 2× cheaper than PPO because there is no critic, and it is remarkably stable.
+
+**Emergent behaviors.** During R1-Zero training, DeepSeek observed an "aha moment" — a phase transition where average response length suddenly jumps from hundreds to thousands of tokens and the model spontaneously starts saying things like *"wait, let me reconsider"*. No one trained it to backtrack; backtracking simply correlates with higher reward on hard problems, so RL reinforces it.
+
+**Test-time compute scaling.** Once trained, quality vs. thinking-token budget follows a clean log-linear law: doubling the thinking budget buys a roughly constant accuracy bump on AIME-style problems, until the model saturates. This is the inference-time analog of the Chinchilla scaling laws.
+
+<Mermaid chart={`flowchart LR
+  P[Problem x] --> S[Sample G rollouts]
+  S --> V[Verifier r y,y*]
+  V --> A[Group-normalized advantage]
+  A --> G[GRPO update]
+  G --> S
+  V --> Y[Final answer y]`} />
+
+## Code
+
+```python
+import torch, torch.nn.functional as F
+
+def grpo_step(policy, ref, prompts, sample_fn, verify_fn, G=8, beta=0.04, clip=0.2):
+    # 1. Sample G rollouts per prompt from current policy
+    traj = [sample_fn(policy, p, n=G) for p in prompts]          # list of G (tokens, logp)
+    rewards = torch.tensor([[verify_fn(p, t.text) for t in grp]  # rule-based, 0/1
+                            for p, grp in zip(prompts, traj)], dtype=torch.float)
+
+    # 2. Group-relative advantage (no value network)
+    adv = (rewards - rewards.mean(dim=1, keepdim=True)) / (rewards.std(dim=1, keepdim=True) + 1e-8)
+
+    loss = 0.0
+    for i, grp in enumerate(traj):
+        for j, t in enumerate(grp):
+            new_logp = policy.logprobs(t.tokens)                 # [T]
+            old_logp = t.logp.detach()
+            ratio    = torch.exp(new_logp - old_logp)
+            unclipped = ratio * adv[i, j]
+            clipped   = torch.clamp(ratio, 1-clip, 1+clip) * adv[i, j]
+            pg = -torch.min(unclipped, clipped).mean()
+            kl = (ref.logprobs(t.tokens) - new_logp).mean()      # KL to frozen ref
+            loss = loss + pg + beta * kl
+    loss.backward()
+```
+
+## Why it matters
+
+Reasoning models reframe the capability-vs-cost frontier. Pretraining a 10× bigger model is enormously expensive and slow; letting an existing model think 10× longer is cheap, opt-in, and per-query. On AIME 2024, o1 went from ~13% (GPT-4o, no thinking) to 83%, and R1 matched it with an open recipe. The same trick lifts coding (Codeforces rating ~2000+), theorem proving, and multi-step agentic workflows where a single mistake cascades.
+
+The deeper shift is methodological: RL with *verifiable* rewards bypasses the ceiling of human-labeled preference data. A human cannot label a 10,000-token proof, but `sympy` can check the final number. This re-opens a path to superhuman performance in any domain with a cheap verifier — which is why every lab is now racing to construct verifier environments for code, math, formal proofs, and browser-based tasks.
+
+<Callout type="tip">
+R1-Zero works *without any SFT warmup* — pure RL on a base model. This contradicts the folk wisdom that RL only polishes capabilities already present from SFT. The base model already "knows how" to reason; SFT was mostly teaching it to *stop* reasoning and answer concisely. RL on outcome reward simply removes that muzzle.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2501.12948" title="DeepSeek-AI — DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning (2025)" />
+
+</ChapterShell>
