@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import DeckGL from '@deck.gl/react';
 import { OrthographicView } from '@deck.gl/core';
 import { ScatterplotLayer, TextLayer } from '@deck.gl/layers';
@@ -10,26 +11,20 @@ type Cluster = { id: number; label: string; x: number; y: number; size: number; 
 type Atlas = { generatedAt: string; docs: Doc[]; clusters: Cluster[] };
 
 const PALETTE: [number, number, number][] = [
-  [239, 68, 68],   // red
-  [249, 115, 22],  // orange
-  [234, 179, 8],   // yellow
-  [34, 197, 94],   // green
-  [20, 184, 166],  // teal
-  [59, 130, 246],  // blue
-  [99, 102, 241],  // indigo
-  [168, 85, 247],  // purple
-  [236, 72, 153],  // pink
-  [244, 63, 94],   // rose
-  [16, 185, 129],  // emerald
-  [14, 165, 233],  // sky
+  [239, 68, 68], [249, 115, 22], [234, 179, 8], [34, 197, 94], [20, 184, 166], [59, 130, 246],
+  [99, 102, 241], [168, 85, 247], [236, 72, 153], [244, 63, 94], [16, 185, 129], [14, 165, 233],
 ];
 
 export default function AtlasView() {
+  const params = useSearchParams();
+  const focusId = params.get('focus');
+
   const [atlas, setAtlas] = useState<Atlas | null>(null);
   const [hover, setHover] = useState<Doc | null>(null);
   const [showHeat, setShowHeat] = useState(true);
   const [showContour, setShowContour] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [viewState, setViewState] = useState<any>({ target: [0, 0, 0], zoom: 2 });
 
   useEffect(() => {
     fetch('/atlas.json')
@@ -38,7 +33,21 @@ export default function AtlasView() {
       .catch(() => setAtlas(null));
   }, []);
 
-  const initialViewState = { target: [0, 0, 0] as [number, number, number], zoom: 2 };
+  // Re-target when atlas loads or focusId changes
+  const focusedDoc = useMemo(() => {
+    if (!atlas || !focusId) return null;
+    // accept "wiki/slug", "know/id", or just "slug"/"id"
+    return atlas.docs.find((d) => d.id === focusId)
+      || atlas.docs.find((d) => d.slug === focusId)
+      || atlas.docs.find((d) => focusId.endsWith('/' + d.slug))
+      || null;
+  }, [atlas, focusId]);
+
+  useEffect(() => {
+    if (focusedDoc) {
+      setViewState({ target: [focusedDoc.x, focusedDoc.y, 0], zoom: 6, transitionDuration: 800 });
+    }
+  }, [focusedDoc]);
 
   const layers = useMemo(() => {
     if (!atlas) return [];
@@ -81,16 +90,16 @@ export default function AtlasView() {
       id: 'docs',
       data: atlas.docs,
       getPosition: (d) => [d.x, d.y],
-      getRadius: 1.6,
+      getRadius: (d) => (focusedDoc && d.id === focusedDoc.id ? 4 : 1.6),
       radiusUnits: 'common',
       radiusMinPixels: 4,
-      radiusMaxPixels: 14,
+      radiusMaxPixels: 24,
       getFillColor: (d) => {
         const c = PALETTE[d.cluster % PALETTE.length];
         return [...c, 230] as [number, number, number, number];
       },
-      getLineColor: [255, 255, 255, 200],
-      lineWidthMinPixels: 1,
+      getLineColor: (d) => (focusedDoc && d.id === focusedDoc.id ? [255, 255, 0, 255] : [255, 255, 255, 200]),
+      lineWidthMinPixels: focusedDoc ? 2 : 1,
       stroked: true,
       pickable: true,
       onHover: (info) => setHover(info.object as Doc | null),
@@ -100,7 +109,12 @@ export default function AtlasView() {
         if (d.source === 'wiki') window.location.href = `/wiki/${d.slug}`;
         else if (d.source === 'knowledge') window.location.href = `/knowledge/${d.slug}`;
       },
-      updateTriggers: { getFillColor: atlas.docs },
+      updateTriggers: {
+        getFillColor: atlas.docs,
+        getRadius: focusedDoc?.id ?? '',
+        getLineColor: focusedDoc?.id ?? '',
+        lineWidthMinPixels: focusedDoc?.id ?? '',
+      },
     }));
     if (showLabels) {
       ls.push(new TextLayer<Cluster>({
@@ -121,7 +135,7 @@ export default function AtlasView() {
       }));
     }
     return ls;
-  }, [atlas, showHeat, showContour, showLabels]);
+  }, [atlas, showHeat, showContour, showLabels, focusedDoc]);
 
   if (!atlas) {
     return (
@@ -140,7 +154,8 @@ export default function AtlasView() {
     <>
       <DeckGL
         views={new OrthographicView({ id: 'ortho', flipY: false })}
-        initialViewState={initialViewState}
+        viewState={viewState}
+        onViewStateChange={(e: any) => setViewState(e.viewState)}
         controller={{ scrollZoom: { speed: 0.01, smooth: true }, dragPan: true, dragRotate: false }}
         layers={layers}
         style={{ background: 'radial-gradient(ellipse at center, #0a0e18 0%, #000 100%)' }}
@@ -163,6 +178,16 @@ export default function AtlasView() {
           <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} /> Cluster labels
         </label>
         <div style={{ marginTop: 6, opacity: 0.6 }}>{atlas.docs.length} docs · {atlas.clusters.length} clusters</div>
+        {focusedDoc && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+            <div style={{ opacity: 0.6, fontSize: '0.7rem' }}>FOCUSED</div>
+            <div style={{ fontWeight: 600 }}>{focusedDoc.title}</div>
+            <button
+              onClick={() => setViewState({ target: [0, 0, 0], zoom: 2, transitionDuration: 600 })}
+              style={{ marginTop: 4, background: 'transparent', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: '0.7rem' }}
+            >Zoom out</button>
+          </div>
+        )}
       </div>
 
       {/* hover tooltip */}

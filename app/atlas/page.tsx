@@ -1,9 +1,18 @@
 'use client';
 import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
 
 const AtlasView = dynamic(() => import('../../components/AtlasView'), { ssr: false });
 
 export default function AtlasPage() {
+  return (
+    <Suspense fallback={null}>
+      <AtlasPageInner />
+    </Suspense>
+  );
+}
+
+function AtlasPageInner() {
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <div style={{

@@ -53,7 +53,8 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
       <h1>{doc.title}</h1>
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '1rem' }}>
         {doc.ext.slice(1).toUpperCase()} · {(doc.size / 1024).toFixed(0)} KB ·{' '}
-        <a href={sourceUrl} target="_blank" rel="noreferrer">open original</a>
+        <a href={sourceUrl} target="_blank" rel="noreferrer">open original</a> ·{' '}
+        <Link href={`/atlas?focus=${encodeURIComponent('know/' + doc.id)}`}>🗺 view on atlas</Link>
       </div>
 
       <TrackView id={`know/${doc.id}`} title={doc.title} href={`/knowledge/${doc.categorySlug}/${doc.fileSlug}`} />
