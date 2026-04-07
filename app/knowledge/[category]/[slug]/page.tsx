@@ -9,6 +9,7 @@ import { RelatedDocs } from '../../../../components/RelatedDocs';
 import { TrackView } from '../../../../components/TrackView';
 import { DocNotes } from '../../../../components/DocNotes';
 import { DocQuiz } from '../../../../components/DocQuiz';
+import { BackLinks } from '../../../../components/BackLinks';
 
 // Dynamic by design — 454 docs would balloon build time. SSR per-request is fine.
 export const dynamic = 'force-dynamic';
@@ -86,6 +87,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
 
       <DocQuiz id={doc.id} />
       <DocNotes id={`know/${doc.id}`} />
+      <BackLinks id={`know/${doc.id}`} title={doc.title} />
       <RelatedDocs id={`know/${doc.id}`} />
 
       {/* prev / next within category */}

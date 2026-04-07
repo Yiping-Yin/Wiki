@@ -5,8 +5,11 @@ import { PrevNext } from './PrevNext';
 import { RelatedDocs } from './RelatedDocs';
 import { DocNotes } from './DocNotes';
 import { DocQuiz } from './DocQuiz';
+import { BackLinks } from './BackLinks';
+import { chapters } from '../lib/nav';
 
 export function ChapterShell({ slug, children }: { slug: string; children: ReactNode }) {
+  const ch = chapters.find((c) => c.slug === slug);
   return (
     <div className="with-toc">
       <div style={{ flex: 1, minWidth: 0 }} className="prose-notion">
@@ -16,6 +19,7 @@ export function ChapterShell({ slug, children }: { slug: string; children: React
         </div>
         <DocQuiz id={`wiki/${slug}`} />
         <DocNotes id={`wiki/${slug}`} />
+        <BackLinks id={`wiki/${slug}`} title={ch?.title ?? slug} />
         <RelatedDocs id={`wiki/${slug}`} />
         <PrevNext slug={slug} />
       </div>
