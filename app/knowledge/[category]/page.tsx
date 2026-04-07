@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { knowledgeCategories } from '../../../lib/knowledge-nav';
 import { docsByCategory } from '../../../lib/knowledge';
+import { BatchSummarize } from '../../../components/BatchSummarize';
 
 export function generateStaticParams() {
   return knowledgeCategories.map((c) => ({ category: c.slug }));
@@ -13,13 +14,24 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
   if (!cat) notFound();
   const docs = docsByCategory(category).sort((a, b) => a.title.localeCompare(b.title));
 
+  const batchInput = docs.map((d) => ({
+    id: d.id,
+    title: d.title,
+    href: `/knowledge/${d.categorySlug}/${d.fileSlug}`,
+    hasText: d.hasText,
+  }));
+
   return (
     <div className="prose-notion">
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
         <Link href="/knowledge">📚 Knowledge</Link> ›
       </div>
       <h1>{cat.label}</h1>
-      <p style={{ color: 'var(--muted)' }}>{docs.length} documents</p>
+      <p style={{ color: 'var(--muted)' }}>
+        {docs.length} documents · {docs.filter((d) => d.hasText).length} with extracted text
+      </p>
+
+      <BatchSummarize docs={batchInput} />
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {docs.map((d) => (
@@ -33,7 +45,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
               </div>
             )}
             <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: 3 }}>
-              {d.ext.slice(1)} · {(d.size / 1024).toFixed(0)} KB
+              {d.ext.slice(1)} · {(d.size / 1024).toFixed(0)} KB{!d.hasText && ' · binary, no text'}
             </div>
           </li>
         ))}
