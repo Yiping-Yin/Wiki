@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "research": "tsx scripts/research.ts",
+    "ingest": "tsx scripts/ingest-knowledge.ts",
+    "atlas": "tsx scripts/build-atlas.ts",
+    "rag": "tsx scripts/build-rag-index.ts",
     "index": "pagefind --site .next/server/app --output-path public/pagefind"
   },
   "dependencies": {
