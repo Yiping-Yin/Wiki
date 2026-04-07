@@ -8,6 +8,7 @@ import { DocSummary } from '../../../../components/DocSummary';
 import { RelatedDocs } from '../../../../components/RelatedDocs';
 import { TrackView } from '../../../../components/TrackView';
 import { DocNotes } from '../../../../components/DocNotes';
+import { DocQuiz } from '../../../../components/DocQuiz';
 
 // Dynamic by design — 454 docs would balloon build time. SSR per-request is fine.
 export const dynamic = 'force-dynamic';
@@ -83,6 +84,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
         <p style={{ color: 'var(--muted)' }}>No text extracted. Open the original file.</p>
       ) : null}
 
+      <DocQuiz id={doc.id} />
       <DocNotes id={`know/${doc.id}`} />
       <RelatedDocs id={`know/${doc.id}`} />
 
