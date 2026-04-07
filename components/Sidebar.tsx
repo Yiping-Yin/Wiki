@@ -47,6 +47,7 @@ export function Sidebar() {
         <SearchBox />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0' }}>
+          <Link href="/today" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>📅 Today</Link>
           <Link href="/atlas" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🗺 Knowledge atlas</Link>
           <Link href="/graph" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🕸 Knowledge graph</Link>
           <Link href="/demo" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🎛 Feature demo</Link>

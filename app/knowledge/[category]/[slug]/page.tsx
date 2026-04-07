@@ -6,6 +6,7 @@ import { findDoc, neighborsInCategory } from '../../../../lib/knowledge';
 import { knowledgeCategories } from '../../../../lib/knowledge-nav';
 import { DocSummary } from '../../../../components/DocSummary';
 import { RelatedDocs } from '../../../../components/RelatedDocs';
+import { TrackView } from '../../../../components/TrackView';
 
 // Dynamic by design — 454 docs would balloon build time. SSR per-request is fine.
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
         <a href={sourceUrl} target="_blank" rel="noreferrer">open original</a>
       </div>
 
+      <TrackView id={`know/${doc.id}`} title={doc.title} href={`/knowledge/${doc.categorySlug}/${doc.fileSlug}`} />
       <DocSummary id={doc.id} />
 
       {isPDF && (
