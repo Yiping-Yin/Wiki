@@ -95,6 +95,33 @@ async function main() {
   await fs.writeFile(outPath, JSON.stringify(out));
   const sizeMB = (JSON.stringify(out).length / 1024 / 1024).toFixed(1);
   console.log(`✅ wrote ${outPath}  (${docs.length} docs · dim ${dim} · ${sizeMB} MB)`);
+
+  // Precompute related docs (top-5 nearest neighbors per doc) for fast SSR.
+  console.log('🔗 computing top-5 neighbors per doc...');
+  const titleById = new Map(items.map((it) => [it.id, it]));
+  const related: Record<string, Array<{ id: string; title: string; href: string; score: number }>> = {};
+  for (let i = 0; i < docs.length; i++) {
+    const a = docs[i].vector;
+    const scored: Array<{ d: typeof docs[0]; s: number }> = [];
+    for (let j = 0; j < docs.length; j++) {
+      if (i === j) continue;
+      const b = docs[j].vector;
+      let s = 0;
+      for (let k = 0; k < a.length; k++) s += a[k] * b[k];
+      scored.push({ d: docs[j], s });
+    }
+    scored.sort((x, y) => y.s - x.s);
+    related[docs[i].id] = scored.slice(0, 5).map(({ d, s }) => ({
+      id: d.id,
+      title: d.title,
+      href: d.href,
+      score: Math.round(s * 1000) / 1000,
+    }));
+  }
+  const relatedPath = path.join(ROOT, 'public', 'related.json');
+  await fs.writeFile(relatedPath, JSON.stringify(related));
+  const relMB = (JSON.stringify(related).length / 1024 / 1024).toFixed(2);
+  console.log(`✅ wrote ${relatedPath}  (${Object.keys(related).length} entries · ${relMB} MB)`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

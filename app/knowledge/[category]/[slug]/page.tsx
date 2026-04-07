@@ -5,6 +5,7 @@ import path from 'node:path';
 import { findDoc, neighborsInCategory } from '../../../../lib/knowledge';
 import { knowledgeCategories } from '../../../../lib/knowledge-nav';
 import { DocSummary } from '../../../../components/DocSummary';
+import { RelatedDocs } from '../../../../components/RelatedDocs';
 
 // Dynamic by design — 454 docs would balloon build time. SSR per-request is fine.
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,8 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
       ) : !isPDF ? (
         <p style={{ color: 'var(--muted)' }}>No text extracted. Open the original file.</p>
       ) : null}
+
+      <RelatedDocs id={`know/${doc.id}`} />
 
       {/* prev / next within category */}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '3rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
