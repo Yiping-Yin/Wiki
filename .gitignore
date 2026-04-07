@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+.env
+.env.local
+.env*.local
+.DS_Store
+*.log
+.vscode/
+.idea/
+public/pagefind/
+.vercel
+next-env.d.ts
+knowledge/.cache

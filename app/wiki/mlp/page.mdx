@@ -1,0 +1,52 @@
+export const metadata = { title: 'MLP · LLM Wiki' };
+
+<ChapterShell slug="mlp">
+
+# 3 · MLP — Bengio-style Neural LM
+
+A leap up from the bigram model: instead of one previous character, we use the previous **3** characters, embed each into a low-dimensional vector, concatenate, and feed through a single hidden tanh layer. This is essentially Bengio et al. 2003 — the paper that put neural language models on the map.
+
+<YouTube id="TCH_1BHY58I" title="Building makemore Part 2: MLP" />
+
+## The model
+
+$$
+x = [\,C[c_{t-n+1}];\,\dots;\,C[c_{t-1}]\,]
+$$
+
+$$
+h = \tanh(W_1 x + b_1)
+$$
+
+$$
+P(c_t \mid \text{context}) = \text{softmax}(W_2 h + b_2)
+$$
+
+Train with cross-entropy, SGD, learning-rate finder, and a train/val/test split.
+
+## The whole model in 12 lines
+
+```python
+import torch, torch.nn.functional as F
+block_size, vocab, emb, hid = 3, 27, 10, 200
+C  = torch.randn(vocab, emb,            requires_grad=True)
+W1 = torch.randn(emb*block_size, hid,   requires_grad=True)
+b1 = torch.randn(hid,                   requires_grad=True)
+W2 = torch.randn(hid, vocab,            requires_grad=True)
+b2 = torch.randn(vocab,                 requires_grad=True)
+
+def loss_fn(X, Y):
+    e = C[X].view(X.shape[0], -1)
+    h = torch.tanh(e @ W1 + b1)
+    return F.cross_entropy(h @ W2 + b2, Y)
+```
+
+<Callout type="tip">
+The 2D character embeddings learned here visibly cluster vowels, consonants, and the special end token `.` — your first taste of "representation learning."
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1301.3781" title="Mikolov et al. — word2vec (closest arXiv proxy for Bengio 2003)" />
+
+</ChapterShell>

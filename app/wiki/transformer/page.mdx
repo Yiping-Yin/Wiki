@@ -1,0 +1,90 @@
+export const metadata = { title: 'Transformer · LLM Wiki' };
+
+<ChapterShell slug="transformer">
+
+# 4 · Transformer — Reproducing GPT-2 (124M)
+
+This is the chapter where the toy character-LM grows up into a real, paper-grade GPT-2. Karpathy's ~4-hour video walks through the [`nanoGPT`](https://github.com/karpathy/nanoGPT) codebase line by line and reproduces OpenAI's GPT-2 124M on OpenWebText.
+
+<YouTube id="l8pRSuU81PU" title="Let's reproduce GPT-2 (124M)" />
+
+## What GPT-2 124M actually is
+
+| Hyperparameter | Value |
+|---|---|
+| Layers | 12 |
+| Heads | 12 |
+| `d_model` | 768 |
+| Context length | 1024 |
+| Vocab size | 50,257 |
+| Parameters | ~124 M |
+
+Architecture: token + learned positional embeddings → **N × [LayerNorm → causal multi-head self-attention → residual → LayerNorm → MLP(4×, GELU) → residual]** → final LayerNorm → weight-tied LM head.
+
+## The engineering tricks that actually matter
+
+1. **`F.scaled_dot_product_attention`** — uses FlashAttention under the hood, ~3× speedup.
+2. **bf16 / TF32 mixed precision** — free throughput on Ampere+ GPUs.
+3. **`torch.compile`** — fuses kernels, another large speedup.
+4. **Gradient accumulation** — simulates a large batch on small hardware.
+5. **AdamW with weight decay only on 2D params** — no decay on biases/LayerNorm.
+6. **Cosine LR schedule with linear warmup**.
+7. **Scaled residual init**: residual projections initialized with std $0.02 \cdot (2N)^{-1/2}$ where $N$ is the number of layers.
+8. **DDP across 8 GPUs** for the real run.
+
+## Optimizer math
+
+AdamW update:
+
+$$
+m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t,\qquad v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2
+$$
+
+$$
+\theta_t = \theta_{t-1} - \eta\!\left(\frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon} + \lambda\,\theta_{t-1}\right)
+$$
+
+Cosine schedule with warmup:
+
+$$
+\eta_t = \eta_{\min} + \tfrac{1}{2}(\eta_{\max} - \eta_{\min})\!\left(1 + \cos\!\frac{t - T_w}{T - T_w}\pi\right)
+$$
+
+## Causal self-attention with FlashAttention
+
+```python
+import torch, torch.nn as nn, torch.nn.functional as F
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, n_embd, n_head):
+        super().__init__()
+        self.c_attn = nn.Linear(n_embd, 3 * n_embd)
+        self.c_proj = nn.Linear(n_embd, n_embd)
+        self.c_proj.SCALE_INIT = 1                # marker for custom init
+        self.n_head, self.n_embd = n_head, n_embd
+
+    def forward(self, x):
+        B, T, C = x.shape
+        q, k, v = self.c_attn(x).split(C, dim=2)
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+        y = y.transpose(1, 2).contiguous().view(B, T, C)
+        return self.c_proj(y)
+```
+
+<Callout type="warn">
+As of November 2025, `nanoGPT` is officially superseded by [`nanochat`](https://github.com/karpathy/nanochat) and is kept for posterity. The lessons in this chapter still apply — `nanochat` is an *extension*, not a rewrite.
+</Callout>
+
+## Papers
+
+<PDF src="https://arxiv.org/pdf/1706.03762" title="Vaswani et al. — Attention Is All You Need" />
+<PDF src="https://arxiv.org/pdf/2205.14135" title="Dao et al. — FlashAttention: Fast and Memory-Efficient Exact Attention" />
+
+## Next
+
+→ [Chapter 5 · Tokenization](/wiki/tokenization)
+
+</ChapterShell>

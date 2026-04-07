@@ -1,0 +1,56 @@
+export const metadata = { title: 'WaveNet · LLM Wiki' };
+
+<ChapterShell slug="wavenet">
+
+# 6 · WaveNet — Hierarchical, Dilated Context
+
+Instead of cramming all context characters into one flat input vector, fuse them **pairwise, then pairs-of-pairs, then pairs-of-pairs-of-pairs**. The result is a tree-shaped (causal, dilated) network whose receptive field doubles per level — exactly the trick DeepMind's WaveNet used for raw audio.
+
+<YouTube id="t3YJ5hKiMQ0" title="Building makemore Part 5: Building a WaveNet" />
+
+## The math
+
+A causal dilated convolution with kernel $K$ and dilation $d$:
+
+$$
+y_t = \sum_{k=0}^{K-1} w_k\, x_{t - d \cdot k}
+$$
+
+Receptive field after $L$ stacked layers:
+
+$$
+R = 1 + (K - 1)\sum_{l=1}^{L} d_l
+$$
+
+Doubling $d_l$ each layer means $R$ grows **exponentially** in $L$.
+
+## The PyTorch refactor
+
+```python
+import torch.nn as nn
+
+class FlattenConsecutive(nn.Module):
+    def __init__(self, n): super().__init__(); self.n = n
+    def forward(self, x):
+        B, T, C = x.shape
+        x = x.view(B, T // self.n, C * self.n)
+        return x.squeeze(1) if x.size(1) == 1 else x
+
+model = nn.Sequential(
+    nn.Embedding(27, 24),
+    FlattenConsecutive(2), nn.Linear(48,  128), nn.BatchNorm1d(128), nn.Tanh(),
+    FlattenConsecutive(2), nn.Linear(256, 128), nn.BatchNorm1d(128), nn.Tanh(),
+    FlattenConsecutive(2), nn.Linear(256, 128), nn.BatchNorm1d(128), nn.Tanh(),
+    nn.Linear(128, 27),
+)
+```
+
+<Callout type="info">
+Karpathy's broader point: **architecture matters less than people think; what matters is preserving and growing the receptive field cheaply**. Convolutions, attention, and SSMs are all different answers to the same question.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1609.03499" title="van den Oord et al. — WaveNet (2016)" />
+
+</ChapterShell>

@@ -1,0 +1,76 @@
+export const metadata = { title: 'Bigram / Makemore · LLM Wiki' };
+
+<ChapterShell slug="makemore-bigram">
+
+# 2 · Bigram Language Model (`makemore`)
+
+The simplest possible language model: predict the next character given **only the previous character**. Karpathy builds it two ways — by counting, and by training a single linear layer — and shows they converge to the same distribution.
+
+<YouTube id="PaCmpygFfXo" title="The spelled-out intro to language modeling: building makemore" />
+
+## The model
+
+For a vocabulary of 27 characters (a–z plus a special `.` start/end token), the bigram model is just a 27×27 table of conditional probabilities:
+
+$$
+P(c_t \mid c_{t-1}) = \frac{N[c_{t-1},\, c_t]}{\sum_j N[c_{t-1},\, j]}
+$$
+
+Training is then maximizing the **log-likelihood** of the dataset, equivalently minimizing the average negative log-likelihood:
+
+$$
+\mathcal{L} = -\frac{1}{N}\sum_{i} \log P\bigl(c_t^{(i)} \mid c_{t-1}^{(i)}\bigr)
+$$
+
+When we move to the neural version (a single `nn.Linear(27, 27)` followed by softmax), we use the same loss but compute probabilities through:
+
+$$
+\text{softmax}(z)_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
+$$
+
+Try it — temperature controls how sharp the distribution is during sampling:
+
+<SoftmaxPlayground />
+
+## Counting version
+
+```python
+import torch
+
+words = open('names.txt').read().splitlines()
+chars = sorted(set(''.join(words)))
+stoi = {s: i + 1 for i, s in enumerate(chars)}
+stoi['.'] = 0
+itos = {i: s for s, i in stoi.items()}
+
+N = torch.zeros((27, 27), dtype=torch.int32)
+for w in words:
+    for a, b in zip('.' + w, w + '.'):
+        N[stoi[a], stoi[b]] += 1
+
+P = (N + 1).float()                  # Laplace smoothing
+P /= P.sum(1, keepdim=True)
+
+g = torch.Generator().manual_seed(42)
+ix, out = 0, []
+while True:
+    ix = torch.multinomial(P[ix], 1, generator=g).item()
+    if ix == 0:
+        break
+    out.append(itos[ix])
+print(''.join(out))
+```
+
+<Callout type="info">
+The neural-net version learns the **same** probability table by gradient descent on `F.cross_entropy(logits, targets)`. They reach identical losses. This is the moment that "training a language model" stops feeling magical.
+</Callout>
+
+## Reading
+
+<PDF src="https://arxiv.org/pdf/1301.3781" title="Mikolov et al. — Efficient Estimation of Word Representations in Vector Space (word2vec)" />
+
+## Next
+
+→ [Chapter 3 · Attention](/wiki/attention)
+
+</ChapterShell>

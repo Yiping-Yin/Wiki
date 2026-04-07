@@ -1,0 +1,46 @@
+export const metadata = { title: 'nanochat · LLM Wiki' };
+
+<ChapterShell slug="nanochat">
+
+# 16 · nanochat — The Successor to nanoGPT
+
+In late 2025 Karpathy released [`nanochat`](https://github.com/karpathy/nanochat), the official successor to `nanoGPT`. Where `nanoGPT` stopped at "reproduce GPT-2 base model," `nanochat` walks the **entire pipeline** from raw bytes to a deployable chat assistant in one repository.
+
+## What's in the box
+
+| Stage | nanoGPT | nanochat |
+|---|---|---|
+| Tokenizer training | external | included |
+| Base pretraining | ✓ | ✓ |
+| SFT | ✗ | ✓ |
+| Reward model + DPO | ✗ | ✓ |
+| Inference / chat UI | ✗ | ✓ |
+| Total LOC | ~600 | ~few thousand |
+
+## The new pieces
+
+1. **Trainable BPE tokenizer** — built on `minbpe`, so the same repo that trains the model also defines its vocabulary.
+2. **Conversation format** — special tokens for `user`, `assistant`, system messages, end-of-turn.
+3. **SFT loop** — masked next-token loss on response tokens only.
+4. **DPO loop** — preference learning without a separate reward model (see [Chapter 14](/wiki/rlhf)).
+5. **Inference server** — minimal HTTP / web UI to chat with the trained model.
+
+## Why it matters
+
+`nanoGPT` taught a generation of engineers what a Transformer looks like. `nanochat` teaches what an **assistant** looks like — the missing 80% of the modern pipeline that papers handwave.
+
+<Callout type="warn">
+`nanoGPT` is now officially deprecated in favor of `nanochat`. The lessons in [Chapter 8 · Reproduce GPT-2](/wiki/transformer) are still load-bearing — `nanochat` is an extension on top, not a rewrite.
+</Callout>
+
+## Try the auto-research
+
+Want a chapter on a topic this wiki doesn't cover yet? Run:
+
+```bash
+ANTHROPIC_API_KEY=... npm run research "FlashAttention-3"
+```
+
+It will generate `app/wiki/flashattention-3/page.mdx` from web sources, ready to edit.
+
+</ChapterShell>

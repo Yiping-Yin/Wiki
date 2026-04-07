@@ -1,0 +1,65 @@
+export const metadata = { title: 'LoRA / SFT · LLM Wiki' };
+
+<ChapterShell slug="lora">
+
+# 13 · LoRA & Supervised Finetuning
+
+Full finetuning of a 7B model means optimizing 7 billion parameters and storing optimizer state for all of them. **LoRA** sidesteps this by freezing the base model and learning a tiny low-rank delta on top — typically less than 1% of the parameters.
+
+## The math
+
+For a frozen weight matrix $W_0 \in \mathbb{R}^{d \times k}$, LoRA adds a learned update:
+
+$$
+W = W_0 + \Delta W = W_0 + B A, \qquad B \in \mathbb{R}^{d \times r},\; A \in \mathbb{R}^{r \times k}
+$$
+
+with rank $r \ll \min(d, k)$ (often 8 or 16). At inference $\Delta W$ can be merged back into $W_0$ — zero latency overhead.
+
+The forward pass becomes:
+
+$$
+y = W_0 x + \frac{\alpha}{r}\, B A x
+$$
+
+The scaling $\alpha / r$ keeps the effective learning rate stable as you change rank.
+
+## Trainable parameter count
+
+For a single linear layer of shape $d \times d$ at rank $r$:
+
+$$
+\text{params} = 2 \cdot d \cdot r \quad \text{vs.} \quad d^2 \text{ full}
+$$
+
+For Llama-7B with $d = 4096$ and $r = 16$: ~131k vs. ~16.8M per layer — a **128× reduction**.
+
+## SFT in one paragraph
+
+Supervised finetuning is just **next-token prediction on (prompt, response) pairs**, with the loss masked to only score the response tokens. There is no new algorithm; the magic is entirely in the data quality. A few thousand high-quality examples beat millions of mediocre ones.
+
+```python
+# pseudo-PyTorch SFT loop
+for prompt, response in dataset:
+    ids   = tokenize(prompt + response)
+    mask  = [0] * len(tokenize(prompt)) + [1] * len(tokenize(response))
+    logits = model(ids[:-1])
+    loss = F.cross_entropy(
+        logits.view(-1, V),
+        ids[1:].view(-1),
+        reduction='none',
+    )
+    loss = (loss * mask[1:]).sum() / mask[1:].sum()
+    loss.backward(); opt.step(); opt.zero_grad()
+```
+
+<Callout type="tip">
+QLoRA = LoRA on top of int4-quantized weights. Combined, it lets you finetune a 65B model on a single 48GB GPU — the technique that democratized open-model finetuning in 2023.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2106.09685" title="Hu et al. — LoRA: Low-Rank Adaptation of Large Language Models" />
+<PDFNotes src="https://arxiv.org/pdf/2305.14314" title="Dettmers et al. — QLoRA" />
+
+</ChapterShell>

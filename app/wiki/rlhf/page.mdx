@@ -1,0 +1,55 @@
+export const metadata = { title: 'RLHF / DPO · LLM Wiki' };
+
+<ChapterShell slug="rlhf">
+
+# 14 · RLHF, PPO, DPO
+
+Finetuning gets a model to **follow instructions**. RLHF gets it to follow them in a way **humans actually prefer**. The recipe — pioneered by InstructGPT — has three steps: SFT, reward model, RL.
+
+## Step 1 · Reward model
+
+Collect comparison data: for each prompt $x$, human rankers say "response $y_w$ is better than $y_l$." Train a reward model $r_\phi(x, y)$ under the **Bradley–Terry** likelihood:
+
+$$
+\mathcal{L}_{RM} = -\mathbb{E}_{(x, y_w, y_l)}\!\left[\log \sigma\bigl(r_\phi(x, y_w) - r_\phi(x, y_l)\bigr)\right]
+$$
+
+## Step 2 · PPO against the reward model
+
+Maximize expected reward with a KL leash to the SFT reference policy:
+
+$$
+\max_{\pi_\theta}\; \mathbb{E}_{x \sim D,\, y \sim \pi_\theta}\!\bigl[r_\phi(x, y)\bigr] - \beta\,\mathrm{KL}\!\bigl(\pi_\theta \,\|\, \pi_{\text{ref}}\bigr)
+$$
+
+PPO clips the policy ratio to keep updates small:
+
+$$
+\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t\!\left[\min\!\bigl(r_t\hat A_t,\; \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat A_t\bigr)\right], \qquad r_t = \frac{\pi_\theta(y_t \mid x)}{\pi_{\text{ref}}(y_t \mid x)}
+$$
+
+## DPO — skip the reward model
+
+DPO's beautiful trick: the optimal policy for the RLHF objective above has a **closed form** in terms of the reference policy and the (unknown) reward. Substituting back gives a loss that depends only on preference pairs and the policy itself:
+
+$$
+\mathcal{L}_{\text{DPO}} = -\mathbb{E}_{(x, y_w, y_l)}\!\left[
+\log \sigma\!\left(
+\beta \log\frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)}
+- \beta \log\frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}
+\right)
+\right]
+$$
+
+No reward model. No RL. No PPO. Just supervised learning on preferences. It works shockingly well.
+
+<Callout type="info">
+Mental model: DPO turns "reward = preferences" into "preferences ARE the loss" via a clever change of variables. It's the reason most open-source alignment work in 2024–2025 is DPO-based.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2203.02155" title="Ouyang et al. — InstructGPT (2022)" />
+<PDFNotes src="https://arxiv.org/pdf/2305.18290" title="Rafailov et al. — Direct Preference Optimization (2023)" />
+
+</ChapterShell>

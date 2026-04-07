@@ -1,0 +1,62 @@
+export const metadata = { title: 'BatchNorm · LLM Wiki' };
+
+<ChapterShell slug="batchnorm">
+
+# 4 · Activations, Gradients & BatchNorm
+
+Why does the previous MLP refuse to train past a point? Because **bad initialization** saturates `tanh`, kills gradients, and makes deep networks brittle. This chapter is the diagnostic + the fix.
+
+<YouTube id="P6sfmUTpUmc" title="Building makemore Part 3: Activations & Gradients, BatchNorm" />
+
+## Kaiming init
+
+For a layer with $n_{\text{in}}$ inputs:
+
+$$
+W \sim \mathcal{N}\!\left(0,\, \frac{2}{n_{\text{in}}}\right)
+$$
+
+(use gain $5/3$ for `tanh`, $\sqrt{2}$ for ReLU). This keeps activation variance roughly constant from layer to layer instead of exploding or shrinking.
+
+## BatchNorm
+
+$$
+\hat{x} = \frac{x - \mu_B}{\sqrt{\sigma_B^2 + \epsilon}}, \qquad y = \gamma\,\hat{x} + \beta
+$$
+
+with running stats for inference: $\mu \leftarrow (1-m)\mu + m\,\mu_B$.
+
+```python
+class BatchNorm1d:
+    def __init__(self, dim, eps=1e-5, momentum=0.1):
+        self.gamma = torch.ones(dim);  self.beta = torch.zeros(dim)
+        self.running_mean = torch.zeros(dim); self.running_var = torch.ones(dim)
+        self.eps, self.m, self.training = eps, momentum, True
+
+    def __call__(self, x):
+        if self.training:
+            mu  = x.mean(0)
+            var = x.var(0, unbiased=False)
+            with torch.no_grad():
+                self.running_mean = (1-self.m)*self.running_mean + self.m*mu
+                self.running_var  = (1-self.m)*self.running_var  + self.m*var
+        else:
+            mu, var = self.running_mean, self.running_var
+        xhat = (x - mu) / (var + self.eps).sqrt()
+        return self.gamma * xhat + self.beta
+```
+
+<Callout type="info">
+BatchNorm decouples each layer's output statistics from the previous layer's weights — that's the deeper reason it makes deep nets trainable, not just "covariate shift."
+</Callout>
+
+## Visualize the loss landscape
+
+<GradientDescent />
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1502.03167" title="Ioffe & Szegedy — BatchNorm (2015)" />
+<PDFNotes src="https://arxiv.org/pdf/1502.01852" title="He et al. — Kaiming Init (2015)" />
+
+</ChapterShell>

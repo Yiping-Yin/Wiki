@@ -1,0 +1,58 @@
+export const metadata = { title: 'Multimodal · LLM Wiki' };
+
+<ChapterShell slug="multimodal">
+
+# 15 · Multimodal — VQVAE & Diffusion Transformers
+
+How does a Transformer eat images, audio, or video when its native input is a sequence of integers? Two answers, both based on the same idea: **discretize continuous signals into tokens, then run a Transformer.**
+
+## VQ-VAE — turning pixels into tokens
+
+A VQ-VAE consists of an encoder $E$, a learned codebook $\{e_k\}_{k=1}^{K}$, and a decoder $D$. The encoder maps an image patch to a continuous vector $z_e$, which is then **snapped to the nearest codebook entry**:
+
+$$
+k^* = \arg\min_k \|z_e(x) - e_k\|_2, \qquad z_q = e_{k^*}
+$$
+
+The decoder reconstructs $\hat x = D(z_q)$. The full loss has three terms:
+
+$$
+\mathcal{L} = \underbrace{\|x - D(z_q)\|^2}_{\text{reconstruction}}
++ \underbrace{\|\text{sg}[z_e] - e\|^2}_{\text{codebook}}
++ \underbrace{\beta\,\|z_e - \text{sg}[e]\|^2}_{\text{commitment}}
+$$
+
+where $\text{sg}[\cdot]$ is the stop-gradient. After training, an image becomes a 32×32 grid of integer codes — exactly the kind of thing a Transformer loves.
+
+## Diffusion Transformers (DiT)
+
+Instead of discretizing, **diffusion** generates images by iteratively denoising Gaussian noise. The model learns to predict the noise $\epsilon$ added at step $t$:
+
+$$
+\mathcal{L}_{\text{simple}} = \mathbb{E}_{x_0,\,\epsilon,\,t}\!\left[\bigl\|\epsilon - \epsilon_\theta(x_t, t, c)\bigr\|^2\right], \qquad x_t = \sqrt{\bar\alpha_t}\,x_0 + \sqrt{1 - \bar\alpha_t}\,\epsilon
+$$
+
+DiT replaces the U-Net backbone with a **plain Transformer over image patches** — the same architecture as a language model, just operating on noisy patch embeddings instead of token IDs. This is how Sora, Stable Diffusion 3, and Flux work.
+
+## Architecture comparison
+
+<Mermaid chart={`flowchart TB
+  subgraph A[VQ-VAE + Transformer]
+    a1[image] --> a2[encoder] --> a3[code grid]
+    a3 --> a4[autoregressive Transformer]
+    a4 --> a5[decoder] --> a6[image]
+  end
+  subgraph B[Diffusion Transformer]
+    b1[noise] --> b2[DiT]
+    b2 --> b3[denoised patches]
+    b3 --> b2
+    b3 --> b4[image]
+  end`} />
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/1711.00937" title="van den Oord et al. — VQ-VAE (2017)" />
+<PDFNotes src="https://arxiv.org/pdf/2006.11239" title="Ho et al. — Denoising Diffusion Probabilistic Models" />
+<PDFNotes src="https://arxiv.org/pdf/2212.09748" title="Peebles & Xie — Scalable Diffusion Models with Transformers (DiT)" />
+
+</ChapterShell>

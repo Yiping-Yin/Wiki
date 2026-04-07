@@ -1,0 +1,62 @@
+export const metadata = { title: 'KV-Cache · LLM Wiki' };
+
+<ChapterShell slug="kv-cache">
+
+# 11 · KV-Cache — Why Inference Is Fast
+
+A naive Transformer recomputes attention over the entire context for every new token. The **KV-cache** stores the per-layer keys and values from previous steps so that generating token $t+1$ only requires computing one new query against $t+1$ cached entries.
+
+## The redundancy
+
+For a prefix of length $T$, generating one new token without caching costs:
+
+$$
+\mathcal{O}\bigl(L \cdot (T+1)^2 \cdot d\bigr)
+$$
+
+With a KV-cache it drops to:
+
+$$
+\mathcal{O}\bigl(L \cdot (T+1) \cdot d\bigr)
+$$
+
+— linear instead of quadratic in $T$. For long contexts this is the difference between "usable" and "unusable."
+
+## Memory cost
+
+$$
+\text{KV memory} = 2 \cdot L \cdot T \cdot n_{\text{heads}} \cdot d_{\text{head}} \cdot \text{bytes per element}
+$$
+
+For Llama-2-7B at 4096 ctx in fp16: $2 \cdot 32 \cdot 4096 \cdot 32 \cdot 128 \cdot 2 \approx 2$ GB — **per request**. This is why batched serving is hard and why GQA, MQA, and PagedAttention exist.
+
+## Minimal implementation
+
+```python
+class CausalSelfAttention(nn.Module):
+    def forward(self, x, kv_cache=None):
+        B, T, C = x.shape
+        q, k, v = self.c_attn(x).split(C, dim=2)
+        # reshape to (B, n_head, T, d_head)
+        q = q.view(B, T, self.n_head, -1).transpose(1, 2)
+        k = k.view(B, T, self.n_head, -1).transpose(1, 2)
+        v = v.view(B, T, self.n_head, -1).transpose(1, 2)
+        if kv_cache is not None:
+            past_k, past_v = kv_cache
+            k = torch.cat([past_k, k], dim=2)
+            v = torch.cat([past_v, v], dim=2)
+        new_cache = (k, v)
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=(kv_cache is None))
+        return self.c_proj(y.transpose(1, 2).reshape(B, T, C)), new_cache
+```
+
+<Callout type="warn">
+The KV-cache is the **single biggest reason long-context LLMs are expensive**. Tricks like Grouped-Query Attention (Llama-2) and Multi-Query Attention (PaLM) shrink it by 8–32×.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2305.13245" title="Ainslie et al. — GQA: Training Generalized Multi-Query Transformer Models" />
+<PDFNotes src="https://arxiv.org/pdf/2309.06180" title="Kwon et al. — vLLM / PagedAttention" />
+
+</ChapterShell>

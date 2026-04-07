@@ -1,0 +1,88 @@
+export const metadata = { title: 'Micrograd · LLM Wiki' };
+
+<ChapterShell slug="micrograd">
+
+# 1 · Micrograd — Backprop from Scratch
+
+> *"What I cannot create, I do not understand."* — Feynman
+
+Karpathy's [`micrograd`](https://github.com/karpathy/micrograd) is a **scalar-valued reverse-mode autograd engine in ~100 lines of Python**, plus a ~50-line PyTorch-style neural network library on top. It is the smallest possible thing that can train a neural network, and it is the conceptual ancestor of every line of code in this wiki.
+
+<YouTube id="VMj-3S1tku0" title="The spelled-out intro to neural networks and backpropagation: building micrograd" />
+
+## The core idea
+
+A forward pass through any expression implicitly builds a **DAG of `Value` nodes**, where each node remembers its parents and the local operation that produced it. `loss.backward()` then performs a topological sort over that DAG and runs each op's local `_backward` closure, which applies the **chain rule**:
+
+$$
+\frac{\partial L}{\partial x} = \sum_i \frac{\partial L}{\partial y_i}\,\frac{\partial y_i}{\partial x}
+$$
+
+For `tanh`, the local derivative used in the video is:
+
+$$
+\frac{d}{dx}\tanh(x) = 1 - \tanh^2(x)
+$$
+
+And the SGD update is just:
+
+$$
+\theta \leftarrow \theta - \eta\,\nabla_\theta L
+$$
+
+## The whole engine
+
+```python
+class Value:
+    def __init__(self, data, _children=()):
+        self.data = data
+        self.grad = 0.0
+        self._prev = set(_children)
+        self._backward = lambda: None
+
+    def __add__(self, other):
+        out = Value(self.data + other.data, (self, other))
+        def _bw():
+            self.grad  += 1.0 * out.grad
+            other.grad += 1.0 * out.grad
+        out._backward = _bw
+        return out
+
+    def __mul__(self, other):
+        out = Value(self.data * other.data, (self, other))
+        def _bw():
+            self.grad  += other.data * out.grad
+            other.grad += self.data  * out.grad
+        out._backward = _bw
+        return out
+
+    def backward(self):
+        topo, seen = [], set()
+        def build(v):
+            if v in seen: return
+            seen.add(v)
+            for c in v._prev: build(c)
+            topo.append(v)
+        build(self)
+        self.grad = 1.0
+        for v in reversed(topo):
+            v._backward()
+```
+
+That's it. With `tanh`, `pow`, and `exp` added, you can train an MLP.
+
+<Callout type="tip">
+The DAG is **scalar-only** — every neuron is decomposed into individual adds and mults. This is hilariously slow, but pedagogically priceless: there is nothing hiding behind a tensor abstraction.
+</Callout>
+
+## Reading
+
+<PDF src="https://arxiv.org/pdf/1502.05767" title="Automatic Differentiation in Machine Learning: A Survey (Baydin et al., 2018)" />
+
+The original backprop paper (Rumelhart, Hinton, Williams 1986) is not on arXiv; the survey above is the cleanest modern treatment.
+
+## Next
+
+→ [Chapter 2 · Bigram Language Model](/wiki/makemore-bigram)
+
+</ChapterShell>

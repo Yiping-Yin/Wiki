@@ -1,0 +1,83 @@
+export const metadata = { title: 'Tokenization · LLM Wiki' };
+
+<ChapterShell slug="tokenization">
+
+# 5 · Tokenization — Byte Pair Encoding
+
+Tokenization is the unglamorous step that turns raw text into the integers an LLM actually consumes. It is also the source of an astonishing number of LLM weirdnesses. Karpathy's [`minbpe`](https://github.com/karpathy/minbpe) is a clean from-scratch implementation, and the accompanying video is the canonical explanation.
+
+<YouTube id="zduSFxRajkE" title="Let's build the GPT Tokenizer" />
+
+## Byte Pair Encoding in one paragraph
+
+Start with the 256 raw UTF-8 byte values as your initial vocabulary. Repeatedly **find the most frequent adjacent pair in the corpus and merge it into a new token**, growing the vocab one entry at a time:
+
+$$
+(a^*,\, b^*) = \arg\max_{(a, b)}\, \text{count}\bigl((a, b)\ \text{in corpus}\bigr)
+$$
+
+$$
+|V_{t+1}| = |V_t| + 1, \qquad |V_0| = 256
+$$
+
+Stop when you hit your target vocab size (e.g. 50,257 for GPT-2, ~100k for GPT-4). The result is a **merge table** that the encoder applies greedily and the decoder inverts.
+
+## Pre-tokenization with regex
+
+Real GPT tokenizers add a **regex pre-split** so merges never cross word/category boundaries (letters, numbers, punctuation, whitespace are all kept apart). The GPT-2 split pattern is:
+
+```
+'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+
+```
+
+Special tokens like `<|endoftext|>` are layered on top of this and never participate in BPE merges.
+
+## The whole training algorithm
+
+```python
+def get_stats(ids):
+    counts = {}
+    for a, b in zip(ids, ids[1:]):
+        counts[(a, b)] = counts.get((a, b), 0) + 1
+    return counts
+
+def merge(ids, pair, new_id):
+    out, i = [], 0
+    while i < len(ids):
+        if i < len(ids) - 1 and (ids[i], ids[i + 1]) == pair:
+            out.append(new_id)
+            i += 2
+        else:
+            out.append(ids[i])
+            i += 1
+    return out
+
+def train(text, vocab_size):
+    ids = list(text.encode('utf-8'))
+    merges = {}
+    for new_id in range(256, vocab_size):
+        stats = get_stats(ids)
+        pair = max(stats, key=stats.get)
+        ids = merge(ids, pair, new_id)
+        merges[pair] = new_id
+    return merges
+```
+
+That's the whole algorithm. `minbpe`'s `GPT4Tokenizer` wraps this and matches `tiktoken`'s `cl100k_base` exactly.
+
+## Why you should care
+
+<Callout type="warn">
+A startling fraction of LLM bugs are **tokenization bugs in disguise**: trailing whitespace breaks completions, non-English text uses 3–10× more tokens, numbers tokenize unpredictably (which is why arithmetic is hard), and rare token IDs like the infamous `SolidGoldMagikarp` cause the model to behave like it's been hit on the head.
+</Callout>
+
+## Papers
+
+<PDF src="https://arxiv.org/pdf/1508.07909" title="Sennrich et al. — Neural Machine Translation of Rare Words with Subword Units (the original BPE paper)" />
+<PDF src="https://arxiv.org/pdf/1808.06226" title="Kudo & Richardson — SentencePiece: A simple and language independent subword tokenizer" />
+
+## Back to start
+
+→ [LLM101n overview](/wiki/llm101n)
+
+</ChapterShell>

@@ -1,0 +1,57 @@
+export const metadata = { title: 'LLM101n Overview · LLM Wiki' };
+
+<ChapterShell slug="llm101n">
+
+# LLM101n — *Let's build a Storyteller*
+
+> Course by **Andrej Karpathy** / Eureka Labs. Goal: build a Storyteller LLM end-to-end in Python, C, and CUDA, from first principles.
+
+<Callout type="warn">
+The official [LLM101n repo](https://github.com/karpathy/LLM101n) was archived on 2024-08-01 — the course itself is still being written by Eureka Labs. This wiki reconstructs each chapter from Karpathy's existing **Neural Networks: Zero to Hero** YouTube series and supporting repos (`micrograd`, `nanoGPT`, `minbpe`).
+</Callout>
+
+## Syllabus
+
+1. **Bigram Language Model** — language modeling
+2. **Micrograd** — backpropagation, autograd from scratch
+3. **N-gram model** — MLP, matmul, GELU
+4. **Attention** — softmax, positional encodings
+5. **Transformer** — residuals, LayerNorm, GPT-2
+6. **Tokenization** — minBPE, byte pair encoding
+7. **Optimization** — initialization, AdamW
+8. **Need for Speed I — Device** — CPU vs GPU
+9. **Need for Speed II — Precision** — fp16 / bf16 / fp8
+10. **Need for Speed III — Distributed** — DDP, ZeRO
+11. **Datasets** — data loading, synthetic data
+12. **Inference I** — KV-cache
+13. **Inference II** — quantization
+14. **Finetuning I — SFT** — PEFT, LoRA, chat
+15. **Finetuning II — RL** — RLHF, PPO, DPO
+16. **Deployment** — API, web app
+17. **Multimodal** — VQVAE, diffusion transformer
+
+## Where to start
+
+| Chapter in this wiki | Karpathy video | Notes |
+|---|---|---|
+| [Micrograd](/wiki/micrograd) | *The spelled-out intro to backprop* | scalar autograd in ~100 LOC |
+| [Bigram / Makemore](/wiki/makemore-bigram) | *Intro to language modeling* | counting + tiny linear LM |
+| [Attention](/wiki/attention) | *Let's build GPT* | self-attention mechanism |
+| [Transformer](/wiki/transformer) | *Let's reproduce GPT-2 (124M)* | nanoGPT engineering |
+| [Tokenization](/wiki/tokenization) | *Let's build the GPT Tokenizer* | byte-level BPE |
+
+## The 1-hour overview talk
+
+Before diving in, watch Karpathy's executive-level overview:
+
+<YouTube id="zjkBMFhNj_g" title="[1hr Talk] Intro to Large Language Models" />
+
+Key idea from the talk: an LLM is conceptually **two files** — a parameters file (e.g. ~140 GB for Llama-2-70B) and a ~500-line inference program. Training is "compressing the internet"; finetuning + RLHF turns that compressor into an assistant.
+
+$$
+P(x_1, \dots, x_T) = \prod_{t=1}^{T} P(x_t \mid x_{<t}; \theta)
+$$
+
+This product is the entire game. Everything in this wiki is in service of modeling that one conditional distribution well.
+
+</ChapterShell>

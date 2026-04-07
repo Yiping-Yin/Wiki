@@ -1,0 +1,54 @@
+export const metadata = { title: 'Backprop Ninja · LLM Wiki' };
+
+<ChapterShell slug="backprop-ninja">
+
+# 5 · Becoming a Backprop Ninja
+
+Disable `loss.backward()` and walk every gradient by hand: cross-entropy, softmax, matmul, BatchNorm, tanh, embedding lookup. The point isn't masochism — it's that after this you'll **never again** be confused about why some gradient is wrong.
+
+<YouTube id="q8SA3rM6ckI" title="Building makemore Part 4: Becoming a Backprop Ninja" />
+
+## The fused softmax + cross-entropy gradient
+
+$$
+\frac{\partial \mathcal{L}}{\partial z_i} = p_i - \mathbf{1}[i = y]
+$$
+
+That's it. The whole horrible chain through softmax and log collapses into "predicted probabilities minus one-hot target."
+
+## Matmul backward
+
+$$
+\frac{\partial \mathcal{L}}{\partial A} = \frac{\partial \mathcal{L}}{\partial Y}\, B^\top, \qquad
+\frac{\partial \mathcal{L}}{\partial B} = A^\top\, \frac{\partial \mathcal{L}}{\partial Y}
+$$
+
+## BatchNorm backward (the scary one)
+
+$$
+\frac{\partial \mathcal{L}}{\partial x_i} = \frac{1}{N\sigma}\!\left(N\frac{\partial \mathcal{L}}{\partial \hat{x}_i} - \sum_j \frac{\partial \mathcal{L}}{\partial \hat{x}_j} - \hat{x}_i \sum_j \frac{\partial \mathcal{L}}{\partial \hat{x}_j}\hat{x}_j\right)
+$$
+
+## Verify against PyTorch
+
+```python
+import torch
+logits = torch.randn(8, 27, requires_grad=True)
+y = torch.randint(0, 27, (8,))
+probs = logits.softmax(1)
+loss = -probs[range(8), y].log().mean()
+
+# manual gradient
+dlogits = probs.clone()
+dlogits[range(8), y] -= 1
+dlogits /= 8
+
+loss.backward()
+print(torch.allclose(dlogits, logits.grad))  # → True
+```
+
+<Callout type="tip">
+Karpathy's framing: forward broadcasting becomes backward summation, and forward summation becomes backward broadcasting. Once that clicks, manual backprop is mechanical.
+</Callout>
+
+</ChapterShell>

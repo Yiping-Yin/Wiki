@@ -1,0 +1,42 @@
+export const metadata = { title: 'State of GPT · LLM Wiki' };
+
+<ChapterShell slug="state-of-gpt">
+
+# 10 · State of GPT (Karpathy @ Microsoft Build)
+
+Karpathy's ~40-minute talk laying out the **modern LLM training pipeline** in one diagram: pretraining → SFT → reward modeling → RLHF.
+
+<YouTube id="bZQun8Y4L2A" title="State of GPT — Andrej Karpathy" />
+
+## The four stages
+
+<Mermaid chart={`flowchart LR
+  A[Internet text<br/>~10TB] --> B[Pretraining<br/>base model]
+  B --> C[High-quality<br/>prompt/response<br/>pairs]
+  C --> D[SFT model]
+  D --> E[Comparison data<br/>A is better than B]
+  E --> F[Reward model]
+  F --> G[RLHF / PPO / DPO]
+  D --> G
+  G --> H[Assistant model]`} />
+
+| Stage | Data | Algorithm | Output |
+|---|---|---|---|
+| Pretraining | trillions of tokens of internet text | autoregressive next-token prediction | base model |
+| SFT | ~10k–100k high-quality (prompt, response) pairs | same loss as pretraining, smaller LR | SFT model |
+| Reward modeling | comparison data: pairs ranked by humans | Bradley–Terry log-likelihood | reward model $r_\phi$ |
+| RLHF | prompts from a distribution | PPO (or DPO) against $r_\phi$ + KL to SFT | assistant model |
+
+## The RLHF objective
+
+$$
+\max_{\pi_\theta}\; \mathbb{E}_{x \sim D,\, y \sim \pi_\theta(\cdot \mid x)}\!\bigl[r_\phi(x, y)\bigr] - \beta\,\mathrm{KL}\!\bigl(\pi_\theta\,\|\,\pi_{\text{ref}}\bigr)
+$$
+
+The KL term is the leash: it stops the policy from drifting too far from the SFT model and gaming the reward.
+
+<Callout type="tip">
+Karpathy's takeaway: **RLHF doesn't make models smarter, it makes them helpful**. Capability comes from pretraining; alignment comes from the later stages.
+</Callout>
+
+</ChapterShell>

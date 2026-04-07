@@ -1,0 +1,56 @@
+export const metadata = { title: 'Demo · LLM Wiki' };
+
+<div className="prose-notion">
+
+# Feature Demo
+
+This page proves every content type works: **LaTeX math**, **embedded PDFs**, **YouTube video**, and **interactive widgets** — all inside a single MDX file.
+
+## 1. LaTeX math (KaTeX)
+
+Inline: the softmax of a vector $\mathbf{z}$ is $\sigma(z_i) = \frac{e^{z_i}}{\sum_j e^{z_j}}$.
+
+Block:
+
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
+$$
+
+Cross-entropy loss for next-token prediction:
+
+$$
+\mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N}\log p_\theta(x_i \mid x_{<i})
+$$
+
+## 2. Callouts
+
+<Callout type="tip">Use `$...$` for inline math and `$$...$$` for display math.</Callout>
+<Callout type="warn">PDFs are rendered via `<iframe>` — host them under `/public` or use a public URL.</Callout>
+
+## 3. Embedded YouTube — Karpathy "Let's build GPT"
+
+<YouTube id="kCc8FmEb1nY" title="Let's build GPT: from scratch, in code, spelled out" />
+
+## 4. Embedded PDF — "Attention Is All You Need"
+
+<PDF src="https://arxiv.org/pdf/1706.03762" title="Attention Is All You Need (Vaswani et al., 2017)" />
+
+## 5. Interactive widget — Softmax temperature
+
+Drag the slider to feel how temperature reshapes the output distribution:
+
+<SoftmaxPlayground />
+
+## 6. Code blocks
+
+```python
+import torch, torch.nn.functional as F
+
+def softmax(z, T=1.0):
+    z = z / T
+    z = z - z.max()
+    e = torch.exp(z)
+    return e / e.sum()
+```
+
+</div>

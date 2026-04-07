@@ -1,0 +1,69 @@
+export const metadata = { title: 'Attention · LLM Wiki' };
+
+<ChapterShell slug="attention">
+
+# 3 · Attention
+
+Self-attention is the mechanism that lets every token in a sequence **look at every other token** and decide what to pay attention to. It is the single idea that made the Transformer possible, and Karpathy builds it from scratch in *Let's build GPT*.
+
+<YouTube id="kCc8FmEb1nY" title="Let's build GPT: from scratch, in code, spelled out." />
+
+## The formula
+
+Each token emits a **query**, a **key**, and a **value** via learned linear projections. Attention scores are dot products of queries with keys, scaled, masked (for causality), softmaxed, and used to take a weighted sum of values:
+
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}} + M\right) V
+$$
+
+The mask $M$ is $-\infty$ in the upper triangle (so token $t$ cannot attend to token $t+1$) and $0$ elsewhere. The $\sqrt{d_k}$ scaling keeps the softmax from saturating as the head dimension grows.
+
+A Transformer block also uses **LayerNorm**:
+
+$$
+\text{LayerNorm}(x) = \gamma\,\frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta
+$$
+
+and a **position-wise FFN** (4× hidden, GELU):
+
+$$
+\text{FFN}(x) = W_2\,\text{GELU}(W_1 x + b_1) + b_2
+$$
+
+## A single attention head
+
+```python
+import torch, torch.nn as nn, torch.nn.functional as F
+
+class Head(nn.Module):
+    def __init__(self, n_embd, head_size, block_size):
+        super().__init__()
+        self.k = nn.Linear(n_embd, head_size, bias=False)
+        self.q = nn.Linear(n_embd, head_size, bias=False)
+        self.v = nn.Linear(n_embd, head_size, bias=False)
+        self.register_buffer(
+            'tril', torch.tril(torch.ones(block_size, block_size))
+        )
+
+    def forward(self, x):
+        B, T, C = x.shape
+        k, q, v = self.k(x), self.q(x), self.v(x)
+        att = q @ k.transpose(-2, -1) * C ** -0.5
+        att = att.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        att = F.softmax(att, dim=-1)
+        return att @ v
+```
+
+<Callout type="tip">
+Karpathy's framing: attention is a **communication primitive** between tokens in a directed graph (the causal mask defines the edges). Multi-head attention just runs several of these communication channels in parallel.
+</Callout>
+
+## The paper that started it all
+
+<PDF src="https://arxiv.org/pdf/1706.03762" title="Vaswani et al. — Attention Is All You Need (2017)" />
+
+## Next
+
+→ [Chapter 4 · Transformer / reproducing GPT-2](/wiki/transformer)
+
+</ChapterShell>

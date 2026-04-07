@@ -1,0 +1,50 @@
+export const metadata = { title: 'Quantization · LLM Wiki' };
+
+<ChapterShell slug="quantization">
+
+# 12 · Quantization — Squeezing LLMs Onto Your Laptop
+
+Quantization replaces fp16/bf16 weights with low-bit integers (int8, int4, sometimes int2), trading a tiny bit of quality for **4×–8× memory savings** and often faster inference. It's what makes a 70B model fit on a single consumer GPU.
+
+## The basic scheme: linear / affine quantization
+
+For a tensor $x$ with range $[\alpha, \beta]$, pick a scale $s$ and zero point $z$:
+
+$$
+s = \frac{\beta - \alpha}{2^b - 1}, \qquad z = \text{round}\!\left(-\frac{\alpha}{s}\right)
+$$
+
+Then quantize and dequantize:
+
+$$
+q = \text{round}\!\left(\frac{x}{s}\right) + z, \qquad \hat{x} = s\,(q - z)
+$$
+
+## Why per-channel / per-group matters
+
+A single scale for an entire weight matrix is a disaster — outlier columns blow up the quantization range. Solutions in increasing sophistication:
+
+1. **Per-tensor** (don't do this for LLMs)
+2. **Per-channel** (per output column) — standard for int8
+3. **Per-group** (groups of 32–128 elements) — used by GPTQ, AWQ, and bitsandbytes int4
+
+## The four real techniques
+
+| Method | Bits | Calibration | Notes |
+|---|---|---|---|
+| **bitsandbytes 8-bit** | 8 | none | drop-in, ~free |
+| **GPTQ** | 4 | one-shot Hessian-based | lossy ~1% PPL |
+| **AWQ** | 4 | activation-aware | preserves salient channels |
+| **QLoRA** | 4 (NF4) | none + dequant in fwd | enables fine-tuning of int4 weights |
+
+<Callout type="info">
+Outlier features in transformer activations mean naive int8 fails on models &gt; ~6.7B. LLM.int8() handles this by keeping outlier columns in fp16 — that one trick is what unlocked the entire 4-bit ecosystem.
+</Callout>
+
+## Reading
+
+<PDFNotes src="https://arxiv.org/pdf/2208.07339" title="Dettmers et al. — LLM.int8()" />
+<PDFNotes src="https://arxiv.org/pdf/2210.17323" title="Frantar et al. — GPTQ" />
+<PDFNotes src="https://arxiv.org/pdf/2305.14314" title="Dettmers et al. — QLoRA" />
+
+</ChapterShell>
