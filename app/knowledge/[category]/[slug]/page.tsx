@@ -4,6 +4,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { findDoc, neighborsInCategory } from '../../../../lib/knowledge';
 import { knowledgeCategories } from '../../../../lib/knowledge-nav';
+import { DocSummary } from '../../../../components/DocSummary';
 
 // Dynamic by design — 454 docs would balloon build time. SSR per-request is fine.
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,8 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
         {doc.ext.slice(1).toUpperCase()} · {(doc.size / 1024).toFixed(0)} KB ·{' '}
         <a href={sourceUrl} target="_blank" rel="noreferrer">open original</a>
       </div>
+
+      <DocSummary id={doc.id} />
 
       {isPDF && (
         <div style={{ margin: '1rem 0', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
