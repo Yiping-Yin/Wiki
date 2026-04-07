@@ -84,13 +84,64 @@ function readableTitle(filename: string): string {
     .trim();
 }
 
+/**
+ * Clean OCR/PDF-extraction text artefacts:
+ *  - Drop repeated headers/footers (lines appearing > 3× across the doc)
+ *  - Drop standalone page numbers
+ *  - Join hyphenated word breaks at line ends ("inter-\nesting" → "interesting")
+ *  - Normalize whitespace runs
+ *  - Re-flow paragraphs (single newlines → space; blank lines → paragraph break)
+ */
+function cleanText(raw: string): string {
+  if (!raw) return raw;
+  // 1. Trim invisible chars
+  let s = raw.replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').replace(/\u200b/g, '');
+
+  // 2. Detect repeated header/footer lines (short lines appearing >3 times)
+  const lineCounts = new Map<string, number>();
+  for (const ln of s.split('\n')) {
+    const t = ln.trim();
+    if (t.length > 3 && t.length < 80) lineCounts.set(t, (lineCounts.get(t) ?? 0) + 1);
+  }
+  const repeated = new Set(
+    Array.from(lineCounts.entries())
+      .filter(([, n]) => n >= 4)
+      .map(([line]) => line),
+  );
+
+  // 3. Filter lines: drop standalone page numbers + repeated headers/footers
+  const lines = s.split('\n').filter((ln) => {
+    const t = ln.trim();
+    if (!t) return true; // keep blank for paragraph breaks
+    if (/^\d{1,4}$/.test(t)) return false;       // bare page number
+    if (/^Page \d+( of \d+)?$/i.test(t)) return false;
+    if (repeated.has(t)) return false;
+    return true;
+  });
+
+  // 4. Fix hyphenated word breaks: "word-\n  word2" → "wordword2"
+  s = lines.join('\n').replace(/(\w)-\n\s*(\w)/g, '$1$2');
+
+  // 5. Re-flow: single newline inside a paragraph becomes a space
+  s = s.replace(/([^\n])\n([^\n])/g, '$1 $2');
+
+  // 6. Collapse multiple blank lines into a single paragraph break
+  s = s.replace(/\n{3,}/g, '\n\n');
+
+  // 7. Collapse internal whitespace runs
+  s = s.split('\n').map((ln) => ln.replace(/[ \t]{2,}/g, ' ').trim()).join('\n');
+
+  // 8. Drop trailing/leading blank lines
+  return s.trim();
+}
+
 async function readBody(textPath: string | null, ext: string): Promise<string> {
   if (!textPath) {
     return `[Binary file · no text extracted · open the original to view]\n\nFormat: ${ext}`;
   }
   try {
     const raw = await fs.readFile(textPath, 'utf-8');
-    return raw.slice(0, 50000); // up to 50k chars per doc
+    return cleanText(raw.slice(0, 80000)).slice(0, 50000);
   } catch (e: any) {
     return `[Could not read text: ${e.message}]`;
   }

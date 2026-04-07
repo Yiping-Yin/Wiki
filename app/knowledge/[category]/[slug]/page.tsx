@@ -69,7 +69,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
         <div>
           <h2>Extracted text</h2>
           {paragraphs.slice(0, 200).map((p, i) => (
-            <p key={i} style={{ whiteSpace: 'pre-wrap' }}>{p}</p>
+            <p key={i}>{p}</p>
           ))}
           {paragraphs.length > 200 && (
             <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
