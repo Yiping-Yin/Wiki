@@ -14,7 +14,10 @@ function embed(tok: string, dim = 16) {
 export function AttentionHeatmap({ initial = 'the quick brown fox jumps' }: { initial?: string }) {
   const [text, setText] = useState(initial);
   const [causal, setCausal] = useState(true);
-  const tokens = text.trim().split(/\s+/).filter(Boolean).slice(0, 12);
+  const tokens = useMemo(
+    () => text.trim().split(/\s+/).filter(Boolean).slice(0, 12),
+    [text],
+  );
 
   const matrix = useMemo(() => {
     const E = tokens.map((t) => embed(t));
@@ -33,7 +36,7 @@ export function AttentionHeatmap({ initial = 'the quick brown fox jumps' }: { in
       const sum = exps.reduce((a, b) => a + b, 0);
       return exps.map((e) => e / (sum || 1));
     });
-  }, [tokens.join('|'), causal]);
+  }, [tokens, causal]);
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', margin: '1.2rem 0', background: 'var(--code-bg)' }}>

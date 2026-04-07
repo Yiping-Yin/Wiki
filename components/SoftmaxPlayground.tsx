@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 
 export function SoftmaxPlayground() {
   const [temp, setTemp] = useState(1.0);
-  const logits = [2.0, 1.0, 0.5, -0.5, -1.0];
+  const logits = useMemo(() => [2.0, 1.0, 0.5, -0.5, -1.0], []);
   const labels = ['cat', 'dog', 'fox', 'owl', 'bat'];
 
   const probs = useMemo(() => {
@@ -12,7 +12,7 @@ export function SoftmaxPlayground() {
     const exps = scaled.map(l => Math.exp(l - m));
     const sum = exps.reduce((a, b) => a + b, 0);
     return exps.map(e => e / sum);
-  }, [temp]);
+  }, [temp, logits]);
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', margin: '1.2rem 0', background: 'var(--code-bg)' }}>
