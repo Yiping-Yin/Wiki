@@ -71,6 +71,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans
 .prose-notion th { background: var(--code-bg); }
 .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.4rem 0; }
 
+.note-rendered h1 { font-size: 1.4rem; font-weight: 700; margin: 0.6rem 0 0.4rem; }
+.note-rendered h2 { font-size: 1.2rem; font-weight: 700; margin: 0.6rem 0 0.4rem; }
+.note-rendered h3 { font-size: 1rem;   font-weight: 700; margin: 0.5rem 0 0.3rem; }
+.note-rendered p  { margin: 0.4rem 0; }
+.note-rendered ul, .note-rendered ol { padding-left: 1.4rem; margin: 0.4rem 0; }
+.note-rendered code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: ui-monospace, monospace; font-size: 0.86em; }
+.note-rendered pre { background: var(--code-bg); padding: 0.6rem 0.8rem; border-radius: 6px; overflow-x: auto; }
+.note-rendered blockquote { border-left: 3px solid var(--accent); padding-left: 0.8rem; color: var(--muted); margin: 0.5rem 0; }
+.note-rendered a.wikilink { color: var(--accent); text-decoration: none; background: rgba(37,99,235,0.10); padding: 0 4px; border-radius: 3px; font-weight: 500; }
+.note-rendered a.wikilink:hover { text-decoration: underline; }
+.note-rendered .wikilink-broken { color: #dc2626; background: rgba(220,38,38,0.08); padding: 0 4px; border-radius: 3px; text-decoration: line-through; }
+
 [data-rehype-pretty-code-figure] pre { background: var(--code-bg) !important; }
 [data-rehype-pretty-code-title] {
   background: var(--code-bg); border: 1px solid var(--border); border-bottom: none;
