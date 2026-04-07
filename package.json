@@ -11,6 +11,7 @@
     "ingest": "tsx scripts/ingest-knowledge.ts",
     "atlas": "tsx scripts/build-atlas.ts",
     "rag": "tsx scripts/build-rag-index.ts",
+    "search": "tsx scripts/build-search-index.ts",
     "index": "pagefind --site .next/server/app --output-path public/pagefind"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "github-slugger": "^2.0.0",
     "katex": "^0.16.11",
     "mermaid": "^11.4.0",
+    "minisearch": "^7.2.0",
     "next": "^15.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
