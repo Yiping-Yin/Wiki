@@ -75,9 +75,10 @@ export function SearchBox() {
       <button
         onClick={() => setOpen(true)}
         style={{
-          width: '100%', textAlign: 'left', background: 'var(--code-bg)',
-          border: '1px solid var(--border)', borderRadius: 6, padding: '0.4rem 0.6rem',
+          width: '100%', textAlign: 'left', background: 'var(--surface-2)',
+          border: 'var(--hairline)', borderRadius: 'var(--r-1)', padding: '0.5rem 0.75rem',
           color: 'var(--muted)', fontSize: '0.82rem', cursor: 'pointer',
+          transition: 'background 0.2s var(--ease)',
         }}
       >
         🔍 Search… <span style={{ float: 'right', fontSize: '0.7rem' }}>⌘K</span>
@@ -87,12 +88,13 @@ export function SearchBox() {
         <div
           onClick={(e) => e.target === e.currentTarget && setOpen(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 100,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh',
-            backdropFilter: 'blur(4px)',
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '14vh',
+            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            animation: 'lpFade 0.18s var(--ease)',
           }}
         >
-          <div style={{ width: 'min(620px, 92vw)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.5)' }}>
+          <div className="glass" style={{ width: 'min(640px, 92vw)', borderRadius: 'var(--r-3)', overflow: 'hidden', boxShadow: 'var(--shadow-3)' }}>
             <input
               ref={inputRef}
               value={q}
@@ -104,9 +106,10 @@ export function SearchBox() {
               }}
               placeholder="Search 501 docs…"
               style={{
-                width: '100%', padding: '1rem 1.2rem', border: 0, background: 'transparent',
-                color: 'var(--fg)', fontSize: '1rem', outline: 'none',
-                borderBottom: '1px solid var(--border)',
+                width: '100%', padding: '1.1rem 1.3rem', border: 0, background: 'transparent',
+                color: 'var(--fg)', fontSize: '1.05rem', outline: 'none',
+                borderBottom: 'var(--hairline)', fontFamily: 'var(--display)',
+                fontWeight: 500, letterSpacing: '-0.005em',
               }}
             />
             <div style={{ maxHeight: '54vh', overflowY: 'auto' }}>

@@ -123,11 +123,12 @@ export default function Home() {
 
 const cardStyle: React.CSSProperties = {
   display: 'block',
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  padding: '1.1rem',
+  border: 'var(--hairline)',
+  borderRadius: 'var(--r-3)',
+  padding: '1.2rem 1.3rem',
   textDecoration: 'none',
   color: 'var(--fg)',
-  background: 'var(--bg)',
-  transition: 'border-color 0.15s',
+  background: 'var(--bg-elevated)',
+  boxShadow: 'var(--shadow-1)',
+  transition: 'transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease)',
 };

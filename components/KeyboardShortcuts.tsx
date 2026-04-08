@@ -59,14 +59,17 @@ export function KeyboardShortcuts() {
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           aria-label="Back to top"
           title="Back to top (g g)"
+          className="glass"
           style={{
-            position: 'fixed', bottom: 84, left: 20, zIndex: 50,
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'var(--bg)', border: '1px solid var(--border)',
+            position: 'fixed', bottom: 88, left: 20, zIndex: 50,
+            width: 44, height: 44, borderRadius: '50%',
             color: 'var(--fg)', cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            boxShadow: 'var(--shadow-2)',
             fontSize: '1.1rem',
+            transition: 'transform 0.2s var(--ease-spring)',
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >↑</button>
       )}
 
@@ -74,14 +77,16 @@ export function KeyboardShortcuts() {
         <div
           onClick={(e) => e.target === e.currentTarget && setShowHelp(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 130,
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 130,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(4px)',
+            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            animation: 'lpFade 0.2s var(--ease)',
           }}
         >
-          <div style={{
-            background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12,
-            padding: '1.4rem 1.6rem', minWidth: 380, maxWidth: '90vw',
+          <div className="glass" style={{
+            borderRadius: 'var(--r-3)',
+            padding: '1.6rem 1.8rem', minWidth: 400, maxWidth: '90vw',
+            boxShadow: 'var(--shadow-3)',
           }}>
             <h2 style={{ margin: '0 0 0.8rem', fontSize: '1.1rem', fontWeight: 700 }}>Keyboard shortcuts</h2>
             <table style={{ fontSize: '0.85rem', width: '100%' }}>

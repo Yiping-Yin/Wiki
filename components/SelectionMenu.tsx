@@ -112,11 +112,14 @@ export function SelectionMenu() {
           style={{
             position: 'absolute', left: pos.x, top: pos.y,
             transform: 'translate(-50%, -100%)',
-            background: 'rgba(15,17,21,0.95)', color: '#fff',
-            borderRadius: 8, padding: '4px 6px',
-            display: 'flex', gap: 4, zIndex: 90,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(8px)',
+            background: 'rgba(28,28,30,0.92)', color: '#fff',
+            borderRadius: 'var(--r-2)', padding: '5px 6px',
+            display: 'flex', gap: 2, zIndex: 90,
+            boxShadow: 'var(--shadow-3)',
+            backdropFilter: 'saturate(180%) blur(20px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+            border: '0.5px solid rgba(255,255,255,0.1)',
+            animation: 'lpFade 0.15s var(--ease-spring)',
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -130,12 +133,14 @@ export function SelectionMenu() {
         <div
           onClick={(e) => e.target === e.currentTarget && setExplainOpen(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 110,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '10vh',
-            backdropFilter: 'blur(4px)',
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 110,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            animation: 'lpFade 0.18s var(--ease)',
           }}
         >
-          <div style={{ width: 'min(640px, 92vw)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.2rem 1.4rem', maxHeight: '70vh', overflowY: 'auto' }}>
+          <div className="glass" style={{ width: 'min(660px, 92vw)', borderRadius: 'var(--r-3)', padding: '1.4rem 1.6rem', maxHeight: '70vh', overflowY: 'auto', boxShadow: 'var(--shadow-3)' }}>
             <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', fontWeight: 700, marginBottom: 8 }}>
               ✨ Explain selection
             </div>

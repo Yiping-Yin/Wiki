@@ -23,14 +23,30 @@ export function RAGChat() {
   return (
     <>
       <button onClick={() => setOpen((o) => !o)} aria-label="Ask the wiki"
-        style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 50, width: 52, height: 52, borderRadius: '50%', background: 'var(--accent)', color: '#fff', border: 0, cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,0.25)', fontSize: '1.4rem' }}>
+        style={{
+          position: 'fixed', bottom: 20, right: 20, zIndex: 50,
+          width: 56, height: 56, borderRadius: '50%',
+          background: 'var(--accent)', color: '#fff', border: 0, cursor: 'pointer',
+          boxShadow: 'var(--shadow-3)', fontSize: '1.4rem',
+          transition: 'transform 0.2s var(--ease-spring)',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+      >
         {open ? '×' : '💬'}
       </button>
       {open && (
-        <div style={{ position: 'fixed', bottom: 84, right: 20, zIndex: 50, width: 'min(380px, calc(100vw - 40px))', height: 480, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
-          <div style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: '0.9rem' }}>
+        <div className="glass" style={{
+          position: 'fixed', bottom: 88, right: 20, zIndex: 50,
+          width: 'min(400px, calc(100vw - 40px))', height: 520,
+          borderRadius: 'var(--r-3)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          boxShadow: 'var(--shadow-3)',
+          animation: 'lpFade 0.22s var(--ease-spring)',
+        }}>
+          <div style={{ padding: '0.85rem 1rem', borderBottom: 'var(--hairline)', fontWeight: 600, fontSize: '0.92rem', fontFamily: 'var(--display)' }}>
             💬 Ask the wiki
-            <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginLeft: 6 }}>(needs ANTHROPIC_API_KEY)</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginLeft: 6, fontWeight: 400 }}>local Claude RAG</span>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {msgs.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '0.82rem' }}>Try: &ldquo;Explain attention in one paragraph&rdquo; or &ldquo;Why is BPE byte-level?&rdquo;</div>}

@@ -131,16 +131,17 @@ export function LinkPreview() {
   return (
     <div
       ref={cardRef}
+      className="glass"
       onMouseEnter={() => { insideCard.current = true; }}
       onMouseLeave={() => { insideCard.current = false; setHovered(null); }}
       style={{
         position: 'absolute', left, top: hovered.y, zIndex: 95,
-        width: W, padding: '0.85rem 1rem',
-        background: 'var(--bg)', color: 'var(--fg)',
-        border: '1px solid var(--border)', borderRadius: 10,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+        width: W, padding: '0.95rem 1.1rem',
+        color: 'var(--fg)',
+        borderRadius: 'var(--r-3)',
+        boxShadow: 'var(--shadow-3)',
         fontSize: '0.85rem', lineHeight: 1.5,
-        animation: 'lpFade 0.12s ease-out',
+        animation: 'lpFade 0.18s var(--ease-spring)',
       }}
     >
       <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)', fontWeight: 700, marginBottom: 4 }}>
