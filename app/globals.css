@@ -95,7 +95,7 @@ body {
 }
 .prose-notion h4 { font-size: 1.05rem; font-weight: 700; margin: 1.4rem 0 0.4rem; }
 .prose-notion p  { margin: 0.95rem 0; }
-.prose-notion strong { font-weight: 650; color: var(--fg); }
+.prose-notion strong { font-weight: 650; color: var(--accent); }
 .prose-notion em { font-style: italic; }
 .prose-notion a {
   color: var(--accent); text-decoration: underline;

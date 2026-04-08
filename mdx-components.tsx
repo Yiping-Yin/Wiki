@@ -11,6 +11,7 @@ import { GradientDescent } from './components/GradientDescent';
 import { Mermaid } from './components/Mermaid';
 import { PyodideRunner } from './components/PyodideRunner';
 import { ChapterShell } from './components/ChapterShell';
+import { NeuralNetCanvas } from './components/NeuralNetCanvas';
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -18,5 +19,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Callout, YouTube, PDF, PDFNotes,
     SoftmaxPlayground, AttentionHeatmap, BPETokenizer,
     LRScheduler, GradientDescent, Mermaid, PyodideRunner, ChapterShell,
+    NeuralNetCanvas,
   };
 }

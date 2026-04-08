@@ -36,12 +36,24 @@ export function Sidebar() {
         className={`sidebar ${open ? 'open' : ''}`}
         style={{
           width: 280, borderRight: '1px solid var(--border)',
-          padding: '1.5rem 1.1rem', position: 'sticky', top: 0,
+          padding: '1.5rem 1.1rem 4rem', position: 'sticky', top: 0,
           height: '100vh', overflowY: 'auto', background: 'var(--bg)',
+          display: 'flex', flexDirection: 'column',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <Link href="/" style={{ fontWeight: 800, fontSize: '1.05rem' }}>📚 My Wiki</Link>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+            <span style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: 'linear-gradient(135deg, #7c3aed, #4338ca)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1rem',
+            }}>📚</span>
+            <span>
+              <span style={{ display: 'block', fontWeight: 800, fontSize: '0.95rem', color: 'var(--fg)' }}>My Wiki</span>
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--muted)' }}>Personal knowledge base</span>
+            </span>
+          </Link>
           <ThemeToggle />
         </div>
         <SearchBox />
