@@ -10,24 +10,49 @@ export function TableOfContents({ docId, docTitle }: { docId?: string; docTitle?
   const [active, setActive] = useState<string>('');
 
   useEffect(() => {
+    const main = document.querySelector('main');
+    if (!main) return;
+    let intersectObs: IntersectionObserver | null = null;
+    const slugify = (s: string) =>
+      s.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+    let lastSig = '';
     const collect = () => {
-      const headings = Array.from(document.querySelectorAll('main h2, main h3')) as HTMLElement[];
+      const headings = Array.from(main.querySelectorAll('h2, h3')) as HTMLElement[];
+      // ensure each heading has an id so anchors work even when content was rendered without one
+      headings.forEach((h) => {
+        if (!h.id) {
+          const slug = slugify(h.textContent ?? '');
+          if (slug) h.id = slug;
+        }
+      });
+      const sig = headings.map((h) => `${h.id}:${h.textContent}`).join('|');
+      if (sig === lastSig) return;
+      lastSig = sig;
       setItems(headings.map((h) => ({
         id: h.id,
         text: h.textContent ?? '',
         level: h.tagName === 'H2' ? 2 : 3,
       })));
-      const obs = new IntersectionObserver(
+      if (intersectObs) intersectObs.disconnect();
+      intersectObs = new IntersectionObserver(
         (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
         { rootMargin: '-20% 0% -70% 0%' },
       );
-      headings.forEach((h) => obs.observe(h));
-      return obs;
+      headings.forEach((h) => intersectObs!.observe(h));
     };
-    const obs = collect();
-    // re-scan after async content (StructuredView, NoteRenderer) hydrates
-    const timer = setTimeout(() => { obs.disconnect(); collect(); }, 1500);
-    return () => { obs.disconnect(); clearTimeout(timer); };
+    collect();
+    // Re-scan whenever the main content mutates (async StructuredView, click-to-generate, etc.)
+    let raf = 0;
+    const mut = new MutationObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(collect);
+    });
+    mut.observe(main, { childList: true, subtree: true, characterData: true });
+    return () => {
+      mut.disconnect();
+      cancelAnimationFrame(raf);
+      if (intersectObs) intersectObs.disconnect();
+    };
   }, []);
 
   return (
