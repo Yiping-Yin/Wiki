@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuizResults } from '../lib/use-quiz';
 
 type Question = { q: string; choices: string[]; correct: number; explain: string };
 type Quiz = { questions: Question[]; cached?: boolean; error?: string };
@@ -10,6 +11,8 @@ export function DocQuiz({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [revealed, setRevealed] = useState<Record<number, boolean>>({});
+  const [, recordQuizResult] = useQuizResults();
+  const [recorded, setRecorded] = useState(false);
 
   const generate = async () => {
     setLoading(true); setError(null);
@@ -55,6 +58,12 @@ export function DocQuiz({ id }: { id: string }) {
 
   const score = Object.entries(answers).filter(([i, c]) => quiz.questions[+i]?.correct === c && revealed[+i]).length;
   const allAnswered = quiz.questions.every((_, i) => answers[i] !== undefined);
+  const allRevealed = quiz.questions.every((_, i) => revealed[i]);
+
+  if (allRevealed && !recorded) {
+    setRecorded(true);
+    recordQuizResult({ docId: id, score, total: quiz.questions.length });
+  }
 
   return (
     <div style={{
