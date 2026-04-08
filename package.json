@@ -12,6 +12,7 @@
     "atlas": "tsx scripts/build-atlas.ts",
     "rag": "tsx scripts/build-rag-index.ts",
     "search": "tsx scripts/build-search-index.ts",
+    "batch": "tsx scripts/batch-process.ts",
     "index": "pagefind --site .next/server/app --output-path public/pagefind"
   },
   "dependencies": {

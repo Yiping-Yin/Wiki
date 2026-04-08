@@ -1,0 +1,19 @@
+{
+  "id": "unsw-math-3856__nbayeslogreg",
+  "summary": "This chapter from Tom Mitchell's Machine Learning textbook introduces generative and discriminative classifiers, focusing on deriving classifiers from Bayes rule. It shows that unbiased Bayes classification is impractical due to exponential parameter requirements, and introduces Naive Bayes as a tractable alternative via a conditional independence assumption. It then defines parameter estimation for discrete-valued Naive Bayes using maximum likelihood and Laplace-smoothed MAP estimates.",
+  "bullets": [
+    "Bayes rule lets us classify by estimating P(X|Y) and P(Y) from training data, then computing P(Y|X)",
+    "Estimating full P(X|Y) for n boolean features requires ~2(2^n−1) parameters, making unbiased Bayes classifiers infeasible",
+    "Naive Bayes assumes each feature Xi is conditionally independent of the others given Y, reducing parameters to just 2n",
+    "The Naive Bayes classification rule picks Y maximizing P(Y=yk) ∏i P(Xi|Y=yk)",
+    "Parameters can be estimated via maximum likelihood counts or Laplace-smoothed MAP estimates to avoid zero probabilities"
+  ],
+  "keyTerms": [
+    "Naive Bayes",
+    "Bayes rule",
+    "conditional independence",
+    "maximum likelihood estimation",
+    "Laplace smoothing"
+  ],
+  "generatedAt": "2026-04-08T00:32:57.528Z"
+}
