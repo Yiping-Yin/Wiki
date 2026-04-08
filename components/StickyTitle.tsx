@@ -37,42 +37,39 @@ export function StickyTitle() {
     <div
       className="glass sticky-title"
       style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
-        padding: '0.6rem 1.2rem',
+        position: 'fixed', top: 0, right: 0, zIndex: 40,
+        padding: '0.55rem 1.2rem',
         display: 'flex', alignItems: 'center', gap: 12,
         borderBottom: 'var(--hairline)',
         animation: 'lpFade 0.2s var(--ease)',
       }}
     >
-      {/* Push past sidebar width on desktop */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 1200, margin: '0 auto', width: '100%', paddingLeft: 'clamp(0px, 4vw, 280px)' }}>
-        {crumb && (
-          <span style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-            {crumb}
-          </span>
-        )}
-        <span
-          style={{
-            fontFamily: 'var(--display)', fontSize: '0.95rem', fontWeight: 600,
-            letterSpacing: '-0.01em',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            flex: 1, minWidth: 0,
-          }}
-          title={title}
-        >
-          {title}
+      {crumb && (
+        <span style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
+          {crumb}
         </span>
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          aria-label="Back to top"
-          style={{
-            background: 'transparent', border: 'var(--hairline)',
-            borderRadius: 'var(--r-1)', padding: '4px 10px',
-            cursor: 'pointer', color: 'var(--muted)', fontSize: '0.72rem',
-            whiteSpace: 'nowrap',
-          }}
-        >↑ top</button>
-      </div>
+      )}
+      <span
+        style={{
+          fontFamily: 'var(--display)', fontSize: '0.95rem', fontWeight: 600,
+          letterSpacing: '-0.01em',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          flex: 1, minWidth: 0,
+        }}
+        title={title}
+      >
+        {title}
+      </span>
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Back to top"
+        style={{
+          background: 'transparent', border: 'var(--hairline)',
+          borderRadius: 'var(--r-1)', padding: '4px 10px',
+          cursor: 'pointer', color: 'var(--muted)', fontSize: '0.72rem',
+          whiteSpace: 'nowrap',
+        }}
+      >↑ top</button>
     </div>
   );
 }

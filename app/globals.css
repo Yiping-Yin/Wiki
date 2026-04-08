@@ -280,6 +280,11 @@ html:not(.dark) [data-theme='dark'] { display: none; }
   box-shadow: var(--shadow-2);
 }
 
+/* StickyTitle: keep clear of sidebar on desktop, full width on mobile */
+.sticky-title { left: 280px; }
+@media (max-width: 900px) { .sticky-title { left: 0; } }
+/* On full-bleed pages (atlas/graph), hide entirely — they have their own UI */
+body:has(main > div[style*="height: 100vh"]) .sticky-title { display: none; }
 /* StickyTitle hides in reading mode */
 body.reading-mode .sticky-title { display: none !important; }
 
