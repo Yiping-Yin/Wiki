@@ -423,7 +423,11 @@ export function ChatPanel() {
     setMessages([]);
   };
 
-  // Listen for global toggle events from FloatingDock
+  // Keep latest actualSend reachable from a stable listener without re-binding
+  const sendRef = useRef(actualSend);
+  useEffect(() => { sendRef.current = actualSend; }, [actualSend]);
+
+  // Listen for global toggle events from FloatingDock / LiquidBar
   useEffect(() => {
     const onToggle = () => setOpen((o) => !o);
     const onLiquidSend = (e: Event) => {
@@ -431,7 +435,7 @@ export function ChatPanel() {
       if (typeof text === 'string' && text.trim()) {
         setOpen(true);
         // small delay so the drawer mounts before we send
-        setTimeout(() => actualSend(text), 80);
+        setTimeout(() => sendRef.current(text), 80);
       }
     };
     window.addEventListener('wiki:chat:toggle', onToggle);
