@@ -13,6 +13,7 @@ import { BackLinks } from '../../../../components/BackLinks';
 import { StructuredView } from '../../../../components/StructuredView';
 import { DocViewer } from '../../../../components/DocViewer';
 import { TableOfContents } from '../../../../components/TableOfContents';
+import { PinButton } from '../../../../components/PinButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,17 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
           <Link href="/knowledge">📚 Knowledge</Link> ›{' '}
           <Link href={`/knowledge/${category}`}>{cat?.label}</Link>
         </div>
-        <h1>{doc.title}</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <h1 style={{ flex: 1, margin: '1.2rem 0 1.4rem' }}>{doc.title}</h1>
+          <div style={{ marginTop: '1.6rem' }}>
+            <PinButton
+              id={`know/${doc.id}`}
+              title={doc.title}
+              href={`/knowledge/${doc.categorySlug}/${doc.fileSlug}`}
+              size="md"
+            />
+          </div>
+        </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
           <span>{doc.ext.slice(1).toUpperCase()}</span>
           <span>·</span>

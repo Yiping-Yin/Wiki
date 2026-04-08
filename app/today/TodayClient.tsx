@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useHistory } from '../../lib/use-history';
 import { useQuizResults, isWeak } from '../../lib/use-quiz';
 import { useNotedIds } from '../../lib/use-notes';
+import { usePins } from '../../lib/use-pins';
 
 type IndexDoc = { id: string; title: string; href: string; category: string };
 
@@ -40,6 +41,7 @@ export function TodayClient({ totalDocs }: { totalDocs: number }) {
   const [history] = useHistory();
   const [quizResults] = useQuizResults();
   const notedIds = useNotedIds();
+  const { pins, unpin } = usePins();
   const [docs, setDocs] = useState<IndexDoc[]>([]);
 
   useEffect(() => { loadDocs().then(setDocs); }, []);
@@ -125,6 +127,50 @@ export function TodayClient({ totalDocs }: { totalDocs: number }) {
           <span><strong style={{ color: '#fff' }}>{notedIds.length}</strong> notes</span>
         </div>
       </div>
+
+      {/* Pinned docs */}
+      {pins.length > 0 && (
+        <Section title="Pinned" subtitle={`${pins.length} starred`}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+            {pins.slice(0, 6).map((p) => (
+              <div
+                key={p.id}
+                className="card-lift"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '0.75rem 0.95rem',
+                  border: 'var(--hairline)', borderRadius: 'var(--r-2)',
+                  background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-1)',
+                  position: 'relative',
+                }}
+              >
+                <span style={{ color: '#f59e0b', fontSize: '1.05rem', flexShrink: 0 }}>★</span>
+                <Link
+                  href={p.href}
+                  style={{
+                    flex: 1, minWidth: 0,
+                    fontSize: '0.85rem', fontWeight: 600,
+                    color: 'var(--fg)', textDecoration: 'none',
+                    overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {p.title}
+                </Link>
+                <button
+                  onClick={() => unpin(p.id)}
+                  title="Unpin"
+                  style={{
+                    background: 'transparent', border: 0, cursor: 'pointer',
+                    color: 'var(--muted)', fontSize: '0.85rem',
+                    padding: '0 4px', flexShrink: 0,
+                  }}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* Activity heatmap */}
       <Section title="Last 30 days">

@@ -7,6 +7,7 @@ import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchBox } from './SearchBox';
 import { useHistory } from '../lib/use-history';
+import { usePins } from '../lib/use-pins';
 import chapterMeta from '../lib/chapter-meta.json';
 
 type ChMeta = { hasVideo?: boolean; hasMath?: boolean; hasCode?: boolean; hasMermaid?: boolean; hasPdf?: boolean; hasWidget?: boolean; wordCount?: number };
@@ -19,6 +20,7 @@ export function Sidebar() {
   const sections = Array.from(new Set(chapters.map((c) => c.section)));
   const pathname = usePathname();
   const [history] = useHistory();
+  const { pins } = usePins();
 
   // Build a Set of viewed wiki slugs and per-category viewed counts
   const { viewedWikiSlugs, viewedByCategory } = useMemo(() => {

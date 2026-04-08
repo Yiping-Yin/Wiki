@@ -460,76 +460,81 @@ export function ChatPanel() {
           transition: 'transform 0.32s var(--ease)',
         }}
       >
-        {/* Header */}
+        {/* Header — title row */}
         <div style={{
-          padding: '0.85rem 1.1rem',
-          borderBottom: 'var(--hairline)',
+          padding: '0.75rem 1.1rem 0.5rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 8,
-          position: 'relative',
+          gap: 8, position: 'relative',
         }}>
           <div style={{
             fontFamily: 'var(--display)', fontSize: '0.95rem', fontWeight: 600,
             display: 'flex', alignItems: 'center', gap: 8,
             flex: 1, minWidth: 0,
           }}>
-            ✦ <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ color: 'var(--accent)' }}>✦</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {threads.find((t) => t.id === activeThreadId)?.title ?? 'Assistant'}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button
-              onClick={() => setShowHistory((s) => !s)}
-              title="History"
-              style={{
-                background: showHistory ? 'var(--accent-soft)' : 'transparent',
-                border: 'var(--hairline)',
-                borderRadius: 'var(--r-1)', padding: '3px 8px',
-                cursor: 'pointer', color: showHistory ? 'var(--accent)' : 'var(--muted)',
-                fontSize: '0.7rem',
-              }}
-            >🕓 {threads.length}</button>
-            <button
-              onClick={newThread}
-              title="New chat"
-              style={{
-                background: 'transparent', border: 'var(--hairline)',
-                borderRadius: 'var(--r-1)', padding: '3px 9px',
-                cursor: 'pointer', color: 'var(--muted)',
-                fontSize: '0.85rem', lineHeight: 1,
-              }}
-            >+</button>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value as Model)}
-              disabled={streaming}
-              style={{
-                background: 'var(--surface-2)',
-                border: 'var(--hairline)',
-                borderRadius: 'var(--r-1)',
-                padding: '3px 8px',
-                fontSize: '0.72rem',
-                color: 'var(--fg)',
-                fontFamily: 'inherit',
-                cursor: streaming ? 'not-allowed' : 'pointer',
-              }}
-            >
-              <option value="claude">claude</option>
-              <option value="codex">codex</option>
-            </select>
-            <button
-              onClick={clear}
-              disabled={streaming || messages.length === 0}
-              title="Clear conversation"
-              style={{
-                background: 'transparent', border: 'var(--hairline)',
-                borderRadius: 'var(--r-1)', padding: '3px 8px',
-                cursor: 'pointer', color: 'var(--muted)',
-                fontSize: '0.7rem',
-                opacity: messages.length === 0 ? 0.4 : 1,
-              }}
-            >clear</button>
-          </div>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label="Close chat"
+            style={{
+              background: 'transparent', border: 0,
+              cursor: 'pointer', color: 'var(--muted)',
+              fontSize: '1.1rem', padding: '2px 6px', lineHeight: 1,
+            }}
+          >×</button>
+        </div>
+        {/* Header — actions row */}
+        <div style={{
+          padding: '0 1.1rem 0.7rem',
+          borderBottom: 'var(--hairline)',
+          display: 'flex', alignItems: 'center', gap: 6,
+          position: 'relative',
+        }}>
+          <button
+            onClick={newThread}
+            title="New chat"
+            style={{
+              background: 'var(--accent)',
+              border: 0, color: '#fff',
+              borderRadius: 'var(--r-1)', padding: '4px 10px',
+              cursor: 'pointer',
+              fontSize: '0.72rem', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}
+          >+ New</button>
+          <button
+            onClick={() => setShowHistory((s) => !s)}
+            title="Thread history"
+            style={{
+              background: showHistory ? 'var(--accent-soft)' : 'var(--surface-2)',
+              border: 'var(--hairline)',
+              borderRadius: 'var(--r-1)', padding: '4px 10px',
+              cursor: 'pointer', color: showHistory ? 'var(--accent)' : 'var(--muted)',
+              fontSize: '0.72rem', fontWeight: 500,
+            }}
+          >🕓 {threads.length}</button>
+          <div style={{ flex: 1 }} />
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value as Model)}
+            disabled={streaming}
+            style={{
+              background: 'var(--surface-2)',
+              border: 'var(--hairline)',
+              borderRadius: 'var(--r-1)',
+              padding: '4px 8px',
+              fontSize: '0.72rem',
+              color: 'var(--fg)',
+              fontFamily: 'inherit',
+              cursor: streaming ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <option value="claude">claude</option>
+            <option value="codex">codex</option>
+          </select>
 
           {/* History popover */}
           {showHistory && (

@@ -7,6 +7,7 @@ import { PrevNext } from './PrevNext';
 import { RelatedDocs } from './RelatedDocs';
 import { DocNotes } from './DocNotes';
 import { DocQuiz } from './DocQuiz';
+import { PinButton } from './PinButton';
 import { chapters } from '../lib/nav';
 
 const SECTION_META: Record<string, { emoji: string; accent: string; accentSoft: string }> = {
@@ -62,6 +63,7 @@ export async function ChapterShell({
         // Per-section accent override — cascades through .prose-notion children
         ['--accent' as any]: meta.accent,
         ['--accent-soft' as any]: meta.accentSoft,
+        position: 'relative',
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }} className="prose-notion">
@@ -80,6 +82,11 @@ export async function ChapterShell({
           </div>
         )}
 
+        {/* Pin button — floats top-right of content */}
+        <div style={{ position: 'absolute', top: '4rem', right: '2rem' }}>
+          <PinButton id={`wiki/${slug}`} title={ch?.title ?? slug} href={`/wiki/${slug}`} size="md" />
+        </div>
+
         {children}
 
         {/* Tag pills */}
@@ -89,10 +96,6 @@ export async function ChapterShell({
             {tags?.map((t) => <span key={t} style={pillStyle}>{t}</span>)}
           </div>
         )}
-
-        <div style={{ marginTop: '1rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
-          <Link href={`/atlas?focus=${encodeURIComponent('wiki/' + slug)}`}>🗺 view on atlas</Link>
-        </div>
 
         <DocQuiz id={`wiki/${slug}`} />
         <DocNotes id={`wiki/${slug}`} />
