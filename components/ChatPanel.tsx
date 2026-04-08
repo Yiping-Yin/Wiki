@@ -48,6 +48,7 @@ const SLASH_COMMANDS: { name: string; description: string }[] = [
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Model = 'claude' | 'codex';
+type Mention = { id: string; title: string; href: string };
 
 const STORAGE_KEY = 'wiki:chat:v1';
 const MODEL_KEY = 'wiki:chat:model';
@@ -203,6 +204,26 @@ export function ChatPanel() {
   };
 
   const [stickyContext, setStickyContext] = useState<string>('');
+  const [mentions, setMentions] = useState<Mention[]>([]);
+  const [allDocs, setAllDocs] = useState<IndexDoc[]>([]);
+
+  useEffect(() => { loadIndexDocs().then(setAllDocs); }, []);
+
+  // Fetch each mention's body and combine into a context block
+  const buildMentionContext = async (): Promise<string> => {
+    if (mentions.length === 0) return '';
+    const blocks = await Promise.all(
+      mentions.map(async (m) => {
+        try {
+          const r = await fetch(`/api/doc-body?id=${encodeURIComponent(m.id)}`);
+          if (!r.ok) return null;
+          const j = await r.json();
+          return `## @${j.title}\n${(j.body ?? '').slice(0, 4000)}`;
+        } catch { return null; }
+      }),
+    );
+    return blocks.filter(Boolean).join('\n\n---\n\n');
+  };
 
   const send = async () => {
     const text = draft.trim();
@@ -221,7 +242,8 @@ export function ChatPanel() {
     setMessages(next);
     setStreaming(true);
 
-    const ctx = [buildContext(), stickyContext].filter(Boolean).join('\n\n');
+    const mentionCtx = await buildMentionContext();
+    const ctx = [buildContext(), stickyContext, mentionCtx ? `Mentioned documents:\n${mentionCtx}` : ''].filter(Boolean).join('\n\n');
 
     abortRef.current = new AbortController();
     try {
@@ -439,7 +461,38 @@ export function ChatPanel() {
               <button onClick={() => setStickyContext('')} style={{ background: 'transparent', border: 0, color: 'var(--accent)', cursor: 'pointer', fontSize: '0.7rem' }}>×</button>
             </div>
           )}
+          {/* Mention chips */}
+          {mentions.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+              {mentions.map((m) => (
+                <span key={m.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  background: 'var(--accent-soft)', color: 'var(--accent)',
+                  borderRadius: 999, padding: '2px 8px 2px 10px',
+                  fontSize: '0.7rem', fontWeight: 500,
+                }}>
+                  @{m.title.length > 24 ? m.title.slice(0, 22) + '…' : m.title}
+                  <button
+                    onClick={() => setMentions((ms) => ms.filter((x) => x.id !== m.id))}
+                    style={{ background: 'transparent', border: 0, color: 'var(--accent)', cursor: 'pointer', padding: '0 0 0 2px', fontSize: '0.85rem', lineHeight: 1 }}
+                  >×</button>
+                </span>
+              ))}
+            </div>
+          )}
           <SlashMenu draft={draft} onPick={(cmd) => { setDraft(cmd + ' '); inputRef.current?.focus(); }} />
+          <MentionMenu
+            draft={draft}
+            allDocs={allDocs}
+            onPick={(d) => {
+              if (!mentions.find((m) => m.id === d.id)) {
+                setMentions((ms) => [...ms, d]);
+              }
+              // Strip the @query from draft
+              setDraft((cur) => cur.replace(/@[^\s@]*$/, '').trimStart());
+              inputRef.current?.focus();
+            }}
+          />
           <div style={{
             display: 'flex', alignItems: 'flex-end', gap: 8,
             border: 'var(--hairline)', borderRadius: 'var(--r-2)',
@@ -522,6 +575,52 @@ function flash(msg: string) {
   } as CSSStyleDeclaration);
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 1800);
+}
+
+function MentionMenu({
+  draft, allDocs, onPick,
+}: {
+  draft: string; allDocs: IndexDoc[]; onPick: (d: IndexDoc) => void;
+}) {
+  // Match @query at the end of draft (no space after @)
+  const m = draft.match(/@([^\s@]*)$/);
+  if (!m) return null;
+  const q = m[1].toLowerCase();
+  const matches = allDocs
+    .filter((d) => d.title.toLowerCase().includes(q) || d.category.toLowerCase().includes(q))
+    .slice(0, 8);
+  if (matches.length === 0) return null;
+
+  return (
+    <div className="glass" style={{
+      position: 'absolute', left: '0.85rem', right: '0.85rem', bottom: '100%',
+      marginBottom: 8, borderRadius: 'var(--r-2)', overflow: 'hidden',
+      boxShadow: 'var(--shadow-2)', maxHeight: 280, overflowY: 'auto',
+    }}>
+      <div style={{ padding: '6px 12px', fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, borderBottom: 'var(--hairline)' }}>
+        Mention a document
+      </div>
+      {matches.map((d) => (
+        <button
+          key={d.id}
+          onMouseDown={(e) => { e.preventDefault(); onPick(d); }}
+          style={{
+            display: 'flex', flexDirection: 'column', gap: 2,
+            width: '100%', padding: '7px 12px',
+            background: 'transparent', border: 0, cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ fontSize: '0.83rem', fontWeight: 600, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {d.title}
+          </span>
+          <span style={{ fontSize: '0.68rem', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {d.category}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function SlashMenu({ draft, onPick }: { draft: string; onPick: (cmd: string) => void }) {
