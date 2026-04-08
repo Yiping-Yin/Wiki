@@ -2,17 +2,18 @@
  * POST /api/summarize  { id: string }
  *
  * Returns a cached AI summary of a knowledge doc.
- * If no cache exists, calls Claude to generate one and persists to disk.
+ * Uses the LOCAL `claude` CLI — no API key required.
  *
  * Cache: public/knowledge/summaries/<id>.json
- *   { id, summary, bullets: string[], keyTerms: string[], generatedAt }
+ *   { id, summary, bullets[], keyTerms[], generatedAt }
  */
-import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { runClaude } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
+export const maxDuration = 300;
 
 const SUMMARY_DIR = path.join(process.cwd(), 'public', 'knowledge', 'summaries');
 const BODY_DIR = path.join(process.cwd(), 'public', 'knowledge', 'docs');
@@ -24,12 +25,8 @@ function safeId(id: string): string | null {
 
 export async function POST(req: Request) {
   let id: string;
-  try {
-    const j = await req.json();
-    id = j.id;
-  } catch {
-    return Response.json({ error: 'invalid JSON' }, { status: 400 });
-  }
+  try { id = (await req.json()).id; }
+  catch { return Response.json({ error: 'invalid JSON' }, { status: 400 }); }
   const safe = id ? safeId(id) : null;
   if (!safe) return Response.json({ error: 'invalid id' }, { status: 400 });
 
@@ -41,7 +38,6 @@ export async function POST(req: Request) {
     } catch {}
   }
 
-  // Load body
   const bodyPath = path.join(BODY_DIR, `${safe}.json`);
   let body = '';
   let title = safe;
@@ -57,11 +53,7 @@ export async function POST(req: Request) {
     return Response.json({ error: 'doc has no extractable text' }, { status: 422 });
   }
 
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return Response.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });
-
-  const client = new Anthropic({ apiKey: key });
-  const prompt = `Summarize this document. Output STRICT JSON only, no preamble or code fences:
+  const prompt = `Summarize this document. Output STRICT JSON only, no preamble, no code fences:
 
 {
   "summary": "<2-3 sentence overview>",
@@ -71,30 +63,21 @@ export async function POST(req: Request) {
 
 Document title: ${title}
 
-Document text (may contain OCR/extraction artefacts — extract the meaning, ignore formatting noise):
+Document text (may contain OCR artefacts — extract the meaning, ignore formatting noise):
 """
 ${body.slice(0, 12000)}
 """`;
 
   try {
-    const msg = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-6',
-      max_tokens: 700,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const text = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('').trim();
-    // strip code fences if any
+    const text = await runClaude(prompt, { timeoutMs: 180000 });
     const cleaned = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
     let parsed: any;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      // try extracting first {...} block
+    try { parsed = JSON.parse(cleaned); }
+    catch {
       const m = cleaned.match(/\{[\s\S]*\}/);
       if (m) parsed = JSON.parse(m[0]);
       else throw new Error('non-JSON response');
     }
-
     const result = {
       id: safe,
       summary: String(parsed.summary ?? ''),
@@ -102,10 +85,8 @@ ${body.slice(0, 12000)}
       keyTerms: Array.isArray(parsed.keyTerms) ? parsed.keyTerms.slice(0, 12).map(String) : [],
       generatedAt: new Date().toISOString(),
     };
-
     await fs.mkdir(SUMMARY_DIR, { recursive: true });
     await fs.writeFile(cachePath, JSON.stringify(result, null, 2));
-
     return Response.json({ ...result, cached: false });
   } catch (e: any) {
     return Response.json({ error: 'summarization failed: ' + e.message }, { status: 500 });

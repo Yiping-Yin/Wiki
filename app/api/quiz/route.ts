@@ -1,20 +1,16 @@
 /**
  * POST /api/quiz  { id: string }
  *
- * Generates 3 multiple-choice questions from a doc, cached to disk.
- * Cache: public/knowledge/quizzes/<id>.json
- *   { id, questions: [{ q, choices: [a,b,c,d], correct: 0..3, explain }], generatedAt }
- *
- * `id` may be:
- *   - a knowledge doc id (e.g. "unsw-math-3856__keyideas") → loads body from public/knowledge/docs
- *   - a wiki chapter id "wiki/<slug>" → loads MDX from app/wiki/<slug>/page.mdx
+ * Generates 3 multiple-choice questions via the LOCAL `claude` CLI, cached.
+ * No API key required.
  */
-import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { runClaude } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
+export const maxDuration = 300;
 
 const QUIZ_DIR = path.join(process.cwd(), 'public', 'knowledge', 'quizzes');
 const KNOWLEDGE_DIR = path.join(process.cwd(), 'public', 'knowledge', 'docs');
@@ -24,9 +20,7 @@ function safeId(id: string): string | null {
   if (!/^[a-z0-9_\-\u4e00-\u9fa5/]+$/.test(id)) return null;
   return id;
 }
-function cacheKey(id: string): string {
-  return id.replace(/\//g, '__');
-}
+function cacheKey(id: string): string { return id.replace(/\//g, '__'); }
 
 async function loadBody(id: string): Promise<{ body: string; title: string } | null> {
   if (id.startsWith('wiki/')) {
@@ -64,10 +58,6 @@ export async function POST(req: Request) {
     return Response.json({ error: 'doc too short to quiz' }, { status: 422 });
   }
 
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return Response.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });
-
-  const client = new Anthropic({ apiKey: key });
   const prompt = `Create 3 multiple-choice questions to test understanding of this document. Output STRICT JSON, no preamble or fences:
 
 {
@@ -84,8 +74,8 @@ export async function POST(req: Request) {
 Rules:
 - Test conceptual understanding, not trivia
 - "correct" is the 0-indexed position of the right answer
-- Distractors should be plausible, not obviously wrong
-- Vary question difficulty (one easy, one medium, one hard)
+- Distractors should be plausible
+- One easy, one medium, one hard
 
 Document title: ${doc.title}
 
@@ -95,12 +85,7 @@ ${doc.body.slice(0, 12000)}
 """`;
 
   try {
-    const msg = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-6',
-      max_tokens: 1200,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const text = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('').trim();
+    const text = await runClaude(prompt, { timeoutMs: 180000 });
     const cleaned = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
     let parsed: any;
     try { parsed = JSON.parse(cleaned); }
