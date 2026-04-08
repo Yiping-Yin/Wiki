@@ -876,6 +876,32 @@ function MessageBubble({
     flash('✓ Saved to notes');
   };
 
+  const insertAtCursor = () => {
+    // Try to insert into the most-recently focused textarea/input
+    const ta = document.activeElement as HTMLElement | null;
+    if (ta && (ta.tagName === 'TEXTAREA' || (ta.tagName === 'INPUT' && (ta as HTMLInputElement).type === 'text'))) {
+      const el = ta as HTMLTextAreaElement;
+      const start = el.selectionStart ?? el.value.length;
+      const end = el.selectionEnd ?? start;
+      const next = el.value.slice(0, start) + message.content + el.value.slice(end);
+      // React-controlled inputs need a synthetic event
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set
+        ?? Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      if (setter) {
+        setter.call(el, next);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.selectionStart = el.selectionEnd = start + message.content.length;
+      } else {
+        el.value = next;
+      }
+      flash('✓ Inserted');
+      return;
+    }
+    // No focused field — broadcast for any listeners
+    window.dispatchEvent(new CustomEvent('wiki:insert-text', { detail: { text: message.content } }));
+    flash('⚠ Click into a text field first');
+  };
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -917,7 +943,8 @@ function MessageBubble({
           paddingLeft: 4,
         }}>
           <button onClick={copy} style={msgActionStyle} title="Copy">📋</button>
-          <button onClick={saveToNotes} style={msgActionStyle} title="Save to current doc's notes">📝</button>
+          <button onClick={insertAtCursor} style={msgActionStyle} title="Insert at cursor in focused field">⤵</button>
+          <button onClick={saveToNotes} style={msgActionStyle} title="Append to current doc's notes">📝</button>
         </div>
       )}
     </div>
