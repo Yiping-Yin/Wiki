@@ -3,10 +3,13 @@ import type { ReactNode } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { CopyButtonInjector } from '../components/CopyButton';
 import { RAGChat } from '../components/RAGChat';
+import { ScrollProgress } from '../components/ScrollProgress';
+import { SelectionMenu } from '../components/SelectionMenu';
+import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 
 export const metadata = {
-  title: 'LLM Wiki — Karpathy LLM101n Knowledge Base',
-  description: 'A Notion-style wiki for learning LLMs from Karpathy LLM101n & Zero to Hero.',
+  title: 'My Personal Wiki',
+  description: 'Notion-style knowledge base over your local notes + LLM reference library.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -20,11 +23,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
+        <ScrollProgress />
         <div className="layout">
           <Sidebar />
           <main>{children}</main>
         </div>
         <CopyButtonInjector />
+        <SelectionMenu />
+        <KeyboardShortcuts />
         <RAGChat />
       </body>
     </html>

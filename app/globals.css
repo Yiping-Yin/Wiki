@@ -73,11 +73,25 @@ body {
   margin: 2.4rem 0 0.9rem; letter-spacing: -0.012em;
   line-height: 1.3; scroll-margin-top: 2rem;
   padding-bottom: 0.3rem; border-bottom: 1px solid var(--border);
+  position: relative;
 }
 .prose-notion h3 {
   font-size: 1.2rem; font-weight: 700;
   margin: 1.8rem 0 0.6rem; letter-spacing: -0.01em;
   scroll-margin-top: 2rem;
+  position: relative;
+}
+.prose-notion h2[id]::before, .prose-notion h3[id]::before {
+  content: '#';
+  position: absolute;
+  left: -1.4rem;
+  color: var(--muted);
+  opacity: 0;
+  font-weight: 400;
+  transition: opacity 0.15s;
+}
+.prose-notion h2[id]:hover::before, .prose-notion h3[id]:hover::before {
+  opacity: 0.6;
 }
 .prose-notion h4 { font-size: 1.05rem; font-weight: 700; margin: 1.4rem 0 0.4rem; }
 .prose-notion p  { margin: 0.95rem 0; }
