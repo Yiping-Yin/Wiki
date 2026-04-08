@@ -11,7 +11,7 @@ import { DocNotes } from '../../../../components/DocNotes';
 import { DocQuiz } from '../../../../components/DocQuiz';
 import { BackLinks } from '../../../../components/BackLinks';
 import { StructuredView } from '../../../../components/StructuredView';
-import { CollapsiblePdf } from '../../../../components/CollapsiblePdf';
+import { DocViewer } from '../../../../components/DocViewer';
 import { TableOfContents } from '../../../../components/TableOfContents';
 
 export const dynamic = 'force-dynamic';
@@ -38,13 +38,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
   const cat = knowledgeCategories.find((c) => c.slug === category);
   const { prev, next } = neighborsInCategory(category, slug);
 
-  const isPDF = doc.ext === '.pdf';
   const sourceUrl = `/api/source?p=${encodeURIComponent(doc.sourcePath)}`;
-
-  const paragraphs = body
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
 
   return (
     <div className="with-toc">
@@ -66,28 +60,12 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
           <Link href={`/atlas?focus=${encodeURIComponent('know/' + doc.id)}`}>🗺 view on atlas</Link>
         </div>
 
+        {/* Native viewer first — PDF iframe / CSV table / JSON tree / IPYNB cells / TXT prose */}
+        <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+
+        {/* AI augmentations below the original */}
         <DocSummary id={doc.id} />
         <StructuredView id={doc.id} />
-
-        {isPDF && <CollapsiblePdf src={sourceUrl} title={doc.title} />}
-
-        {paragraphs.length > 0 && (
-          <details style={{ marginTop: '1.2rem' }}>
-            <summary style={{ cursor: 'pointer', color: 'var(--muted)', fontSize: '0.85rem', padding: '0.4rem 0' }}>
-              Show raw extracted text ({paragraphs.length} paragraphs)
-            </summary>
-            <div style={{ marginTop: '0.6rem' }}>
-              {paragraphs.slice(0, 200).map((p, i) => (
-                <p key={i} style={{ fontSize: '0.92rem', color: 'var(--muted)' }}>{p}</p>
-              ))}
-              {paragraphs.length > 200 && (
-                <p style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>
-                  … {paragraphs.length - 200} more paragraphs truncated.
-                </p>
-              )}
-            </div>
-          </details>
-        )}
 
         <DocQuiz id={doc.id} />
         <DocNotes id={`know/${doc.id}`} />
