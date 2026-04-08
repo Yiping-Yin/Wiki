@@ -9,7 +9,7 @@
  * All notes still live in localStorage `wiki:notes:<docId>` (single source of
  * truth shared with the inline DocNotes component on every doc page).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useNotedIds, useNote } from '../../lib/use-notes';
 import { NoteRenderer } from '../../components/NoteRenderer';
@@ -189,6 +189,52 @@ export default function NotesPage() {
 function NoteEditor({ id, meta }: { id: string; meta: IndexDoc | null }) {
   const [value, setValue] = useNote(id);
   const [mode, setMode] = useState<'edit' | 'preview' | 'split'>('split');
+  const [suggestion, setSuggestion] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const debounce = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // Debounced AI completion
+  useEffect(() => {
+    if (debounce.current) clearTimeout(debounce.current);
+    if (abortRef.current) abortRef.current.abort();
+    setSuggestion('');
+    if (!value || value.length < 12) return;
+    // only suggest if the user just typed (not on initial load or right after acceptance)
+    const lastChar = value[value.length - 1];
+    if (lastChar !== ' ' && lastChar !== '\n' && lastChar !== '.' && lastChar !== ',') return;
+
+    debounce.current = window.setTimeout(async () => {
+      setSuggesting(true);
+      abortRef.current = new AbortController();
+      try {
+        const r = await fetch('/api/complete', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            context: value,
+            doc: meta ? { title: meta.title } : undefined,
+          }),
+          signal: abortRef.current.signal,
+        });
+        if (!r.ok) return;
+        const j = await r.json();
+        const s = (j.suggestion ?? '').trim();
+        if (s.length > 1) setSuggestion(s);
+      } catch {} finally { setSuggesting(false); }
+    }, 1500);
+    return () => { if (debounce.current) clearTimeout(debounce.current); };
+  }, [value, meta]);
+
+  const accept = () => {
+    if (!suggestion) return;
+    const sep = value.endsWith(' ') || value.endsWith('\n') ? '' : ' ';
+    setValue(value + sep + suggestion);
+    setSuggestion('');
+    setTimeout(() => taRef.current?.focus(), 30);
+  };
+  const dismiss = () => setSuggestion('');
 
   return (
     <>
@@ -245,10 +291,15 @@ function NoteEditor({ id, meta }: { id: string; meta: IndexDoc | null }) {
       {/* Editor body */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {(mode === 'edit' || mode === 'split') && (
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
             <textarea
+              ref={taRef}
               value={value}
               onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab' && suggestion) { e.preventDefault(); accept(); }
+                else if (e.key === 'Escape' && suggestion) { e.preventDefault(); dismiss(); }
+              }}
               placeholder="Markdown welcome. Use [[Doc title]] to link to other wiki/knowledge pages."
               style={{
                 flex: 1,
@@ -259,6 +310,48 @@ function NoteEditor({ id, meta }: { id: string; meta: IndexDoc | null }) {
                 outline: 'none', resize: 'none',
               }}
             />
+            {/* AI suggestion pill */}
+            {(suggesting || suggestion) && (
+              <div style={{
+                position: 'absolute', bottom: 14, left: 14, right: 14,
+                padding: '0.6rem 0.85rem',
+                background: 'var(--bg-translucent)',
+                backdropFilter: 'saturate(180%) blur(20px)',
+                WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+                border: '0.5px solid var(--accent)',
+                borderRadius: 'var(--r-2)',
+                boxShadow: 'var(--shadow-2)',
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                fontSize: '0.83rem', lineHeight: 1.5,
+              }}>
+                <span style={{ color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>✦</span>
+                <div style={{ flex: 1, minWidth: 0, color: suggestion ? 'var(--fg)' : 'var(--muted)' }}>
+                  {suggestion || 'thinking…'}
+                </div>
+                {suggestion && (
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    <button
+                      onClick={accept}
+                      style={{
+                        background: 'var(--accent)', color: '#fff',
+                        border: 0, borderRadius: 'var(--r-1)',
+                        padding: '3px 9px', cursor: 'pointer',
+                        fontSize: '0.7rem', fontWeight: 600,
+                      }}
+                    >Tab ↵</button>
+                    <button
+                      onClick={dismiss}
+                      style={{
+                        background: 'transparent', border: 'var(--hairline)',
+                        borderRadius: 'var(--r-1)',
+                        padding: '3px 9px', cursor: 'pointer',
+                        fontSize: '0.7rem', color: 'var(--muted)',
+                      }}
+                    >Esc</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         {mode === 'split' && (
