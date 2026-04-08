@@ -6,6 +6,7 @@ import { chapters } from '../lib/nav';
 import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchBox } from './SearchBox';
+import { useReadingMode } from './ReadingMode';
 import { useHistory } from '../lib/use-history';
 import { usePins } from '../lib/use-pins';
 import chapterMeta from '../lib/chapter-meta.json';
@@ -87,7 +88,10 @@ export function Sidebar() {
               <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--muted)' }}>Personal knowledge base</span>
             </span>
           </Link>
-          <ThemeToggle />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <ReadingToggle />
+            <ThemeToggle />
+          </div>
         </div>
         <SearchBox />
 
@@ -192,6 +196,29 @@ export function Sidebar() {
         </div>
       </aside>
     </>
+  );
+}
+
+function ReadingToggle() {
+  const [on, toggle] = useReadingMode();
+  return (
+    <button
+      onClick={toggle}
+      title={on ? 'Exit reading mode (R)' : 'Reading mode (R)'}
+      aria-label="Toggle reading mode"
+      style={{
+        background: on ? 'var(--accent)' : 'transparent',
+        border: '1px solid var(--border)',
+        borderRadius: 6,
+        padding: '0.3rem 0.55rem',
+        cursor: 'pointer',
+        color: on ? '#fff' : 'var(--fg)',
+        fontSize: '0.85rem',
+        lineHeight: 1,
+      }}
+    >
+      {on ? '📖' : '◉'}
+    </button>
   );
 }
 
