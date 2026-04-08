@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
 import { chapters } from '../lib/nav';
-import { HeroCanvas } from '../components/HeroCanvas';
+import { LiveAtlasHero } from '../components/LiveAtlasHero';
 
 export default function Home() {
   const recent = knowledgeCategories.slice(0, 8);
@@ -14,7 +14,7 @@ export default function Home() {
         color: '#fff', padding: '4rem 2rem 5rem',
         marginBottom: '2.5rem',
       }}>
-        <HeroCanvas />
+        <LiveAtlasHero />
         <div style={{ position: 'relative', maxWidth: 900, margin: '0 auto', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
             <div style={{
