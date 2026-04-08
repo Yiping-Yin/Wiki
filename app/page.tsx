@@ -56,32 +56,32 @@ export default function Home() {
 
       <div className="prose-notion" style={{ paddingTop: 0 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.9rem', marginTop: 0 }}>
-          <Link href="/today" style={cardStyle}>
+          <Link href="/today" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>📅</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>Today</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>Daily learning hub</div>
           </Link>
-          <Link href="/knowledge" style={cardStyle}>
+          <Link href="/knowledge" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>📚</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>My Knowledge</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>{knowledgeTotal} docs · {knowledgeCategories.length} categories</div>
           </Link>
-          <Link href="/atlas" style={cardStyle}>
+          <Link href="/atlas" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>🗺</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>Atlas</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>Semantic terrain map</div>
           </Link>
-          <Link href="/wiki/llm101n" style={cardStyle}>
+          <Link href="/wiki/llm101n" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>🤖</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>LLM Reference</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>{chapters.length} chapters</div>
           </Link>
-          <Link href="/graph" style={cardStyle}>
+          <Link href="/graph" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>🕸</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>Graph</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>Force-directed network</div>
           </Link>
-          <Link href="/notes" style={cardStyle}>
+          <Link href="/notes" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>📝</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>My notes</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>Personal annotations</div>

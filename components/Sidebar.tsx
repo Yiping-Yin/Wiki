@@ -1,16 +1,43 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { chapters } from '../lib/nav';
 import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchBox } from './SearchBox';
+import { useHistory } from '../lib/use-history';
 
 export function Sidebar() {
   const [open, setOpen] = useState(false);
   const [llmOpen, setLlmOpen] = useState(false);
   const [knowOpen, setKnowOpen] = useState(true);
   const sections = Array.from(new Set(chapters.map((c) => c.section)));
+  const pathname = usePathname();
+  const [history] = useHistory();
+
+  // Build a Set of viewed wiki slugs and per-category viewed counts
+  const { viewedWikiSlugs, viewedByCategory } = useMemo(() => {
+    const wikiSet = new Set<string>();
+    const catCounts: Record<string, Set<string>> = {};
+    for (const h of history) {
+      // wiki/<slug>
+      const wm = h.id.match(/^wiki\/(.+)$/);
+      if (wm) { wikiSet.add(wm[1]); continue; }
+      // know/<categorySlug>__<fileSlug>
+      const km = h.id.match(/^know\/([^_]+(?:_[^_]+)*)__(.+)$/);
+      if (km) {
+        const cat = km[1];
+        if (!catCounts[cat]) catCounts[cat] = new Set();
+        catCounts[cat].add(km[2]);
+      }
+    }
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(catCounts)) out[k] = v.size;
+    return { viewedWikiSlugs: wikiSet, viewedByCategory: out };
+  }, [history]);
+
+  const isActive = (href: string) => pathname === href;
 
   return (
     <>
@@ -59,14 +86,14 @@ export function Sidebar() {
         <SearchBox />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0' }}>
-          <Link href="/today" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>📅 Today</Link>
-          <Link href="/notes" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>📝 My notes</Link>
-          <Link href="/atlas" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🗺 Knowledge atlas</Link>
-          <Link href="/graph" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🕸 Knowledge graph</Link>
-          <Link href="/demo" style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>🎛 Feature demo</Link>
+          <NavLink href="/today" active={isActive('/today')}>📅 Today</NavLink>
+          <NavLink href="/notes" active={isActive('/notes')}>📝 My notes</NavLink>
+          <NavLink href="/atlas" active={isActive('/atlas')}>🗺 Knowledge atlas</NavLink>
+          <NavLink href="/graph" active={isActive('/graph')}>🕸 Knowledge graph</NavLink>
+          <NavLink href="/demo" active={isActive('/demo')}>🎛 Feature demo</NavLink>
         </div>
 
-        {/* Personal knowledge — at top, expanded by default */}
+        {/* Personal knowledge */}
         <Section title={`📚 My Knowledge (${knowledgeTotal})`} open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}>
           <Link
             href="/knowledge"
@@ -75,40 +102,97 @@ export function Sidebar() {
           >
             All categories
           </Link>
-          {knowledgeCategories.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/knowledge/${c.slug}`}
-              onClick={() => setOpen(false)}
-              style={{ display: 'block', padding: '0.22rem 0.4rem', borderRadius: 4, fontSize: '0.83rem', color: 'var(--fg)' }}
-            >
-              {c.label} <span style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>· {c.count}</span>
-            </Link>
-          ))}
+          {knowledgeCategories.map((c) => {
+            const viewed = viewedByCategory[c.slug] ?? 0;
+            const pct = c.count > 0 ? viewed / c.count : 0;
+            const active = pathname.startsWith(`/knowledge/${c.slug}`);
+            return (
+              <Link
+                key={c.slug}
+                href={`/knowledge/${c.slug}`}
+                onClick={() => setOpen(false)}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '0.22rem 0.4rem', borderRadius: 4, fontSize: '0.83rem',
+                  color: active ? 'var(--accent)' : 'var(--fg)',
+                  background: active ? 'var(--accent-soft)' : 'transparent',
+                  fontWeight: active ? 600 : 400,
+                  position: 'relative',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {viewed === c.count && c.count > 0 && <span style={{ color: '#10b981', marginRight: 4 }}>✓</span>}
+                  {viewed > 0 && viewed < c.count && <span style={{ color: '#10b981', marginRight: 4, opacity: 0.5 }}>◐</span>}
+                  {c.label}
+                </span>
+                <span style={{ color: 'var(--muted)', fontSize: '0.7rem', whiteSpace: 'nowrap', marginLeft: 6, fontVariantNumeric: 'tabular-nums' }}>
+                  {viewed > 0 ? `${viewed}/${c.count}` : c.count}
+                </span>
+              </Link>
+            );
+          })}
         </Section>
 
-        {/* LLM reference wiki — collapsed by default */}
+        {/* LLM reference wiki */}
         <Section title={`🤖 LLM Reference (${chapters.length})`} open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
           {sections.map((sec) => (
             <div key={sec} style={{ marginTop: '0.5rem' }}>
               <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '0.2rem' }}>
                 {sec}
               </div>
-              {chapters.filter((c) => c.section === sec).map((c) => (
-                <Link
-                  key={c.slug}
-                  href={`/wiki/${c.slug}`}
-                  onClick={() => setOpen(false)}
-                  style={{ display: 'block', padding: '0.2rem 0.4rem', borderRadius: 4, fontSize: '0.82rem', color: 'var(--fg)' }}
-                >
-                  {c.title}
-                </Link>
-              ))}
+              {chapters.filter((c) => c.section === sec).map((c) => {
+                const active = pathname === `/wiki/${c.slug}`;
+                const viewed = viewedWikiSlugs.has(c.slug);
+                return (
+                  <Link
+                    key={c.slug}
+                    href={`/wiki/${c.slug}`}
+                    onClick={() => setOpen(false)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '0.2rem 0.4rem', borderRadius: 4, fontSize: '0.82rem',
+                      color: active ? 'var(--accent)' : 'var(--fg)',
+                      background: active ? 'var(--accent-soft)' : 'transparent',
+                      fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {viewed && <span style={{ color: '#10b981', fontSize: '0.7rem' }}>✓</span>}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.title}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </Section>
+
+        {/* Footer with progress */}
+        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: 'var(--hairline)', fontSize: '0.7rem', color: 'var(--muted)' }}>
+          {history.length > 0 ? `${history.length} doc${history.length === 1 ? '' : 's'} visited` : 'Start exploring'}
+          {' · '}
+          <Link href="/today" style={{ color: 'var(--accent)' }}>see progress →</Link>
+        </div>
       </aside>
     </>
+  );
+}
+
+function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        fontSize: '0.85rem',
+        color: active ? 'var(--accent)' : 'var(--muted)',
+        background: active ? 'var(--accent-soft)' : 'transparent',
+        padding: '4px 8px',
+        borderRadius: 6,
+        fontWeight: active ? 600 : 400,
+      }}
+    >
+      {children}
+    </Link>
   );
 }
 
