@@ -462,81 +462,60 @@ export function ChatPanel() {
           transition: 'transform 0.32s var(--ease)',
         }}
       >
-        {/* Header — title row */}
+        {/* Header — single compact row */}
         <div style={{
-          padding: '0.75rem 1.1rem 0.5rem',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 8, position: 'relative',
+          padding: '0.85rem 1rem 0.7rem 1.1rem',
+          display: 'flex', alignItems: 'center', gap: 10,
+          position: 'relative',
         }}>
-          <div style={{
-            fontFamily: 'var(--display)', fontSize: '0.95rem', fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 8,
+          <span aria-hidden style={{
+            color: 'var(--accent)', fontSize: '0.9rem', flexShrink: 0,
+          }}>✦</span>
+          <span style={{
+            fontFamily: 'var(--display)', fontSize: '0.86rem', fontWeight: 600,
+            color: 'var(--fg)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             flex: 1, minWidth: 0,
           }}>
-            <span style={{ color: 'var(--accent)' }}>✦</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {threads.find((t) => t.id === activeThreadId)?.title ?? 'Assistant'}
-            </span>
-          </div>
+            {threads.find((t) => t.id === activeThreadId)?.title ?? 'New chat'}
+          </span>
+          <button
+            onClick={newThread}
+            title="New chat (⌘N)"
+            aria-label="New chat"
+            style={chatHeaderIconStyle}
+          >＋</button>
+          <button
+            onClick={() => setShowHistory((s) => !s)}
+            title={`${threads.length} thread${threads.length === 1 ? '' : 's'}`}
+            aria-label="Show thread history"
+            style={{
+              ...chatHeaderIconStyle,
+              color: showHistory ? 'var(--accent)' : 'var(--muted)',
+              background: showHistory ? 'var(--accent-soft)' : 'transparent',
+            }}
+          >☰</button>
+          <button
+            onClick={() => setModel(model === 'claude' ? 'codex' : 'claude')}
+            disabled={streaming}
+            title={`Model: ${model} — click to switch`}
+            aria-label="Switch model"
+            style={{
+              background: 'transparent', border: 0,
+              color: 'var(--muted)', fontFamily: 'var(--mono)',
+              fontSize: '0.7rem', fontWeight: 500,
+              padding: '4px 8px', borderRadius: 999,
+              cursor: streaming ? 'not-allowed' : 'pointer',
+              letterSpacing: '0.02em',
+              borderBottom: '1.5px solid var(--accent)',
+              opacity: streaming ? 0.5 : 1,
+            }}
+          >{model}</button>
           <button
             onClick={() => setOpen(false)}
             aria-label="Close chat"
-            style={{
-              background: 'transparent', border: 0,
-              cursor: 'pointer', color: 'var(--muted)',
-              fontSize: '1.1rem', padding: '2px 6px', lineHeight: 1,
-            }}
+            style={chatHeaderIconStyle}
           >×</button>
-        </div>
-        {/* Header — actions row */}
-        <div style={{
-          padding: '0 1.1rem 0.7rem',
-          borderBottom: 'var(--hairline)',
-          display: 'flex', alignItems: 'center', gap: 6,
-          position: 'relative',
-        }}>
-          <button
-            onClick={newThread}
-            title="New chat"
-            style={{
-              background: 'var(--accent)',
-              border: 0, color: '#fff',
-              borderRadius: 'var(--r-1)', padding: '4px 10px',
-              cursor: 'pointer',
-              fontSize: '0.72rem', fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >+ New</button>
-          <button
-            onClick={() => setShowHistory((s) => !s)}
-            title="Thread history"
-            style={{
-              background: showHistory ? 'var(--accent-soft)' : 'var(--surface-2)',
-              border: 'var(--hairline)',
-              borderRadius: 'var(--r-1)', padding: '4px 10px',
-              cursor: 'pointer', color: showHistory ? 'var(--accent)' : 'var(--muted)',
-              fontSize: '0.72rem', fontWeight: 500,
-            }}
-          >🕓 {threads.length}</button>
-          <div style={{ flex: 1 }} />
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value as Model)}
-            disabled={streaming}
-            style={{
-              background: 'var(--surface-2)',
-              border: 'var(--hairline)',
-              borderRadius: 'var(--r-1)',
-              padding: '4px 8px',
-              fontSize: '0.72rem',
-              color: 'var(--fg)',
-              fontFamily: 'inherit',
-              cursor: streaming ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <option value="claude">claude</option>
-            <option value="codex">codex</option>
-          </select>
 
           {/* History popover */}
           {showHistory && (
@@ -591,8 +570,9 @@ export function ChatPanel() {
         {/* Messages */}
         <div ref={scrollRef} style={{
           flex: 1, overflowY: 'auto',
-          padding: '1rem',
-          display: 'flex', flexDirection: 'column', gap: '0.9rem',
+          padding: '1.1rem 1.1rem 1.4rem',
+          display: 'flex', flexDirection: 'column', gap: '1.4rem',
+          borderTop: 'var(--hairline)',
         }}>
           {messages.length === 0 && (
             <div style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: 1.55 }}>
@@ -718,8 +698,8 @@ export function ChatPanel() {
               }}
             >{streaming ? 'Stop' : '↑'}</button>
           </div>
-          <div style={{ marginTop: 6, fontSize: '0.66rem', color: 'var(--muted)', textAlign: 'center' }}>
-            ⌘L to toggle · context-aware · local CLI
+          <div style={{ marginTop: 6, fontSize: '0.66rem', color: 'var(--muted)', textAlign: 'center', letterSpacing: '0.01em' }}>
+            ⏎ send · ⇧⏎ newline · ⌘L toggle · {model} (local)
           </div>
         </div>
       </div>
@@ -906,49 +886,61 @@ function MessageBubble({
     flash('⚠ Click into a text field first');
   };
 
+  // Don't render an empty assistant slot before the first chunk arrives —
+  // the streaming cursor is shown inline once content begins, and the
+  // input area already shows the "streaming…" placeholder.
+  if (!isUser && !message.content && !isStreamingLast) return null;
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        alignSelf: isUser ? 'flex-end' : 'flex-start',
-        maxWidth: '92%',
+        alignSelf: 'stretch',
         position: 'relative',
+        paddingLeft: isUser ? 0 : 14,
+        borderLeft: isUser ? 'none' : `2px solid ${isStreamingLast ? 'var(--accent)' : 'transparent'}`,
+        transition: 'border-color 0.2s var(--ease)',
       }}
     >
       <div style={{
-        background: isUser ? 'var(--accent)' : 'var(--surface-2)',
-        color: isUser ? '#fff' : 'var(--fg)',
-        padding: '0.6rem 0.85rem',
-        borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-        fontSize: '0.87rem',
-        lineHeight: 1.55,
-        border: !isUser ? 'var(--hairline)' : '0',
-        boxShadow: 'var(--shadow-1)',
-        wordBreak: 'break-word',
+        fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.09em',
+        fontWeight: 700, color: isUser ? 'var(--accent)' : 'var(--muted)',
+        marginBottom: 4,
       }}>
-        {isUser ? (
-          <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
-        ) : message.content ? (
-          <div className="chat-msg">
-            <NoteRenderer source={message.content} />
-          </div>
-        ) : isStreamingLast ? (
-          <Cursor />
-        ) : null}
+        {isUser ? 'You' : 'Assistant'}
       </div>
+      {isUser ? (
+        <div style={{
+          fontSize: '0.88rem', lineHeight: 1.55,
+          color: 'var(--fg)', whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}>
+          {message.content}
+        </div>
+      ) : message.content ? (
+        <div className="chat-msg" style={{
+          fontSize: '0.88rem', lineHeight: 1.6,
+          color: 'var(--fg)', wordBreak: 'break-word',
+        }}>
+          <NoteRenderer source={message.content} />
+        </div>
+      ) : (
+        <Cursor />
+      )}
 
-      {/* Hover actions for assistant messages */}
+      {/* Text-only hover actions for assistant messages */}
       {!isUser && message.content && (
         <div style={{
-          display: 'flex', gap: 4, marginTop: 4,
+          display: 'flex', gap: 14, marginTop: 8,
           opacity: hovered ? 1 : 0,
-          transition: 'opacity 0.15s var(--ease)',
-          paddingLeft: 4,
+          transition: 'opacity 0.18s var(--ease)',
+          fontSize: '0.7rem', color: 'var(--muted)',
+          fontWeight: 500,
         }}>
-          <button onClick={copy} style={msgActionStyle} title="Copy">📋</button>
-          <button onClick={insertAtCursor} style={msgActionStyle} title="Insert at cursor in focused field">⤵</button>
-          <button onClick={saveToNotes} style={msgActionStyle} title="Append to current doc's notes">📝</button>
+          <button onClick={copy} style={msgActionStyle} title="Copy">Copy</button>
+          <button onClick={insertAtCursor} style={msgActionStyle} title="Insert into focused text field">Insert</button>
+          <button onClick={saveToNotes} style={msgActionStyle} title="Append to current doc's notes">→ Notes</button>
         </div>
       )}
     </div>
@@ -956,11 +948,25 @@ function MessageBubble({
 }
 
 const msgActionStyle: React.CSSProperties = {
-  background: 'var(--surface-2)',
-  border: 'var(--hairline)',
-  borderRadius: 'var(--r-1)',
-  padding: '2px 8px',
+  background: 'transparent',
+  border: 0,
+  padding: 0,
   cursor: 'pointer',
-  fontSize: '0.78rem',
+  fontSize: '0.7rem',
   color: 'var(--muted)',
+  fontFamily: 'inherit',
+  fontWeight: 500,
+};
+
+const chatHeaderIconStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: 0,
+  cursor: 'pointer',
+  color: 'var(--muted)',
+  fontSize: '0.95rem',
+  width: 26, height: 26,
+  borderRadius: 6,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  padding: 0,
+  flexShrink: 0,
 };
