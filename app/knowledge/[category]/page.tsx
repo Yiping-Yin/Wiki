@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { knowledgeCategories } from '../../../lib/knowledge-nav';
 import { docsByCategory } from '../../../lib/knowledge';
 import { BatchRunner } from '../../../components/BatchRunner';
+import { CategoryHero } from '../../../components/CategoryHero';
 
 export function generateStaticParams() {
   return knowledgeCategories.map((c) => ({ category: c.slug }));
@@ -23,13 +24,17 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
 
   return (
     <div className="prose-notion">
-      <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-        <Link href="/knowledge">📚 Knowledge</Link> ›
+      <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.8rem' }}>
+        <Link href="/knowledge">📚 Knowledge</Link>
       </div>
-      <h1>{cat.label}</h1>
-      <p style={{ color: 'var(--muted)' }}>
-        {docs.length} documents · {docs.filter((d) => d.hasText).length} with extracted text
-      </p>
+
+      <CategoryHero
+        label={cat.label}
+        slug={cat.slug}
+        count={docs.length}
+        withText={docs.filter((d) => d.hasText).length}
+      />
+      <h1 style={{ display: 'none' }}>{cat.label}</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.6rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
         <BatchRunner
