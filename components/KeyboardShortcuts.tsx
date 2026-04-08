@@ -46,32 +46,10 @@ export function KeyboardShortcuts() {
     return () => window.removeEventListener('keydown', handler);
   }, [lastG]);
 
-  useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 600);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
+  // Back-to-top moved into FloatingDock; this just owns the help modal + shortcuts.
   return (
     <>
-      {showTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          aria-label="Back to top"
-          title="Back to top (g g)"
-          className="glass"
-          style={{
-            position: 'fixed', bottom: 88, left: 20, zIndex: 50,
-            width: 44, height: 44, borderRadius: '50%',
-            color: 'var(--fg)', cursor: 'pointer',
-            boxShadow: 'var(--shadow-2)',
-            fontSize: '1.1rem',
-            transition: 'transform 0.2s var(--ease-spring)',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-        >↑</button>
-      )}
+      {false && showTop && null}
 
       {showHelp && (
         <div

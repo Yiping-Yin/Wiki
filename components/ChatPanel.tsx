@@ -423,29 +423,15 @@ export function ChatPanel() {
     setMessages([]);
   };
 
+  // Listen for global toggle events from FloatingDock
+  useEffect(() => {
+    const onToggle = () => setOpen((o) => !o);
+    window.addEventListener('wiki:chat:toggle', onToggle);
+    return () => window.removeEventListener('wiki:chat:toggle', onToggle);
+  }, []);
+
   return (
     <>
-      {/* Floating toggle button */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Toggle chat"
-        title="Chat (⌘L)"
-        style={{
-          position: 'fixed', bottom: 20, right: 20, zIndex: 49,
-          width: 56, height: 56, borderRadius: '50%',
-          background: open ? 'var(--surface-2)' : 'var(--accent)',
-          color: open ? 'var(--fg)' : '#fff',
-          border: 'var(--hairline)', cursor: 'pointer',
-          boxShadow: 'var(--shadow-3)',
-          fontSize: '1.4rem',
-          transition: 'transform 0.2s var(--ease-spring), background 0.2s var(--ease)',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-      >
-        {open ? '×' : '✦'}
-      </button>
-
       {/* Drawer */}
       <div
         className="glass"

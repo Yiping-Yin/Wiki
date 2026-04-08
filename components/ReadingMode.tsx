@@ -1,33 +1,47 @@
 'use client';
 /**
- * Reading mode: hides sidebar, TOC, RAGChat, scroll progress.
+ * Reading mode: hides sidebar, TOC, scroll progress, ChatPanel.
  * Press `r` (outside inputs) to toggle. Persists to localStorage.
- * Visible state class: <body class="reading-mode">
+ * No floating button — toggle is in the FloatingDock.
+ *
+ * Other components subscribe via `useReadingMode()`.
  */
 import { useEffect, useState, useCallback } from 'react';
 
 const KEY = 'wiki:reading-mode';
+const EVENT = 'wiki:reading-mode:changed';
 
-export function ReadingMode() {
+export function setReadingMode(on: boolean) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEY, on ? '1' : '0');
+  document.body.classList.toggle('reading-mode', on);
+  window.dispatchEvent(new CustomEvent(EVENT, { detail: { on } }));
+}
+
+export function getReadingMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(KEY) === '1';
+}
+
+export function useReadingMode(): [boolean, () => void] {
   const [on, setOn] = useState(false);
-
-  // initial load
   useEffect(() => {
-    const v = localStorage.getItem(KEY) === '1';
+    const v = getReadingMode();
     setOn(v);
     document.body.classList.toggle('reading-mode', v);
+    const onChange = () => setOn(getReadingMode());
+    window.addEventListener(EVENT, onChange);
+    return () => window.removeEventListener(EVENT, onChange);
   }, []);
+  const toggle = useCallback(() => setReadingMode(!getReadingMode()), []);
+  return [on, toggle];
+}
 
-  const toggle = useCallback(() => {
-    setOn((cur) => {
-      const next = !cur;
-      localStorage.setItem(KEY, next ? '1' : '0');
-      document.body.classList.toggle('reading-mode', next);
-      return next;
-    });
-  }, []);
+export function ReadingMode() {
+  // Just registers the keyboard shortcut + initial body class.
+  // The visible toggle lives in FloatingDock.
+  const [, toggle] = useReadingMode();
 
-  // keyboard shortcut: r (when not in input)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -42,23 +56,5 @@ export function ReadingMode() {
     return () => window.removeEventListener('keydown', handler);
   }, [toggle]);
 
-  return (
-    <button
-      onClick={toggle}
-      title={on ? 'Exit reading mode (R)' : 'Reading mode (R)'}
-      aria-label="Toggle reading mode"
-      style={{
-        position: 'fixed', top: 12, right: 12, zIndex: 95,
-        width: 36, height: 36, borderRadius: '50%',
-        background: on ? 'var(--accent)' : 'var(--bg)',
-        color: on ? '#fff' : 'var(--fg)',
-        border: '1px solid var(--border)',
-        cursor: 'pointer', fontSize: '1rem',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-        transition: 'all 0.15s',
-      }}
-    >
-      {on ? '×' : '◉'}
-    </button>
-  );
+  return null;
 }

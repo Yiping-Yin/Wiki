@@ -11,6 +11,7 @@ import { ReadingMode } from '../components/ReadingMode';
 import { StickyTitle } from '../components/StickyTitle';
 import { QuickSwitcher } from '../components/QuickSwitcher';
 import { DropZone } from '../components/DropZone';
+import { FloatingDock } from '../components/FloatingDock';
 
 export const metadata = {
   title: 'My Personal Wiki',
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <QuickSwitcher />
         <DropZone />
         <ChatPanel />
+        <FloatingDock />
       </body>
     </html>
   );
