@@ -10,6 +10,7 @@ import { LinkPreview } from '../components/LinkPreview';
 import { ReadingMode } from '../components/ReadingMode';
 import { StickyTitle } from '../components/StickyTitle';
 import { QuickSwitcher } from '../components/QuickSwitcher';
+import { DropZone } from '../components/DropZone';
 
 export const metadata = {
   title: 'My Personal Wiki',
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <LinkPreview />
         <ReadingMode />
         <QuickSwitcher />
+        <DropZone />
         <RAGChat />
       </body>
     </html>

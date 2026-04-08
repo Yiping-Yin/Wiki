@@ -92,6 +92,7 @@ export function Sidebar() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0' }}>
           <NavLink href="/today" active={isActive('/today')}>📅 Today</NavLink>
           <NavLink href="/browse" active={isActive('/browse')}>🧭 Browse</NavLink>
+          <NavLink href="/uploads" active={isActive('/uploads')}>📥 Uploads</NavLink>
           <NavLink href="/notes" active={isActive('/notes')}>📝 My notes</NavLink>
         </div>
 
