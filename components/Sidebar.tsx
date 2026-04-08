@@ -97,14 +97,63 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Edge-hover hotzone — invisible 6px strip on left */}
-      <div
-        aria-hidden
-        style={{
-          position: 'fixed', top: 0, left: 0, bottom: 0, width: 6,
-          zIndex: 65,
-        }}
-      />
+      {/* Edge handle — visible vertical pill so users know there's something */}
+      {!visible && (
+        <button
+          onClick={() => setOpen(true)}
+          onMouseEnter={() => setOpen(true)}
+          aria-label="Open sidebar"
+          title="Sidebar (⌘\)"
+          style={{
+            position: 'fixed', top: '50%', left: 0,
+            transform: 'translateY(-50%)',
+            width: 6, height: 56,
+            background: 'var(--border-strong)',
+            borderRadius: '0 6px 6px 0',
+            border: 0, padding: 0, cursor: 'pointer',
+            zIndex: 65,
+            transition: 'width 0.2s var(--ease), background 0.2s var(--ease)',
+          }}
+          onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.width = '8px'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; }}
+          onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.width = '6px'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--border-strong)'; }}
+        />
+      )}
+
+      {/* Mobile / accessible hamburger — top-left, only when not visible */}
+      {!visible && (
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          className="mobile-menu-btn"
+          style={{
+            position: 'fixed', top: 14, left: 14, zIndex: 66,
+            background: 'var(--bg-translucent)',
+            border: 'var(--hairline)',
+            borderRadius: 'var(--r-1)',
+            padding: '0.4rem 0.55rem',
+            cursor: 'pointer',
+            color: 'var(--fg)',
+            backdropFilter: 'saturate(180%) blur(20px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+            boxShadow: 'var(--shadow-1)',
+            fontSize: '0.9rem',
+            lineHeight: 1,
+          }}
+        >☰</button>
+      )}
+
+      {/* Backdrop when overlay is open (not pinned) */}
+      {open && !pinned && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 68,
+            background: 'rgba(0,0,0,0.15)',
+            backdropFilter: 'blur(2px)',
+            WebkitBackdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
 
       <aside
         className={`sidebar glass ${visible ? 'open' : ''}`}
