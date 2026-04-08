@@ -12,9 +12,39 @@
  *  - ⌘L global shortcut to toggle
  *  - Apple-style glass drawer
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { NoteRenderer } from './NoteRenderer';
+
+type IndexDoc = { id: string; title: string; href: string; category: string };
+let _idxCache: IndexDoc[] | null = null;
+async function loadIndexDocs(): Promise<IndexDoc[]> {
+  if (_idxCache) return _idxCache;
+  try {
+    const r = await fetch('/search-index.json');
+    if (!r.ok) return [];
+    const payload = await r.json();
+    const stored = payload.index?.storedFields ?? {};
+    const docIds = payload.index?.documentIds ?? {};
+    const out: IndexDoc[] = [];
+    for (const [internal, fields] of Object.entries<any>(stored)) {
+      if (!fields?.title || !fields?.href) continue;
+      out.push({ id: String(docIds[internal] ?? internal), title: fields.title, href: fields.href, category: fields.category ?? '' });
+    }
+    _idxCache = out;
+    return out;
+  } catch { return []; }
+}
+
+const SLASH_COMMANDS: { name: string; description: string }[] = [
+  { name: '/help',      description: 'List available commands' },
+  { name: '/clear',     description: 'Clear the conversation' },
+  { name: '/page',      description: 'Inject the current page content as context' },
+  { name: '/summarize', description: 'Summarize the current page' },
+  { name: '/quiz',      description: 'Quiz me on the current page' },
+  { name: '/find',      description: '/find <query> · search the wiki and post results' },
+  { name: '/explain',   description: 'Explain my current selection' },
+];
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Model = 'claude' | 'codex';
@@ -76,10 +106,8 @@ export function ChatPanel() {
   const buildContext = (): string => {
     const ctx: string[] = [];
     ctx.push(`Current path: ${pathname}`);
-    // Try to capture H1 of the visible page
     const h1 = document.querySelector('main h1')?.textContent?.trim();
     if (h1) ctx.push(`Current page title: ${h1}`);
-    // Try to capture current selection if any
     const sel = window.getSelection()?.toString().trim();
     if (sel && sel.length > 4 && sel.length < 2000) {
       ctx.push(`User has selected the following text on the page:\n"""${sel}"""`);
@@ -87,15 +115,113 @@ export function ChatPanel() {
     return ctx.join('\n');
   };
 
+  // Slash command handler — runs locally before sending to /api/chat
+  const handleSlashCommand = async (raw: string): Promise<boolean> => {
+    const trimmed = raw.trim();
+    if (!trimmed.startsWith('/')) return false;
+    const [cmd, ...rest] = trimmed.split(/\s+/);
+    const arg = rest.join(' ').trim();
+
+    const pushMsg = (m: Msg) => setMessages((prev) => [...prev, m]);
+
+    switch (cmd) {
+      case '/help': {
+        pushMsg({ role: 'user', content: trimmed });
+        pushMsg({
+          role: 'assistant',
+          content: '**Slash commands:**\n\n' + SLASH_COMMANDS.map((c) => `- \`${c.name}\` — ${c.description}`).join('\n') + '\n\nYou can also use **`@title`** to mention any wiki document.',
+        });
+        return true;
+      }
+      case '/clear': {
+        clear();
+        return true;
+      }
+      case '/page': {
+        const h1 = document.querySelector('main h1')?.textContent?.trim() ?? '(no page)';
+        const text = Array.from(document.querySelectorAll('main p, main li, main h2, main h3'))
+          .map((el) => el.textContent?.trim() ?? '').filter(Boolean).join('\n').slice(0, 4000);
+        pushMsg({ role: 'user', content: trimmed });
+        pushMsg({
+          role: 'assistant',
+          content: `📄 **${h1}** has been added to the conversation context. Ask away.`,
+        });
+        // Inject as a fake context message that will be passed next turn
+        setStickyContext(`Page being discussed:\n# ${h1}\n${text}`);
+        return true;
+      }
+      case '/summarize': {
+        setDraft('');
+        await actualSend(`Summarize the current page concisely in 5 bullets and one key formula if applicable.`);
+        return true;
+      }
+      case '/quiz': {
+        setDraft('');
+        await actualSend(`Quiz me with 3 multiple-choice questions about the current page (one easy, one medium, one hard). Show choices A-D, mark the correct answer, and explain.`);
+        return true;
+      }
+      case '/explain': {
+        const sel = window.getSelection()?.toString().trim();
+        if (!sel) {
+          pushMsg({ role: 'user', content: trimmed });
+          pushMsg({ role: 'assistant', content: '⚠ Nothing is selected. Highlight some text on the page first, then run `/explain`.' });
+          return true;
+        }
+        setDraft('');
+        await actualSend(`Explain in 3-5 sentences what this selection means: """${sel}"""`);
+        return true;
+      }
+      case '/find': {
+        if (!arg) {
+          pushMsg({ role: 'user', content: trimmed });
+          pushMsg({ role: 'assistant', content: 'Usage: `/find <query>`' });
+          return true;
+        }
+        pushMsg({ role: 'user', content: trimmed });
+        try {
+          const docs = await loadIndexDocs();
+          const matches = docs
+            .filter((d) => d.title.toLowerCase().includes(arg.toLowerCase()) || d.category.toLowerCase().includes(arg.toLowerCase()))
+            .slice(0, 12);
+          if (matches.length === 0) {
+            pushMsg({ role: 'assistant', content: `No matches for **${arg}**.` });
+          } else {
+            const list = matches.map((m) => `- [${m.title}](${m.href}) · *${m.category}*`).join('\n');
+            pushMsg({ role: 'assistant', content: `Found **${matches.length}** matches for **${arg}**:\n\n${list}` });
+          }
+        } catch (e: any) {
+          pushMsg({ role: 'assistant', content: `⚠ ${e.message}` });
+        }
+        return true;
+      }
+      default: {
+        pushMsg({ role: 'user', content: trimmed });
+        pushMsg({ role: 'assistant', content: `Unknown command **${cmd}**. Try \`/help\`.` });
+        return true;
+      }
+    }
+  };
+
+  const [stickyContext, setStickyContext] = useState<string>('');
+
   const send = async () => {
     const text = draft.trim();
     if (!text || streaming) return;
+    setDraft('');
+    if (text.startsWith('/')) {
+      await handleSlashCommand(text);
+      return;
+    }
+    await actualSend(text);
+  };
 
+  const actualSend = async (text: string) => {
     const userMsg: Msg = { role: 'user', content: text };
     const next = [...messages, userMsg, { role: 'assistant' as const, content: '' }];
     setMessages(next);
-    setDraft('');
     setStreaming(true);
+
+    const ctx = [buildContext(), stickyContext].filter(Boolean).join('\n\n');
 
     abortRef.current = new AbortController();
     try {
@@ -105,7 +231,7 @@ export function ChatPanel() {
         body: JSON.stringify({
           messages: [...messages, userMsg],
           model,
-          context: buildContext(),
+          context: ctx,
         }),
         signal: abortRef.current.signal,
       });
@@ -300,7 +426,20 @@ export function ChatPanel() {
         </div>
 
         {/* Input */}
-        <div style={{ padding: '0.7rem 0.85rem', borderTop: 'var(--hairline)' }}>
+        <div style={{ padding: '0.7rem 0.85rem', borderTop: 'var(--hairline)', position: 'relative' }}>
+          {/* Sticky context indicator */}
+          {stickyContext && (
+            <div style={{
+              marginBottom: 6, padding: '4px 10px',
+              background: 'var(--accent-soft)', color: 'var(--accent)',
+              borderRadius: 'var(--r-1)', fontSize: '0.7rem',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <span>📎 Page context attached</span>
+              <button onClick={() => setStickyContext('')} style={{ background: 'transparent', border: 0, color: 'var(--accent)', cursor: 'pointer', fontSize: '0.7rem' }}>×</button>
+            </div>
+          )}
+          <SlashMenu draft={draft} onPick={(cmd) => { setDraft(cmd + ' '); inputRef.current?.focus(); }} />
           <div style={{
             display: 'flex', alignItems: 'flex-end', gap: 8,
             border: 'var(--hairline)', borderRadius: 'var(--r-2)',
@@ -383,6 +522,39 @@ function flash(msg: string) {
   } as CSSStyleDeclaration);
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 1800);
+}
+
+function SlashMenu({ draft, onPick }: { draft: string; onPick: (cmd: string) => void }) {
+  if (!draft.startsWith('/') || draft.includes(' ')) return null;
+  const q = draft.slice(1).toLowerCase();
+  const matches = SLASH_COMMANDS.filter((c) => c.name.slice(1).toLowerCase().startsWith(q));
+  if (matches.length === 0) return null;
+  return (
+    <div className="glass" style={{
+      position: 'absolute', left: '0.85rem', right: '0.85rem', bottom: '100%',
+      marginBottom: 8, borderRadius: 'var(--r-2)', overflow: 'hidden',
+      boxShadow: 'var(--shadow-2)', maxHeight: 240, overflowY: 'auto',
+    }}>
+      <div style={{ padding: '6px 12px', fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, borderBottom: 'var(--hairline)' }}>
+        Commands
+      </div>
+      {matches.map((c) => (
+        <button
+          key={c.name}
+          onClick={() => onPick(c.name)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            width: '100%', padding: '8px 12px',
+            background: 'transparent', border: 0, cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--mono)', fontSize: '0.78rem', color: 'var(--accent)', fontWeight: 600 }}>{c.name}</span>
+          <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>{c.description}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function MessageBubble({
