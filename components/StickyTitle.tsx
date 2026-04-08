@@ -62,42 +62,51 @@ export function StickyTitle() {
   if (!pinned || !title) return null;
 
   return (
-    <div
+    <button
       className="glass sticky-title"
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      title={`${title} — click to scroll to top`}
+      aria-label={`${title}. Click to scroll to top.`}
       style={{
-        position: 'fixed', top: 0, right: 0, zIndex: 40,
-        padding: '0.55rem 1.2rem',
-        display: 'flex', alignItems: 'center', gap: 12,
-        borderBottom: 'var(--hairline)',
-        animation: 'lpFade 0.2s var(--ease)',
+        position: 'fixed', top: 12, zIndex: 40,
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '7px 16px 7px 14px',
+        borderRadius: 999,
+        border: 'var(--hairline)',
+        boxShadow: 'var(--shadow-2)',
+        cursor: 'pointer',
+        color: 'var(--fg)',
+        maxWidth: 'min(560px, calc(100vw - 32px))',
+        animation: 'stickyPillIn 0.24s var(--ease)',
+        font: 'inherit',
       }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateX(-50%) translateY(-1px)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateX(-50%) translateY(0)'; }}
     >
+      <span aria-hidden style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 18, height: 18, borderRadius: 999,
+        background: 'var(--accent-soft)', color: 'var(--accent)',
+        fontSize: 11, lineHeight: 1, flexShrink: 0,
+      }}>↑</span>
       {crumb && (
-        <span style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>
-          {crumb}
-        </span>
+        <span style={{
+          fontSize: '0.7rem', color: 'var(--muted)',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          maxWidth: 140, flexShrink: 0,
+        }}>{crumb}</span>
       )}
+      {crumb && <span aria-hidden style={{ color: 'var(--border-strong)', fontSize: '0.7rem' }}>·</span>}
       <span
         style={{
-          fontFamily: 'var(--display)', fontSize: '0.95rem', fontWeight: 600,
+          fontFamily: 'var(--display)', fontSize: '0.86rem', fontWeight: 600,
           letterSpacing: '-0.01em',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          flex: 1, minWidth: 0,
+          minWidth: 0,
         }}
-        title={title}
       >
         {title}
       </span>
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        aria-label="Back to top"
-        style={{
-          background: 'transparent', border: 'var(--hairline)',
-          borderRadius: 'var(--r-1)', padding: '4px 10px',
-          cursor: 'pointer', color: 'var(--muted)', fontSize: '0.72rem',
-          whiteSpace: 'nowrap',
-        }}
-      >↑ top</button>
-    </div>
+    </button>
   );
 }
