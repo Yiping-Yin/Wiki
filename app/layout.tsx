@@ -8,7 +8,6 @@ import { SelectionMenu } from '../components/SelectionMenu';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
 import { ReadingMode } from '../components/ReadingMode';
-import { StickyTitle } from '../components/StickyTitle';
 import { QuickSwitcher } from '../components/QuickSwitcher';
 import { DropZone } from '../components/DropZone';
 import { FloatingDock } from '../components/FloatingDock';
@@ -31,7 +30,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ScrollProgress />
-        <StickyTitle />
         <div className="layout">
           <Sidebar />
           <main>{children}</main>

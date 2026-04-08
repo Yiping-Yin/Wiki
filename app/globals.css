@@ -325,17 +325,9 @@ html:not(.dark) [data-theme='dark'] { display: none; }
 .browse-row::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 .browse-row::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-/* StickyTitle: floating centered pill */
-.sticky-title { left: 50%; transform: translateX(-50%); transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease); }
-.sticky-title:hover { box-shadow: var(--shadow-3); }
-/* On full-bleed pages (atlas/graph), hide entirely — they have their own UI */
-body:has(main > div[style*="height: 100vh"]) .sticky-title { display: none; }
-/* StickyTitle hides in reading mode */
-body.reading-mode .sticky-title { display: none !important; }
-@keyframes stickyPillIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
+/* ScrollProgress: thin top strip — hidden on full-bleed and reading mode */
+body:has(main > div[style*="height: 100vh"]) .scroll-progress { display: none; }
+body.reading-mode .scroll-progress { display: none !important; }
 
 /* Apple-style focus ring */
 :focus-visible {
