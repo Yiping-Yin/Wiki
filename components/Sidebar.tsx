@@ -170,38 +170,37 @@ export function Sidebar() {
           boxShadow: visible && !pinned ? 'var(--shadow-3)' : 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.7rem', gap: 6 }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', minWidth: 0, flex: 1 }}>
             <span style={{
-              width: 32, height: 32, borderRadius: 8,
+              width: 30, height: 30, borderRadius: 7,
               background: 'linear-gradient(135deg, #7c3aed, #4338ca)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1rem',
+              fontSize: '0.95rem',
+              flexShrink: 0,
             }}>📚</span>
-            <span>
-              <span style={{ display: 'block', fontWeight: 800, fontSize: '0.95rem', color: 'var(--fg)' }}>My Wiki</span>
-              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--muted)' }}>Personal knowledge base</span>
+            <span style={{ minWidth: 0, overflow: 'hidden' }}>
+              <span style={{ display: 'block', fontWeight: 800, fontSize: '0.92rem', color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>My Wiki</span>
             </span>
           </Link>
-          <div style={{ display: 'flex', gap: 4 }}>
-            <button
-              onClick={togglePin}
-              title={pinned ? 'Unpin sidebar (auto-hide)' : 'Pin sidebar (always show)'}
-              aria-label="Pin sidebar"
-              style={{
-                background: pinned ? 'var(--accent)' : 'transparent',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                padding: '0.3rem 0.55rem',
-                cursor: 'pointer',
-                color: pinned ? '#fff' : 'var(--fg)',
-                fontSize: '0.85rem',
-                lineHeight: 1,
-              }}
-            >📌</button>
-            <ReadingToggle />
-            <ThemeToggle />
-          </div>
+          <button
+            onClick={togglePin}
+            title={pinned ? 'Unpin sidebar' : 'Pin sidebar'}
+            aria-label="Pin sidebar"
+            style={{
+              background: pinned ? 'var(--accent)' : 'transparent',
+              border: 0,
+              borderRadius: 6,
+              padding: '0.25rem 0.4rem',
+              cursor: 'pointer',
+              color: pinned ? '#fff' : 'var(--muted)',
+              fontSize: '0.78rem',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >📌</button>
+          <ReadingToggle />
+          <ThemeToggle />
         </div>
         <SearchBox />
 
@@ -318,13 +317,14 @@ function ReadingToggle() {
       aria-label="Toggle reading mode"
       style={{
         background: on ? 'var(--accent)' : 'transparent',
-        border: '1px solid var(--border)',
+        border: 0,
         borderRadius: 6,
-        padding: '0.3rem 0.55rem',
+        padding: '0.25rem 0.4rem',
         cursor: 'pointer',
-        color: on ? '#fff' : 'var(--fg)',
-        fontSize: '0.85rem',
+        color: on ? '#fff' : 'var(--muted)',
+        fontSize: '0.78rem',
         lineHeight: 1,
+        flexShrink: 0,
       }}
     >
       {on ? '📖' : '◉'}
