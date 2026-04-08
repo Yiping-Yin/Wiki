@@ -7,6 +7,10 @@ import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchBox } from './SearchBox';
 import { useHistory } from '../lib/use-history';
+import chapterMeta from '../lib/chapter-meta.json';
+
+type ChMeta = { hasVideo?: boolean; hasMath?: boolean; hasCode?: boolean; hasMermaid?: boolean; hasPdf?: boolean; hasWidget?: boolean; wordCount?: number };
+const META = chapterMeta as Record<string, ChMeta>;
 
 export function Sidebar() {
   const [open, setOpen] = useState(false);
@@ -141,23 +145,35 @@ export function Sidebar() {
               {chapters.filter((c) => c.section === sec).map((c) => {
                 const active = pathname === `/wiki/${c.slug}`;
                 const viewed = viewedWikiSlugs.has(c.slug);
+                const m = META[c.slug] ?? {};
                 return (
                   <Link
                     key={c.slug}
                     href={`/wiki/${c.slug}`}
                     onClick={() => setOpen(false)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '0.2rem 0.4rem', borderRadius: 4, fontSize: '0.82rem',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '0.22rem 0.4rem', borderRadius: 4, fontSize: '0.82rem',
                       color: active ? 'var(--accent)' : 'var(--fg)',
                       background: active ? 'var(--accent-soft)' : 'transparent',
                       fontWeight: active ? 600 : 400,
                     }}
                   >
                     {viewed && <span style={{ color: '#10b981', fontSize: '0.7rem' }}>✓</span>}
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {c.title}
                     </span>
+                    {m.hasVideo && (
+                      <span title="Has YouTube video" style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 14, height: 11, borderRadius: 2,
+                        background: '#dc2626', color: '#fff',
+                        fontSize: '0.55rem', fontWeight: 700, flexShrink: 0,
+                      }}>▶</span>
+                    )}
+                    {m.hasWidget && (
+                      <span title="Interactive widget" style={{ fontSize: '0.7rem', color: '#7c3aed', flexShrink: 0 }}>◉</span>
+                    )}
                   </Link>
                 );
               })}

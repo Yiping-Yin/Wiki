@@ -47,7 +47,9 @@ export function TableOfContents({ docId, docTitle }: { docId?: string; docTitle?
               href={`#${it.id}`}
               style={{
                 display: 'block',
-                padding: it.level === 3 ? '0.22rem 0 0.22rem 1.1rem' : '0.22rem 0 0.22rem 0.6rem',
+                padding: it.level === 3 ? '0.22rem 0 0.22rem 1.5rem' : '0.26rem 0 0.26rem 0.6rem',
+              fontSize: it.level === 3 ? '0.78rem' : '0.82rem',
+              opacity: it.level === 3 ? 0.85 : 1,
                 color: active === it.id ? 'var(--accent)' : 'var(--muted)',
                 borderLeft: active === it.id ? '2.5px solid var(--accent)' : '2.5px solid transparent',
                 fontWeight: active === it.id ? 600 : 400,

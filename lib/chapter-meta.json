@@ -1,0 +1,425 @@
+{
+  "llm101n": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": false,
+    "hasMermaid": false,
+    "hasPdf": false,
+    "hasWidget": false,
+    "wordCount": 379
+  },
+  "micrograd": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 230
+  },
+  "makemore-bigram": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": true,
+    "wordCount": 180
+  },
+  "mlp": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 115
+  },
+  "batchnorm": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": true,
+    "wordCount": 115
+  },
+  "backprop-ninja": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": false,
+    "hasWidget": false,
+    "wordCount": 109
+  },
+  "wavenet": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 128
+  },
+  "attention": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": true,
+    "wordCount": 197
+  },
+  "transformer": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 290
+  },
+  "tokenization": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 271
+  },
+  "state-of-gpt": {
+    "hasVideo": true,
+    "hasMath": true,
+    "hasCode": false,
+    "hasMermaid": true,
+    "hasPdf": false,
+    "hasWidget": false,
+    "wordCount": 220
+  },
+  "rope": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 653
+  },
+  "alibi": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 724
+  },
+  "rmsnorm": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 699
+  },
+  "swiglu": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 667
+  },
+  "moe": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 717
+  },
+  "mamba": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 734
+  },
+  "gqa-mqa": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 736
+  },
+  "scaling-laws": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 854
+  },
+  "fsdp-zero": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 648
+  },
+  "tensor-pipeline-parallel": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 703
+  },
+  "mixed-precision": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 763
+  },
+  "muP": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 727
+  },
+  "data-curation": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 796
+  },
+  "synthetic-data": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 784
+  },
+  "kv-cache": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 163
+  },
+  "quantization": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": false,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 256
+  },
+  "flash-attention": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 696
+  },
+  "speculative-decoding": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 617
+  },
+  "vllm-paged": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 762
+  },
+  "yarn-rope-scaling": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 702
+  },
+  "lora": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 221
+  },
+  "rlhf": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": false,
+    "hasMermaid": false,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 204
+  },
+  "dpo": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 662
+  },
+  "grpo": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 767
+  },
+  "constitutional-ai": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 887
+  },
+  "instruction-tuning": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 647
+  },
+  "react-agents": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 710
+  },
+  "reflexion": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 663
+  },
+  "reasoning-models": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 741
+  },
+  "benchmarks": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 781
+  },
+  "llm-as-judge": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 784
+  },
+  "multimodal": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": false,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 227
+  },
+  "nanochat": {
+    "hasVideo": false,
+    "hasMath": false,
+    "hasCode": true,
+    "hasMermaid": false,
+    "hasPdf": false,
+    "hasWidget": false,
+    "wordCount": 298
+  },
+  "interpretability": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 737
+  },
+  "watermarking": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 777
+  },
+  "jailbreaks": {
+    "hasVideo": false,
+    "hasMath": true,
+    "hasCode": true,
+    "hasMermaid": true,
+    "hasPdf": true,
+    "hasWidget": false,
+    "wordCount": 782
+  }
+}

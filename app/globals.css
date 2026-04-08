@@ -213,7 +213,14 @@ body {
   box-shadow: var(--shadow-1);
 }
 .prose-notion th, .prose-notion td {
-  border-bottom: var(--hairline); padding: 0.65rem 0.95rem; text-align: left;
+  border-bottom: var(--hairline); padding: 0.7rem 1rem; text-align: left;
+}
+.prose-notion thead th {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  border-bottom: none;
 }
 .prose-notion th { background: var(--surface-2); font-weight: 600; }
 .prose-notion tr:last-child td { border-bottom: none; }
