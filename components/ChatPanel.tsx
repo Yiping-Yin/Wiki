@@ -4,6 +4,8 @@
  *
  * Features:
  *  - Streams responses from claude -p / codex exec via /api/chat (SSE)
+ *  - Markdown rendering for assistant messages (code, lists, math)
+ *  - Per-message hover actions: copy / save to current doc's notes
  *  - Persistent message history per session in localStorage
  *  - Auto-includes current page metadata as <context>
  *  - Model picker (Claude / Codex)
@@ -12,6 +14,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { NoteRenderer } from './NoteRenderer';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Model = 'claude' | 'codex';
@@ -287,21 +290,12 @@ export function ChatPanel() {
             </div>
           )}
           {messages.map((m, i) => (
-            <div key={i} style={{
-              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '88%',
-              background: m.role === 'user' ? 'var(--accent)' : 'var(--surface-2)',
-              color: m.role === 'user' ? '#fff' : 'var(--fg)',
-              padding: '0.6rem 0.85rem',
-              borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-              fontSize: '0.86rem',
-              lineHeight: 1.55,
-              whiteSpace: 'pre-wrap',
-              border: m.role === 'assistant' ? 'var(--hairline)' : '0',
-              boxShadow: 'var(--shadow-1)',
-            }}>
-              {m.content || (streaming && i === messages.length - 1 ? <Cursor /> : '')}
-            </div>
+            <MessageBubble
+              key={i}
+              message={m}
+              isStreamingLast={streaming && i === messages.length - 1}
+              currentPath={pathname}
+            />
           ))}
         </div>
 
@@ -365,3 +359,116 @@ function Cursor() {
     }} />
   );
 }
+
+function inferDocId(path: string): string | null {
+  const wiki = path.match(/^\/wiki\/([^/]+)/);
+  if (wiki) return 'wiki/' + wiki[1];
+  const know = path.match(/^\/knowledge\/([^/]+)\/([^/]+)/);
+  if (know) return 'know/' + know[1] + '__' + know[2];
+  const upload = path.match(/^\/uploads\/([^/]+)/);
+  if (upload) return 'upload/' + decodeURIComponent(upload[1]);
+  return null;
+}
+
+function flash(msg: string) {
+  const div = document.createElement('div');
+  div.textContent = msg;
+  Object.assign(div.style, {
+    position: 'fixed', bottom: '24px', left: '50%',
+    transform: 'translateX(-50%)', zIndex: '120',
+    background: 'rgba(28,28,30,0.95)', color: '#fff',
+    padding: '0.5rem 1rem', borderRadius: '8px',
+    fontSize: '0.85rem', boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+    backdropFilter: 'blur(20px)',
+  } as CSSStyleDeclaration);
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 1800);
+}
+
+function MessageBubble({
+  message, isStreamingLast, currentPath,
+}: {
+  message: Msg; isStreamingLast: boolean; currentPath: string;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const isUser = message.role === 'user';
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(message.content);
+    flash('✓ Copied');
+  };
+
+  const saveToNotes = () => {
+    const docId = inferDocId(currentPath);
+    if (!docId) {
+      flash('⚠ Open a doc first');
+      return;
+    }
+    const key = 'wiki:notes:' + docId;
+    const existing = localStorage.getItem(key) ?? '';
+    const block = (existing ? existing + '\n\n' : '') + '> ' + message.content.replace(/\n/g, '\n> ');
+    localStorage.setItem(key, block);
+    try {
+      const idx = JSON.parse(localStorage.getItem('wiki:notes:index') ?? '[]');
+      if (!idx.includes(docId)) localStorage.setItem('wiki:notes:index', JSON.stringify([...idx, docId]));
+    } catch {}
+    flash('✓ Saved to notes');
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        alignSelf: isUser ? 'flex-end' : 'flex-start',
+        maxWidth: '92%',
+        position: 'relative',
+      }}
+    >
+      <div style={{
+        background: isUser ? 'var(--accent)' : 'var(--surface-2)',
+        color: isUser ? '#fff' : 'var(--fg)',
+        padding: '0.6rem 0.85rem',
+        borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+        fontSize: '0.87rem',
+        lineHeight: 1.55,
+        border: !isUser ? 'var(--hairline)' : '0',
+        boxShadow: 'var(--shadow-1)',
+        wordBreak: 'break-word',
+      }}>
+        {isUser ? (
+          <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
+        ) : message.content ? (
+          <div className="chat-msg">
+            <NoteRenderer source={message.content} />
+          </div>
+        ) : isStreamingLast ? (
+          <Cursor />
+        ) : null}
+      </div>
+
+      {/* Hover actions for assistant messages */}
+      {!isUser && message.content && (
+        <div style={{
+          display: 'flex', gap: 4, marginTop: 4,
+          opacity: hovered ? 1 : 0,
+          transition: 'opacity 0.15s var(--ease)',
+          paddingLeft: 4,
+        }}>
+          <button onClick={copy} style={msgActionStyle} title="Copy">📋</button>
+          <button onClick={saveToNotes} style={msgActionStyle} title="Save to current doc's notes">📝</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const msgActionStyle: React.CSSProperties = {
+  background: 'var(--surface-2)',
+  border: 'var(--hairline)',
+  borderRadius: 'var(--r-1)',
+  padding: '2px 8px',
+  cursor: 'pointer',
+  fontSize: '0.78rem',
+  color: 'var(--muted)',
+};
