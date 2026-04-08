@@ -1,138 +1,301 @@
 'use client';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useHistory } from '../../lib/use-history';
 import { useQuizResults, isWeak } from '../../lib/use-quiz';
+import { useNotedIds } from '../../lib/use-notes';
+
+type IndexDoc = { id: string; title: string; href: string; category: string };
+
+let _idxCache: IndexDoc[] | null = null;
+async function loadDocs(): Promise<IndexDoc[]> {
+  if (_idxCache) return _idxCache;
+  try {
+    const r = await fetch('/search-index.json');
+    if (!r.ok) return [];
+    const payload = await r.json();
+    const stored = payload.index?.storedFields ?? {};
+    const docIds = payload.index?.documentIds ?? {};
+    const out: IndexDoc[] = [];
+    for (const [internal, fields] of Object.entries<any>(stored)) {
+      if (!fields?.title || !fields?.href) continue;
+      out.push({ id: String(docIds[internal] ?? internal), title: fields.title, href: fields.href, category: fields.category ?? '' });
+    }
+    _idxCache = out;
+    return out;
+  } catch { return []; }
+}
+
+const DAY_MS = 86400000;
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return 'Up late';
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export function TodayClient({ totalDocs }: { totalDocs: number }) {
-  const [history, , clear] = useHistory();
+  const [history] = useHistory();
   const [quizResults] = useQuizResults();
+  const notedIds = useNotedIds();
+  const [docs, setDocs] = useState<IndexDoc[]>([]);
 
-  const uniqueViewed = new Set(history.filter((h) => h.id.startsWith('know/')).map((h) => h.id)).size;
-  const pct = totalDocs > 0 ? Math.round((uniqueViewed / totalDocs) * 100) : 0;
+  useEffect(() => { loadDocs().then(setDocs); }, []);
 
-  // simple streak: number of distinct UTC days with at least one view, going backwards from today
+  const docsById = useMemo(() => {
+    const m = new Map<string, IndexDoc>();
+    for (const d of docs) m.set(d.id, d);
+    return m;
+  }, [docs]);
+
+  // Streak
   const streak = useMemo(() => {
     if (history.length === 0) return 0;
-    const days = new Set(history.map((h) => Math.floor(h.viewedAt / 86400000)));
+    const days = new Set(history.map((h) => Math.floor(h.viewedAt / DAY_MS)));
     let s = 0;
-    let day = Math.floor(Date.now() / 86400000);
+    let day = Math.floor(Date.now() / DAY_MS);
     while (days.has(day)) { s++; day--; }
     return s;
   }, [history]);
 
-  const totalQuizzes = quizResults.length;
-  const avgScore = totalQuizzes > 0
-    ? Math.round((quizResults.reduce((s, r) => s + r.score / r.total, 0) / totalQuizzes) * 100)
-    : 0;
-  const weakSpots = quizResults.filter(isWeak);
-  const recentQuizzes = quizResults.slice(0, 5);
+  // 30-day activity heatmap
+  const heatmap = useMemo(() => {
+    const today = Math.floor(Date.now() / DAY_MS);
+    const cells: { day: number; count: number }[] = [];
+    const counts = new Map<number, number>();
+    for (const h of history) {
+      const d = Math.floor(h.viewedAt / DAY_MS);
+      counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
+    for (let i = 29; i >= 0; i--) {
+      const day = today - i;
+      cells.push({ day, count: counts.get(day) ?? 0 });
+    }
+    return cells;
+  }, [history]);
+
+  // Continue reading: last viewed doc
+  const lastViewed = history[0];
+  const lastViewedMeta = lastViewed
+    ? (docsById.get(lastViewed.id) ?? null)
+    : null;
+
+  // Spaced repetition: weakest 3 quizzes
+  const weakSpots = useMemo(
+    () => quizResults.filter(isWeak).sort((a, b) => a.score / a.total - b.score / b.total).slice(0, 3),
+    [quizResults],
+  );
+
+  // Recent notes (top 4)
+  const recentNotes = notedIds.slice(0, 4).map((id) => {
+    const wiki = docsById.get(id);
+    const know = docsById.get(id);
+    return { id, meta: wiki ?? know };
+  });
+
+  // Stats
+  const uniqueViewed = new Set(history.filter((h) => h.id.startsWith('know/')).map((h) => h.id)).size;
+  const pct = totalDocs > 0 ? Math.round((uniqueViewed / totalDocs) * 100) : 0;
 
   return (
     <div>
-      <h2>Your progress</h2>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.6rem', margin: '0.6rem 0 1.2rem' }}>
-        <Stat label="Docs viewed" value={`${uniqueViewed} / ${totalDocs}`} sub={`${pct}%`} />
-        <Stat label="Streak" value={`${streak}`} sub={streak === 1 ? 'day' : 'days'} />
-        <Stat label="Quizzes taken" value={`${totalQuizzes}`} sub={totalQuizzes > 0 ? `avg ${avgScore}%` : '—'} />
-        <Stat label="Weak spots" value={`${weakSpots.length}`} sub={weakSpots.length > 0 ? 'need review' : 'none'} highlight={weakSpots.length > 0 ? '#dc2626' : undefined} />
+      {/* Greeting hero */}
+      <div style={{
+        marginBottom: '1.6rem', padding: '1.4rem 1.6rem',
+        borderRadius: 'var(--r-3)',
+        background: 'linear-gradient(135deg, var(--accent), #5856d6)',
+        color: '#fff', boxShadow: 'var(--shadow-2)',
+      }}>
+        <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.85, fontWeight: 600, marginBottom: 4 }}>
+          {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+        </div>
+        <h1 style={{
+          margin: 0, fontSize: '2rem', fontWeight: 700, color: '#fff',
+          letterSpacing: '-0.025em', lineHeight: 1.15, fontFamily: 'var(--display)',
+          padding: 0, border: 0,
+        }}>
+          {greeting()}.
+        </h1>
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '1.4rem', flexWrap: 'wrap', fontSize: '0.85rem', opacity: 0.92 }}>
+          <span><strong style={{ color: '#fff' }}>{streak}</strong> day streak {streak >= 3 ? '🔥' : ''}</span>
+          <span><strong style={{ color: '#fff' }}>{uniqueViewed}/{totalDocs}</strong> docs ({pct}%)</span>
+          <span><strong style={{ color: '#fff' }}>{quizResults.length}</strong> quizzes</span>
+          <span><strong style={{ color: '#fff' }}>{notedIds.length}</strong> notes</span>
+        </div>
       </div>
 
-      <div style={{ marginBottom: '1rem', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.4s' }} />
-      </div>
+      {/* Activity heatmap */}
+      <Section title="Last 30 days">
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(30, 1fr)', gap: 4,
+          padding: '0.8rem', border: 'var(--hairline)', borderRadius: 'var(--r-2)',
+          background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-1)',
+        }}>
+          {heatmap.map((c, i) => {
+            const intensity = Math.min(1, c.count / 6);
+            const date = new Date(c.day * DAY_MS);
+            return (
+              <div
+                key={i}
+                title={`${date.toLocaleDateString()}: ${c.count} views`}
+                style={{
+                  aspectRatio: '1/1',
+                  background: c.count === 0
+                    ? 'var(--surface-2)'
+                    : `rgba(0, 113, 227, ${0.25 + intensity * 0.75})`,
+                  borderRadius: 3,
+                }}
+              />
+            );
+          })}
+        </div>
+      </Section>
 
-      {weakSpots.length > 0 && (
-        <>
-          <h2>📌 Review weak spots</h2>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {weakSpots.slice(0, 6).map((w) => (
-              <li key={w.docId} style={{ borderBottom: '1px solid var(--border)', padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--fg)' }}>{prettifyDocId(w.docId)}</span>
-                <span style={{ fontSize: '0.78rem', color: '#dc2626', fontWeight: 600 }}>
-                  {w.score}/{w.total} · {timeAgo(w.attemptedAt)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
+      {/* Continue reading */}
+      {lastViewed && (
+        <Section title="Continue reading">
+          <Link
+            href={lastViewed.href}
+            className="card-lift"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              padding: '1rem 1.2rem',
+              border: 'var(--hairline)', borderRadius: 'var(--r-2)',
+              background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-1)',
+              textDecoration: 'none', color: 'var(--fg)',
+            }}
+          >
+            <div style={{
+              width: 48, height: 48, borderRadius: 'var(--r-2)',
+              background: 'linear-gradient(135deg, var(--accent), #5856d6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1.4rem', flexShrink: 0,
+            }}>📖</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                {timeAgo(lastViewed.viewedAt)}
+              </div>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {lastViewedMeta?.title ?? lastViewed.title}
+              </div>
+              {lastViewedMeta?.category && (
+                <div style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>{lastViewedMeta.category}</div>
+              )}
+            </div>
+            <span style={{ color: 'var(--muted)' }}>→</span>
+          </Link>
+        </Section>
       )}
 
-      {recentQuizzes.length > 0 && (
-        <>
-          <h2>🧠 Recent quizzes</h2>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {recentQuizzes.map((r) => {
-              const ratio = r.score / r.total;
-              const color = ratio >= 0.85 ? '#16a34a' : ratio >= 0.66 ? 'var(--accent)' : '#dc2626';
+      {/* Spaced repetition */}
+      {weakSpots.length > 0 && (
+        <Section title="Review weak spots" subtitle="Quiz scores below 67%">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {weakSpots.map((w) => {
+              const meta = docsById.get(w.docId) ?? docsById.get(`know/${w.docId}`);
               return (
-                <li key={r.docId + r.attemptedAt} style={{ borderBottom: '1px solid var(--border)', padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: '0.85rem' }}>{prettifyDocId(r.docId)}</span>
-                  <span style={{ fontSize: '0.78rem', color, fontWeight: 600 }}>
-                    {r.score}/{r.total} · {timeAgo(r.attemptedAt)}
-                  </span>
-                </li>
+                <Link
+                  key={w.docId}
+                  href={meta?.href ?? '#'}
+                  className="card-lift"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '0.7rem 1rem',
+                    border: 'var(--hairline)', borderRadius: 'var(--r-2)',
+                    background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-1)',
+                    textDecoration: 'none', color: 'var(--fg)',
+                  }}
+                >
+                  <span style={{
+                    background: '#dc2626', color: '#fff',
+                    fontSize: '0.7rem', padding: '3px 8px',
+                    borderRadius: 999, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  }}>{w.score}/{w.total}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {meta?.title ?? w.docId}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>{timeAgo(w.attemptedAt)}</div>
+                  </div>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--accent)', fontWeight: 600 }}>Retake →</span>
+                </Link>
               );
             })}
-          </ul>
-        </>
+          </div>
+        </Section>
       )}
 
-      {history.length > 0 ? (
-        <>
-          <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span>Recently viewed</span>
-            <button
-              onClick={clear}
-              style={{
-                fontSize: '0.7rem', color: 'var(--muted)', background: 'transparent',
-                border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
-              }}
-            >clear</button>
-          </h2>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {history.slice(0, 10).map((h) => (
-              <li key={h.id + h.viewedAt} style={{ borderBottom: '1px solid var(--border)', padding: '0.5rem 0' }}>
-                <Link href={h.href} style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--fg)', textDecoration: 'none' }}>
-                  {h.title}
-                </Link>
-                <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: 2 }}>
-                  {timeAgo(h.viewedAt)}
+      {/* Recent notes */}
+      {recentNotes.length > 0 && (
+        <Section title="Recent notes">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+            {recentNotes.filter((n) => n.meta).slice(0, 4).map((n) => (
+              <Link
+                key={n.id}
+                href={n.meta!.href}
+                className="card-lift"
+                style={{
+                  display: 'block',
+                  padding: '0.75rem 0.9rem',
+                  border: 'var(--hairline)', borderRadius: 'var(--r-2)',
+                  background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-1)',
+                  textDecoration: 'none', color: 'var(--fg)',
+                }}
+              >
+                <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginBottom: 3 }}>📝 noted</div>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {n.meta!.title}
                 </div>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Recent activity */}
+      {history.length > 0 && (
+        <Section title="Recently viewed">
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {history.slice(0, 8).map((h) => (
+              <li key={h.id + h.viewedAt} style={{ borderBottom: 'var(--hairline)', padding: '0.5rem 0' }}>
+                <Link href={h.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', textDecoration: 'none', color: 'var(--fg)' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    {h.title}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginLeft: 8, flexShrink: 0 }}>
+                    {timeAgo(h.viewedAt)}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
-        </>
-      ) : (
-        <div style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.85rem', border: '1px dashed var(--border)', borderRadius: 8 }}>
-          No history yet — open any doc and it&apos;ll show here.
-        </div>
+        </Section>
       )}
     </div>
   );
 }
 
-function Stat({ label, value, sub, highlight }: { label: string; value: string; sub?: string; highlight?: string }) {
+function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      padding: '0.7rem 0.9rem',
-      border: '1px solid var(--border)', borderRadius: 8,
-    }}>
-      <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)' }}>{label}</div>
-      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: highlight ?? 'var(--fg)', marginTop: 2 }}>{value}</div>
-      {sub && <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>{sub}</div>}
+    <div style={{ marginTop: '2rem' }}>
+      <div style={{ marginBottom: '0.7rem' }}>
+        <h2 style={{
+          margin: 0, fontSize: '1.05rem', fontWeight: 700,
+          fontFamily: 'var(--display)', letterSpacing: '-0.012em',
+          padding: 0, border: 0,
+        }}>{title}</h2>
+        {subtitle && <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: 2 }}>{subtitle}</div>}
+      </div>
+      {children}
     </div>
   );
-}
-
-function prettifyDocId(id: string): string {
-  return id.replace(/^wiki\//, 'wiki · ').replace(/^.*__/, '').replace(/-/g, ' ');
 }
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) return `${s}s ago`;
+  if (s < 60) return 'just now';
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
