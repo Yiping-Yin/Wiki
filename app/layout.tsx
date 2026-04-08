@@ -6,6 +6,7 @@ import { RAGChat } from '../components/RAGChat';
 import { ScrollProgress } from '../components/ScrollProgress';
 import { SelectionMenu } from '../components/SelectionMenu';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
+import { LinkPreview } from '../components/LinkPreview';
 
 export const metadata = {
   title: 'My Personal Wiki',
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <CopyButtonInjector />
         <SelectionMenu />
         <KeyboardShortcuts />
+        <LinkPreview />
         <RAGChat />
       </body>
     </html>
