@@ -423,9 +423,13 @@ export function ChatPanel() {
     setMessages([]);
   };
 
-  // Keep latest actualSend reachable from a stable listener without re-binding
+  // Keep latest actualSend reachable from a stable listener without re-binding.
+  // Wrapping actualSend in useCallback would cascade through messages/model/
+  // mentions/stickyContext deps and recreate on nearly every render anyway —
+  // the ref mirror is the intentional pattern here.
   const sendRef = useRef(actualSend);
-  useEffect(() => { sendRef.current = actualSend; }, [actualSend]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { sendRef.current = actualSend; });
 
   // Listen for global toggle events from FloatingDock / LiquidBar
   useEffect(() => {
