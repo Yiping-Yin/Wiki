@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { embedQuery, cosine } from '../../../lib/embed';
-import { runClaude } from '../../../lib/claude-cli';
+import { runCli, pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -43,10 +43,12 @@ async function loadBody(id: string): Promise<string> {
 }
 
 export async function POST(req: Request) {
-  let q: string;
-  try { q = (await req.json()).q; }
+  let body: any;
+  try { body = await req.json(); }
   catch { return Response.json({ error: 'invalid JSON' }, { status: 400 }); }
+  const q: string = body.q;
   if (!q || typeof q !== 'string') return Response.json({ error: 'missing q' }, { status: 400 });
+  const cli = pickCli(body);
 
   const idx = await loadIndex();
   if (!idx) {
@@ -90,7 +92,7 @@ ${context || '(no relevant sources found — say so)'}
 Question: ${q}`;
 
   try {
-    const text = await runClaude(prompt, { timeoutMs: 120000 });
+    const text = await runCli(prompt, { cli, timeoutMs: 120000 });
     return Response.json({
       answer: text,
       sources: sources.map(({ id, title, href, score }) => ({ id, title, href, score })),

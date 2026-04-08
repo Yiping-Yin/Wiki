@@ -9,18 +9,19 @@
  * The suggestion is one sentence (≤ 30 words). It's NOT a full essay — just
  * what the user might write next given what they have so far.
  */
-import { runClaude } from '../../../lib/claude-cli';
+import { runCli, pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  let body: { context: string; doc?: { title?: string; body?: string } };
+  let body: { context: string; doc?: { title?: string; body?: string }; cli?: string };
   try { body = await req.json(); }
   catch { return Response.json({ error: 'invalid json' }, { status: 400 }); }
   if (!body.context || body.context.length < 4) {
     return Response.json({ suggestion: '' });
   }
+  const cli = pickCli(body);
 
   const docCtx = body.doc?.body
     ? `\n\nThe user is taking notes on this document:\nTitle: ${body.doc.title ?? '(unknown)'}\n${body.doc.body.slice(0, 1500)}`
@@ -40,7 +41,7 @@ ${body.context.slice(-1500)}
 Continuation:`;
 
   try {
-    const text = await runClaude(prompt, { timeoutMs: 25000 });
+    const text = await runCli(prompt, { cli, timeoutMs: 25000 });
     let suggestion = text.trim()
       .replace(/^["'`]+|["'`]+$/g, '')
       .replace(/^Continuation:\s*/i, '')

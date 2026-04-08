@@ -7,7 +7,7 @@
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { runClaude } from '../../../lib/claude-cli';
+import { runCli, pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -39,11 +39,13 @@ async function loadBody(id: string): Promise<{ body: string; title: string } | n
 }
 
 export async function POST(req: Request) {
-  let id: string;
-  try { id = (await req.json()).id; }
+  let body: any;
+  try { body = await req.json(); }
   catch { return Response.json({ error: 'invalid JSON' }, { status: 400 }); }
+  const id: string = body.id;
   const safe = id ? safeId(id) : null;
   if (!safe) return Response.json({ error: 'invalid id' }, { status: 400 });
+  const cli = pickCli(body);
 
   const cacheFile = path.join(QUIZ_DIR, `${cacheKey(safe)}.json`);
   if (existsSync(cacheFile)) {
@@ -85,7 +87,7 @@ ${doc.body.slice(0, 12000)}
 """`;
 
   try {
-    const text = await runClaude(prompt, { timeoutMs: 180000 });
+    const text = await runCli(prompt, { cli, timeoutMs: 180000 });
     const cleaned = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
     let parsed: any;
     try { parsed = JSON.parse(cleaned); }

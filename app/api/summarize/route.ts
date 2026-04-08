@@ -10,7 +10,7 @@
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { runClaude } from '../../../lib/claude-cli';
+import { runCli, pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -24,11 +24,13 @@ function safeId(id: string): string | null {
 }
 
 export async function POST(req: Request) {
-  let id: string;
-  try { id = (await req.json()).id; }
+  let body: any;
+  try { body = await req.json(); }
   catch { return Response.json({ error: 'invalid JSON' }, { status: 400 }); }
+  const id: string = body.id;
   const safe = id ? safeId(id) : null;
   if (!safe) return Response.json({ error: 'invalid id' }, { status: 400 });
+  const cli = pickCli(body);
 
   const cachePath = path.join(SUMMARY_DIR, `${safe}.json`);
   if (existsSync(cachePath)) {
@@ -39,17 +41,17 @@ export async function POST(req: Request) {
   }
 
   const bodyPath = path.join(BODY_DIR, `${safe}.json`);
-  let body = '';
+  let docBody = '';
   let title = safe;
   try {
     const j = JSON.parse(await fs.readFile(bodyPath, 'utf-8'));
-    body = j.body ?? '';
+    docBody = j.body ?? '';
     title = j.title ?? safe;
   } catch {
     return Response.json({ error: 'doc not found' }, { status: 404 });
   }
 
-  if (body.trim().length < 50) {
+  if (docBody.trim().length < 50) {
     return Response.json({ error: 'doc has no extractable text' }, { status: 422 });
   }
 
@@ -65,11 +67,11 @@ Document title: ${title}
 
 Document text (may contain OCR artefacts — extract the meaning, ignore formatting noise):
 """
-${body.slice(0, 12000)}
+${docBody.slice(0, 12000)}
 """`;
 
   try {
-    const text = await runClaude(prompt, { timeoutMs: 180000 });
+    const text = await runCli(prompt, { cli, timeoutMs: 180000 });
     const cleaned = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
     let parsed: any;
     try { parsed = JSON.parse(cleaned); }

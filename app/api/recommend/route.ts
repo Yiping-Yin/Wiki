@@ -8,7 +8,7 @@
  *
  * Client caches the result for the day (localStorage key includes the date).
  */
-import { runClaude } from '../../../lib/claude-cli';
+import { runCli, pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
 export const maxDuration = 90;
@@ -17,9 +17,10 @@ type Item = { title?: string };
 type Weak = { title?: string; score?: number; total?: number };
 
 export async function POST(req: Request) {
-  let body: { recent?: Item[]; weak?: Weak[]; noted?: Item[] };
+  let body: { recent?: Item[]; weak?: Weak[]; noted?: Item[]; cli?: string };
   try { body = await req.json(); }
   catch { return Response.json({ error: 'invalid json' }, { status: 400 }); }
+  const cli = pickCli(body);
 
   const recent = (body.recent ?? []).slice(0, 5).map((r) => r.title ?? '').filter(Boolean);
   const weak = (body.weak ?? []).slice(0, 4).map((w) => `${w.title ?? ''} (${w.score}/${w.total})`).filter(Boolean);
@@ -51,7 +52,7 @@ Has notes on: ${noted.length > 0 ? noted.join('; ') : '(none)'}
 Begin JSON:`;
 
   try {
-    const text = await runClaude(prompt, { timeoutMs: 60000 });
+    const text = await runCli(prompt, { cli, timeoutMs: 60000 });
     const cleaned = text.trim().replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
     let parsed: any;
     try { parsed = JSON.parse(cleaned); }
