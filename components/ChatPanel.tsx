@@ -49,6 +49,28 @@ const SLASH_COMMANDS: { name: string; description: string }[] = [
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Model = 'claude' | 'codex';
 type Mention = { id: string; title: string; href: string };
+type Thread = { id: string; title: string; messages: Msg[]; updatedAt: number };
+
+const THREADS_KEY = 'wiki:chat:threads:v1';
+const ACTIVE_THREAD_KEY = 'wiki:chat:active';
+
+function newThreadId(): string { return `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
+function autoTitle(messages: Msg[]): string {
+  const first = messages.find((m) => m.role === 'user');
+  if (!first) return 'New chat';
+  return first.content.slice(0, 40).replace(/\s+/g, ' ').trim() || 'New chat';
+}
+function loadThreads(): Thread[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(THREADS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function saveThreads(ts: Thread[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(THREADS_KEY, JSON.stringify(ts.slice(0, 50)));
+}
 
 const STORAGE_KEY = 'wiki:chat:v1';
 const MODEL_KEY = 'wiki:chat:model';
@@ -64,21 +86,105 @@ export function ChatPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Load persisted state
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Load persisted state — migrate single-thread → threads if needed
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setMessages(JSON.parse(raw));
       const m = localStorage.getItem(MODEL_KEY);
       if (m === 'codex' || m === 'claude') setModel(m);
+
+      let ts = loadThreads();
+      if (ts.length === 0) {
+        const legacy = localStorage.getItem(STORAGE_KEY);
+        if (legacy) {
+          try {
+            const msgs = JSON.parse(legacy) as Msg[];
+            if (Array.isArray(msgs) && msgs.length > 0) {
+              ts = [{ id: newThreadId(), title: autoTitle(msgs), messages: msgs, updatedAt: Date.now() }];
+              saveThreads(ts);
+            }
+          } catch {}
+        }
+      }
+      if (ts.length === 0) {
+        ts = [{ id: newThreadId(), title: 'New chat', messages: [], updatedAt: Date.now() }];
+        saveThreads(ts);
+      }
+      setThreads(ts);
+      const savedActive = localStorage.getItem(ACTIVE_THREAD_KEY);
+      const found = savedActive ? ts.find((t) => t.id === savedActive) : null;
+      const active = found ?? ts[0];
+      setActiveThreadId(active.id);
+      setMessages(active.messages);
     } catch {}
   }, []);
+
+  // Persist messages back to active thread on change
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-40))); } catch {}
-  }, [messages]);
+    if (!activeThreadId) return;
+    setThreads((prev) => {
+      const next = prev.map((t) =>
+        t.id === activeThreadId
+          ? { ...t, messages: messages.slice(-100), updatedAt: Date.now(), title: t.title === 'New chat' && messages.length > 0 ? autoTitle(messages) : t.title }
+          : t,
+      );
+      saveThreads(next);
+      return next;
+    });
+  }, [messages, activeThreadId]);
+
   useEffect(() => {
     try { localStorage.setItem(MODEL_KEY, model); } catch {}
   }, [model]);
+  useEffect(() => {
+    if (activeThreadId) localStorage.setItem(ACTIVE_THREAD_KEY, activeThreadId);
+  }, [activeThreadId]);
+
+  const newThread = () => {
+    const t: Thread = { id: newThreadId(), title: 'New chat', messages: [], updatedAt: Date.now() };
+    setThreads((prev) => {
+      const next = [t, ...prev];
+      saveThreads(next);
+      return next;
+    });
+    setActiveThreadId(t.id);
+    setMessages([]);
+    setMentions([]);
+    setStickyContext('');
+    setShowHistory(false);
+  };
+
+  const switchThread = (id: string) => {
+    const t = threads.find((x) => x.id === id);
+    if (!t) return;
+    setActiveThreadId(id);
+    setMessages(t.messages);
+    setMentions([]);
+    setStickyContext('');
+    setShowHistory(false);
+  };
+
+  const deleteThread = (id: string) => {
+    setThreads((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      saveThreads(next);
+      if (next.length === 0) {
+        const t: Thread = { id: newThreadId(), title: 'New chat', messages: [], updatedAt: Date.now() };
+        saveThreads([t]);
+        setActiveThreadId(t.id);
+        setMessages([]);
+        return [t];
+      }
+      if (id === activeThreadId) {
+        setActiveThreadId(next[0].id);
+        setMessages(next[0].messages);
+      }
+      return next;
+    });
+  };
 
   // Auto-scroll on new content
   useEffect(() => {
@@ -315,7 +421,6 @@ export function ChatPanel() {
 
   const clear = () => {
     setMessages([]);
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   };
 
   return (
@@ -361,14 +466,39 @@ export function ChatPanel() {
           borderBottom: 'var(--hairline)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 8,
+          position: 'relative',
         }}>
           <div style={{
             fontFamily: 'var(--display)', fontSize: '0.95rem', fontWeight: 600,
             display: 'flex', alignItems: 'center', gap: 8,
+            flex: 1, minWidth: 0,
           }}>
-            ✦ Assistant
+            ✦ <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {threads.find((t) => t.id === activeThreadId)?.title ?? 'Assistant'}
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setShowHistory((s) => !s)}
+              title="History"
+              style={{
+                background: showHistory ? 'var(--accent-soft)' : 'transparent',
+                border: 'var(--hairline)',
+                borderRadius: 'var(--r-1)', padding: '3px 8px',
+                cursor: 'pointer', color: showHistory ? 'var(--accent)' : 'var(--muted)',
+                fontSize: '0.7rem',
+              }}
+            >🕓 {threads.length}</button>
+            <button
+              onClick={newThread}
+              title="New chat"
+              style={{
+                background: 'transparent', border: 'var(--hairline)',
+                borderRadius: 'var(--r-1)', padding: '3px 9px',
+                cursor: 'pointer', color: 'var(--muted)',
+                fontSize: '0.85rem', lineHeight: 1,
+              }}
+            >+</button>
             <select
               value={model}
               onChange={(e) => setModel(e.target.value as Model)}
@@ -400,6 +530,55 @@ export function ChatPanel() {
               }}
             >clear</button>
           </div>
+
+          {/* History popover */}
+          {showHistory && (
+            <div className="glass" style={{
+              position: 'absolute', top: '100%', right: 12, marginTop: 6,
+              width: 320, maxHeight: '60vh', overflowY: 'auto',
+              borderRadius: 'var(--r-2)', boxShadow: 'var(--shadow-3)',
+              zIndex: 60,
+            }}>
+              <div style={{ padding: '8px 12px', fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, borderBottom: 'var(--hairline)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>{threads.length} thread{threads.length === 1 ? '' : 's'}</span>
+                <button onClick={newThread} style={{ background: 'transparent', border: 0, color: 'var(--accent)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600 }}>+ New</button>
+              </div>
+              {threads.sort((a, b) => b.updatedAt - a.updatedAt).map((t) => {
+                const isActive = t.id === activeThreadId;
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => switchThread(t.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 12px', cursor: 'pointer',
+                      background: isActive ? 'var(--accent-soft)' : 'transparent',
+                      borderLeft: '3px solid ' + (isActive ? 'var(--accent)' : 'transparent'),
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '0.82rem', fontWeight: isActive ? 600 : 500,
+                        color: isActive ? 'var(--accent)' : 'var(--fg)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{t.title}</div>
+                      <div style={{ fontSize: '0.66rem', color: 'var(--muted)', marginTop: 1 }}>
+                        {t.messages.length} msg · {timeAgoShort(t.updatedAt)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteThread(t.id); }}
+                      style={{
+                        background: 'transparent', border: 0, color: 'var(--muted)',
+                        cursor: 'pointer', fontSize: '0.85rem', padding: '0 4px',
+                      }}
+                      title="Delete"
+                    >×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Messages */}
@@ -575,6 +754,14 @@ function flash(msg: string) {
   } as CSSStyleDeclaration);
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 1800);
+}
+
+function timeAgoShort(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'now';
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
 }
 
 function MentionMenu({
