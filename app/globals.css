@@ -276,6 +276,11 @@ html:not(.dark) [data-theme='dark'] { display: none; }
   to   { transform: rotate(360deg); }
 }
 
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
 /* ============================================================
    Apple-style glass surfaces — applied to floating UI
    ============================================================ */

@@ -2,7 +2,7 @@ import './globals.css';
 import type { ReactNode } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { CopyButtonInjector } from '../components/CopyButton';
-import { RAGChat } from '../components/RAGChat';
+import { ChatPanel } from '../components/ChatPanel';
 import { ScrollProgress } from '../components/ScrollProgress';
 import { SelectionMenu } from '../components/SelectionMenu';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ReadingMode />
         <QuickSwitcher />
         <DropZone />
-        <RAGChat />
+        <ChatPanel />
       </body>
     </html>
   );
