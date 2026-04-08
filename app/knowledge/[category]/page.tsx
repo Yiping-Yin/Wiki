@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { knowledgeCategories } from '../../../lib/knowledge-nav';
 import { docsByCategory } from '../../../lib/knowledge';
-import { BatchSummarize } from '../../../components/BatchSummarize';
+import { BatchRunner } from '../../../components/BatchRunner';
 
 export function generateStaticParams() {
   return knowledgeCategories.map((c) => ({ category: c.slug }));
@@ -31,7 +31,34 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
         {docs.length} documents · {docs.filter((d) => d.hasText).length} with extracted text
       </p>
 
-      <BatchSummarize docs={batchInput} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.6rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
+        <BatchRunner
+          docs={batchInput}
+          endpoint="/api/summarize"
+          cachePathTemplate="/knowledge/summaries/{id}.json"
+          title="Auto-summarize"
+          description="3-bullet summary + key terms"
+          icon="✨"
+        />
+        <BatchRunner
+          docs={batchInput}
+          endpoint="/api/structure"
+          cachePathTemplate="/knowledge/structures/{id}.json"
+          title="Auto-structure"
+          description="Rewrite as Notion-style Markdown"
+          icon="📖"
+          concurrency={2}
+        />
+        <BatchRunner
+          docs={batchInput}
+          endpoint="/api/quiz"
+          cachePathTemplate="/knowledge/quizzes/{id}.json"
+          cacheIdTransform="slash-to-underscore"
+          title="Auto-quiz"
+          description="3 multiple-choice questions per doc"
+          icon="🧠"
+        />
+      </div>
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {docs.map((d) => (
