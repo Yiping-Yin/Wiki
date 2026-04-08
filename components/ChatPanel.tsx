@@ -426,8 +426,20 @@ export function ChatPanel() {
   // Listen for global toggle events from FloatingDock
   useEffect(() => {
     const onToggle = () => setOpen((o) => !o);
+    const onLiquidSend = (e: Event) => {
+      const text = (e as CustomEvent).detail?.text;
+      if (typeof text === 'string' && text.trim()) {
+        setOpen(true);
+        // small delay so the drawer mounts before we send
+        setTimeout(() => actualSend(text), 80);
+      }
+    };
     window.addEventListener('wiki:chat:toggle', onToggle);
-    return () => window.removeEventListener('wiki:chat:toggle', onToggle);
+    window.addEventListener('wiki:liquid:send', onLiquidSend as EventListener);
+    return () => {
+      window.removeEventListener('wiki:chat:toggle', onToggle);
+      window.removeEventListener('wiki:liquid:send', onLiquidSend as EventListener);
+    };
   }, []);
 
   return (
