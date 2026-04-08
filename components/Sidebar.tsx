@@ -89,7 +89,6 @@ export function Sidebar() {
           <NavLink href="/today" active={isActive('/today')}>📅 Today</NavLink>
           <NavLink href="/browse" active={isActive('/browse')}>🧭 Browse</NavLink>
           <NavLink href="/notes" active={isActive('/notes')}>📝 My notes</NavLink>
-          <NavLink href="/demo" active={isActive('/demo')}>🎛 Feature demo</NavLink>
         </div>
 
         {/* Personal knowledge */}

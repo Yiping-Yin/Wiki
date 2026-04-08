@@ -9,6 +9,7 @@ import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
 import { ReadingMode } from '../components/ReadingMode';
 import { StickyTitle } from '../components/StickyTitle';
+import { QuickSwitcher } from '../components/QuickSwitcher';
 
 export const metadata = {
   title: 'My Personal Wiki',
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <KeyboardShortcuts />
         <LinkPreview />
         <ReadingMode />
+        <QuickSwitcher />
         <RAGChat />
       </body>
     </html>

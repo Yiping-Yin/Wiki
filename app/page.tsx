@@ -66,20 +66,15 @@ export default function Home() {
             <div style={{ fontWeight: 700, marginTop: 6 }}>My Knowledge</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>{knowledgeTotal} docs · {knowledgeCategories.length} categories</div>
           </Link>
-          <Link href="/atlas" className="card-lift" style={cardStyle}>
-            <div style={{ fontSize: '1.5rem' }}>🗺</div>
-            <div style={{ fontWeight: 700, marginTop: 6 }}>Atlas</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>Semantic terrain map</div>
+          <Link href="/browse" className="card-lift" style={cardStyle}>
+            <div style={{ fontSize: '1.5rem' }}>🧭</div>
+            <div style={{ fontWeight: 700, marginTop: 6 }}>Browse</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>Discover by category</div>
           </Link>
           <Link href="/wiki/llm101n" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>🤖</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>LLM Reference</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>{chapters.length} chapters</div>
-          </Link>
-          <Link href="/graph" className="card-lift" style={cardStyle}>
-            <div style={{ fontSize: '1.5rem' }}>🕸</div>
-            <div style={{ fontWeight: 700, marginTop: 6 }}>Graph</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>Force-directed network</div>
           </Link>
           <Link href="/notes" className="card-lift" style={cardStyle}>
             <div style={{ fontSize: '1.5rem' }}>📝</div>
