@@ -39,6 +39,10 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
   const { prev, next } = neighborsInCategory(category, slug);
 
   const sourceUrl = `/api/source?p=${encodeURIComponent(doc.sourcePath)}`;
+  const ext = doc.ext.toLowerCase();
+  const isPdf = ext === '.pdf';
+  const isData = ext === '.csv' || ext === '.tsv' || ext === '.json' || ext === '.ipynb';
+  const isText = ext === '.md' || ext === '.txt' || ext === '.docx' || ext === '.doc' || ext === '.pptx' || ext === '.ppt';
 
   return (
     <div className="with-toc">
@@ -56,16 +60,47 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
           <span>{(doc.size / 1024).toFixed(0)} KB</span>
           <span>·</span>
           <a href={sourceUrl} target="_blank" rel="noreferrer">open original</a>
-          <span>·</span>
-          <Link href={`/atlas?focus=${encodeURIComponent('know/' + doc.id)}`}>🗺 view on atlas</Link>
         </div>
 
-        {/* Native viewer first — PDF iframe / CSV table / JSON tree / IPYNB cells / TXT prose */}
-        <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+        {/* PDF: original first, AI supplemental */}
+        {isPdf && (
+          <>
+            <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+            <DocSummary id={doc.id} />
+            <StructuredView id={doc.id} />
+          </>
+        )}
 
-        {/* AI augmentations below the original */}
-        <DocSummary id={doc.id} />
-        <StructuredView id={doc.id} />
+        {/* Text-like (txt/md/docx/pptx): structured view is PRIMARY (auto-generates), raw collapsed */}
+        {isText && (
+          <>
+            <DocSummary id={doc.id} />
+            <StructuredView id={doc.id} autoGenerate />
+            {body && body.length > 50 && (
+              <details style={{ marginTop: '1.6rem' }}>
+                <summary style={{ cursor: 'pointer', color: 'var(--muted)', fontSize: '0.78rem', padding: '0.4rem 0' }}>
+                  Show raw extracted text
+                </summary>
+                <div style={{ marginTop: '0.6rem', opacity: 0.85 }}>
+                  <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+                </div>
+              </details>
+            )}
+          </>
+        )}
+
+        {/* Data files: native viewer primary */}
+        {isData && (
+          <>
+            <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+            <DocSummary id={doc.id} />
+          </>
+        )}
+
+        {/* Unknown fallback */}
+        {!isPdf && !isText && !isData && (
+          <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+        )}
 
         <DocQuiz id={doc.id} />
         <DocNotes id={`know/${doc.id}`} />

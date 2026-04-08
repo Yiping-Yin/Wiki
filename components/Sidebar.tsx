@@ -87,9 +87,8 @@ export function Sidebar() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0' }}>
           <NavLink href="/today" active={isActive('/today')}>📅 Today</NavLink>
+          <NavLink href="/browse" active={isActive('/browse')}>🧭 Browse</NavLink>
           <NavLink href="/notes" active={isActive('/notes')}>📝 My notes</NavLink>
-          <NavLink href="/atlas" active={isActive('/atlas')}>🗺 Knowledge atlas</NavLink>
-          <NavLink href="/graph" active={isActive('/graph')}>🕸 Knowledge graph</NavLink>
           <NavLink href="/demo" active={isActive('/demo')}>🎛 Feature demo</NavLink>
         </div>
 

@@ -4,11 +4,12 @@ import { NoteRenderer } from './NoteRenderer';
 
 type Result = { markdown: string; cached?: boolean; error?: string };
 
-export function StructuredView({ id }: { id: string }) {
+export function StructuredView({ id, autoGenerate = false }: { id: string; autoGenerate?: boolean }) {
   const [data, setData] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [probed, setProbed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -20,9 +21,18 @@ export function StructuredView({ id }: { id: string }) {
         const r = await fetch(`/knowledge/structures/${id}.json`, { cache: 'force-cache' });
         if (r.ok && !cancelled) setData(await r.json());
       } catch {}
+      if (!cancelled) setProbed(true);
     })();
     return () => { cancelled = true; };
   }, [id]);
+
+  // Auto-generate after probe if requested and no cache hit
+  useEffect(() => {
+    if (autoGenerate && probed && !data && !loading && !error) {
+      generate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [probed, autoGenerate, data, loading, error]);
 
   useEffect(() => {
     if (loading) {

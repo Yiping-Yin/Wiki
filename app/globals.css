@@ -280,6 +280,12 @@ html:not(.dark) [data-theme='dark'] { display: none; }
   box-shadow: var(--shadow-2);
 }
 
+/* Browse row scrollbar — Apple thin */
+.browse-row::-webkit-scrollbar { height: 8px; }
+.browse-row::-webkit-scrollbar-track { background: transparent; }
+.browse-row::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.browse-row::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
 /* StickyTitle: keep clear of sidebar on desktop, full width on mobile */
 .sticky-title { left: 280px; }
 @media (max-width: 900px) { .sticky-title { left: 0; } }

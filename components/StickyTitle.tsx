@@ -1,35 +1,63 @@
 'use client';
 /**
  * Apple-style pinned title bar that appears after the user scrolls past the
- * page's H1. Uses IntersectionObserver on the first <main h1> for cheap
- * scroll detection.
+ * page's H1. Tracks pathname so it re-runs on navigation.
  *
- * Renders nothing until the H1 scrolls out of view, then slides down a
- * compact glass header with breadcrumb + the H1 text.
+ * Crumb extraction is conservative: only the element IMMEDIATELY before the
+ * h1, AND only if it looks like a breadcrumb (contains › or starts with a
+ * common emoji prefix). Otherwise the crumb is omitted.
  */
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export function StickyTitle() {
+  const pathname = usePathname();
   const [pinned, setPinned] = useState(false);
   const [title, setTitle] = useState('');
   const [crumb, setCrumb] = useState('');
 
   useEffect(() => {
-    const h1 = document.querySelector('main h1');
-    if (!h1) return;
-    setTitle((h1.textContent ?? '').trim());
+    setPinned(false);
+    setTitle('');
+    setCrumb('');
 
-    // try to extract a breadcrumb (first .prose-notion small text node before h1)
-    const crumbEl = document.querySelector('main .prose-notion > div:first-of-type, main .with-toc .prose-notion > div:first-of-type');
-    if (crumbEl) setCrumb((crumbEl.textContent ?? '').trim().slice(0, 60));
+    // Wait a tick for the new page to mount
+    const t = setTimeout(() => {
+      const h1 = document.querySelector('main h1');
+      if (!h1) return;
 
-    const obs = new IntersectionObserver(
-      ([entry]) => setPinned(!entry.isIntersecting),
-      { rootMargin: '-60px 0px 0px 0px', threshold: 0 },
-    );
-    obs.observe(h1);
-    return () => obs.disconnect();
-  }, []);
+      // If h1 is hidden (display: none) — e.g. CategoryHero overrides — try the visible alternative
+      const isVisible = (el: Element) => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      };
+      const visibleH1 = isVisible(h1)
+        ? h1
+        : document.querySelector('main h1, main [role="heading"][aria-level="1"]');
+      if (!visibleH1) return;
+
+      setTitle((visibleH1.textContent ?? '').trim());
+
+      // Look for a real breadcrumb: the previous sibling of h1, IF it
+      // contains a › character or a Knowledge link.
+      const prev = h1.previousElementSibling;
+      if (prev) {
+        const t = (prev.textContent ?? '').trim();
+        if (t.length > 0 && t.length < 80 && (t.includes('›') || t.includes('Knowledge') || t.includes('Home'))) {
+          setCrumb(t);
+        }
+      }
+
+      const obs = new IntersectionObserver(
+        ([entry]) => setPinned(!entry.isIntersecting),
+        { rootMargin: '-60px 0px 0px 0px', threshold: 0 },
+      );
+      obs.observe(h1);
+      return () => obs.disconnect();
+    }, 80);
+
+    return () => clearTimeout(t);
+  }, [pathname]);
 
   if (!pinned || !title) return null;
 
@@ -45,7 +73,7 @@ export function StickyTitle() {
       }}
     >
       {crumb && (
-        <span style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
+        <span style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>
           {crumb}
         </span>
       )}
