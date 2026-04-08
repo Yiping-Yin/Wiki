@@ -184,3 +184,9 @@ html:not(.dark) [data-theme='dark'] { display: none; }
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Reading mode: distraction-free */
+body.reading-mode .sidebar { display: none; }
+body.reading-mode .toc { display: none; }
+body.reading-mode .layout .with-toc { max-width: 760px; gap: 0; }
+body.reading-mode .prose-notion { max-width: 720px; padding-top: 5rem; padding-bottom: 6rem; font-size: 18px; line-height: 1.78; }

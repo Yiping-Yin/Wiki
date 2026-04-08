@@ -7,6 +7,7 @@ import { ScrollProgress } from '../components/ScrollProgress';
 import { SelectionMenu } from '../components/SelectionMenu';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
+import { ReadingMode } from '../components/ReadingMode';
 
 export const metadata = {
   title: 'My Personal Wiki',
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SelectionMenu />
         <KeyboardShortcuts />
         <LinkPreview />
+        <ReadingMode />
         <RAGChat />
       </body>
     </html>
