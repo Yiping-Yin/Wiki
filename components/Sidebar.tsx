@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { chapters } from '../lib/nav';
 import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
@@ -16,8 +16,57 @@ const META = chapterMeta as Record<string, ChMeta>;
 
 export function Sidebar() {
   const [open, setOpen] = useState(false);
+  const [pinned, setPinnedState] = useState(false);
   const [llmOpen, setLlmOpen] = useState(false);
   const [knowOpen, setKnowOpen] = useState(true);
+
+  // Edge-hover trigger to peek the sidebar (GPT Atlas style)
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('wiki:sidebar:pinned');
+      if (v === '1') setPinnedState(true);
+    } catch {}
+    let hideTimer: number | null = null;
+    const onMove = (e: MouseEvent) => {
+      if (e.clientX < 16) {
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        setOpen(true);
+      } else if (e.clientX > 320) {
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = window.setTimeout(() => setOpen(false), 500);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        setOpen((o) => !o);
+      } else if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('keydown', onKey);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, []);
+
+  const togglePin = () => {
+    setPinnedState((p) => {
+      const next = !p;
+      try { localStorage.setItem('wiki:sidebar:pinned', next ? '1' : '0'); } catch {}
+      document.body.classList.toggle('sidebar-pinned', next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    document.body.classList.toggle('sidebar-pinned', pinned);
+  }, [pinned]);
+
+  const visible = open || pinned;
   const sections = Array.from(new Set(chapters.map((c) => c.section)));
   const pathname = usePathname();
   const [history] = useHistory();
@@ -48,31 +97,28 @@ export function Sidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Open menu"
-        className="mobile-menu-btn"
+      {/* Edge-hover hotzone — invisible 6px strip on left */}
+      <div
+        aria-hidden
         style={{
-          position: 'fixed', top: 12, left: 12, zIndex: 60,
-          background: 'var(--bg)', border: '1px solid var(--border)',
-          borderRadius: 6, padding: '0.4rem 0.6rem', cursor: 'pointer', color: 'var(--fg)',
+          position: 'fixed', top: 0, left: 0, bottom: 0, width: 6,
+          zIndex: 65,
         }}
-      >☰</button>
-
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 70 }}
-        />
-      )}
+      />
 
       <aside
-        className={`sidebar ${open ? 'open' : ''}`}
+        className={`sidebar glass ${visible ? 'open' : ''}`}
         style={{
-          width: 280, borderRight: '1px solid var(--border)',
-          padding: '1.5rem 1.1rem 4rem', position: 'sticky', top: 0,
-          height: '100vh', overflowY: 'auto', background: 'var(--bg)',
+          width: 280,
+          padding: '1.5rem 1.1rem 4rem',
+          position: 'fixed', top: 0, left: 0, height: '100vh',
+          overflowY: 'auto',
           display: 'flex', flexDirection: 'column',
+          zIndex: 70,
+          borderRight: 'var(--hairline)',
+          transform: visible ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.32s var(--ease)',
+          boxShadow: visible && !pinned ? 'var(--shadow-3)' : 'none',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
@@ -89,6 +135,21 @@ export function Sidebar() {
             </span>
           </Link>
           <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={togglePin}
+              title={pinned ? 'Unpin sidebar (auto-hide)' : 'Pin sidebar (always show)'}
+              aria-label="Pin sidebar"
+              style={{
+                background: pinned ? 'var(--accent)' : 'transparent',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '0.3rem 0.55rem',
+                cursor: 'pointer',
+                color: pinned ? '#fff' : 'var(--fg)',
+                fontSize: '0.85rem',
+                lineHeight: 1,
+              }}
+            >📌</button>
             <ReadingToggle />
             <ThemeToggle />
           </div>
