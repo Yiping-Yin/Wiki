@@ -128,6 +128,12 @@ export function TodayClient({ totalDocs }: { totalDocs: number }) {
         </div>
       </div>
 
+      <AmbientRecs
+        recent={history.slice(0, 5).map((h) => ({ title: docsById.get(h.id)?.title ?? h.title }))}
+        weak={quizResults.filter(isWeak).slice(0, 4).map((w) => ({ title: docsById.get(w.docId)?.title ?? w.docId, score: w.score, total: w.total }))}
+        noted={notedIds.slice(0, 4).map((id) => ({ title: docsById.get(id)?.title ?? id }))}
+      />
+
       {/* Pinned docs */}
       {pins.length > 0 && (
         <Section title="Pinned" subtitle={`${pins.length} starred`}>
@@ -320,6 +326,97 @@ export function TodayClient({ totalDocs }: { totalDocs: number }) {
         </Section>
       )}
     </div>
+  );
+}
+
+function AmbientRecs({
+  recent, weak, noted,
+}: {
+  recent: { title: string }[];
+  weak: { title: string; score: number; total: number }[];
+  noted: { title: string }[];
+}) {
+  const [items, setItems] = useState<{ title: string; why: string; action: string }[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hasInput, setHasInput] = useState(false);
+
+  useEffect(() => {
+    setHasInput(recent.length > 0 || weak.length > 0 || noted.length > 0);
+  }, [recent, weak, noted]);
+
+  useEffect(() => {
+    if (!hasInput) return;
+    const dayKey = `wiki:recs:${new Date().toISOString().slice(0, 10)}`;
+    try {
+      const cached = localStorage.getItem(dayKey);
+      if (cached) {
+        setItems(JSON.parse(cached));
+        return;
+      }
+    } catch {}
+    let cancelled = false;
+    setLoading(true);
+    fetch('/api/recommend', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ recent, weak, noted }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((j) => {
+        if (cancelled || !j?.items) return;
+        setItems(j.items);
+        try { localStorage.setItem(dayKey, JSON.stringify(j.items)); } catch {}
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [hasInput]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!hasInput) return null;
+  if (!loading && (!items || items.length === 0)) return null;
+
+  return (
+    <Section title="✦ Today's focus" subtitle="AI-generated based on your recent activity">
+      {loading && !items && (
+        <div style={{
+          padding: '1rem 1.2rem',
+          border: 'var(--hairline)', borderRadius: 'var(--r-2)',
+          background: 'linear-gradient(135deg, rgba(0,113,227,0.06), rgba(168,85,247,0.06))',
+          fontSize: '0.85rem', color: 'var(--muted)',
+        }}>
+          ✦ Asking Claude what you should focus on today…
+        </div>
+      )}
+      {items && items.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
+          {items.map((it, i) => (
+            <div
+              key={i}
+              className="card-lift"
+              style={{
+                padding: '0.95rem 1.1rem',
+                border: 'var(--hairline)', borderRadius: 'var(--r-2)',
+                background: 'linear-gradient(135deg, rgba(0,113,227,0.05), rgba(168,85,247,0.04))',
+                boxShadow: 'var(--shadow-1)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                <span style={{ color: 'var(--accent)', fontSize: '0.85rem' }}>✦</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'var(--display)', letterSpacing: '-0.012em' }}>
+                  {it.title}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.5, marginBottom: 7 }}>
+                {it.why}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--accent)', fontWeight: 600 }}>
+                → {it.action}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
 
