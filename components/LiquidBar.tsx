@@ -25,7 +25,6 @@ export function emitLiquidSend(text: string) {
 export function LiquidBar() {
   const [draft, setDraft] = useState('');
   const [focused, setFocused] = useState(false);
-  const [near, setNear] = useState(false);
   const [hideInReading, setHideInReading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,17 +37,12 @@ export function LiquidBar() {
     return () => obs.disconnect();
   }, []);
 
-  // Mouse-near-bottom-center auto-show
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const dyBottom = window.innerHeight - e.clientY;
-      const cx = window.innerWidth / 2;
-      const dx = Math.abs(e.clientX - cx);
-      setNear(dyBottom < 140 && dx < 360);
-    };
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
+  // Open ChatPanel directly with no text
+  const openPanel = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wiki:chat:toggle'));
+    }
+  };
 
   const send = () => {
     const text = draft.trim();
@@ -61,34 +55,33 @@ export function LiquidBar() {
 
   if (hideInReading) return null;
 
-  const visible = focused || near || draft.length > 0;
-
+  // Always visible — opacity 1; just expands when focused
   return (
     <div
       style={{
-        position: 'fixed', bottom: 16, left: '50%',
-        transform: `translateX(-50%) ${visible ? 'translateY(0)' : 'translateY(8px)'}`,
+        position: 'fixed', bottom: 18, left: '50%',
+        transform: `translateX(-50%)`,
         zIndex: 46,
-        width: focused ? 'min(640px, calc(100vw - 80px))' : 'min(440px, calc(100vw - 80px))',
-        opacity: visible ? 1 : 0.32,
-        transition: 'all 0.32s var(--ease-spring)',
+        width: focused ? 'min(680px, calc(100vw - 80px))' : 'min(480px, calc(100vw - 80px))',
+        transition: 'width 0.32s var(--ease-spring)',
       }}
     >
       <div
         className="glass"
         style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '0.55rem 0.85rem 0.55rem 1rem',
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '0.65rem 0.95rem 0.65rem 1.1rem',
           borderRadius: 999,
           boxShadow: focused ? 'var(--shadow-3)' : 'var(--shadow-2)',
-          border: '0.5px solid ' + (focused ? 'var(--accent)' : 'var(--border)'),
+          border: '0.5px solid ' + (focused ? 'var(--accent)' : 'var(--border-strong)'),
           transition: 'all 0.25s var(--ease)',
         }}
       >
         <span style={{
-          color: focused ? 'var(--accent)' : 'var(--muted)',
-          fontSize: '0.95rem', flexShrink: 0,
+          color: focused ? 'var(--accent)' : 'var(--accent)',
+          fontSize: '1.05rem', flexShrink: 0,
           transition: 'color 0.2s var(--ease)',
+          fontWeight: 600,
         }}>✦</span>
         <input
           ref={inputRef}
@@ -105,11 +98,11 @@ export function LiquidBar() {
               inputRef.current?.blur();
             }
           }}
-          placeholder="Ask anything · ⌘L for full chat"
+          placeholder="Ask Claude anything…"
           style={{
             flex: 1, border: 0, background: 'transparent',
             color: 'var(--fg)',
-            fontSize: '0.88rem', fontFamily: 'var(--display)',
+            fontSize: '0.92rem', fontFamily: 'var(--display)',
             outline: 'none',
             letterSpacing: '-0.005em',
           }}
@@ -121,14 +114,25 @@ export function LiquidBar() {
             style={{
               background: 'var(--accent)', color: '#fff',
               border: 0, borderRadius: '50%',
-              width: 26, height: 26, cursor: 'pointer',
-              fontSize: '0.78rem', lineHeight: 1,
+              width: 28, height: 28, cursor: 'pointer',
+              fontSize: '0.82rem', lineHeight: 1,
               flexShrink: 0,
               boxShadow: 'var(--shadow-1)',
             }}
           >↑</button>
         ) : (
-          <span style={{ fontSize: '0.65rem', color: 'var(--muted)', flexShrink: 0, paddingRight: 4 }}>⌘L</span>
+          <button
+            onClick={openPanel}
+            aria-label="Open chat panel"
+            title="Open full chat (⌘L)"
+            style={{
+              background: 'transparent', border: 0, cursor: 'pointer',
+              color: 'var(--muted)', fontSize: '0.7rem',
+              padding: '4px 8px', borderRadius: 999,
+              flexShrink: 0,
+              fontWeight: 600,
+            }}
+          >⌘L</button>
         )}
       </div>
     </div>
