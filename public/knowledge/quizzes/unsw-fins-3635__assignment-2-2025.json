@@ -1,0 +1,39 @@
+{
+  "id": "unsw-fins-3635__assignment-2-2025",
+  "questions": [
+    {
+      "q": "In the context of this assignment, what does it mean for an option to be 'at-the-money'?",
+      "choices": [
+        "The option's strike price equals the current market price of the underlying asset",
+        "The option is currently profitable to exercise",
+        "The option's premium equals its intrinsic value",
+        "The option's strike price equals the risk-free rate"
+      ],
+      "correct": 0,
+      "explain": "An at-the-money option has a strike price equal to the current price of the underlying asset (here, the S&P 500 on September 25, 2024). This is a fundamental options concept tested in Questions 1 and 2."
+    },
+    {
+      "q": "Why does Question 5 specifically ask about an American call option rather than a European call, given that dividends are introduced?",
+      "choices": [
+        "American options are always more expensive than European options regardless of dividends",
+        "Dividends make early exercise of an American call potentially optimal, so the European pricing formula alone is insufficient",
+        "American options can only be priced using binomial trees, not Black-Scholes",
+        "The put-call parity relationship only holds for American options when dividends are present"
+      ],
+      "correct": 1,
+      "explain": "For a European call on a non-dividend-paying stock, American and European calls have the same value. However, when discrete dividends are paid, early exercise of an American call just before a dividend date may be optimal, making the American call potentially worth more and requiring special pricing techniques."
+    },
+    {
+      "q": "In Question 3, a portfolio is constructed by shorting 100 calls and going long 200 puts at the strike price from Question 2. If the S&P 500 crashes by 20%, which component of the portfolio generates the largest gain?",
+      "choices": [
+        "The short calls gain more because 100 options expire worthless",
+        "The long puts gain more because 200 deep-in-the-money puts produce large payoffs",
+        "Both components contribute equally since the strike was chosen to equalize call and put prices",
+        "Neither gains because the portfolio is delta-neutral"
+      ],
+      "correct": 1,
+      "explain": "A 20% crash would push the puts deep in-the-money, and with 200 contracts the payoff is substantial. While the short calls also profit (they expire worthless or lose value), 200 puts with large intrinsic value dominate the portfolio's gain."
+    }
+  ],
+  "generatedAt": "2026-04-08T00:55:10.197Z"
+}

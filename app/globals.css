@@ -264,6 +264,11 @@ html:not(.dark) [data-theme='dark'] { display: none; }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ============================================================
    Apple-style glass surfaces — applied to floating UI
    ============================================================ */

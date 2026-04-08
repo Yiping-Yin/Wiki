@@ -97,7 +97,13 @@ function cleanText(raw: string): string {
   // 1. Trim invisible chars
   let s = raw.replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').replace(/\u200b/g, '');
 
-  // 2. Detect repeated header/footer lines (short lines appearing >3 times)
+  // 2. Kill TOC dot-leaders FIRST: "Section name . . . . . . . 31" → "Section name 31"
+  //    These cause the entire body to look like an unreadable wall.
+  s = s.replace(/(?:\s?\.){4,}\s?/g, ' ');           // ". . . . ." or "....." runs
+  s = s.replace(/(?:\s?·){4,}\s?/g, ' ');            // middot leaders
+  s = s.replace(/(?:\s?_){4,}\s?/g, ' ');            // underscore leaders
+
+  // 3. Detect repeated header/footer lines (short lines appearing >3 times)
   const lineCounts = new Map<string, number>();
   for (const ln of s.split('\n')) {
     const t = ln.trim();
@@ -109,29 +115,40 @@ function cleanText(raw: string): string {
       .map(([line]) => line),
   );
 
-  // 3. Filter lines: drop standalone page numbers + repeated headers/footers
+  // 4. Detect TOC-like blocks (section title followed by page number)
+  //    e.g. "2.8.1 Plotting Piecewise-defined Functions 31"
+  //    If many of these appear consecutively, the doc is mostly a TOC and we
+  //    should at least make each one its own line.
+  //
+  //    Drop the trailing page number from such lines but keep the title.
+
+  // 5. Filter lines: drop standalone page numbers + repeated headers/footers + tiny noise
   const lines = s.split('\n').filter((ln) => {
     const t = ln.trim();
-    if (!t) return true; // keep blank for paragraph breaks
-    if (/^\d{1,4}$/.test(t)) return false;       // bare page number
+    if (!t) return true;
+    if (/^\d{1,4}$/.test(t)) return false;
     if (/^Page \d+( of \d+)?$/i.test(t)) return false;
     if (repeated.has(t)) return false;
+    // drop lines that are >50% punctuation (high noise)
+    const punct = (t.match(/[\.\,\-\_·…]/g) ?? []).length;
+    if (punct > 0 && punct / t.length > 0.5) return false;
     return true;
   });
 
-  // 4. Fix hyphenated word breaks: "word-\n  word2" → "wordword2"
+  // 6. Fix hyphenated word breaks
   s = lines.join('\n').replace(/(\w)-\n\s*(\w)/g, '$1$2');
 
-  // 5. Re-flow: single newline inside a paragraph becomes a space
+  // 7. Re-flow: single newline → space
   s = s.replace(/([^\n])\n([^\n])/g, '$1 $2');
 
-  // 6. Collapse multiple blank lines into a single paragraph break
+  // 8. Collapse blank lines + whitespace
   s = s.replace(/\n{3,}/g, '\n\n');
-
-  // 7. Collapse internal whitespace runs
   s = s.split('\n').map((ln) => ln.replace(/[ \t]{2,}/g, ' ').trim()).join('\n');
 
-  // 8. Drop trailing/leading blank lines
+  // 9. Final cleanup: stray dots from leader removal
+  s = s.replace(/ \. \. \./g, '');
+  s = s.replace(/ {2,}/g, ' ');
+
   return s.trim();
 }
 
