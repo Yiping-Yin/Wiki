@@ -19,8 +19,6 @@ import { SelectionWarp } from '../components/SelectionWarp';
 import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
 import { QuickSticky } from '../components/QuickSticky';
-import { DevStatusBadge } from '../components/DevStatusBadge';
-import { AnchorDebugOverlay } from '../components/AnchorDebugOverlay';
 
 export const metadata = {
   title: 'Loom',
@@ -85,8 +83,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ReadingMode />
         <QuickSwitcher />
         <DropZone />
-        <DevStatusBadge />
-        <AnchorDebugOverlay />
       </body>
     </html>
   );

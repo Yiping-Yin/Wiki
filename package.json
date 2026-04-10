@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs -p 3000 -H 0.0.0.0",
     "dev:raw": "next dev -p 3000 -H 0.0.0.0",
-    "build": "next build && pagefind --site .next/server/app --output-path public/pagefind || true",
-    "start": "next start -p 3000 -H 0.0.0.0",
+    "build": "rm -f tsconfig.tsbuildinfo && LOOM_DIST_DIR=.next-build next build && node scripts/pagefind-if-html.mjs .next-build/server/app public/pagefind",
+    "start": "LOOM_DIST_DIR=.next-build next start -p 3000 -H 0.0.0.0",
     "lint": "next lint",
     "research": "tsx scripts/research.ts",
     "ingest": "tsx scripts/ingest-knowledge.ts",
@@ -14,7 +14,7 @@
     "rag": "tsx scripts/build-rag-index.ts",
     "search": "tsx scripts/build-search-index.ts",
     "batch": "tsx scripts/batch-process.ts",
-    "index": "pagefind --site .next/server/app --output-path public/pagefind",
+    "index": "node scripts/pagefind-if-html.mjs .next/server/app public/pagefind",
     "icons": "node scripts/generate-icons.mjs",
     "app": "cd macos-app/Loom && xcodegen generate && xcodebuild -scheme Loom -configuration Debug build && rm -rf /Applications/Loom.app && cp -R ~/Library/Developer/Xcode/DerivedData/Loom-*/Build/Products/Debug/Loom.app /Applications/Loom.app && echo '✓ Loom.app installed'",
     "app:open": "open /Applications/Loom.app"
@@ -31,7 +31,7 @@
     "marked-katex-extension": "^5.1.8",
     "mermaid": "^11.4.0",
     "minisearch": "^7.2.0",
-    "next": "^15.0.0",
+    "next": "^15.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "reactflow": "^11.11.4",
@@ -54,6 +54,7 @@
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.13",
     "tsx": "^4.19.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "umap-js": "^1.4.0"
   }
 }
