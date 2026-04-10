@@ -12,11 +12,15 @@ Today the canonical suite for a frontier-model release looks roughly like: **MML
 
 A benchmark is a triple $(\mathcal{D}, f, s)$: a dataset of items $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$, a prompting/decoding function $f$ that turns $x_i$ into a model response $\hat{y}_i$, and a scoring function $s(\hat{y}_i, y_i) \in [0,1]$. The reported number is just the empirical mean
 
-$$\mathrm{Score}(M) = \frac{1}{N}\sum_{i=1}^N s\big(f(M, x_i),\, y_i\big).$$
+$$
+\mathrm{Score}(M) = \frac{1}{N}\sum_{i=1}^N s\big(f(M, x_i),\, y_i\big).
+$$
 
 For pairwise human preference benchmarks like Chatbot Arena there is no $y_i$; instead votes between models $A$ and $B$ are fit to a Bradley–Terry model and converted to Elo:
 
-$$P(A \succ B) = \frac{1}{1 + 10^{(R_B - R_A)/400}}.$$
+$$
+P(A \succ B) = \frac{1}{1 + 10^{(R_B - R_A)/400}}.
+$$
 
 ## How it works
 
@@ -24,7 +28,9 @@ The devil is in $f$. For MMLU, the "official" scoring asks the model for a singl
 
 For code benchmarks, scoring is execution-based: HumanEval runs the model's completion against held-out unit tests and reports **pass@k**, which uses an unbiased estimator over $n \geq k$ samples to avoid the high variance of just sampling $k$ times:
 
-$$\text{pass@}k = \mathbb{E}_{\text{problems}}\left[1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}\right],$$
+$$
+\text{pass@}k = \mathbb{E}_{\text{problems}}\left[1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}\right],
+$$
 
 where $c$ is the number of correct samples out of $n$. MATH uses a symbolic equality check on the boxed final answer. IFEval is clever: every instruction ("respond in exactly 3 bullet points, each starting with the letter K") comes with a deterministic Python verifier, sidestepping LLM-as-judge entirely.
 

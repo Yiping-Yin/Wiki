@@ -12,11 +12,15 @@ DPO has since become the default alignment recipe outside of frontier labs. Llam
 
 RLHF maximizes expected reward under a KL constraint to a reference policy $\pi_\text{ref}$:
 
-$$\max_{\pi_\theta}\;\mathbb{E}_{x,\,y\sim\pi_\theta}[r(x,y)] \;-\; \beta\,\mathrm{KL}\!\left[\pi_\theta(y\mid x)\,\|\,\pi_\text{ref}(y\mid x)\right].$$
+$$
+\max_{\pi_\theta}\;\mathbb{E}_{x,\,y\sim\pi_\theta}[r(x,y)] \;-\; \beta\,\mathrm{KL}\!\left[\pi_\theta(y\mid x)\,\|\,\pi_\text{ref}(y\mid x)\right].
+$$
 
 This problem has a known closed form: $\pi^*(y\mid x) \propto \pi_\text{ref}(y\mid x)\,\exp\!\big(r(x,y)/\beta\big)$. Inverting this gives the reward implicitly defined by *any* policy:
 
-$$r(x,y) \;=\; \beta\,\log\frac{\pi_\theta(y\mid x)}{\pi_\text{ref}(y\mid x)} \;+\; \beta\log Z(x).$$
+$$
+r(x,y) \;=\; \beta\,\log\frac{\pi_\theta(y\mid x)}{\pi_\text{ref}(y\mid x)} \;+\; \beta\log Z(x).
+$$
 
 Plug this into the Bradley–Terry preference model $P(y_w\succ y_l) = \sigma(r(x,y_w)-r(x,y_l))$ and the partition function $Z(x)$ cancels. The reward model disappears; only the policy remains.
 
@@ -24,13 +28,17 @@ Plug this into the Bradley–Terry preference model $P(y_w\succ y_l) = \sigma(r(
 
 The resulting DPO loss is a binary cross-entropy on the difference of two log-ratios:
 
-$$\mathcal{L}_\text{DPO}(\pi_\theta;\pi_\text{ref}) = -\,\mathbb{E}_{(x,y_w,y_l)}\!\left[\log\sigma\!\left(\beta\log\frac{\pi_\theta(y_w\mid x)}{\pi_\text{ref}(y_w\mid x)} - \beta\log\frac{\pi_\theta(y_l\mid x)}{\pi_\text{ref}(y_l\mid x)}\right)\right].$$
+$$
+\mathcal{L}_\text{DPO}(\pi_\theta;\pi_\text{ref}) = -\,\mathbb{E}_{(x,y_w,y_l)}\!\left[\log\sigma\!\left(\beta\log\frac{\pi_\theta(y_w\mid x)}{\pi_\text{ref}(y_w\mid x)} - \beta\log\frac{\pi_\theta(y_l\mid x)}{\pi_\text{ref}(y_l\mid x)}\right)\right].
+$$
 
 Mechanically: for each preference pair you compute the sequence log-probability of the chosen and rejected responses under both the trainable policy and a frozen reference (typically the SFT checkpoint). The model is pushed to *increase* the log-probability margin of $y_w$ over $y_l$ relative to the reference. The hyperparameter $\beta$ (typically 0.1–0.5) plays the role of the KL temperature: small $\beta$ allows the policy to drift further from $\pi_\text{ref}$, large $\beta$ keeps it tethered.
 
 The gradient has an intuitive shape. Let $\hat r_\theta(x,y)=\beta\log\pi_\theta(y\mid x)/\pi_\text{ref}(y\mid x)$ be the implicit reward. Then
 
-$$\nabla_\theta\mathcal{L}_\text{DPO} = -\beta\,\mathbb{E}\!\left[\sigma\!\big(\hat r_\theta(x,y_l)-\hat r_\theta(x,y_w)\big)\,\big(\nabla_\theta\log\pi_\theta(y_w\mid x) - \nabla_\theta\log\pi_\theta(y_l\mid x)\big)\right].$$
+$$
+\nabla_\theta\mathcal{L}_\text{DPO} = -\beta\,\mathbb{E}\!\left[\sigma\!\big(\hat r_\theta(x,y_l)-\hat r_\theta(x,y_w)\big)\,\big(\nabla_\theta\log\pi_\theta(y_w\mid x) - \nabla_\theta\log\pi_\theta(y_l\mid x)\big)\right].
+$$
 
 The sigmoid term is an automatic difficulty weight: pairs the model already gets right contribute almost nothing; pairs where the implicit reward is wrong dominate the gradient. No sampling, no value network, no PPO clipping, no reward model — just two forward passes through a frozen copy and one through the trainable copy.
 

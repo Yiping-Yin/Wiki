@@ -152,16 +152,22 @@ export function FreeInput() {
         <div
           onClick={activate}
           style={{
-            height: 1,
-            borderRadius: 0.5,
-            background: 'var(--mat-border)',
-            opacity: 0.5,
+            padding: '12px 0',
             cursor: 'pointer',
-            transition: 'opacity 0.2s var(--ease), background 0.2s var(--ease)',
           }}
-          onMouseEnter={(e) => { const s = (e.currentTarget as HTMLElement).style; s.opacity = '0.8'; s.background = 'var(--accent)'; }}
-          onMouseLeave={(e) => { const s = (e.currentTarget as HTMLElement).style; s.opacity = '0.5'; s.background = 'var(--mat-border)'; }}
-        />
+          onMouseEnter={(e) => { const line = e.currentTarget.firstElementChild as HTMLElement; line.style.opacity = '0.8'; line.style.background = 'var(--accent)'; }}
+          onMouseLeave={(e) => { const line = e.currentTarget.firstElementChild as HTMLElement; line.style.opacity = '0.5'; line.style.background = 'var(--mat-border)'; }}
+        >
+          <div
+            style={{
+              height: 1,
+              borderRadius: 0.5,
+              background: 'var(--mat-border)',
+              opacity: 0.5,
+              transition: 'opacity 0.2s var(--ease), background 0.2s var(--ease)',
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -196,46 +202,60 @@ export function FreeInput() {
           fontWeight: 700,
           flexShrink: 0,
           paddingBottom: 2,
+          ...(streaming ? { animation: 'loomPulse 2s ease-in-out infinite' } : {}),
         }}>✦</span>
-        <textarea
-          ref={taRef}
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            const el = e.target;
-            el.style.height = 'auto';
-            el.style.height = Math.min(120, el.scrollHeight) + 'px';
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              send();
-            }
-            if (e.key === 'Escape' && !value) {
-              setExpanded(false);
-            }
-          }}
-          onBlur={() => { if (!value && !streaming) setExpanded(false); }}
-          placeholder="think…"
-          rows={1}
-          disabled={streaming}
-          style={{
+        {streaming ? (
+          <span style={{
             flex: 1,
-            background: 'transparent',
-            border: 0,
-            outline: 0,
-            color: 'var(--fg)',
+            color: 'var(--muted)',
             fontSize: '0.92rem',
             fontFamily: 'var(--display)',
             letterSpacing: '-0.012em',
             lineHeight: 1.5,
             minHeight: 24,
-            maxHeight: 120,
-            resize: 'none',
-            padding: 0,
-            opacity: streaming ? 0.5 : 1,
-          }}
-        />
+            display: 'flex',
+            alignItems: 'center',
+            userSelect: 'none',
+          }} />
+        ) : (
+          <textarea
+            ref={taRef}
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              const el = e.target;
+              el.style.height = 'auto';
+              el.style.height = Math.min(120, el.scrollHeight) + 'px';
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+              if (e.key === 'Escape' && !value) {
+                setExpanded(false);
+              }
+            }}
+            onBlur={() => { if (!value && !streaming) setExpanded(false); }}
+            placeholder="think…"
+            rows={1}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 0,
+              outline: 0,
+              color: 'var(--fg)',
+              fontSize: '0.92rem',
+              fontFamily: 'var(--display)',
+              letterSpacing: '-0.012em',
+              lineHeight: 1.5,
+              minHeight: 24,
+              maxHeight: 120,
+              resize: 'none',
+              padding: 0,
+            }}
+          />
+        )}
       </div>
     </div>
   );

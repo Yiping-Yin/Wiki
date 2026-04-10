@@ -12,11 +12,15 @@ The method was introduced by Bai et al. at Anthropic in December 2022 (arXiv 221
 
 CAI has two stages. **Stage 1 (SL-CAI):** sample a response from a helpful-only model, ask the *same* model to critique it against a randomly sampled constitutional principle, then ask it to revise. Fine-tune on the revised responses. **Stage 2 (RL-CAI / RLAIF):** for each prompt, sample two responses, and ask a *feedback model* which one better satisfies a principle. Train a preference model $r_\phi$ on those AI labels, then run PPO against it. Formally, given principle $c$ and responses $y_1,y_2$ to prompt $x$, the AI label is
 
-$$p(y_1 \succ y_2 \mid x, c) = \frac{\exp \ell(y_1)}{\exp \ell(y_1) + \exp \ell(y_2)}$$
+$$
+p(y_1 \succ y_2 \mid x, c) = \frac{\exp \ell(y_1)}{\exp \ell(y_1) + \exp \ell(y_2)}
+$$
 
 where $\ell(y_i) = \log p_{\text{LM}}(\text{"(A)"} \mid x, y_1, y_2, c)$ is the log-prob the feedback model assigns to picking option $i$. The preference model is then fit via the standard Bradley–Terry loss
 
-$$\mathcal{L}(\phi) = -\mathbb{E}_{(x,y_w,y_l)}\big[\log \sigma(r_\phi(x,y_w) - r_\phi(x,y_l))\big].$$
+$$
+\mathcal{L}(\phi) = -\mathbb{E}_{(x,y_w,y_l)}\big[\log \sigma(r_\phi(x,y_w) - r_\phi(x,y_l))\big].
+$$
 
 ## How it works
 
@@ -24,7 +28,9 @@ The supervised stage is a self-distillation loop. Start from a helpful RLHF mode
 
 The RL stage replaces human comparison labels entirely. Given the SL-CAI model, sample pairs $(y_1, y_2)$ for each prompt, build a multiple-choice prompt *"Consider helpfulness and harmlessness. Which response is better? (A) … (B) …"* conditioned on a sampled principle, and read off the softmax over the tokens "(A)" and "(B)". Those soft labels train the preference model; PPO against $r_\phi$ with a KL penalty to the SL-CAI reference policy closes the loop:
 
-$$\max_{\pi_\theta}\ \mathbb{E}_{x,y\sim\pi_\theta}[r_\phi(x,y)] - \beta\, \mathrm{KL}(\pi_\theta \Vert \pi_{\text{ref}}).$$
+$$
+\max_{\pi_\theta}\ \mathbb{E}_{x,y\sim\pi_\theta}[r_\phi(x,y)] - \beta\, \mathrm{KL}(\pi_\theta \Vert \pi_{\text{ref}}).
+$$
 
 A crucial detail: the paper also uses **chain-of-thought** in the feedback model — letting it reason *before* committing to (A) or (B) — which materially improves label quality on subtle cases. Anthropic additionally found that scaling the feedback model helps more than scaling the labelers (humans) ever did.
 

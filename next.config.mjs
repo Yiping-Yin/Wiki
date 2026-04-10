@@ -11,8 +11,8 @@ const withMDX = createMDX({
     remarkPlugins: [remarkGfm, remarkMath],
     rehypePlugins: [
       rehypeSlug,
-      [rehypePrettyCode, { theme: { dark: 'github-dark', light: 'github-light' }, keepBackground: false }],
       rehypeKatex,
+      [rehypePrettyCode, { theme: { dark: 'github-dark', light: 'github-light' }, keepBackground: false }],
     ],
   },
 });
@@ -20,6 +20,7 @@ const withMDX = createMDX({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
+  distDir: process.env.LOOM_DIST_DIR || '.next',
 };
 
 export default withMDX(nextConfig);

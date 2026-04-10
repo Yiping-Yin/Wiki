@@ -381,9 +381,9 @@ body.loom-chat-focus-active main .loom-source-prose > [data-loom-chat-focus] {
 .prose-notion blockquote p { margin: 0.3rem 0; }
 .prose-notion hr { border: none; border-top: var(--hairline); margin: 2.4rem 0; }
 .prose-notion table {
-  width: 100%; border-collapse: collapse; margin: 1.2rem 0;
+  width: max-content; min-width: 100%; border-collapse: collapse; margin: 1.2rem 0;
   font-size: 0.92rem; border: var(--hairline);
-  border-radius: var(--r-2); overflow: hidden;
+  border-radius: var(--r-2);
   box-shadow: var(--shadow-1);
 }
 .prose-notion th, .prose-notion td {
@@ -471,6 +471,10 @@ html:not(.dark) [data-theme='dark'] { display: none; }
 @keyframes lpFade {
   from { opacity: 0; transform: translateY(-6px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes loomPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 @keyframes spin {
