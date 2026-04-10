@@ -218,8 +218,8 @@ function BrandIconSpecimen() {
         </linearGradient>
       </defs>
       <rect width="512" height="512" rx="112" fill="url(#about-bg)"/>
-      <g stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity="0.86">
-        {[116,156,196,236,276,316,356,396].map((x) => <line key={x} x1={x} y1={176} x2={x} y2={336}/>)}
+      <g stroke="#fff" strokeWidth="2.2" strokeLinecap="round" opacity="0.90">
+        {[128,168,208,248,288,328,368,408].map((x) => <line key={x} x1={x} y1={148} x2={x} y2={364}/>)}
       </g>
     </svg>
   );
