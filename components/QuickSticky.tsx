@@ -2,9 +2,9 @@
 /**
  * QuickSticky · margin tap to note
  *
- * Click in the empty space to the right of the prose → a tiny input
- * appears at that position. Type a thought, Enter saves it.
- * Like writing in the margin of a textbook.
+ * Click in the empty space on EITHER side of the prose → a tiny input
+ * appears at that position. Works at any screen width — adapts to
+ * whichever margin has space.
  *
  * §1: appears only when tapped. Disappears after commit.
  * No keyboard shortcut — the trigger is spatial.
@@ -20,7 +20,7 @@ export function QuickSticky() {
   const ctx = contextFromPathname(pathname);
   const [active, setActive] = useState(false);
   const [value, setValue] = useState('');
-  const [pos, setPos] = useState({ top: 0, right: 24 });
+  const [pos, setPos] = useState<{ top: number; left?: number; right?: number }>({ top: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const append = useAppendEvent();
 
@@ -48,27 +48,42 @@ export function QuickSticky() {
       const main = document.querySelector('main');
       if (!main || !main.contains(target)) return;
 
-      // Don't trigger on interactive elements or content
+      // Don't trigger on interactive elements
       if (target.closest('a, button, input, textarea, select, [contenteditable], .prose-notion, .sidebar, .loom-pdf-frame, [data-loom-system], mark')) return;
 
       // Don't trigger during text selection
       const sel = window.getSelection();
       if (sel && !sel.isCollapsed) return;
 
-      // Only in the right margin
       const prose = main.querySelector('.prose-notion');
       if (!prose) return;
       const proseRect = prose.getBoundingClientRect();
-      if (e.clientX <= proseRect.right + 10) return;
+      const MARGIN_THRESHOLD = 10;
 
-      e.preventDefault();
-      setPos({
-        top: e.clientY + window.scrollY,
-        right: Math.max(24, window.innerWidth - e.clientX + 10),
-      });
-      setActive(true);
-      setValue('');
-      setTimeout(() => inputRef.current?.focus(), 50);
+      // Right margin
+      if (e.clientX > proseRect.right + MARGIN_THRESHOLD) {
+        e.preventDefault();
+        setPos({
+          top: e.clientY + window.scrollY,
+          right: Math.max(16, window.innerWidth - e.clientX + 8),
+        });
+        setActive(true);
+        setValue('');
+        setTimeout(() => inputRef.current?.focus(), 50);
+        return;
+      }
+
+      // Left margin
+      if (e.clientX < proseRect.left - MARGIN_THRESHOLD) {
+        e.preventDefault();
+        setPos({
+          top: e.clientY + window.scrollY,
+          left: Math.max(16, e.clientX - 8),
+        });
+        setActive(true);
+        setValue('');
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
     };
 
     window.addEventListener('click', onClick);
@@ -81,7 +96,8 @@ export function QuickSticky() {
     <div style={{
       position: 'absolute',
       top: pos.top,
-      right: pos.right,
+      ...(pos.right != null ? { right: pos.right } : {}),
+      ...(pos.left != null ? { left: pos.left } : {}),
       zIndex: 80,
       animation: 'lpFade 0.14s var(--ease)',
     }}>
