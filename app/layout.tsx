@@ -18,7 +18,7 @@ import { LoomCursor } from '../components/LoomCursor';
 import { SelectionWarp } from '../components/SelectionWarp';
 import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
-import { QuickSticky } from '../components/QuickSticky';
+
 
 export const metadata = {
   title: 'Loom',
@@ -67,7 +67,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <FreeInput />
           </main>
         </div>
-        <QuickSticky />
         <CopyButtonInjector />
         <HighlightOverlay />
         <SWRegister />

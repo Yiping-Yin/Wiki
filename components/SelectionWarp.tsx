@@ -141,10 +141,32 @@ export function SelectionWarp() {
       const blockId = ensureBlockAnchorId(block, proseContainer);
       const charOffsets = rangeTextOffsets(block, range);
 
+      // Position ✦ at the end of the selection (near the cursor release point),
+      // not at the right edge of the bounding rect. This way the user's
+      // pointer is already close to ✦ when they release the mouse.
+      const sel = window.getSelection();
+      const endRect = sel && sel.rangeCount > 0
+        ? (() => {
+            const r = sel.getRangeAt(0);
+            const endRange = document.createRange();
+            endRange.setStart(r.endContainer, r.endOffset);
+            endRange.collapse(true);
+            const er = endRange.getBoundingClientRect();
+            return er.width === 0 && er.height > 0 ? er : null;
+          })()
+        : null;
+      const anchorX = endRect
+        ? endRect.left + window.scrollX + 4
+        : rect.right + window.scrollX + 4;
+      const anchorY = endRect
+        ? endRect.top + window.scrollY
+        : rect.bottom + window.scrollY - rect.height;
+      const anchorH = endRect ? endRect.height : rect.height;
+
       setSpot({
-        top: rect.bottom + window.scrollY - rect.height,
-        height: rect.height,
-        left: rect.right + window.scrollX + 4,
+        top: anchorY,
+        height: anchorH,
+        left: anchorX,
         text,
         anchor: {
           paragraphId: blockId,

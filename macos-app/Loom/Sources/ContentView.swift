@@ -419,12 +419,6 @@ struct LoomWebView: NSViewRepresentable {
             name: .loomNewTopic,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.quickSticky),
-            name: .loomQuickSticky,
-            object: nil
-        )
 
         // Enable swipe back/forward gesture
         webView.allowsBackForwardNavigationGestures = true
@@ -805,12 +799,6 @@ struct LoomWebView: NSViewRepresentable {
             isInReviewMode = false
             webView?.evaluateJavaScript("""
                 window.dispatchEvent(new CustomEvent('loom:new-topic'));
-            """)
-        }
-
-        @objc func quickSticky() {
-            webView?.evaluateJavaScript("""
-                window.dispatchEvent(new CustomEvent('loom:quick-sticky'));
             """)
         }
 
