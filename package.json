@@ -1,11 +1,12 @@
 {
-  "name": "llm-wiki",
-  "version": "0.2.0",
+  "name": "loom",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs -p 3000 -H 0.0.0.0",
+    "dev:raw": "next dev -p 3000 -H 0.0.0.0",
     "build": "next build && pagefind --site .next/server/app --output-path public/pagefind || true",
-    "start": "next start",
+    "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "next lint",
     "research": "tsx scripts/research.ts",
     "ingest": "tsx scripts/ingest-knowledge.ts",
@@ -13,19 +14,15 @@
     "rag": "tsx scripts/build-rag-index.ts",
     "search": "tsx scripts/build-search-index.ts",
     "batch": "tsx scripts/batch-process.ts",
-    "index": "pagefind --site .next/server/app --output-path public/pagefind"
+    "index": "pagefind --site .next/server/app --output-path public/pagefind",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
-    "@deck.gl/aggregation-layers": "^9.2.11",
-    "@deck.gl/core": "^9.2.11",
-    "@deck.gl/layers": "^9.2.11",
-    "@deck.gl/react": "^9.2.11",
     "@huggingface/transformers": "^4.0.1",
     "@mdx-js/loader": "^3.0.1",
     "@mdx-js/react": "^3.0.1",
     "@next/mdx": "^15.0.0",
-    "deck.gl": "^9.2.11",
     "github-slugger": "^2.0.0",
     "katex": "^0.16.11",
     "marked": "^18.0.0",
@@ -41,8 +38,7 @@
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
-    "shiki": "^1.22.0",
-    "umap-js": "^1.4.0"
+    "shiki": "^1.22.0"
   },
   "devDependencies": {
     "@types/mdx": "^2.0.13",
