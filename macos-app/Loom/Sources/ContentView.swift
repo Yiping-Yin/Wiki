@@ -407,7 +407,11 @@ struct LoomWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            if (error as NSError).code == NSURLErrorCancelled {
+            let nsError = error as NSError
+            let isCancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
+            let isPolicyInterrupt = nsError.domain == WKErrorDomain && nsError.code == 102
+            if isCancelled || isPolicyInterrupt {
+                lastRequestedURL = nil
                 syncState(from: webView)
                 return
             }
@@ -416,7 +420,11 @@ struct LoomWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            if (error as NSError).code == NSURLErrorCancelled {
+            let nsError = error as NSError
+            let isCancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
+            let isPolicyInterrupt = nsError.domain == WKErrorDomain && nsError.code == 102
+            if isCancelled || isPolicyInterrupt {
+                lastRequestedURL = nil
                 syncState(from: webView)
                 return
             }
