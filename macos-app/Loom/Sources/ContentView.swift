@@ -270,9 +270,11 @@ struct LoomWebView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         config.websiteDataStore = .default()
+        #if DEBUG
         let userContentController = WKUserContentController()
         let debugScript = """
         (() => {
+          window.__loomAppShell = true;
           const post = (kind, payload) => {
             try {
               window.webkit?.messageHandlers?.loomDebug?.postMessage({ kind, payload: String(payload ?? '') });
@@ -305,6 +307,7 @@ struct LoomWebView: NSViewRepresentable {
         )
         userContentController.add(context.coordinator, name: "loomDebug")
         config.userContentController = userContentController
+        #endif
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -363,6 +366,13 @@ struct LoomWebView: NSViewRepresentable {
         // Enable swipe back/forward gesture
         webView.allowsBackForwardNavigationGestures = true
 
+        // Pinch gesture → toggle Review mode
+        // Pinch-out (spread fingers) = "zoom out to see the whole fabric" = enter Review
+        // Pinch-in (pinch fingers) = "zoom back to the loom" = exit Review
+        let pinch = NSMagnificationGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch(_:)))
+        pinch.delegate = context.coordinator
+        webView.addGestureRecognizer(pinch)
+
         return webView
     }
 
@@ -373,22 +383,82 @@ struct LoomWebView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
+        coordinator.cleanup()
         nsView.navigationDelegate = nil
+        #if DEBUG
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: "loomDebug")
+        #endif
     }
 
-    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, NSGestureRecognizerDelegate {
         weak var webView: WKWebView?
         var lastRequestedURL: URL?
         var fallbackURL: URL?
         let debugState: WebDebugState
+        private var blankPageWorkItem: DispatchWorkItem?
+        private var isInReviewMode = false
 
         init(debugState: WebDebugState) {
             self.debugState = debugState
         }
 
+        private func isLocalHost(_ host: String?) -> Bool {
+            guard let host else { return false }
+            switch host.lowercased() {
+            case "localhost", "127.0.0.1", "::1", "0.0.0.0":
+                return true
+            default:
+                return false
+            }
+        }
+
         deinit {
+            blankPageWorkItem?.cancel()
             NotificationCenter.default.removeObserver(self)
+        }
+
+        func cleanup() {
+            blankPageWorkItem?.cancel()
+            blankPageWorkItem = nil
+            webView = nil
+            NotificationCenter.default.removeObserver(self)
+        }
+
+        private func scheduleRootFallbackCheck(for webView: WKWebView) {
+            blankPageWorkItem?.cancel()
+            let work = DispatchWorkItem { [weak self, weak webView] in
+                guard let self = self, let webView = webView else { return }
+                webView.evaluateJavaScript("""
+                    (() => {
+                      const path = location.pathname;
+                      const main = document.querySelector('main');
+                      const text = (main?.innerText || '').replace(/\\s+/g, ' ').trim();
+                      return { path, textLength: text.length, title: document.title || '' };
+                    })()
+                """) { result, _ in
+                    guard let info = result as? [String: Any] else { return }
+                    let path = info["path"] as? String ?? ""
+                    let textLength = info["textLength"] as? Int ?? 0
+                    let title = (info["title"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Only apply fallback for an obviously blank initial root render.
+                    if path == "/", textLength < 24, title.isEmpty, webView.canGoBack == false {
+                        guard let base = self.fallbackURL else { return }
+                        var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
+                        components?.path = "/about"
+                        components?.query = nil
+                        components?.fragment = nil
+                        if let target = components?.url {
+                            self.lastRequestedURL = target
+                            webView.load(URLRequest(url: target))
+                            DispatchQueue.main.async {
+                                self.debugState.consoleMessage = "root fallback: loaded /about because home rendered almost empty"
+                            }
+                        }
+                    }
+                }
+            }
+            blankPageWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
         }
 
         private func updateDebugState(from webView: WKWebView, errorMessage: String? = nil) {
@@ -426,9 +496,19 @@ struct LoomWebView: NSViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             lastRequestedURL = webView.url
             updateDebugState(from: webView, errorMessage: "")
+            if debugState.consoleMessage != "" {
+                debugState.consoleMessage = ""
+            }
+            #if DEBUG
+            scheduleRootFallbackCheck(for: webView)
+            #endif
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            blankPageWorkItem?.cancel()
+            if debugState.consoleMessage != "" {
+                debugState.consoleMessage = ""
+            }
             syncState(from: webView)
         }
 
@@ -467,8 +547,12 @@ struct LoomWebView: NSViewRepresentable {
             guard let body = message.body as? [String: Any] else { return }
             let kind = body["kind"] as? String ?? "message"
             let payload = body["payload"] as? String ?? ""
+            let rawMessage = "\(kind): \(payload)"
+            let clippedMessage = rawMessage.count > 800 ? String(rawMessage.prefix(800)) + "…" : rawMessage
             DispatchQueue.main.async {
-                self.debugState.consoleMessage = "\(kind): \(payload)"
+                if self.debugState.consoleMessage != clippedMessage {
+                    self.debugState.consoleMessage = clippedMessage
+                }
             }
         }
 
@@ -486,8 +570,8 @@ struct LoomWebView: NSViewRepresentable {
 
         @objc func triggerReload() {
             guard let webView else { return }
-            if let currentURL = webView.url {
-                webView.load(URLRequest(url: currentURL))
+            if webView.url != nil {
+                webView.reload()
             } else if let fallbackURL {
                 lastRequestedURL = nil
                 webView.load(URLRequest(url: fallbackURL))
@@ -514,6 +598,31 @@ struct LoomWebView: NSViewRepresentable {
             syncState(from: webView)
         }
 
+        // Allow pinch gesture to coexist with WKWebView's built-in zoom
+        func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer, shouldRecognizeSimultaneouslyWith other: NSGestureRecognizer) -> Bool {
+            true
+        }
+
+        @objc func handlePinch(_ gesture: NSMagnificationGestureRecognizer) {
+            guard gesture.state == .ended else { return }
+            // Threshold: significant pinch-out (spread) → enter Review
+            // Significant pinch-in (squeeze) → exit Review
+            if gesture.magnification > 0.4 && !isInReviewMode {
+                isInReviewMode = true
+                webView?.evaluateJavaScript("""
+                    window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', metaKey: true}));
+                """)
+                // Reset WKWebView zoom to 1x so it doesn't actually zoom
+                webView?.magnification = 1.0
+            } else if gesture.magnification < -0.3 && isInReviewMode {
+                isInReviewMode = false
+                webView?.evaluateJavaScript("""
+                    window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', metaKey: true}));
+                """)
+                webView?.magnification = 1.0
+            }
+        }
+
         @objc func newTopic() {
             // Dispatch a custom event that the Sidebar's NewTopicButton listens for
             webView?.evaluateJavaScript("""
@@ -525,11 +634,7 @@ struct LoomWebView: NSViewRepresentable {
             if let url = navigationAction.request.url,
                navigationAction.targetFrame?.isMainFrame != false,
                url.scheme?.hasPrefix("http") == true,
-               let host = url.host,
-               host != "localhost",
-               host != "127.0.0.1",
-               host != "::1",
-               host != "0.0.0.0" {
+               !isLocalHost(url.host) {
                 NSWorkspace.shared.open(url)
                 decisionHandler(.cancel)
                 return
