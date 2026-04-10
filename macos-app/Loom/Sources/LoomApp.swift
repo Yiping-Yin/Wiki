@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let showDebugHUDDefaultsKey = "loom.showDebugHUD.v2"
+
 @main
 struct LoomApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
@@ -21,6 +23,8 @@ struct LoomApp: App {
                     .keyboardShortcut("r", modifiers: .command)
                 Button("Open in Browser") { NotificationCenter.default.post(name: .loomOpenInBrowser, object: nil) }
                     .keyboardShortcut("o", modifiers: [.command, .shift])
+                Button("Quick Note") { NotificationCenter.default.post(name: .loomQuickSticky, object: nil) }
+                    .keyboardShortcut("j", modifiers: .command)
             }
             CommandGroup(after: .toolbar) {
                 Button("Back") { NotificationCenter.default.post(name: .loomGoBack, object: nil) }
@@ -28,6 +32,15 @@ struct LoomApp: App {
                 Button("Forward") { NotificationCenter.default.post(name: .loomGoForward, object: nil) }
                     .keyboardShortcut("]", modifiers: .command)
             }
+            #if DEBUG
+            CommandGroup(after: .help) {
+                Button("Toggle Debug HUD") {
+                    let next = !UserDefaults.standard.bool(forKey: showDebugHUDDefaultsKey)
+                    UserDefaults.standard.set(next, forKey: showDebugHUDDefaultsKey)
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+            }
+            #endif
             CommandGroup(replacing: .newItem) {
                 Button("New Topic") { NotificationCenter.default.post(name: .loomNewTopic, object: nil) }
                     .keyboardShortcut("n", modifiers: .command)
@@ -40,6 +53,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let server = DevServer()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.set(false, forKey: showDebugHUDDefaultsKey)
         server.start()
     }
 
@@ -58,4 +72,5 @@ extension Notification.Name {
     static let loomGoBack = Notification.Name("loomGoBack")
     static let loomGoForward = Notification.Name("loomGoForward")
     static let loomNewTopic = Notification.Name("loomNewTopic")
+    static let loomQuickSticky = Notification.Name("loomQuickSticky")
 }

@@ -1,17 +1,21 @@
 import SwiftUI
 import WebKit
 
+private let lastLocalPathDefaultsKey = "loom.lastLocalPath"
+
 final class WebDebugState: ObservableObject {
     @Published var currentURL: String = ""
     @Published var pageTitle: String = ""
     @Published var isLoading: Bool = false
     @Published var lastError: String = ""
     @Published var consoleMessage: String = ""
+    @Published var recoveryMessage: String = ""
 }
 
 struct ContentView: View {
     @EnvironmentObject var server: DevServer
     @StateObject private var webState = WebDebugState()
+    @AppStorage("loom.showDebugHUD.v2") private var showDebugHUD = false
 
     private var windowTitle: String {
         let url = server.serverURL.absoluteString
@@ -42,28 +46,39 @@ struct ContentView: View {
                     Text("Target: \(server.serverURL.absoluteString)")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.secondary)
-                    Text(msg)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.tertiary)
+                    ScrollView {
+                        Text(msg)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxWidth: 700, maxHeight: 220)
                     Button("Retry") { server.start() }
                         .buttonStyle(.bordered)
                 }
+                .padding(16)
             }
 
             #if DEBUG
-            VStack {
-                HStack {
+            if showDebugHUD {
+                VStack {
+                    HStack {
+                        Spacer()
+                        DevHUD(status: server.status, url: server.serverURL, webState: webState, isVisible: $showDebugHUD)
+                    }
                     Spacer()
-                    DevHUD(status: server.status, url: server.serverURL, webState: webState)
                 }
-                Spacer()
+                .padding(.top, 14)
+                .padding(.trailing, 16)
             }
-            .padding(.top, 14)
-            .padding(.trailing, 16)
             #endif
         }
         .animation(.easeInOut(duration: 0.3), value: server.status)
         .background(WindowConfigurator(title: windowTitle))
+        .onAppear {
+            showDebugHUD = false
+        }
     }
 }
 
@@ -71,6 +86,7 @@ struct DevHUD: View {
     let status: DevServer.Status
     let url: URL
     @ObservedObject var webState: WebDebugState
+    @Binding var isVisible: Bool
 
     private var statusLabel: String {
         switch status {
@@ -113,9 +129,18 @@ struct DevHUD: View {
                 }
                 .buttonStyle(.borderless)
                 .font(.system(size: 11, weight: .medium))
+
+                Button {
+                    isVisible = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
 
-            if !webState.currentURL.isEmpty || !webState.pageTitle.isEmpty || webState.isLoading || !webState.lastError.isEmpty || !webState.consoleMessage.isEmpty {
+            if !webState.currentURL.isEmpty || !webState.pageTitle.isEmpty || webState.isLoading || !webState.lastError.isEmpty || !webState.consoleMessage.isEmpty || !webState.recoveryMessage.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
                     if !webState.currentURL.isEmpty {
                         Text("webview: \(webState.currentURL)")
@@ -142,6 +167,12 @@ struct DevHUD: View {
                         Text("js: \(webState.consoleMessage)")
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(.orange)
+                            .lineLimit(3)
+                    }
+                    if !webState.recoveryMessage.isEmpty {
+                        Text("recovery: \(webState.recoveryMessage)")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.blue)
                             .lineLimit(3)
                     }
                 }
@@ -231,7 +262,7 @@ struct StartingView: View {
 
 struct LoomWebView: NSViewRepresentable {
     let url: URL
-    @ObservedObject var debugState: WebDebugState
+    let debugState: WebDebugState
 
     func makeCoordinator() -> Coordinator { Coordinator(debugState: debugState) }
 
@@ -247,12 +278,22 @@ struct LoomWebView: NSViewRepresentable {
 
     private func desiredURL(for webView: WKWebView) -> URL {
         if let currentURL = webView.url,
-            currentURL.scheme?.hasPrefix("http") == true,
+            ["http", "https"].contains(currentURL.scheme?.lowercased() ?? ""),
             isLoopbackHost(currentURL.host) {
             var components = URLComponents(url: currentURL, resolvingAgainstBaseURL: false)
             components?.scheme = url.scheme
             components?.host = url.host
             components?.port = url.port
+            return components?.url ?? url
+        }
+        if let storedRelative = UserDefaults.standard.string(forKey: lastLocalPathDefaultsKey),
+           storedRelative.hasPrefix("/"),
+           storedRelative != "/" {
+            let storedComponents = URLComponents(string: storedRelative)
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            components?.path = storedComponents?.path ?? storedRelative
+            components?.query = storedComponents?.query
+            components?.fragment = storedComponents?.fragment
             return components?.url ?? url
         }
         return url
@@ -263,12 +304,16 @@ struct LoomWebView: NSViewRepresentable {
         if webView.url?.absoluteString == targetURL.absoluteString { return }
         if coordinator.lastRequestedURL?.absoluteString == targetURL.absoluteString { return }
         coordinator.lastRequestedURL = targetURL
-        webView.load(URLRequest(url: targetURL))
+        let request = URLRequest(url: targetURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        webView.load(request)
     }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        #if DEBUG
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        #endif
+        config.applicationNameForUserAgent = "LoomAppShell"
         config.websiteDataStore = .default()
         #if DEBUG
         let userContentController = WKUserContentController()
@@ -299,6 +344,18 @@ struct LoomWebView: NSViewRepresentable {
           });
           window.addEventListener('unhandledrejection', (event) => {
             post('unhandledrejection', stringify(event.reason));
+          });
+          const shouldReload = (message) => /Loading chunk|ChunkLoadError/i.test(String(message || ''));
+          const reportChunkError = (message) => {
+            post('chunk.error', message || 'chunk load error');
+          };
+          window.addEventListener('error', (event) => {
+            if (shouldReload(event.message)) reportChunkError(event.message);
+          });
+          window.addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            const message = typeof reason === 'string' ? reason : (reason && reason.message) || '';
+            if (shouldReload(message)) reportChunkError(message);
           });
         })();
         """
@@ -362,6 +419,12 @@ struct LoomWebView: NSViewRepresentable {
             name: .loomNewTopic,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.quickSticky),
+            name: .loomQuickSticky,
+            object: nil
+        )
 
         // Enable swipe back/forward gesture
         webView.allowsBackForwardNavigationGestures = true
@@ -384,6 +447,10 @@ struct LoomWebView: NSViewRepresentable {
 
     static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
         coordinator.cleanup()
+        for recognizer in nsView.gestureRecognizers where recognizer is NSMagnificationGestureRecognizer {
+            nsView.removeGestureRecognizer(recognizer)
+        }
+        nsView.stopLoading()
         nsView.navigationDelegate = nil
         #if DEBUG
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: "loomDebug")
@@ -397,9 +464,32 @@ struct LoomWebView: NSViewRepresentable {
         let debugState: WebDebugState
         private var blankPageWorkItem: DispatchWorkItem?
         private var isInReviewMode = false
+        private var fallbackCheckGeneration = 0
+        private var lastChunkRecoveryAt: Date?
+        private var lastProcessTerminationRecoveryAt: Date?
+        private var lastRuntimeRecoveryAt: Date?
 
         init(debugState: WebDebugState) {
             self.debugState = debugState
+        }
+
+        private func normalizedLocalRelativeLocation(for url: URL) -> String {
+            guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+                return url.path
+            }
+            if var items = components.queryItems {
+                items.removeAll { $0.name == "__loom_recover" }
+                components.queryItems = items.isEmpty ? nil : items
+            }
+            let path = components.percentEncodedPath.isEmpty ? "/" : components.percentEncodedPath
+            var relative = path
+            if let query = components.percentEncodedQuery, !query.isEmpty {
+                relative += "?\(query)"
+            }
+            if let fragment = components.percentEncodedFragment, !fragment.isEmpty {
+                relative += "#\(fragment)"
+            }
+            return relative
         }
 
         private func isLocalHost(_ host: String?) -> Bool {
@@ -420,28 +510,41 @@ struct LoomWebView: NSViewRepresentable {
         func cleanup() {
             blankPageWorkItem?.cancel()
             blankPageWorkItem = nil
+            fallbackCheckGeneration += 1
             webView = nil
             NotificationCenter.default.removeObserver(self)
         }
 
         private func scheduleRootFallbackCheck(for webView: WKWebView) {
             blankPageWorkItem?.cancel()
+            fallbackCheckGeneration += 1
+            let generation = fallbackCheckGeneration
             let work = DispatchWorkItem { [weak self, weak webView] in
                 guard let self = self, let webView = webView else { return }
                 webView.evaluateJavaScript("""
                     (() => {
                       const path = location.pathname;
-                      const main = document.querySelector('main');
-                      const text = (main?.innerText || '').replace(/\\s+/g, ' ').trim();
-                      return { path, textLength: text.length, title: document.title || '' };
+                      const root = document.querySelector('main') || document.body;
+                      const text = (root?.innerText || '').replace(/\\s+/g, ' ').trim();
+                      return { path, textLength: text.length, title: document.title || '', text };
                     })()
                 """) { result, _ in
+                    guard self.fallbackCheckGeneration == generation else { return }
                     guard let info = result as? [String: Any] else { return }
                     let path = info["path"] as? String ?? ""
                     let textLength = info["textLength"] as? Int ?? 0
-                    let title = (info["title"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let text = (info["text"] as? String ?? "").lowercased()
+
+                    let hasRuntimeErrorMarker = text.contains("application error")
+                        || text.contains("something went wrong")
+                        || text.contains("a client-side exception has occurred")
+                    if hasRuntimeErrorMarker {
+                        self.recoverFromRuntimeError("Detected Next runtime error screen")
+                        return
+                    }
+
                     // Only apply fallback for an obviously blank initial root render.
-                    if path == "/", textLength < 24, title.isEmpty, webView.canGoBack == false {
+                    if path == "/", textLength < 24, webView.canGoBack == false {
                         guard let base = self.fallbackURL else { return }
                         var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
                         components?.path = "/about"
@@ -495,19 +598,40 @@ struct LoomWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             lastRequestedURL = webView.url
+            if let url = webView.url,
+               ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+               let host = url.host,
+               isLocalHost(host),
+               !url.path.hasPrefix("/api"),
+               !url.path.hasPrefix("/_next"),
+               !url.path.isEmpty {
+                let relative = normalizedLocalRelativeLocation(for: url)
+                if relative != "/" {
+                    UserDefaults.standard.set(relative, forKey: lastLocalPathDefaultsKey)
+                }
+            }
             updateDebugState(from: webView, errorMessage: "")
             if debugState.consoleMessage != "" {
                 debugState.consoleMessage = ""
             }
-            #if DEBUG
+            if debugState.recoveryMessage != "" {
+                debugState.recoveryMessage = ""
+            }
             scheduleRootFallbackCheck(for: webView)
-            #endif
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             blankPageWorkItem?.cancel()
+            fallbackCheckGeneration += 1
+            isInReviewMode = false
             if debugState.consoleMessage != "" {
                 debugState.consoleMessage = ""
+            }
+            if debugState.recoveryMessage != "" {
+                debugState.recoveryMessage = ""
+            }
+            if debugState.lastError != "" {
+                debugState.lastError = ""
             }
             syncState(from: webView)
         }
@@ -520,6 +644,7 @@ struct LoomWebView: NSViewRepresentable {
             let nsError = error as NSError
             let isCancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
             let isPolicyInterrupt = nsError.domain == WKErrorDomain && nsError.code == 102
+            isInReviewMode = false
             if isCancelled || isPolicyInterrupt {
                 lastRequestedURL = nil
                 syncState(from: webView)
@@ -533,6 +658,7 @@ struct LoomWebView: NSViewRepresentable {
             let nsError = error as NSError
             let isCancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
             let isPolicyInterrupt = nsError.domain == WKErrorDomain && nsError.code == 102
+            isInReviewMode = false
             if isCancelled || isPolicyInterrupt {
                 lastRequestedURL = nil
                 syncState(from: webView)
@@ -542,11 +668,42 @@ struct LoomWebView: NSViewRepresentable {
             updateDebugState(from: webView, errorMessage: error.localizedDescription)
         }
 
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            let now = Date()
+            if let lastRecovery = lastProcessTerminationRecoveryAt,
+               now.timeIntervalSince(lastRecovery) < 2 {
+                updateDebugState(from: webView, errorMessage: "Web content process terminated repeatedly")
+                DispatchQueue.main.async {
+                    self.debugState.recoveryMessage = "skipped repeated process recovery"
+                }
+                return
+            }
+            lastProcessTerminationRecoveryAt = now
+            updateDebugState(from: webView, errorMessage: "Web content process terminated, reloading")
+            DispatchQueue.main.async {
+                self.debugState.recoveryMessage = "reloading after web content process termination"
+            }
+            if webView.url != nil {
+                webView.reloadFromOrigin()
+            } else if let fallbackURL {
+                lastRequestedURL = nil
+                let request = URLRequest(url: fallbackURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+                webView.load(request)
+            }
+        }
+
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "loomDebug" else { return }
             guard let body = message.body as? [String: Any] else { return }
             let kind = body["kind"] as? String ?? "message"
             let payload = body["payload"] as? String ?? ""
+            if kind == "chunk.error" {
+                DispatchQueue.main.async {
+                    self.debugState.consoleMessage = "chunk.error: \(payload)"
+                }
+                recoverFromChunkError(payload)
+                return
+            }
             let rawMessage = "\(kind): \(payload)"
             let clippedMessage = rawMessage.count > 800 ? String(rawMessage.prefix(800)) + "…" : rawMessage
             DispatchQueue.main.async {
@@ -563,27 +720,42 @@ struct LoomWebView: NSViewRepresentable {
         }
 
         @objc func triggerReview() {
-            webView?.evaluateJavaScript("""
+            guard let webView else { return }
+            isInReviewMode.toggle()
+            webView.evaluateJavaScript("""
                 window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', metaKey: true}));
             """)
         }
 
         @objc func triggerReload() {
             guard let webView else { return }
+            if debugState.lastError != "" {
+                debugState.lastError = ""
+            }
             if webView.url != nil {
-                webView.reload()
+                webView.reloadFromOrigin()
             } else if let fallbackURL {
                 lastRequestedURL = nil
-                webView.load(URLRequest(url: fallbackURL))
+                let request = URLRequest(url: fallbackURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+                webView.load(request)
             } else {
-                webView.reload()
+                webView.reloadFromOrigin()
             }
             syncState(from: webView)
         }
 
         @objc func openInBrowser() {
-            guard let url = webView?.url ?? fallbackURL else { return }
-            NSWorkspace.shared.open(url)
+            let current = webView?.url
+            let target: URL?
+            if let current, ["http", "https"].contains(current.scheme?.lowercased() ?? "") {
+                target = current
+            } else if let fallbackURL, ["http", "https"].contains(fallbackURL.scheme?.lowercased() ?? "") {
+                target = fallbackURL
+            } else {
+                target = nil
+            }
+            guard let target else { return }
+            NSWorkspace.shared.open(target)
         }
 
         @objc func goBack() {
@@ -605,39 +777,150 @@ struct LoomWebView: NSViewRepresentable {
 
         @objc func handlePinch(_ gesture: NSMagnificationGestureRecognizer) {
             guard gesture.state == .ended else { return }
+            guard let webView else { return }
             // Threshold: significant pinch-out (spread) → enter Review
             // Significant pinch-in (squeeze) → exit Review
             if gesture.magnification > 0.4 && !isInReviewMode {
                 isInReviewMode = true
-                webView?.evaluateJavaScript("""
+                webView.evaluateJavaScript("""
                     window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', metaKey: true}));
                 """)
                 // Reset WKWebView zoom to 1x so it doesn't actually zoom
-                webView?.magnification = 1.0
+                webView.magnification = 1.0
             } else if gesture.magnification < -0.3 && isInReviewMode {
                 isInReviewMode = false
-                webView?.evaluateJavaScript("""
+                webView.evaluateJavaScript("""
                     window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', metaKey: true}));
                 """)
-                webView?.magnification = 1.0
+                webView.magnification = 1.0
             }
         }
 
         @objc func newTopic() {
-            // Dispatch a custom event that the Sidebar's NewTopicButton listens for
+            isInReviewMode = false
             webView?.evaluateJavaScript("""
                 window.dispatchEvent(new CustomEvent('loom:new-topic'));
             """)
         }
 
+        @objc func quickSticky() {
+            webView?.evaluateJavaScript("""
+                window.dispatchEvent(new CustomEvent('loom:quick-sticky'));
+            """)
+        }
+
+        private func recoverFromChunkError(_ message: String) {
+            guard let webView else { return }
+            let now = Date()
+            if let lastChunkRecoveryAt, now.timeIntervalSince(lastChunkRecoveryAt) < 4 {
+                DispatchQueue.main.async {
+                    self.debugState.recoveryMessage = "skipped chunk recovery (throttled)"
+                }
+                return
+            }
+            lastChunkRecoveryAt = now
+
+            let store = webView.configuration.websiteDataStore
+            let cacheTypes: Set<String> = [
+                WKWebsiteDataTypeMemoryCache,
+                WKWebsiteDataTypeDiskCache,
+                WKWebsiteDataTypeOfflineWebApplicationCache,
+                WKWebsiteDataTypeSessionStorage,
+                WKWebsiteDataTypeLocalStorage,
+            ]
+
+            let loadTarget = { [weak self, weak webView] in
+                guard let self, let webView else { return }
+                let baseURL = webView.url ?? self.fallbackURL
+                guard var components = baseURL.flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return }
+                var items = components.queryItems ?? []
+                items.removeAll { $0.name == "__loom_recover" }
+                items.append(URLQueryItem(name: "__loom_recover", value: String(Int(now.timeIntervalSince1970))))
+                components.queryItems = items
+                guard let target = components.url else { return }
+                self.lastRequestedURL = nil
+                let request = URLRequest(url: target, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+                webView.load(request)
+                self.updateDebugState(from: webView, errorMessage: "Recovered from chunk error")
+                DispatchQueue.main.async {
+                    self.debugState.consoleMessage = "chunk recovery: \(message)"
+                    self.debugState.recoveryMessage = "reloaded from origin after chunk error"
+                }
+            }
+
+            store.fetchDataRecords(ofTypes: cacheTypes) { records in
+                store.removeData(ofTypes: cacheTypes, for: records) {
+                    DispatchQueue.main.async(execute: loadTarget)
+                }
+            }
+        }
+
+        private func recoverFromRuntimeError(_ message: String) {
+            guard let webView else { return }
+            let now = Date()
+            if let lastRuntimeRecoveryAt, now.timeIntervalSince(lastRuntimeRecoveryAt) < 5 {
+                guard let base = fallbackURL else {
+                    DispatchQueue.main.async {
+                        self.debugState.recoveryMessage = "skipped runtime recovery (throttled)"
+                    }
+                    return
+                }
+                var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
+                components?.path = "/about"
+                components?.query = nil
+                components?.fragment = nil
+                guard let target = components?.url else { return }
+                lastRequestedURL = nil
+                let request = URLRequest(url: target, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+                webView.load(request)
+                DispatchQueue.main.async {
+                    self.debugState.recoveryMessage = "fallback to /about after repeated runtime errors"
+                }
+                return
+            }
+            lastRuntimeRecoveryAt = now
+            lastRequestedURL = nil
+            DispatchQueue.main.async {
+                self.debugState.consoleMessage = "runtime recovery: \(message)"
+                self.debugState.recoveryMessage = "reloading from origin after runtime error screen"
+            }
+            webView.reloadFromOrigin()
+        }
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             if let url = navigationAction.request.url,
-               navigationAction.targetFrame?.isMainFrame != false,
-               url.scheme?.hasPrefix("http") == true,
-               !isLocalHost(url.host) {
+               let scheme = url.scheme?.lowercased(),
+               scheme != "http",
+               scheme != "https",
+               scheme != "about",
+               scheme != "file",
+               scheme != "data",
+               scheme != "blob",
+               scheme != "javascript" {
                 NSWorkspace.shared.open(url)
                 decisionHandler(.cancel)
                 return
+            }
+
+            if let url = navigationAction.request.url,
+               ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
+                if navigationAction.targetFrame == nil {
+                    if isLocalHost(url.host) {
+                        lastRequestedURL = navigationAction.request.url ?? url
+                        webView.load(navigationAction.request)
+                    } else {
+                        NSWorkspace.shared.open(url)
+                    }
+                    decisionHandler(.cancel)
+                    return
+                }
+
+                if navigationAction.targetFrame?.isMainFrame != false,
+                   !isLocalHost(url.host) {
+                    NSWorkspace.shared.open(url)
+                    decisionHandler(.cancel)
+                    return
+                }
             }
             decisionHandler(.allow)
         }

@@ -1,8 +1,9 @@
 import Foundation
+import Darwin
 
 /// Manages the local Next.js server lifecycle for the macOS shell app.
-/// Prefers a stable production server (`next start`) when a build exists,
-/// and only falls back to the dev script when no build is available.
+/// In Xcode Debug builds, prefer a hot-reloading dev server.
+/// In Release builds, prefer a stable production server (`next start`) when a build exists.
 class DevServer: ObservableObject {
     enum Status: Equatable {
         case idle
@@ -24,6 +25,7 @@ class DevServer: ObservableObject {
     private var startGeneration = 0
     private var attemptedPorts: Set<Int> = []
     private var recentLogs: [String] = []
+    private var readyMonitorTimer: Timer?
     private let logQueue = DispatchQueue(label: "DevServer.logQueue")
     private let maxLogLines = 30
     private let preferredPort = 3001
@@ -40,6 +42,11 @@ class DevServer: ObservableObject {
 
     var serverURL: URL {
         URL(string: "http://localhost:\(currentPort)")!
+    }
+
+    deinit {
+        stop()
+        healthSession.invalidateAndCancel()
     }
 
     init() {
@@ -80,17 +87,7 @@ class DevServer: ObservableObject {
             attemptedPorts = [preferredPort]
             logQueue.sync { recentLogs = [] }
         }
-
-        // Check if server is already running on this port
-        checkHealth { [weak self] alive in
-            guard let self, self.startGeneration == generation else { return }
-            if alive {
-                self.retryAttempt = 0
-                DispatchQueue.main.async { self.status = .ready }
-                return
-            }
-            self.launchProcess(generation: generation)
-        }
+        probePortAndLaunch(generation: generation)
     }
 
     func stop(invalidateGeneration: Bool = true) {
@@ -99,10 +96,15 @@ class DevServer: ObservableObject {
         }
         pendingRetry?.cancel()
         pendingRetry = nil
+        readyMonitorTimer?.invalidate()
+        readyMonitorTimer = nil
         healthTimer?.invalidate()
         healthTimer = nil
         healthTask?.cancel()
         healthTask = nil
+        if let pipe = process?.standardOutput as? Pipe {
+            pipe.fileHandleForReading.readabilityHandler = nil
+        }
         if let pipe = process?.standardError as? Pipe {
             pipe.fileHandleForReading.readabilityHandler = nil
         }
@@ -111,11 +113,16 @@ class DevServer: ObservableObject {
             let pid = p.processIdentifier
             // Try process-group termination first (if child created its own group),
             // then fall back to terminating the tracked process.
-            _ = kill(-pid, SIGTERM)
+            let pgid = getpgid(pid)
+            if pgid == pid {
+                _ = kill(-pid, SIGTERM)
+            }
             p.terminate()
             DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2) { [p] in
                 guard p.isRunning else { return }
-                _ = kill(-pid, SIGKILL)
+                if getpgid(pid) == pid {
+                    _ = kill(-pid, SIGKILL)
+                }
                 _ = kill(pid, SIGKILL)
             }
         }
@@ -163,6 +170,9 @@ class DevServer: ObservableObject {
             p.terminationHandler = { [weak self] terminatedProcess in
                 DispatchQueue.main.async {
                     guard let self else { return }
+                    if let pipe = terminatedProcess.standardOutput as? Pipe {
+                        pipe.fileHandleForReading.readabilityHandler = nil
+                    }
                     if let pipe = terminatedProcess.standardError as? Pipe {
                         pipe.fileHandleForReading.readabilityHandler = nil
                     }
@@ -188,6 +198,34 @@ class DevServer: ObservableObject {
         }
     }
 
+    private func probePortAndLaunch(generation: Int) {
+        guard startGeneration == generation else { return }
+
+        checkHealth { [weak self] alive in
+            guard let self, self.startGeneration == generation else { return }
+
+            if alive {
+                if let nextPort = self.nextFallbackPort() {
+                    self.currentPort = nextPort
+                    self.attemptedPorts.insert(nextPort)
+                    self.probePortAndLaunch(generation: generation)
+                    return
+                }
+
+                DispatchQueue.main.async {
+                    self.status = .failed(
+                        self.composeFailureMessage(
+                            base: "All candidate localhost ports are already occupied by other servers."
+                        )
+                    )
+                }
+                return
+            }
+
+            self.launchProcess(generation: generation)
+        }
+    }
+
     private func startHealthPolling(generation: Int) {
         healthTimer?.invalidate()
         healthCheckAttempts = 0
@@ -207,6 +245,7 @@ class DevServer: ObservableObject {
                 if alive {
                     timer.invalidate()
                     self.retryAttempt = 0
+                    self.startReadyMonitoring(generation: generation)
                     DispatchQueue.main.async { self.status = .ready }
                     return
                 }
@@ -223,6 +262,33 @@ class DevServer: ObservableObject {
                     self.stop(invalidateGeneration: false)
                     self.handleFailure("Timed out waiting for http://localhost:\(self.currentPort)", retryable: true, generation: generation)
                 }
+            }
+        }
+    }
+
+    private func startReadyMonitoring(generation: Int) {
+        readyMonitorTimer?.invalidate()
+        readyMonitorTimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            guard self.startGeneration == generation else {
+                timer.invalidate()
+                return
+            }
+            guard self.status == .ready else { return }
+            self.checkHealth { alive in
+                guard self.startGeneration == generation else { return }
+                if alive { return }
+                timer.invalidate()
+                self.readyMonitorTimer = nil
+                self.stop(invalidateGeneration: false)
+                self.handleFailure(
+                    "Local web server became unhealthy after startup.",
+                    retryable: true,
+                    generation: generation
+                )
             }
         }
     }
@@ -308,11 +374,41 @@ class DevServer: ObservableObject {
 
     private func launchCommand(projectPath: String, port: Int) -> String {
         let buildIdPath = "\(projectPath)/.next/BUILD_ID"
+        let devScriptPath = "\(projectPath)/scripts/dev.mjs"
+        let env = ProcessInfo.processInfo.environment
+        let explicitMode = env["LOOM_APP_SERVER_MODE"]?.lowercased()
         let runtimeCommand: String
-        if FileManager.default.fileExists(atPath: buildIdPath) {
-            runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
+
+        if explicitMode == "prod" || explicitMode == "production" {
+            if FileManager.default.fileExists(atPath: buildIdPath) {
+                runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
+            } else if FileManager.default.fileExists(atPath: devScriptPath) {
+                runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+            } else {
+                runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
+            }
+        } else if explicitMode == "dev" || explicitMode == "development" {
+            if FileManager.default.fileExists(atPath: devScriptPath) {
+                runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+            } else {
+                runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
+            }
         } else {
-            runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+            #if DEBUG
+            if FileManager.default.fileExists(atPath: devScriptPath) {
+                runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+            } else {
+                runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
+            }
+            #else
+            if FileManager.default.fileExists(atPath: buildIdPath) {
+                runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
+            } else if FileManager.default.fileExists(atPath: devScriptPath) {
+                runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+            } else {
+                runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
+            }
+            #endif
         }
         // Create an isolated process group when available so stop() can kill
         // the entire server tree reliably using negative PIDs.
@@ -324,45 +420,81 @@ class DevServer: ObservableObject {
         return candidates.first { !attemptedPorts.contains($0) }
     }
 
+    private func isLikelyNextServer(response: HTTPURLResponse, data: Data?) -> Bool {
+        if (300...399).contains(response.statusCode),
+           response.value(forHTTPHeaderField: "Location") != nil {
+            return true
+        }
+        if let poweredBy = response.value(forHTTPHeaderField: "x-powered-by"),
+           poweredBy.localizedCaseInsensitiveContains("next") {
+            return true
+        }
+        let bodyText = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        return bodyText.contains("__NEXT_DATA__")
+            || bodyText.contains("/_next/")
+            || bodyText.localizedCaseInsensitiveContains("next.js")
+    }
+
     private func checkHealth(completion: @escaping (Bool) -> Void) {
         // Avoid overlapping probes: if one is already in-flight, wait for it.
         if healthTask != nil { return }
 
-        guard let url = URL(string: "http://localhost:\(currentPort)/") else {
+        guard let url = URL(string: "http://localhost:\(currentPort)/api/health") else {
             completion(false)
             return
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 1.5
-        var task: URLSessionDataTask?
-        task = healthSession.dataTask(with: request) { [weak self] data, response, _ in
+
+        var apiTask: URLSessionDataTask?
+        apiTask = healthSession.dataTask(with: request) { [weak self] data, response, _ in
             DispatchQueue.main.async {
                 guard let self else { return }
-                guard self.healthTask === task else { return }
-                defer { self.healthTask = nil }
+                guard self.healthTask === apiTask else { return }
+
+                let finish: (Bool) -> Void = { ok in
+                    self.healthTask = nil
+                    completion(ok)
+                }
 
                 guard let http = response as? HTTPURLResponse else {
-                    completion(false)
+                    finish(false)
                     return
                 }
 
-                let statusOK = (100..<600).contains(http.statusCode)
-                let poweredBy = (http.value(forHTTPHeaderField: "x-powered-by") ?? "").lowercased()
-                let looksLikeNextHeader = poweredBy.contains("next")
-                let bodyText = data.flatMap { String(data: $0, encoding: .utf8) }?.lowercased() ?? ""
-                let looksLikeNextBody = bodyText.contains("__next")
-                let location = (http.value(forHTTPHeaderField: "location") ?? "").lowercased()
-                let redirectStatus = (300..<400).contains(http.statusCode)
-                let looksLikeNextRedirect = redirectStatus && (
-                    location.hasPrefix("/")
-                        || location.contains("localhost")
-                        || location.contains("_next")
-                )
-                let ok = statusOK && (looksLikeNextHeader || looksLikeNextBody || looksLikeNextRedirect)
-                completion(ok)
+                let bodyText = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                if http.statusCode == 200 && bodyText.contains("\"ok\":true") {
+                    finish(true)
+                    return
+                }
+                if self.isLikelyNextServer(response: http, data: data) {
+                    finish(true)
+                    return
+                }
+
+                guard let rootURL = URL(string: "http://localhost:\(self.currentPort)/") else {
+                    finish(false)
+                    return
+                }
+                var rootRequest = URLRequest(url: rootURL)
+                rootRequest.timeoutInterval = 1.5
+
+                var rootTask: URLSessionDataTask?
+                rootTask = self.healthSession.dataTask(with: rootRequest) { rootData, rootResponse, _ in
+                    DispatchQueue.main.async {
+                        guard self.healthTask === rootTask else { return }
+                        guard let rootHTTP = rootResponse as? HTTPURLResponse else {
+                            finish(false)
+                            return
+                        }
+                        finish(self.isLikelyNextServer(response: rootHTTP, data: rootData))
+                    }
+                }
+                self.healthTask = rootTask
+                rootTask?.resume()
             }
         }
-        healthTask = task
-        task?.resume()
+        healthTask = apiTask
+        apiTask?.resume()
     }
 }
