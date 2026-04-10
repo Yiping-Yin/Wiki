@@ -2,20 +2,48 @@ import './globals.css';
 import type { ReactNode } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { CopyButtonInjector } from '../components/CopyButton';
-import { ChatPanel } from '../components/ChatPanel';
-import { ScrollProgress } from '../components/ScrollProgress';
-import { SelectionMenu } from '../components/SelectionMenu';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
 import { ReadingMode } from '../components/ReadingMode';
 import { QuickSwitcher } from '../components/QuickSwitcher';
 import { DropZone } from '../components/DropZone';
-import { FloatingDock } from '../components/FloatingDock';
-import { LiquidBar } from '../components/LiquidBar';
+import { HighlightOverlay } from '../components/HighlightOverlay';
+import { SWRegister } from '../components/SWRegister';
+import { SettingsPanel } from '../components/SettingsPanel';
+import { ToastHost } from '../components/Toast';
+import { TraceMigrator } from '../components/TraceMigrator';
+import { ChatFocus } from '../components/ChatFocus';
+import { ReviewMode } from '../components/CoworkSplit';
+import { LoomCursor } from '../components/LoomCursor';
+import { SelectionWarp } from '../components/SelectionWarp';
+import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
+import { FreeInput } from '../components/FreeInput';
+import { DevStatusBadge } from '../components/DevStatusBadge';
 
 export const metadata = {
-  title: 'My Personal Wiki',
-  description: 'Notion-style knowledge base over your local notes + LLM reference library.',
+  title: 'Loom',
+  description: 'Weave your kesi — a place where fast thinking with AI becomes a lasting fabric of understanding.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Loom',
+    statusBarStyle: 'black-translucent' as const,
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', type: 'image/x-icon', sizes: '32x32' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+};
+
+export const viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)',  color: '#000000' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -24,25 +52,36 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||(!t&&p))document.documentElement.classList.add('dark')}catch(e){}`,
+            __html: `try{var t=localStorage.getItem('theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=t==='dark'||(!t&&p);if(d)document.documentElement.classList.add('dark');var a=localStorage.getItem('wiki:accent');if(a){var P=[['#0071e3','#0a84ff'],['#5856d6','#5e5ce6'],['#af52de','#bf5af2'],['#ff2d55','#ff375f'],['#ff3b30','#ff453a'],['#ff9500','#ff9f0a'],['#34c759','#30d158'],['#30b0c7','#40c8e0']];var i=parseInt(a,10);if(P[i]){var c=d?P[i][1]:P[i][0];document.documentElement.style.setProperty('--accent',c);document.documentElement.style.setProperty('--accent-soft','color-mix(in srgb, '+c+' 14%, transparent)');}}var sb=localStorage.getItem('wiki:sidebar:mode');if(sb==='pinned')document.body&&document.body.classList.add('sidebar-pinned');}catch(e){}`,
           }}
         />
       </head>
       <body>
-        <ScrollProgress />
+        <a href="#main" className="skip-link">Skip to content</a>
         <div className="layout">
           <Sidebar />
-          <main>{children}</main>
+          <main id="main" tabIndex={-1}>
+            {children}
+            <GlobalLiveArtifact />
+            <FreeInput />
+          </main>
         </div>
         <CopyButtonInjector />
-        <SelectionMenu />
+        <HighlightOverlay />
+        <SWRegister />
+        <SettingsPanel />
+        <ToastHost />
+        <TraceMigrator />
+        <ChatFocus />
+        <ReviewMode />
+        <LoomCursor />
+        <SelectionWarp />
         <KeyboardShortcuts />
         <LinkPreview />
         <ReadingMode />
         <QuickSwitcher />
         <DropZone />
-        <ChatPanel />
-        <LiquidBar />
+        <DevStatusBadge />
       </body>
     </html>
   );
