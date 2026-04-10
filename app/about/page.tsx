@@ -230,13 +230,13 @@ function StaticIconSpecimen() {
     <svg width="140" height="60" viewBox="0 0 280 96" aria-hidden style={{ color: 'var(--fg)' }}>
       <defs>
         <linearGradient id="about-silk" x1="0" y1="6" x2="0" y2="90" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.16"/>
-          <stop offset="50%" stopColor="currentColor" stopOpacity="0.62"/>
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.16"/>
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.10"/>
+          <stop offset="50%" stopColor="currentColor" stopOpacity="0.50"/>
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.10"/>
         </linearGradient>
       </defs>
-      <g strokeLinecap="butt">
-        {Array.from({length:12},(_,i)=>{const x=14+i*23;return <line key={i} x1={x} y1="6" x2={x} y2="90" stroke="url(#about-silk)" strokeWidth="0.6"/>;})}
+      <g strokeLinecap="round">
+        {Array.from({length:12},(_,i)=>{const x=14+i*23;return <line key={i} x1={x} y1="6" x2={x} y2="90" stroke="url(#about-silk)" strokeWidth="1"/>;})}
       </g>
     </svg>
   );
