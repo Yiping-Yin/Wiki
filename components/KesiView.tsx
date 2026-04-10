@@ -134,22 +134,36 @@ export function KesiView() {
           </span>
         </div>
 
+        {/* Warp threads — vertical separators that run through all panels,
+            like the continuous warp of a kesi fabric. */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: 20,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
           }}
         >
+          {/* Warp overlay */}
+          <div aria-hidden style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+            backgroundImage: `repeating-linear-gradient(90deg,
+              transparent 0,
+              transparent calc(50% - 0.25px),
+              var(--mat-border) calc(50% - 0.25px),
+              var(--mat-border) calc(50% + 0.25px),
+              transparent calc(50% + 0.25px))`,
+            opacity: 0.3,
+          }} />
           {panels.map((panel) => (
             <div
               key={panel.traceId}
-              className="material-thick card-lift"
               style={{
                 position: 'relative',
-                borderRadius: 22,
-                padding: '1rem 1.05rem 1.05rem',
-                border: '0.5px solid var(--mat-border)',
+                borderRadius: 14,
+                padding: '1rem 1.2rem',
+                borderLeft: `3px solid ${panel.tint}`,
+                background: `linear-gradient(90deg, color-mix(in srgb, ${panel.tint} 6%, transparent), transparent 40%)`,
                 color: 'var(--fg)',
                 cursor: 'pointer',
               }}
@@ -194,51 +208,31 @@ export function KesiView() {
                 }}
               >×</button>
 
-              <div style={{ marginBottom: 12 }}>
+              <div style={{
+                display: 'flex', alignItems: 'baseline', gap: 10,
+                marginBottom: 8,
+              }}>
                 <div
-                  aria-hidden
                   style={{
-                    height: 18,
-                    borderRadius: 999,
-                    background: `
-                      repeating-linear-gradient(
-                        90deg,
-                        color-mix(in srgb, ${panel.tint} 70%, transparent) 0 1px,
-                        transparent 1px 12px
-                      )
-                    `,
-                    opacity: 0.7,
+                    flex: 1,
+                    fontFamily: 'var(--display)',
+                    fontSize: '1.1rem',
+                    fontWeight: 650,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.3,
                   }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span className="t-caption2" style={{ color: panel.tint, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                  Panel
-                </span>
-                <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-                <span className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
+                >
+                  {panel.title}
+                </div>
+                <span className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', flexShrink: 0 }}>
                   {panel.sections.length}◆
                 </span>
               </div>
 
               <div
                 style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: '1.2rem',
-                  fontWeight: 650,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.2,
-                  marginBottom: 10,
-                }}
-              >
-                {panel.title}
-              </div>
-
-              <div
-                style={{
                   color: 'var(--fg-secondary)',
-                  fontSize: '0.9rem',
+                  fontSize: '0.88rem',
                   lineHeight: 1.55,
                   marginBottom: panel.sections.length > 0 ? 14 : 6,
                   overflow: 'hidden',

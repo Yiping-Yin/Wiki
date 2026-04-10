@@ -99,6 +99,43 @@ export function commitSystemPrompt(ctx: {
 }
 
 /**
+ * Build a context block of existing anchored notes so the AI knows
+ * what the user has already understood about this document.
+ */
+function priorNotesBlock(notes: { summary: string; quote?: string }[]): string {
+  if (notes.length === 0) return '';
+  const items = notes.map((n, i) =>
+    `${i + 1}. ${n.summary}${n.quote ? ` (on: "${n.quote.slice(0, 80)}")` : ''}`
+  ).join('\n');
+  return [
+    ``,
+    `The user has already committed these anchored notes on this document:`,
+    items,
+    `Build on their existing understanding. Don't repeat what they already know. Go deeper.`,
+    ``,
+  ].join('\n');
+}
+
+/**
+ * Build the system prompt for passage-bound discussion WITH awareness
+ * of existing anchored notes. Used by ChatFocus.send().
+ */
+export function discussionSystemPrompt(ctx: {
+  sourceTitle: string;
+  href: string;
+  sourceBody?: string;
+  existingNotes?: { summary: string; quote?: string }[];
+}): string {
+  return [
+    `You are inside Loom, a personal learning tool. The user is on: "${ctx.sourceTitle}" (${ctx.href}).`,
+    `They have selected a passage and are asking you about it.`,
+    priorNotesBlock(ctx.existingNotes ?? []),
+    bodyBlock(ctx.sourceBody),
+    LOOM_AI_RULES,
+  ].join('\n');
+}
+
+/**
  * Build the system prompt for whole-note recomposition when a single
  * artifact must be rewritten in full from prior state + new input.
  */

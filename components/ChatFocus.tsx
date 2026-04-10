@@ -25,7 +25,7 @@ import {
   useRemoveEvents,
   type Trace,
 } from '../lib/trace';
-import { recompileSystemPrompt, commitSystemPrompt } from '../lib/ai/system-prompt';
+import { recompileSystemPrompt, commitSystemPrompt, discussionSystemPrompt } from '../lib/ai/system-prompt';
 import { readAiCliPreference } from '../lib/ai-cli';
 import { contextFromPathname } from '../lib/doc-context';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
@@ -450,13 +450,18 @@ export function ChatFocus() {
       : text;
     messages.push({ role: 'user', content: userText });
 
+    // Collect existing anchored notes so the AI builds on prior understanding
+    const existingNotes = (activeTrace?.events ?? [])
+      .filter((e): e is Extract<typeof e, { kind: 'thought-anchor' }> => e.kind === 'thought-anchor')
+      .map((e) => ({ summary: e.summary, quote: e.quote }));
+
     const answer = await streamChat(
       messages,
-      recompileSystemPrompt({
+      discussionSystemPrompt({
         sourceTitle: ctx.sourceTitle,
         href: ctx.href,
-        priorArtifact: '',
         sourceBody: getCurrentDocBody(),
+        existingNotes,
       }),
       false,
       null,
