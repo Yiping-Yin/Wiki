@@ -12,7 +12,6 @@ targets:
     platform: macOS
     sources:
       - Sources
-    resources:
       - Assets.xcassets
     settings:
       base:
