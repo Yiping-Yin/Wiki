@@ -23,8 +23,6 @@ struct LoomApp: App {
                     .keyboardShortcut("r", modifiers: .command)
                 Button("Open in Browser") { NotificationCenter.default.post(name: .loomOpenInBrowser, object: nil) }
                     .keyboardShortcut("o", modifiers: [.command, .shift])
-                Button("Quick Note") { NotificationCenter.default.post(name: .loomQuickSticky, object: nil) }
-                    .keyboardShortcut("j", modifiers: .command)
             }
             CommandGroup(after: .toolbar) {
                 Button("Back") { NotificationCenter.default.post(name: .loomGoBack, object: nil) }

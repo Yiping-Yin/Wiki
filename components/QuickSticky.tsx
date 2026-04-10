@@ -1,16 +1,15 @@
 'use client';
 /**
- * QuickSticky · ⌘J · the post-it note
+ * QuickSticky · margin tap to note
  *
- * Press ⌘J on any document page → a tiny input appears at the current
- * scroll position in the margin. Type a thought, press Enter → saved
- * as a lightweight sticky event in the trace. Esc to cancel.
+ * Click in the empty space to the right of the prose → a tiny input
+ * appears at that position. Type a thought, Enter saves it.
+ * Like writing in the margin of a textbook.
  *
- * §1: appears only when summoned. Disappears after commit.
- * §16: 2 steps — ⌘J → type → Enter. Done.
- * §④: faster than grabbing a post-it.
+ * §1: appears only when tapped. Disappears after commit.
+ * No keyboard shortcut — the trigger is spatial.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { useAppendEvent } from '../lib/trace';
@@ -21,60 +20,68 @@ export function QuickSticky() {
   const ctx = contextFromPathname(pathname);
   const [active, setActive] = useState(false);
   const [value, setValue] = useState('');
-  const [top, setTop] = useState(300);
+  const [pos, setPos] = useState({ top: 0, right: 24 });
   const inputRef = useRef<HTMLInputElement>(null);
   const append = useAppendEvent();
 
-  const activate = useCallback(() => {
-    if (ctx.isFree) return; // only on document pages
-    setTop(window.scrollY + window.innerHeight * 0.4);
-    setActive(true);
-    setValue('');
-    setTimeout(() => inputRef.current?.focus(), 50);
-  }, [ctx.isFree]);
-
-  const commit = useCallback(async () => {
+  const commit = async () => {
     const text = value.trim();
-    if (!text) { setActive(false); return; }
+    if (!text || ctx.isFree) { setActive(false); return; }
     const trace = await ensureReadingTrace({
       docId: ctx.docId, href: ctx.href, sourceTitle: ctx.sourceTitle,
     });
     await append(trace.id, {
       kind: 'sticky',
       text,
-      scrollY: top,
+      scrollY: pos.top - window.scrollY,
       at: Date.now(),
     });
     setActive(false);
     setValue('');
-  }, [value, ctx, top, append]);
+  };
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
-        e.preventDefault();
-        activate();
-      }
-    };
-    window.addEventListener('keydown', onKey);
+    if (ctx.isFree) return;
 
-    // Listen for native macOS app shortcut
-    const onNative = () => activate();
-    window.addEventListener('loom:quick-sticky', onNative);
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const main = document.querySelector('main');
+      if (!main || !main.contains(target)) return;
 
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('loom:quick-sticky', onNative);
+      // Don't trigger on interactive elements or content
+      if (target.closest('a, button, input, textarea, select, [contenteditable], .prose-notion, .sidebar, .loom-pdf-frame, [data-loom-system], mark')) return;
+
+      // Don't trigger during text selection
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) return;
+
+      // Only in the right margin
+      const prose = main.querySelector('.prose-notion');
+      if (!prose) return;
+      const proseRect = prose.getBoundingClientRect();
+      if (e.clientX <= proseRect.right + 10) return;
+
+      e.preventDefault();
+      setPos({
+        top: e.clientY + window.scrollY,
+        right: Math.max(24, window.innerWidth - e.clientX + 10),
+      });
+      setActive(true);
+      setValue('');
+      setTimeout(() => inputRef.current?.focus(), 50);
     };
-  }, [activate]);
+
+    window.addEventListener('click', onClick);
+    return () => window.removeEventListener('click', onClick);
+  }, [ctx.isFree]);
 
   if (!active) return null;
 
   return (
     <div style={{
       position: 'absolute',
-      top,
-      right: 'max(24px, calc((100vw - 760px) / 2 - 200px))',
+      top: pos.top,
+      right: pos.right,
       zIndex: 80,
       animation: 'lpFade 0.14s var(--ease)',
     }}>
@@ -89,15 +96,15 @@ export function QuickSticky() {
         onBlur={() => { if (!value.trim()) setActive(false); }}
         placeholder="note…"
         style={{
-          width: 180,
+          width: 160,
           background: 'var(--bg-translucent)',
           backdropFilter: 'saturate(180%) blur(20px)',
           WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           border: '0.5px solid var(--accent)',
           borderRadius: 8,
-          padding: '6px 10px',
+          padding: '5px 9px',
           color: 'var(--fg)',
-          fontSize: '0.82rem',
+          fontSize: '0.78rem',
           fontFamily: 'var(--display)',
           outline: 'none',
           boxShadow: 'var(--shadow-2)',
