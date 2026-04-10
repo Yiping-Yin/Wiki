@@ -12,7 +12,9 @@
  *
  * Architecture:
  *   - Skip claude-code-source-main, node_modules, hidden, temp files
- *   - Prefer .pdf.txt (already-extracted text) over .pdf
+ *   - PDFs / binaries are ALWAYS the canonical doc — sourcePath points to the original
+ *   - Sidecar `*.pdf.txt` (or `*.csv.txt`, etc.) is consumed only as extracted body for
+ *     search/preview/RAG, never registered as its own doc
  *   - Top-level category = first meaningful directory (e.g. UNSW/MATH 3856 → "UNSW · MATH 3856")
  *   - Dedup by category+slug
  */
@@ -34,6 +36,11 @@ type DocMeta = {
   title: string;
   category: string;
   categorySlug: string;
+  /** Sub-section within a category — e.g. "Week 3", "Course material - Lectures".
+   *  Empty string if the file sits directly under the category root. */
+  subcategory: string;
+  /** Numeric sort key derived from subcategory (week number, lecture #, …) */
+  subOrder: number;
   fileSlug: string;
   sourcePath: string;    // absolute, READ-ONLY
   ext: string;
@@ -42,10 +49,18 @@ type DocMeta = {
   preview: string;       // first ~200 chars
 };
 
+/** Extract a numeric ordering from labels like "Week 3", "Week 01", "Week 1&2", "Lecture 7". */
+function subOrder(label: string): number {
+  if (!label) return 9999;
+  const m = label.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 9999;
+}
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\+/g, '-plus')  // C++ → c-plus-plus
     .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 80) || 'doc';
@@ -65,20 +80,36 @@ async function walk(dir: string, out: string[] = []): Promise<string[]> {
   return out;
 }
 
-function categorizePath(absPath: string): { category: string; categorySlug: string } {
+function categorizePath(absPath: string): {
+  category: string; categorySlug: string;
+  subcategory: string;
+} {
   const rel = path.relative(SRC, absPath);
   const parts = rel.split(path.sep);
-  if (parts[0] === 'UNSW' && parts.length >= 2) {
-    return { category: `UNSW · ${parts[1]}`, categorySlug: slugify(`unsw-${parts[1]}`) };
+  // parts: [top, ...mid, filename]
+  const dirParts = parts.slice(0, -1);
+  if (dirParts.length === 0) return { category: 'Misc', categorySlug: 'misc', subcategory: '' };
+
+  // UNSW/<course>/<sub...>/<file>
+  if (dirParts[0] === 'UNSW' && dirParts.length >= 2) {
+    const course = dirParts[1];
+    const sub = dirParts.slice(2).join(' / ');
+    return {
+      category: `UNSW · ${course}`,
+      categorySlug: slugify(`unsw-${course}`),
+      subcategory: sub,
+    };
   }
-  if (parts.length === 1) return { category: 'Misc', categorySlug: 'misc' };
-  return { category: parts[0], categorySlug: slugify(parts[0]) };
+
+  // Generic: first dir = category, remainder = subcategory
+  const top = dirParts[0];
+  const sub = dirParts.slice(1).join(' / ');
+  return { category: top, categorySlug: slugify(top), subcategory: sub };
 }
 
 function readableTitle(filename: string): string {
   return filename
-    .replace(/\.pdf\.txt$/i, '')
-    .replace(/\.(pdf|docx?|pptx?|txt|md|mdx)$/i, '')
+    .replace(/\.(pdf|docx?|pptx?|xlsx?|csv|tsv|json|ipynb|parquet|txt|md|mdx)$/i, '')
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -169,23 +200,37 @@ async function main() {
   const all = await walk(SRC);
   console.log(`   found ${all.length} files`);
 
-  const txtSet = new Set(all.filter((p) => p.endsWith('.pdf.txt')));
+  // Index of every `.txt` sidecar so we can pair binaries with their extracted text.
+  // A sidecar is any path that, after stripping its trailing `.txt`, points to an
+  // existing file. e.g. `foo.pdf.txt` → sidecar of `foo.pdf`; `data.csv.txt` → `data.csv`.
+  const sidecarFor = new Map<string, string>(); // canonical → sidecar
+  const sidecarSet = new Set<string>();          // sidecar paths (to skip during walk)
+  for (const p of all) {
+    if (!p.endsWith('.txt')) continue;
+    const stripped = p.slice(0, -4);
+    if (stripped !== p && all.includes(stripped) && !stripped.endsWith('.txt')) {
+      sidecarFor.set(stripped, p);
+      sidecarSet.add(p);
+    }
+  }
+
   const docs: DocMeta[] = [];
   const docBodies = new Map<string, string>();
   const seen = new Set<string>();
 
   for (const p of all) {
-    if (p.endsWith('.pdf') && txtSet.has(p + '.txt')) continue;
+    if (sidecarSet.has(p)) continue;                      // never register sidecar as a doc
     if (path.basename(p).startsWith('~$')) continue;
     if (p.includes('/node_modules/')) continue;
-    if (p.includes('claude-code-source-main')) continue; // user's source code, not knowledge
+    if (p.includes('claude-code-source-main')) continue;
 
     const ext = path.extname(p).toLowerCase();
-    const isText = p.endsWith('.pdf.txt') || ['.txt', '.md', '.mdx'].includes(ext);
-    const isBinary = ['.pdf', '.docx', '.doc', '.pptx', '.ppt'].includes(ext);
-    if (!isText && !isBinary) continue;
+    const isPlainText = ['.txt', '.md', '.mdx'].includes(ext);
+    const isBinary = ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.xlsx', '.xls'].includes(ext);
+    const isData = ['.csv', '.tsv', '.json', '.ipynb', '.parquet'].includes(ext);
+    if (!isPlainText && !isBinary && !isData) continue;
 
-    const { category, categorySlug } = categorizePath(p);
+    const { category, categorySlug, subcategory } = categorizePath(p);
     const baseName = path.basename(p);
     const title = readableTitle(baseName);
     const fileSlug = slugify(title);
@@ -193,13 +238,16 @@ async function main() {
     if (seen.has(id)) continue;
     seen.add(id);
 
-    const textPath = p.endsWith('.pdf.txt') ? p : (existsSync(p + '.txt') ? p + '.txt' : (isText ? p : null));
+    // Body source: the sidecar if it exists, otherwise the file itself for plain text.
+    const textPath = sidecarFor.get(p) ?? (isPlainText ? p : null);
     const stat = await fs.stat(p).catch(() => null);
     const body = await readBody(textPath, ext);
     const preview = body.replace(/\s+/g, ' ').trim().slice(0, 220);
 
     docs.push({
-      id, title, category, categorySlug, fileSlug,
+      id, title, category, categorySlug,
+      subcategory, subOrder: subOrder(subcategory),
+      fileSlug,
       sourcePath: p, ext: ext || '.txt',
       size: stat?.size ?? 0,
       hasText: !!textPath,
@@ -230,15 +278,32 @@ async function main() {
   }
   console.log(`\n✅ wrote ${n} body files to ${DOCS_DIR}`);
 
-  // Build category list
-  const catMap = new Map<string, { slug: string; label: string; count: number }>();
+  // Build category list with sub-tree
+  type Sub = { label: string; order: number; count: number };
+  type Cat = { slug: string; label: string; count: number; subs: Sub[] };
+  const catMap = new Map<string, Cat>();
   for (const d of docs) {
-    if (!catMap.has(d.categorySlug)) catMap.set(d.categorySlug, { slug: d.categorySlug, label: d.category, count: 0 });
-    catMap.get(d.categorySlug)!.count++;
+    let c = catMap.get(d.categorySlug);
+    if (!c) {
+      c = { slug: d.categorySlug, label: d.category, count: 0, subs: [] };
+      catMap.set(d.categorySlug, c);
+    }
+    c.count++;
+    const subLabel = d.subcategory ?? '';
+    let s = c.subs.find((x) => x.label === subLabel);
+    if (!s) {
+      s = { label: subLabel, order: d.subOrder, count: 0 };
+      c.subs.push(s);
+    }
+    s.count++;
+  }
+  for (const c of catMap.values()) {
+    c.subs.sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label));
   }
   const cats = Array.from(catMap.values()).sort((a, b) => a.label.localeCompare(b.label));
   const navContent = `// AUTO-GENERATED by scripts/ingest-knowledge.ts
-export type KnowledgeCategory = { slug: string; label: string; count: number };
+export type KnowledgeSub = { label: string; order: number; count: number };
+export type KnowledgeCategory = { slug: string; label: string; count: number; subs: KnowledgeSub[] };
 export const knowledgeCategories: KnowledgeCategory[] = ${JSON.stringify(cats, null, 2)};
 export const knowledgeTotal = ${docs.length};
 `;
