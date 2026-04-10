@@ -8,7 +8,7 @@ export function Mermaid({ chart }: { chart: string }) {
     (async () => {
       const mermaid = (await import('mermaid')).default;
       const isDark = document.documentElement.classList.contains('dark');
-      mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default', securityLevel: 'loose' });
+      mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default', securityLevel: 'strict' });
       try {
         const id = 'm' + Math.random().toString(36).slice(2);
         const { svg } = await mermaid.render(id, chart);

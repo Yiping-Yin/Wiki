@@ -1,0 +1,39 @@
+name: Loom
+options:
+  bundleIdPrefix: com.loom
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  minimumXcodeGenVersion: "2.30"
+
+targets:
+  Loom:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    resources:
+      - Assets.xcassets
+    settings:
+      base:
+        PRODUCT_NAME: Loom
+        PRODUCT_BUNDLE_IDENTIFIER: com.loom.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+    info:
+      path: Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        CFBundleName: Loom
+        CFBundleDisplayName: Loom
+    entitlements:
+      path: Loom.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.network.client: true

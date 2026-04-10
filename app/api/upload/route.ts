@@ -1,18 +1,18 @@
 /**
- * POST /api/upload  (multipart/form-data with file)
+ * POST /api/upload  (multipart/form-data with file + optional category)
  *
- * Saves the uploaded file to knowledge/uploads/<safe-name>.
- * Returns { id, slug, href, name, size }.
- *
- * Files become immediately visible at /uploads (which reads the folder fresh).
- * No manifest mutation, no server restart, no terminal.
+ * Without category: saves to knowledge/uploads/<safe-name> (flat uploads).
+ * With category: saves to Knowledge system/<category>/<name>, re-runs ingest,
+ * and returns the knowledge doc href. This is the "drag to blackboard" flow.
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
 
 export const runtime = 'nodejs';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
+const KNOWLEDGE_ROOT = '/Users/yinyiping/Desktop/Knowledge system';
 const ALLOWED = new Set(['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.csv', '.tsv', '.json', '.ipynb', '.xlsx', '.xls']);
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -48,11 +48,58 @@ export async function POST(req: Request) {
     return Response.json({ error: `file too large (max ${MAX_BYTES / 1024 / 1024}MB)` }, { status: 400 });
   }
 
+  const category = formData.get('category');
+  const categoryName = typeof category === 'string' ? category.trim() : '';
+
+  if (categoryName) {
+    // Map category label back to directory path
+    // "UNSW · COMM 3030" → "UNSW/COMM 3030", "C++" → "C++"
+    const dirName = categoryName.includes(' · ')
+      ? categoryName.replace(' · ', path.sep)
+      : categoryName;
+    const catDir = path.join(KNOWLEDGE_ROOT, dirName);
+    await fs.mkdir(catDir, { recursive: true });
+
+    const safe = safeName(file.name);
+    let finalName = safe;
+    let counter = 1;
+    while (true) {
+      try {
+        await fs.access(path.join(catDir, finalName));
+        const stem = safe.replace(/\.[^.]+$/, '');
+        finalName = `${stem}-${counter}${ext}`;
+        counter++;
+      } catch { break; }
+    }
+
+    const buf = Buffer.from(await file.arrayBuffer());
+    await fs.writeFile(path.join(catDir, finalName), buf);
+
+    // Re-run ingest so the nav updates
+    try {
+      await new Promise<void>((resolve, reject) => {
+        execFile('npx', ['tsx', 'scripts/ingest-knowledge.ts'],
+          { cwd: process.cwd(), timeout: 30000 },
+          (err) => err ? reject(err) : resolve());
+      });
+    } catch {}
+
+    const catSlug = slugify(categoryName);
+    return Response.json({
+      id: slugify(safe),
+      slug: slugify(safe),
+      name: finalName,
+      size: file.size,
+      href: `/knowledge/${catSlug}`,
+      category: categoryName,
+    });
+  }
+
+  // Default: flat uploads directory
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
 
   const safe = safeName(file.name);
   const slug = slugify(safe);
-  // de-dupe by appending counter if needed
   let finalName = safe;
   let counter = 1;
   while (true) {

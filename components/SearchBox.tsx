@@ -74,6 +74,7 @@ export function SearchBox() {
     <>
       <button
         onClick={() => setOpen(true)}
+        aria-label="Search documents"
         style={{
           width: '100%', textAlign: 'left', background: 'var(--surface-2)',
           border: 'var(--hairline)', borderRadius: 'var(--r-1)', padding: '0.5rem 0.75rem',
@@ -113,7 +114,7 @@ export function SearchBox() {
               }}
             />
             <div style={{ maxHeight: '54vh', overflowY: 'auto' }}>
-              {loading && <div style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.85rem' }}>searching…</div>}
+              {/* §21 silence-first — no "searching…" label */}
               {!loading && q && results.length === 0 && (
                 <div style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.85rem' }}>No results.</div>
               )}

@@ -1,13 +1,30 @@
 'use client';
 /**
- * Global drag-and-drop overlay. Drop ANY file anywhere on the page → uploads
- * to /api/upload → navigates to /uploads/<name> when ready.
+ * Global drag-and-drop overlay. Drop ANY file anywhere on the page.
  *
- * Apple-style large translucent overlay with file icon + helper text.
+ * Context-aware: on /knowledge/<category> pages, files go to that
+ * category's directory in the Knowledge system. Elsewhere, files go
+ * to the flat uploads folder. The "blackboard" metaphor — drop files
+ * on the board you're looking at.
  */
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+
+/** Detect knowledge category from current URL path. Returns the
+ *  category directory name for the Knowledge system, or null. */
+function detectCategory(pathname: string): string | null {
+  const m = pathname.match(/^\/knowledge\/([^/]+)/);
+  if (!m) return null;
+  // Import is static — knowledgeCategories is baked at build time
+  try {
+    const { knowledgeCategories } = require('../lib/knowledge-nav');
+    const cat = knowledgeCategories.find((c: any) => c.slug === m[1]);
+    return cat?.label ?? null;
+  } catch { return null; }
+}
 
 export function DropZone() {
+  const pathname = usePathname() ?? '/';
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,12 +58,13 @@ export function DropZone() {
       setBusy(true);
       setError(null);
       try {
-        // Upload one at a time, navigate to first
+        const category = detectCategory(window.location.pathname);
         let firstHref: string | null = null;
         for (const f of files) {
           setProgress({ name: f.name, pct: 0 });
           const fd = new FormData();
           fd.append('file', f);
+          if (category) fd.append('category', category);
           const r = await fetch('/api/upload', { method: 'POST', body: fd });
           const j = await r.json();
           if (!r.ok) {
@@ -56,7 +74,9 @@ export function DropZone() {
           if (!firstHref) firstHref = j.href;
         }
         if (firstHref) {
-          window.location.href = firstHref;
+          // For category uploads, reload to refresh the ingest-generated nav
+          if (category) window.location.reload();
+          else window.location.href = firstHref;
         }
       } catch (err: any) {
         setError(err.message);
@@ -91,6 +111,8 @@ export function DropZone() {
         pointerEvents: dragging || busy ? 'none' : 'auto',
         animation: 'lpFade 0.18s var(--ease)',
       }}
+      role="button"
+      aria-label="Dismiss upload overlay"
       onClick={() => { if (error) setError(null); }}
     >
       <div className="glass" style={{
@@ -109,8 +131,7 @@ export function DropZone() {
           letterSpacing: '-0.018em', marginBottom: 6,
         }}>
           {error ? 'Upload failed'
-           : busy && progress ? `Uploading ${progress.name}…`
-           : busy ? 'Uploading…'
+           : busy ? ''
            : 'Drop to upload'}
         </div>
         <div style={{ fontSize: '0.85rem', color: 'var(--muted)', lineHeight: 1.5 }}>

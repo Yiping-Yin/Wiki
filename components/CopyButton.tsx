@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 export function CopyButtonInjector() {
   useEffect(() => {
     const pres = document.querySelectorAll('main pre');
+    const cleanups: (() => void)[] = [];
     pres.forEach((pre) => {
       if (pre.querySelector('.copy-btn')) return;
       const btn = document.createElement('button');
@@ -17,8 +18,10 @@ export function CopyButtonInjector() {
         transition: 'opacity 0.15s',
       } as CSSStyleDeclaration);
       (pre as HTMLElement).style.position = 'relative';
-      pre.addEventListener('mouseenter', () => (btn.style.opacity = '1'));
-      pre.addEventListener('mouseleave', () => (btn.style.opacity = '0'));
+      const show = () => (btn.style.opacity = '1');
+      const hide = () => (btn.style.opacity = '0');
+      pre.addEventListener('mouseenter', show);
+      pre.addEventListener('mouseleave', hide);
       btn.onclick = () => {
         const code = pre.querySelector('code')?.textContent ?? '';
         navigator.clipboard.writeText(code);
@@ -26,7 +29,13 @@ export function CopyButtonInjector() {
         setTimeout(() => (btn.textContent = 'Copy'), 1200);
       };
       pre.appendChild(btn);
+      cleanups.push(() => {
+        pre.removeEventListener('mouseenter', show);
+        pre.removeEventListener('mouseleave', hide);
+        btn.remove();
+      });
     });
+    return () => cleanups.forEach((fn) => fn());
   }, []);
   return null;
 }

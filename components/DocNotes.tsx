@@ -1,7 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useNote } from '../lib/use-notes';
-import { NoteRenderer } from './NoteRenderer';
+import { readAiCliPreference } from '../lib/ai-cli';
+
+// Lazy-load NoteRenderer (pulls marked + KaTeX, ~100KB) — only when preview opens.
+const NoteRenderer = dynamic(() => import('./NoteRenderer').then((m) => m.NoteRenderer), { ssr: false });
 
 export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
   const [value, setValue, loaded] = useNote(id);
@@ -37,6 +41,7 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
           body: JSON.stringify({
             context: value,
             doc: docTitle ? { title: docTitle } : undefined,
+            cli: readAiCliPreference(),
           }),
           signal: abortRef.current.signal,
         });
@@ -46,7 +51,10 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
         if (s.length > 1) setSuggestion(s);
       } catch {} finally { setSuggesting(false); }
     }, 1500);
-    return () => { if (debounce.current) clearTimeout(debounce.current); };
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [value, open, mode, docTitle]);
 
   const accept = () => {
@@ -69,7 +77,6 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
           📝 My notes
         </span>
         <span style={{ fontSize: '0.7rem', color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
-          {value && `${value.length} chars · saved`}
           {open && value && (
             <>
               <button
@@ -109,7 +116,7 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
               outline: 'none',
             }}
           />
-          {(suggesting || suggestion) && (
+          {suggestion && (
             <div style={{
               marginTop: 6,
               padding: '0.5rem 0.75rem',
@@ -121,33 +128,32 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
               boxShadow: 'var(--shadow-1)',
               display: 'flex', alignItems: 'flex-start', gap: 8,
               fontSize: '0.78rem', lineHeight: 1.5,
+              animation: 'lpFade 0.18s var(--ease)',
             }}>
               <span style={{ color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>✦</span>
-              <div style={{ flex: 1, minWidth: 0, color: suggestion ? 'var(--fg)' : 'var(--muted)' }}>
-                {suggestion || 'thinking…'}
+              <div style={{ flex: 1, minWidth: 0, color: 'var(--fg)' }}>
+                {suggestion}
               </div>
-              {suggestion && (
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  <button
-                    onClick={accept}
-                    style={{
-                      background: 'var(--accent)', color: '#fff',
-                      border: 0, borderRadius: 'var(--r-1)',
-                      padding: '2px 8px', cursor: 'pointer',
-                      fontSize: '0.66rem', fontWeight: 600,
-                    }}
-                  >Tab</button>
-                  <button
-                    onClick={dismiss}
-                    style={{
-                      background: 'transparent', border: 'var(--hairline)',
-                      borderRadius: 'var(--r-1)',
-                      padding: '2px 8px', cursor: 'pointer',
-                      fontSize: '0.66rem', color: 'var(--muted)',
-                    }}
-                  >Esc</button>
-                </div>
-              )}
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <button
+                  onClick={accept}
+                  style={{
+                    background: 'var(--accent)', color: '#fff',
+                    border: 0, borderRadius: 'var(--r-1)',
+                    padding: '2px 8px', cursor: 'pointer',
+                    fontSize: '0.66rem', fontWeight: 600,
+                  }}
+                >Tab</button>
+                <button
+                  onClick={dismiss}
+                  style={{
+                    background: 'transparent', border: 'var(--hairline)',
+                    borderRadius: 'var(--r-1)',
+                    padding: '2px 8px', cursor: 'pointer',
+                    fontSize: '0.66rem', color: 'var(--muted)',
+                  }}
+                >Esc</button>
+              </div>
             </div>
           )}
         </div>

@@ -1,40 +1,56 @@
 'use client';
 import Link from 'next/link';
-import { useState, useMemo, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { useRef, useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { chapters } from '../lib/nav';
 import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
-import { ThemeToggle } from './ThemeToggle';
 import { SearchBox } from './SearchBox';
-import { useReadingMode } from './ReadingMode';
-import { useHistory } from '../lib/use-history';
-import { usePins } from '../lib/use-pins';
 import chapterMeta from '../lib/chapter-meta.json';
 
 type ChMeta = { hasVideo?: boolean; hasMath?: boolean; hasCode?: boolean; hasMermaid?: boolean; hasPdf?: boolean; hasWidget?: boolean; wordCount?: number };
 const META = chapterMeta as Record<string, ChMeta>;
 
+type SbMode = 'hidden' | 'pinned';
+const MODE_KEY = 'wiki:sidebar:mode';
+
 export function Sidebar() {
   const [open, setOpen] = useState(false);
-  const [pinned, setPinnedState] = useState(false);
+  const [mode, setMode] = useState<SbMode>('hidden');
   const [llmOpen, setLlmOpen] = useState(false);
   const [knowOpen, setKnowOpen] = useState(true);
 
-  // Edge-hover trigger to peek the sidebar (GPT Atlas style)
+  // Restore preference + edge-hover peek (only when hidden)
   useEffect(() => {
     try {
-      const v = localStorage.getItem('wiki:sidebar:pinned');
-      if (v === '1') setPinnedState(true);
+      const v = localStorage.getItem(MODE_KEY);
+      if (!v) {
+        const old = localStorage.getItem('wiki:sidebar:pinned');
+        if (old === '1') setMode('pinned');
+      } else if (v === 'pinned' || v === 'hidden') {
+        setMode(v);
+      } else if (v === 'mini') {
+        // Migrate broken mini state to hidden
+        setMode('hidden');
+        localStorage.setItem(MODE_KEY, 'hidden');
+      }
     } catch {}
     let hideTimer: number | null = null;
-    const onMove = (e: MouseEvent) => {
-      if (e.clientX < 16) {
+    let rafId = 0;
+    let lastX = 0;
+    const tick = () => {
+      rafId = 0;
+      if (lastX < 16) {
         if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
         setOpen(true);
-      } else if (e.clientX > 320) {
+      } else if (lastX > 320) {
         if (hideTimer) clearTimeout(hideTimer);
         hideTimer = window.setTimeout(() => setOpen(false), 500);
       }
+    };
+    const onMove = (e: MouseEvent) => {
+      if (e.clientX >= 16 && e.clientX <= 320) return;
+      lastX = e.clientX;
+      if (!rafId) rafId = requestAnimationFrame(tick);
     };
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
@@ -44,80 +60,41 @@ export function Sidebar() {
         setOpen(false);
       }
     };
-    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mousemove', onMove, { passive: true });
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('keydown', onKey);
       if (hideTimer) clearTimeout(hideTimer);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);
 
-  const togglePin = () => {
-    setPinnedState((p) => {
-      const next = !p;
-      try { localStorage.setItem('wiki:sidebar:pinned', next ? '1' : '0'); } catch {}
-      document.body.classList.toggle('sidebar-pinned', next);
+  const cycleMode = () => {
+    setMode((m) => {
+      const next: SbMode = m === 'hidden' ? 'pinned' : 'hidden';
+      try { localStorage.setItem(MODE_KEY, next); } catch {}
       return next;
     });
   };
 
   useEffect(() => {
-    document.body.classList.toggle('sidebar-pinned', pinned);
-  }, [pinned]);
+    document.body.classList.toggle('sidebar-pinned', mode === 'pinned');
+    document.body.classList.remove('sidebar-mini');
+  }, [mode]);
 
+  const pinned = mode === 'pinned';
   const visible = open || pinned;
   const sections = Array.from(new Set(chapters.map((c) => c.section)));
   const pathname = usePathname();
-  const [history] = useHistory();
-  const { pins } = usePins();
-
-  // Build a Set of viewed wiki slugs and per-category viewed counts
-  const { viewedWikiSlugs, viewedByCategory } = useMemo(() => {
-    const wikiSet = new Set<string>();
-    const catCounts: Record<string, Set<string>> = {};
-    for (const h of history) {
-      // wiki/<slug>
-      const wm = h.id.match(/^wiki\/(.+)$/);
-      if (wm) { wikiSet.add(wm[1]); continue; }
-      // know/<categorySlug>__<fileSlug>
-      const km = h.id.match(/^know\/([^_]+(?:_[^_]+)*)__(.+)$/);
-      if (km) {
-        const cat = km[1];
-        if (!catCounts[cat]) catCounts[cat] = new Set();
-        catCounts[cat].add(km[2]);
-      }
-    }
-    const out: Record<string, number> = {};
-    for (const [k, v] of Object.entries(catCounts)) out[k] = v.size;
-    return { viewedWikiSlugs: wikiSet, viewedByCategory: out };
-  }, [history]);
+  const router = useRouter();
 
   const isActive = (href: string) => pathname === href;
 
   return (
     <>
-      {/* Edge handle — visible vertical pill so users know there's something */}
-      {!visible && (
-        <button
-          onClick={() => setOpen(true)}
-          onMouseEnter={() => setOpen(true)}
-          aria-label="Open sidebar"
-          title="Sidebar (⌘\)"
-          style={{
-            position: 'fixed', top: '50%', left: 0,
-            transform: 'translateY(-50%)',
-            width: 6, height: 56,
-            background: 'var(--border-strong)',
-            borderRadius: '0 6px 6px 0',
-            border: 0, padding: 0, cursor: 'pointer',
-            zIndex: 65,
-            transition: 'width 0.2s var(--ease), background 0.2s var(--ease)',
-          }}
-          onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.width = '8px'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; }}
-          onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.width = '6px'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--border-strong)'; }}
-        />
-      )}
+      {/* Stealth · no edge handle. Mouse near left edge auto-opens sidebar.
+          ⌘\ keyboard shortcut also works. */}
 
       {/* Mobile / accessible hamburger — top-left, only when not visible */}
       {!visible && (
@@ -156,63 +133,77 @@ export function Sidebar() {
       )}
 
       <aside
-        className={`sidebar glass ${visible ? 'open' : ''}`}
+        className={`sidebar material-thick ${visible ? 'open' : ''}`}
         style={{
-          width: 280,
-          padding: '1.5rem 1.1rem 4rem',
-          position: 'fixed', top: 0, left: 0, height: '100vh',
+          width: 288,
+          padding: '1.5rem 1rem 4rem 1.1rem',
+          position: 'fixed', top: 0, left: 0,
+          height: '100vh',
           overflowY: 'auto',
           display: 'flex', flexDirection: 'column',
           zIndex: 70,
-          borderRight: 'var(--hairline)',
+          borderRight: '0.5px solid var(--mat-border)',
+          borderRadius: 0,
           transform: visible ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 0.32s var(--ease)',
+          transition: 'transform 0.34s var(--ease-spring)',
           boxShadow: visible && !pinned ? 'var(--shadow-3)' : 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.7rem', gap: 6 }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', minWidth: 0, flex: 1 }}>
-            <span style={{
-              width: 30, height: 30, borderRadius: 7,
-              background: 'linear-gradient(135deg, #7c3aed, #4338ca)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '0.95rem',
-              flexShrink: 0,
-            }}>📚</span>
-            <span style={{ minWidth: 0, overflow: 'hidden' }}>
-              <span style={{ display: 'block', fontWeight: 800, fontSize: '0.92rem', color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>My Wiki</span>
-            </span>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: '1rem', gap: 6,
+        }}>
+          <Link
+            href="/"
+            style={{
+              textDecoration: 'none',
+              display: 'block', minWidth: 0, flex: 1,
+            }}
+          >
+            <span className="t-title3" style={{
+              display: 'block', color: 'var(--fg)',
+              fontFamily: 'var(--display)',
+              letterSpacing: '-0.020em',
+              fontWeight: 700,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>Loom</span>
           </Link>
           <button
-            onClick={togglePin}
-            title={pinned ? 'Unpin sidebar' : 'Pin sidebar'}
-            aria-label="Pin sidebar"
+            onClick={cycleMode}
+            title={pinned ? 'Unpin' : 'Pin'}
+            aria-label="Toggle pin"
             style={{
-              background: pinned ? 'var(--accent)' : 'transparent',
+              background: 'transparent',
               border: 0,
-              borderRadius: 6,
-              padding: '0.25rem 0.4rem',
+              borderRadius: 4,
+              padding: '0.25rem',
               cursor: 'pointer',
-              color: pinned ? '#fff' : 'var(--muted)',
-              fontSize: '0.78rem',
+              color: pinned ? 'var(--accent)' : 'var(--muted)',
+              fontSize: '0.7rem',
               lineHeight: 1,
               flexShrink: 0,
+              opacity: pinned ? 1 : 0.5,
+              transition: 'opacity 0.18s var(--ease), color 0.18s var(--ease)',
             }}
-          >📌</button>
-          <ReadingToggle />
-          <ThemeToggle />
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = pinned ? '1' : '0.5'; }}
+          >◰</button>
         </div>
         <SearchBox />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0' }}>
-          <NavLink href="/today" active={isActive('/today')}>📅 Today</NavLink>
-          <NavLink href="/browse" active={isActive('/browse')}>🧭 Browse</NavLink>
-          <NavLink href="/uploads" active={isActive('/uploads')}>📥 Uploads</NavLink>
-          <NavLink href="/notes" active={isActive('/notes')}>📝 My notes</NavLink>
+          <NavLink href="/kesi" active={isActive('/kesi')}>Kesi</NavLink>
+          <NavLink href="/today" active={isActive('/today')}>Today</NavLink>
+          <NavLink href="/browse" active={isActive('/browse')}>Browse</NavLink>
+          <NavLink href="/uploads" active={isActive('/uploads')}>Uploads</NavLink>
+          <NavLink href="/highlights" active={isActive('/highlights')}>Highlights</NavLink>
+          <NavLink href="/about" active={isActive('/about')}>About</NavLink>
         </div>
 
         {/* Personal knowledge */}
-        <Section title={`📚 My Knowledge (${knowledgeTotal})`} open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}>
+        <Section title={`Your Kesi · ${knowledgeTotal}`} open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
+          trailing={<NewTopicButton onCreated={(href) => { setOpen(false); router.push(href); }} />}
+        >
           <Link
             href="/knowledge"
             onClick={() => setOpen(false)}
@@ -220,39 +211,18 @@ export function Sidebar() {
           >
             All categories
           </Link>
-          {knowledgeCategories.map((c) => {
-            const viewed = viewedByCategory[c.slug] ?? 0;
-            const pct = c.count > 0 ? viewed / c.count : 0;
-            const active = pathname.startsWith(`/knowledge/${c.slug}`);
-            return (
-              <Link
-                key={c.slug}
-                href={`/knowledge/${c.slug}`}
-                onClick={() => setOpen(false)}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '0.22rem 0.4rem', borderRadius: 4, fontSize: '0.83rem',
-                  color: active ? 'var(--accent)' : 'var(--fg)',
-                  background: active ? 'var(--accent-soft)' : 'transparent',
-                  fontWeight: active ? 600 : 400,
-                  position: 'relative',
-                }}
-              >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {viewed === c.count && c.count > 0 && <span style={{ color: '#10b981', marginRight: 4 }}>✓</span>}
-                  {viewed > 0 && viewed < c.count && <span style={{ color: '#10b981', marginRight: 4, opacity: 0.5 }}>◐</span>}
-                  {c.label}
-                </span>
-                <span style={{ color: 'var(--muted)', fontSize: '0.7rem', whiteSpace: 'nowrap', marginLeft: 6, fontVariantNumeric: 'tabular-nums' }}>
-                  {viewed > 0 ? `${viewed}/${c.count}` : c.count}
-                </span>
-              </Link>
-            );
-          })}
+          {knowledgeCategories.map((c) => (
+            <CategoryRow
+              key={c.slug}
+              cat={c}
+              activePath={pathname}
+              onNav={() => setOpen(false)}
+            />
+          ))}
         </Section>
 
         {/* LLM reference wiki */}
-        <Section title={`🤖 LLM Reference (${chapters.length})`} open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
+        <Section title={`LLM Reference · ${chapters.length}`} open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
           {sections.map((sec) => (
             <div key={sec} style={{ marginTop: '0.5rem' }}>
               <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '0.2rem' }}>
@@ -260,7 +230,6 @@ export function Sidebar() {
               </div>
               {chapters.filter((c) => c.section === sec).map((c) => {
                 const active = pathname === `/wiki/${c.slug}`;
-                const viewed = viewedWikiSlugs.has(c.slug);
                 const m = META[c.slug] ?? {};
                 return (
                   <Link
@@ -275,7 +244,6 @@ export function Sidebar() {
                       fontWeight: active ? 600 : 400,
                     }}
                   >
-                    {viewed && <span style={{ color: '#10b981', fontSize: '0.7rem' }}>✓</span>}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {c.title}
                     </span>
@@ -283,12 +251,12 @@ export function Sidebar() {
                       <span title="Has YouTube video" style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         width: 14, height: 11, borderRadius: 2,
-                        background: '#dc2626', color: '#fff',
+                        background: 'var(--tint-red)', color: 'var(--bg)',
                         fontSize: '0.55rem', fontWeight: 700, flexShrink: 0,
                       }}>▶</span>
                     )}
                     {m.hasWidget && (
-                      <span title="Interactive widget" style={{ fontSize: '0.7rem', color: '#7c3aed', flexShrink: 0 }}>◉</span>
+                      <span title="Interactive widget" style={{ fontSize: '0.7rem', color: 'var(--tint-purple)', flexShrink: 0 }}>◉</span>
                     )}
                   </Link>
                 );
@@ -297,38 +265,92 @@ export function Sidebar() {
           ))}
         </Section>
 
-        {/* Footer with progress */}
-        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: 'var(--hairline)', fontSize: '0.7rem', color: 'var(--muted)' }}>
-          {history.length > 0 ? `${history.length} doc${history.length === 1 ? '' : 's'} visited` : 'Start exploring'}
-          {' · '}
-          <Link href="/today" style={{ color: 'var(--accent)' }}>see progress →</Link>
-        </div>
+        {/* §11, §31 — no footer chrome. The sidebar's job is navigation,
+            not telling the user how many docs they've visited. */}
       </aside>
     </>
   );
 }
 
-function ReadingToggle() {
-  const [on, toggle] = useReadingMode();
+function CategoryRow({
+  cat, activePath, onNav,
+}: {
+  cat: { slug: string; label: string; count: number; subs: { label: string; order: number; count: number }[] };
+  activePath: string;
+  onNav: () => void;
+}) {
+  const active = activePath.startsWith(`/knowledge/${cat.slug}`);
+  const hasSubs = cat.subs.some((s) => s.label);
+  const [expanded, setExpanded] = useState(active && hasSubs);
   return (
-    <button
-      onClick={toggle}
-      title={on ? 'Exit reading mode (R)' : 'Reading mode (R)'}
-      aria-label="Toggle reading mode"
-      style={{
-        background: on ? 'var(--accent)' : 'transparent',
-        border: 0,
+    <div style={{ marginTop: 1 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 2,
         borderRadius: 6,
-        padding: '0.25rem 0.4rem',
-        cursor: 'pointer',
-        color: on ? '#fff' : 'var(--muted)',
-        fontSize: '0.78rem',
-        lineHeight: 1,
-        flexShrink: 0,
-      }}
-    >
-      {on ? '📖' : '◉'}
-    </button>
+        background: active ? 'var(--accent-soft)' : 'transparent',
+      }}>
+        {hasSubs ? (
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+            style={{
+              width: 18, height: 22, padding: 0, border: 0, background: 'transparent',
+              color: 'var(--muted)', cursor: 'pointer', fontSize: '0.68rem',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >{expanded ? '▾' : '▸'}</button>
+        ) : <span style={{ width: 18, flexShrink: 0 }} />}
+        <Link
+          href={`/knowledge/${cat.slug}`}
+          onClick={onNav}
+          style={{
+            flex: 1, minWidth: 0,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6,
+            padding: '0.22rem 0.4rem 0.22rem 0',
+            fontSize: '0.83rem', textDecoration: 'none',
+            color: active ? 'var(--accent)' : 'var(--fg)',
+            fontWeight: active ? 600 : 500,
+          }}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+            {cat.label}
+          </span>
+          <span style={{
+            color: 'var(--muted)', fontSize: '0.68rem',
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap', flexShrink: 0,
+          }}>
+            {cat.count}
+          </span>
+        </Link>
+      </div>
+      {expanded && hasSubs && (
+        <div style={{ marginLeft: 22, borderLeft: '0.5px solid var(--mat-border)', paddingLeft: 6, marginTop: 2 }}>
+          {cat.subs.filter((s) => s.label).map((s) => (
+            <Link
+              key={s.label}
+              href={`/knowledge/${cat.slug}#${encodeURIComponent(s.label)}`}
+              onClick={onNav}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6,
+                padding: '0.18rem 0.4rem', borderRadius: 4,
+                fontSize: '0.76rem', color: 'var(--fg-secondary)',
+                textDecoration: 'none',
+              }}
+            >
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                {s.label}
+              </span>
+              <span style={{
+                color: 'var(--muted)', fontSize: '0.66rem',
+                fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+              }}>{s.count}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -350,22 +372,99 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
   );
 }
 
-function Section({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+function Section({ title, open, onToggle, trailing, children }: { title: string; open: boolean; onToggle: () => void; trailing?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ marginTop: '1rem' }}>
-      <button
-        onClick={onToggle}
-        style={{
-          width: '100%', textAlign: 'left', background: 'transparent', border: 0,
-          fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase',
-          letterSpacing: '0.08em', cursor: 'pointer', padding: '0.3rem 0',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}
-      >
-        <span>{title}</span>
-        <span style={{ fontSize: '0.7rem' }}>{open ? '▾' : '▸'}</span>
-      </button>
-      {open && <div style={{ display: 'flex', flexDirection: 'column' }}>{children}</div>}
+    <div style={{ marginTop: '1.2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button
+          onClick={onToggle}
+          style={{
+            flex: 1, textAlign: 'left', background: 'transparent', border: 0,
+            color: 'var(--muted)',
+            cursor: 'pointer', padding: '0.3rem 0',
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            letterSpacing: 0,
+            textTransform: 'none',
+            fontFamily: 'var(--display)',
+          }}
+        >
+          {title}
+        </button>
+        {trailing}
+      </div>
+      {open && <div style={{ display: 'flex', flexDirection: 'column', marginTop: 4 }}>{children}</div>}
     </div>
+  );
+}
+
+/** Inline "new topic" creation — §16: click → type → enter → done. */
+function NewTopicButton({ onCreated }: { onCreated: (href: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [editing]);
+
+  const submit = async () => {
+    const name = value.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    try {
+      const r = await fetch('/api/knowledge/create', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        setEditing(false);
+        setValue('');
+        onCreated(j.href);
+      }
+    } catch {} finally { setBusy(false); }
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') submit();
+          if (e.key === 'Escape') { setEditing(false); setValue(''); }
+        }}
+        onBlur={() => { if (!value.trim()) { setEditing(false); setValue(''); } }}
+        placeholder="Topic name…"
+        disabled={busy}
+        style={{
+          width: 100, border: 0, borderBottom: '1px solid var(--accent)',
+          background: 'transparent', color: 'var(--fg)',
+          fontSize: '0.72rem', padding: '2px 0', outline: 'none',
+          fontFamily: 'var(--display)',
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label="New topic"
+      title="New topic"
+      style={{
+        background: 'transparent', border: 0, cursor: 'pointer',
+        color: 'var(--muted)', fontSize: '0.85rem', lineHeight: 1,
+        padding: '0 4px', opacity: 0.4, flexShrink: 0,
+        transition: 'opacity 0.18s var(--ease), color 0.18s var(--ease)',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--accent)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = 'var(--muted)'; }}
+    >+</button>
   );
 }

@@ -34,6 +34,51 @@
 
   --selection: rgba(0, 113, 227, 0.20);
 
+  /* Liquid glass chips & inner highlights — dark-mode aware */
+  --glass-chip: rgba(255, 255, 255, 0.74);
+  --glass-chip-strong: rgba(255, 255, 255, 0.88);
+  --glass-chip-border: rgba(255, 255, 255, 0.85);
+  --glass-inner-hi: inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+  --discovery-bg: linear-gradient(135deg, rgba(248,250,255,0.96), rgba(243,238,255,0.96));
+  --hero-grad: linear-gradient(135deg, #007aff 0%, #5e5ce6 55%, #bf5af2 100%);
+  --hero-fg: #ffffff;
+
+  /* ── Apple system colors (light) ── */
+  --tint-red:    #ff3b30;
+  --tint-orange: #ff9500;
+  --tint-yellow: #ffcc00;
+  --tint-green:  #34c759;
+  --tint-mint:   #00c7be;
+  --tint-teal:   #30b0c7;
+  --tint-cyan:   #32ade6;
+  --tint-blue:   #007aff;
+  --tint-indigo: #5856d6;
+  --tint-purple: #af52de;
+  --tint-pink:   #ff2d55;
+  --tint-brown:  #a2845e;
+
+  /* ── Materials (light) — thin / regular / thick ── */
+  --mat-thin-bg:    rgba(255,255,255,0.55);
+  --mat-reg-bg:     rgba(255,255,255,0.72);
+  --mat-thick-bg:   rgba(255,255,255,0.86);
+  --mat-blur:       saturate(180%) blur(20px);
+  --mat-blur-thick: saturate(180%) blur(30px);
+  --mat-border:     rgba(0,0,0,0.08);
+  --mat-hi:         inset 0 0.5px 0 rgba(255,255,255,0.9);
+
+  /* ── SF text scale ── */
+  --t-caption2:  0.6875rem;
+  --t-caption:   0.75rem;
+  --t-footnote:  0.8125rem;
+  --t-subhead:   0.9375rem;
+  --t-callout:   1rem;
+  --t-body:      1.0625rem;
+  --t-headline:  1.0625rem;
+  --t-title3:    1.25rem;
+  --t-title2:    1.375rem;
+  --t-title:     1.75rem;
+  --t-largeTitle:2.125rem;
+
   /* Typography stack — SF Pro priority */
   --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', system-ui, 'Helvetica Neue', sans-serif;
   --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
@@ -54,6 +99,30 @@
   /* Easing — Apple ease-out-cubic */
   --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Stable stage widths by laptop class */
+  --stage-width: 960px;   /* 16" MBP */
+  --reading-stage-width: 760px;
+  --prose-width: min(var(--stage-width), calc(100% - 2rem));
+}
+
+@media (max-width: 1600px) {
+  :root {
+    --stage-width: 936px; /* 14" MBP */
+  }
+}
+
+@media (max-width: 1460px) {
+  :root {
+    --stage-width: 896px; /* 13" MBP */
+  }
+}
+
+@media (max-width: 1120px) {
+  :root {
+    --stage-width: calc(100vw - 48px);
+    --reading-stage-width: calc(100vw - 40px);
+  }
 }
 
 .dark {
@@ -81,6 +150,35 @@
   --shadow-1: 0 1px 2px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
   --shadow-2: 0 2px 4px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.4);
   --shadow-3: 0 4px 12px rgba(0,0,0,0.6), 0 24px 60px rgba(0,0,0,0.5);
+
+  --glass-chip: rgba(58, 58, 60, 0.66);
+  --glass-chip-strong: rgba(72, 72, 74, 0.82);
+  --glass-chip-border: rgba(255, 255, 255, 0.10);
+  --glass-inner-hi: inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+  --discovery-bg: linear-gradient(135deg, rgba(28,28,30,0.92), rgba(38,32,52,0.92));
+  --hero-grad: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 55%, #bf5af2 100%);
+  --hero-fg: #f5f5f7;
+
+  /* ── Apple system colors (dark variants) ── */
+  --tint-red:    #ff453a;
+  --tint-orange: #ff9f0a;
+  --tint-yellow: #ffd60a;
+  --tint-green:  #30d158;
+  --tint-mint:   #63e6e2;
+  --tint-teal:   #40c8e0;
+  --tint-cyan:   #64d2ff;
+  --tint-blue:   #0a84ff;
+  --tint-indigo: #5e5ce6;
+  --tint-purple: #bf5af2;
+  --tint-pink:   #ff375f;
+  --tint-brown:  #ac8e68;
+
+  /* ── Materials (dark) ── */
+  --mat-thin-bg:    rgba(28,28,30,0.55);
+  --mat-reg-bg:     rgba(28,28,30,0.72);
+  --mat-thick-bg:   rgba(28,28,30,0.88);
+  --mat-border:     rgba(255,255,255,0.10);
+  --mat-hi:         inset 0 0.5px 0 rgba(255,255,255,0.08);
 }
 
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -97,13 +195,88 @@ body {
 }
 
 .layout { display: flex; min-height: 100vh; }
-.layout main { flex: 1; min-width: 0; }
-.layout .with-toc { display: flex; gap: 2.5rem; max-width: 1200px; margin: 0 auto; }
+.layout main {
+  flex: 1; min-width: 0;
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* §1 沉浸式 — prose centered on the SCREEN. TOC hidden by default,
+   fades in only when the user hovers the right margin. The reading
+   surface is JUST the prose. Nothing else competes for attention. */
+/* Prose width: fluid, adapts to screen size.
+   62vw is the sweet spot — dominant on screen without losing
+   readability. Clamp ensures it never goes too narrow (mobile)
+   or too wide (ultra-wide monitors).
+
+   On 1440px MacBook Pro (with sidebar): ~893px → 77% of available
+   On 1728px 16" MacBook Pro: capped at 960px
+   On 1280px: ~794px */
+.layout .with-toc {
+  position: relative;
+  width: var(--prose-width);
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+}
+.layout .with-toc > .doc-stage {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+.layout .with-toc .loom-source-prose {
+  max-width: none;
+  margin: 0 auto;
+  position: relative;
+  width: 100%;
+}
+.layout .with-toc > .toc {
+  position: fixed;
+  left: calc(50vw + (var(--stage-width) / 2) + 28px);
+  top: 4.8rem;
+  width: clamp(220px, 18vw, 272px);
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  transform: none;
+}
+.layout .with-toc > .doc-outline {
+  position: fixed;
+  right: calc(50vw + (var(--stage-width) / 2) + 28px);
+  top: 4.8rem;
+  width: clamp(140px, 12vw, 180px);
+  overflow-y: auto;
+  pointer-events: auto;
+  opacity: 0.92;
+}
+/* §38 · Study mode / Layer 3 (⌘/) — all thought-anchor cards become
+   visible simultaneously. Prose dims so the ◆ notes become the visual
+   focus. ThoughtMapTOC stays visible (not just on hover). Esc exits. */
+body.loom-study-mode main .loom-source-prose {
+  opacity: 0.25;
+  transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+body.loom-study-mode .toc {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+body.loom-study-mode .doc-outline {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+/* AnchorCards are always visible in study mode — handled by JS */
+
+/* §37 · Chat focus mode (selection ✦)
+   The scratch discussion appears below the focused passage, but the main
+   source body remains intact. Focus is local, not a whole-page collapse. */
+body.loom-chat-focus-active main .loom-source-prose > [data-loom-chat-focus] {
+  position: relative;
+  z-index: 2;
+  scroll-margin-top: 2rem;
+}
 
 @media (max-width: 900px) {
   .sidebar { display: none; position: fixed; top: 0; left: 0; z-index: 80; box-shadow: var(--shadow-3); }
   .sidebar.open { display: block; }
   .toc { display: none; }
+  .doc-outline { display: none; }
   .mobile-menu-btn { display: block !important; }
 }
 @media (min-width: 901px) {
@@ -122,7 +295,7 @@ body {
    Prose
    ============================================================ */
 .prose-notion {
-  max-width: 760px;
+  max-width: var(--prose-width);
   margin: 0 auto;
   padding: 4rem 2.2rem 6rem;
   line-height: 1.72;
@@ -132,8 +305,9 @@ body {
 .prose-notion h1 {
   font-family: var(--display);
   font-size: 2.6rem; font-weight: 700;
-  margin: 1.2rem 0 1.4rem; letter-spacing: -0.028em;
+  margin: 1.2rem auto 1.4rem; letter-spacing: -0.028em;
   line-height: 1.1; scroll-margin-top: 2rem;
+  text-align: center;
 }
 .prose-notion h2 {
   font-family: var(--display);
@@ -234,7 +408,35 @@ body {
 }
 
 .katex { font-size: 1.05em; }
-.katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.4rem 0; margin: 1.2rem 0; }
+.prose-notion .katex-display,
+.note-rendered .katex-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.4rem 0;
+  margin: 1.2rem auto;
+}
+.prose-notion .katex-display > .katex,
+.note-rendered .katex-display > .katex {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: max-content;
+  min-width: 0;
+  max-width: none;
+  margin: 0 auto;
+}
+.prose-notion p:has(> .katex-display),
+.note-rendered p:has(> .katex-display) {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
 
 .note-rendered h1 { font-family: var(--display); font-size: 1.4rem; font-weight: 600; margin: 0.6rem 0 0.4rem; letter-spacing: -0.015em; }
 .note-rendered h2 { font-family: var(--display); font-size: 1.2rem; font-weight: 600; margin: 0.6rem 0 0.4rem; letter-spacing: -0.01em; }
@@ -276,21 +478,104 @@ html:not(.dark) [data-theme='dark'] { display: none; }
   to   { transform: rotate(360deg); }
 }
 
+/* §19/§21 · Kesi shuttle — the only permitted AI latency indicator.
+   A short accent bar shuttles horizontally along a 1px hairline,
+   like the shuttle passing through the warp. */
+@keyframes kesiShuttle {
+  0%   { left: 0;   width: 20%; }
+  50%  { left: 80%;  width: 20%; }
+  100% { left: 0;    width: 20%; }
+}
+
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
 
 /* ============================================================
-   Apple-style glass surfaces — applied to floating UI
+   Apple-style glass surfaces — three thicknesses
    ============================================================ */
 .glass {
   background: var(--bg-translucent) !important;
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: var(--mat-blur);
+  -webkit-backdrop-filter: var(--mat-blur);
   border: var(--hairline) !important;
   box-shadow: var(--shadow-2);
 }
+.material-thin {
+  background: var(--mat-thin-bg);
+  backdrop-filter: var(--mat-blur);
+  -webkit-backdrop-filter: var(--mat-blur);
+  border: 0.5px solid var(--mat-border);
+  box-shadow: var(--shadow-1), var(--mat-hi);
+}
+.material-regular {
+  background: var(--mat-reg-bg);
+  backdrop-filter: var(--mat-blur);
+  -webkit-backdrop-filter: var(--mat-blur);
+  border: 0.5px solid var(--mat-border);
+  box-shadow: var(--shadow-2), var(--mat-hi);
+}
+.material-thick {
+  background: var(--mat-thick-bg);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  border: 0.5px solid var(--mat-border);
+  box-shadow: var(--shadow-3), var(--mat-hi);
+}
+
+/* Toast spring entry */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Crystallize · weft threads pull tight + color flood fills the cell */
+@keyframes weftFill {
+  0%   { background-size: 0% 100%; opacity: 0.4; }
+  60%  { background-size: 100% 100%; opacity: 1; }
+  100% { background-size: 100% 100%; opacity: 1; }
+}
+.crystallize-burst {
+  background-image: linear-gradient(90deg,
+    color-mix(in srgb, var(--tint-yellow) 60%, transparent),
+    color-mix(in srgb, var(--tint-purple) 60%, transparent));
+  background-repeat: no-repeat;
+  background-position: left center;
+  animation: weftFill 0.6s cubic-bezier(0.55, 0, 0.45, 1) both;
+}
+
+/* Pin success burst */
+@keyframes pinBurst {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.45); }
+  70%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+@keyframes pinHalo {
+  from { opacity: 0.85; transform: scale(0.4); }
+  to   { opacity: 0;    transform: scale(1.1); }
+}
+
+/* Liquid spark idle pulse */
+.liquid-spark-idle { animation: liquidPulse 3.4s var(--ease) infinite; }
+@keyframes liquidPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.12); filter: drop-shadow(0 0 6px var(--accent)); }
+}
+
+/* ── SF text utilities ── */
+.t-caption2  { font-size: var(--t-caption2);  letter-spacing: 0.005em; }
+.t-caption   { font-size: var(--t-caption);   letter-spacing: 0; }
+.t-footnote  { font-size: var(--t-footnote);  letter-spacing: -0.003em; }
+.t-subhead   { font-size: var(--t-subhead);   letter-spacing: -0.006em; }
+.t-callout   { font-size: var(--t-callout);   letter-spacing: -0.011em; }
+.t-body      { font-size: var(--t-body);      letter-spacing: -0.014em; }
+.t-headline  { font-size: var(--t-headline);  letter-spacing: -0.014em; font-weight: 600; }
+.t-title3    { font-size: var(--t-title3);    letter-spacing: -0.018em; font-weight: 600; font-family: var(--display); }
+.t-title2    { font-size: var(--t-title2);    letter-spacing: -0.022em; font-weight: 700; font-family: var(--display); }
+.t-title     { font-size: var(--t-title);     letter-spacing: -0.026em; font-weight: 700; font-family: var(--display); }
+.t-largeTitle{ font-size: var(--t-largeTitle);letter-spacing: -0.030em; font-weight: 700; font-family: var(--display); line-height: 1.08; }
 
 /* Chat message markdown — tighter than note-rendered */
 .chat-msg { font-size: 0.87rem; line-height: 1.55; }
@@ -320,14 +605,11 @@ html:not(.dark) [data-theme='dark'] { display: none; }
 .chat-msg a { color: var(--accent); text-decoration: underline; }
 
 /* Browse row scrollbar — Apple thin */
-.browse-row::-webkit-scrollbar { height: 8px; }
-.browse-row::-webkit-scrollbar-track { background: transparent; }
-.browse-row::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
-.browse-row::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+/* Browse row · hide scrollbar entirely; trackpad/wheel scrolling still works */
+.browse-row { scrollbar-width: none; -ms-overflow-style: none; }
+.browse-row::-webkit-scrollbar { display: none; height: 0; width: 0; }
 
 /* ScrollProgress: thin top strip — hidden on full-bleed and reading mode */
-body:has(main > div[style*="height: 100vh"]) .scroll-progress { display: none; }
-body.reading-mode .scroll-progress { display: none !important; }
 
 /* Apple-style focus ring */
 :focus-visible {
@@ -338,6 +620,25 @@ body.reading-mode .scroll-progress { display: none !important; }
 button:focus-visible, a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--accent-soft);
+}
+main:focus { outline: none; }
+
+/* Skip-to-content — hidden until keyboard focused */
+.skip-link {
+  position: fixed; top: -100px; left: 16px; z-index: 999;
+  padding: 10px 18px; border-radius: 999px;
+  background: var(--accent); color: #fff;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.86rem;
+  text-decoration: none;
+  box-shadow: var(--shadow-3);
+  transition: top 0.22s var(--ease);
+}
+.skip-link:focus {
+  top: 16px;
+  outline: none;
 }
 
 /* Card hover lift */
@@ -360,6 +661,40 @@ html { scroll-behavior: smooth; }
   }
 }
 
+/* ============================================================
+   Home hero — Apple aurora mesh, grain texture, calm entrance
+   ============================================================ */
+.home-hero { isolation: isolate; }
+.home-hero > div { animation: heroFadeUp 0.7s var(--ease) both; }
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Aurora mesh: three soft blooms on calm background */
+.hero-aurora {
+  position: absolute; inset: -20% -10% -20% -10%;
+  pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(40% 60% at 12% 30%, rgba(0,122,255,0.32), transparent 70%),
+    radial-gradient(38% 55% at 78% 20%, rgba(191,90,242,0.28), transparent 70%),
+    radial-gradient(50% 60% at 50% 90%, rgba(94,92,230,0.22), transparent 70%);
+  filter: blur(20px) saturate(115%);
+  opacity: 0.95;
+}
+.dark .hero-aurora {
+  background:
+    radial-gradient(40% 60% at 12% 30%, rgba(10,132,255,0.42), transparent 70%),
+    radial-gradient(38% 55% at 78% 20%, rgba(191,90,242,0.36), transparent 70%),
+    radial-gradient(50% 60% at 50% 90%, rgba(94,92,230,0.30), transparent 70%);
+  opacity: 0.9;
+}
+/* Subtle film grain via SVG noise — keeps gradients from looking plastic */
+.hero-grain {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  opacity: 0.07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='1'/></svg>");
+}
+
 /* Card hover lift utility */
 .card-lift {
   transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease);
@@ -368,16 +703,58 @@ html { scroll-behavior: smooth; }
   transform: translateY(-2px);
   box-shadow: var(--shadow-2);
 }
+.card-lift:active { transform: translateY(0); transition-duration: 0.08s; }
+
+/* ============================================================
+   Reading & visualization polish
+   ============================================================ */
+/* Slightly wider optimal measure on large screens */
+@media (min-width: 1280px) {
+  .prose-notion { max-width: 780px; font-size: 17.5px; }
+}
+/* Hanging punctuation & better hyphenation for long-form */
+.prose-notion p { hyphens: auto; -webkit-hyphens: auto; hanging-punctuation: first last; }
+/* Drop subtle baseline grid via paragraph rhythm */
+.prose-notion p + p { margin-top: 1.05rem; }
+
+/* Stealth scrollbars · Loom 's hard rule.
+ *
+ * Only the browser 's native page scrollbar (on html/body) may be visible.
+ * Every other scrollable container in the app — sidebar, companion, lists,
+ * popovers, dropdowns, widgets, textareas — hides its scrollbar entirely.
+ * Wheel / trackpad / touch / keyboard scrolling still works as expected.
+ *
+ * The macOS / iOS native overlay scrollbar at the page level remains active
+ * and respects the user 's system "Show scroll bars" preference. */
+*:not(html):not(body) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*:not(html):not(body)::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Collection card hover · CSS-only so it works in server components */
+.loom-collection-card:hover { background: var(--surface-2); }
+
+/* Anchor heading reveal — make # always faintly visible, brighten on hover */
+.prose-notion h2[id]::before, .prose-notion h3[id]::before { opacity: 0.18; }
+.prose-notion h2[id]:hover::before, .prose-notion h3[id]:hover::before { opacity: 0.7; }
 
 /* Reading mode */
 body.reading-mode .sidebar { display: none; }
 body.reading-mode .toc { display: none; }
-body.reading-mode .layout .with-toc { max-width: 760px; gap: 0; }
-body.reading-mode .prose-notion {
+body.reading-mode .doc-outline { display: none; }
+body.reading-mode .layout .with-toc {
+  width: min(var(--reading-stage-width), calc(100% - 40px));
+}
+body.reading-mode .loom-source-prose {
   max-width: 720px; padding-top: 5rem; padding-bottom: 6rem;
   font-size: 18px; line-height: 1.78;
   font-family: var(--serif);
 }
-body.reading-mode .prose-notion h1,
-body.reading-mode .prose-notion h2,
-body.reading-mode .prose-notion h3 { font-family: var(--display); }
+body.reading-mode .loom-source-prose h1,
+body.reading-mode .loom-source-prose h2,
+body.reading-mode .loom-source-prose h3 { font-family: var(--display); }

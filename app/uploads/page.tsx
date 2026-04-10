@@ -1,100 +1,78 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import Link from 'next/link';
+import { UploadButton } from './UploadButton';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Uploads · My Wiki' };
-
-const TYPE_META: Record<string, { icon: string; color: string }> = {
-  '.pdf':  { icon: '📄', color: '#dc2626' },
-  '.docx': { icon: '📝', color: '#2563eb' },
-  '.pptx': { icon: '📊', color: '#ea580c' },
-  '.csv':  { icon: '📊', color: '#16a34a' },
-  '.json': { icon: '📋', color: '#7c3aed' },
-  '.ipynb':{ icon: '📓', color: '#f59e0b' },
-  '.md':   { icon: '📃', color: '#0ea5e9' },
-  '.txt':  { icon: '📃', color: '#6b7280' },
-};
-const meta = (e: string) => TYPE_META[e] ?? { icon: '📄', color: '#6b7280' };
+export const metadata = { title: 'Uploads · Loom' };
 
 export default async function UploadsPage() {
   const dir = path.join(process.cwd(), 'knowledge', 'uploads');
-  let items: { name: string; size: number; mtime: number; ext: string }[] = [];
+  let items: { name: string; size: number; mtime: number }[] = [];
   try {
     await fs.mkdir(dir, { recursive: true });
     const entries = await fs.readdir(dir);
     items = await Promise.all(
       entries.filter((n) => !n.startsWith('.')).map(async (name) => {
         const stat = await fs.stat(path.join(dir, name));
-        return { name, size: stat.size, mtime: stat.mtime.getTime(), ext: path.extname(name).toLowerCase() };
+        return { name, size: stat.size, mtime: stat.mtime.getTime() };
       }),
     );
     items.sort((a, b) => b.mtime - a.mtime);
   } catch {}
 
   return (
-    <div className="prose-notion">
-      <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.5rem' }}>
-        <Link href="/">Home</Link>
+    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 18,
+      }}>
+        <span aria-hidden style={{
+          width: 18, height: 1,
+          background: 'var(--accent)', opacity: 0.55,
+        }} />
+        <span className="t-caption2" style={{
+          color: 'var(--muted)',
+          textTransform: 'uppercase', letterSpacing: '0.10em',
+          fontWeight: 700,
+        }}>Uploads</span>
+        <span aria-hidden style={{
+          flex: 1, height: 1, background: 'var(--mat-border)',
+        }} />
+        <UploadButton />
       </div>
-      <h1>📥 Uploads</h1>
-      <p style={{ color: 'var(--muted)' }}>
-        {items.length === 0
-          ? 'No uploads yet. Drag any PDF, DOCX, CSV, JSON, IPYNB, or text file anywhere on the page to upload.'
-          : `${items.length} uploaded file${items.length === 1 ? '' : 's'}.`}
-      </p>
 
       {items.length > 0 && (
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.85rem',
-          marginTop: '1.5rem',
-        }}>
-          {items.map((it) => {
-            const m = meta(it.ext);
-            return (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {items.map((it) => (
+            <li key={it.name}>
               <Link
-                key={it.name}
                 href={`/uploads/${encodeURIComponent(it.name)}`}
-                className="card-lift"
                 style={{
-                  display: 'block',
-                  border: 'var(--hairline)', borderRadius: 'var(--r-3)',
-                  background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-1)',
-                  textDecoration: 'none', color: 'var(--fg)', overflow: 'hidden',
+                  display: 'flex', alignItems: 'baseline', gap: 14,
+                  padding: '0.7rem 0',
+                  color: 'var(--fg)', textDecoration: 'none',
+                  borderBottom: '0.5px solid var(--mat-border)',
                 }}
               >
-                <div style={{
-                  height: 90,
-                  background: `linear-gradient(135deg, ${m.color}22, ${m.color}08)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '2.2rem',
-                }}>{m.icon}</div>
-                <div style={{ padding: '0.7rem 0.85rem' }}>
-                  <div style={{
-                    fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.35,
-                    overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                    minHeight: '2.3em',
-                  }}>
-                    {it.name.replace(/\.[^.]+$/, '')}
-                  </div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--muted)', marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{it.ext.slice(1).toUpperCase()}</span>
-                    <span>{(it.size / 1024).toFixed(0)} KB</span>
-                  </div>
-                </div>
+                <span style={{
+                  flex: 1, minWidth: 0,
+                  fontFamily: 'var(--display)',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  letterSpacing: '-0.012em',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{it.name.replace(/\.[^.]+$/, '')}</span>
+                <span className="t-caption" style={{
+                  color: 'var(--muted)', flexShrink: 0,
+                  fontVariantNumeric: 'tabular-nums',
+                  fontFamily: 'var(--mono)',
+                }}>{(it.size / 1024).toFixed(0)} KB</span>
               </Link>
-            );
-          })}
-        </div>
+            </li>
+          ))}
+        </ul>
       )}
-
-      <div style={{
-        marginTop: '2rem', padding: '1rem 1.2rem',
-        border: '1px dashed var(--border-strong)', borderRadius: 'var(--r-3)',
-        background: 'var(--surface-2)', textAlign: 'center', color: 'var(--muted)', fontSize: '0.85rem',
-      }}>
-        💡 Drag any file anywhere on the page to upload — no terminal needed.
-      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Doc = { id: string; title: string; href: string; hasText: boolean };
 type Status = 'pending' | 'running' | 'cached' | 'done' | 'error' | 'skipped';
@@ -30,7 +30,7 @@ export function BatchRunner({
   const eligible = docs.filter((d) => d.hasText);
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
   const [running, setRunning] = useState(false);
-  const [aborted, setAborted] = useState(false);
+  const abortedRef = useRef(false);
 
   // probe existing cache
   useEffect(() => {
@@ -56,7 +56,7 @@ export function BatchRunner({
 
   const run = async () => {
     if (running) return;
-    setRunning(true); setAborted(false);
+    setRunning(true); abortedRef.current = false;
     const queue = eligible.filter((d) => statuses[d.id] !== 'cached' && statuses[d.id] !== 'done');
     let cursor = 0;
     let stopped = false;
@@ -67,7 +67,7 @@ export function BatchRunner({
         const i = cursor++;
         if (i >= queue.length) return;
         const d = queue[i];
-        if (aborted) { stopped = true; return; }
+        if (abortedRef.current) { stopped = true; return; }
         setOne(d.id, 'running');
         try {
           const r = await fetch(endpoint, {
@@ -101,7 +101,7 @@ export function BatchRunner({
           </div>
         </div>
         <button
-          onClick={running ? () => setAborted(true) : run}
+          onClick={running ? () => { abortedRef.current = true; } : run}
           disabled={cachedCount === eligible.length && !running}
           style={{
             background: running ? '#dc2626' : 'var(--accent)',
