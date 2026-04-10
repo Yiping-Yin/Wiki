@@ -170,9 +170,10 @@ struct WindowConfigurator: NSViewRepresentable {
             window.titleVisibility = .visible
             window.styleMask.insert(.fullSizeContentView)
             window.isMovableByWindowBackground = true
-            // Match the system background so notch area blends
             window.backgroundColor = NSColor.windowBackgroundColor
             window.title = title
+            // Remember window size and position across launches
+            window.setFrameAutosaveName("LoomMainWindow")
         }
         return view
     }
@@ -375,11 +376,23 @@ struct LoomWebView: NSViewRepresentable {
 
         private func updateDebugState(from webView: WKWebView, errorMessage: String? = nil) {
             let apply = {
-                self.debugState.currentURL = webView.url?.absoluteString ?? ""
-                self.debugState.pageTitle = webView.title ?? ""
-                self.debugState.isLoading = webView.isLoading
+                let currentURL = webView.url?.absoluteString ?? ""
+                let pageTitle = webView.title ?? ""
+                let isLoading = webView.isLoading
+
+                if self.debugState.currentURL != currentURL {
+                    self.debugState.currentURL = currentURL
+                }
+                if self.debugState.pageTitle != pageTitle {
+                    self.debugState.pageTitle = pageTitle
+                }
+                if self.debugState.isLoading != isLoading {
+                    self.debugState.isLoading = isLoading
+                }
                 if let errorMessage {
-                    self.debugState.lastError = errorMessage
+                    if self.debugState.lastError != errorMessage {
+                        self.debugState.lastError = errorMessage
+                    }
                 }
             }
             if Thread.isMainThread {
