@@ -106,16 +106,20 @@ function BinaryEmbed({
         </div>
       </div>
       {hasExtracted && (
-        <details style={{ marginTop: '0.8rem' }}>
-          <summary style={{
-            cursor: 'pointer', color: 'var(--muted)',
-            fontSize: '0.78rem', padding: '0.4rem 0.2rem',
-            listStyle: 'none',
-          }}>▾ Extracted text ({body.length.toLocaleString()} chars)</summary>
-          <div style={{ marginTop: '0.4rem', opacity: 0.92 }}>
-            <TextView body={body} />
+        <div style={{ marginTop: '1.2rem' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            marginBottom: 14,
+          }}>
+            <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
+            <span className="t-caption2" style={{
+              color: 'var(--muted)', textTransform: 'uppercase',
+              letterSpacing: '0.10em', fontWeight: 700,
+            }}>Source</span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           </div>
-        </details>
+          <TextView body={body} />
+        </div>
       )}
     </figure>
   );
@@ -129,28 +133,23 @@ function BinaryEmbed({
  */
 function PdfWithText({ src, title, body }: { src: string; title: string; body: string }) {
   const hasText = body && body.length > 30 && !body.startsWith('[Binary');
-  const [showText, setShowText] = useState(hasText);
   return (
     <div>
       <PdfFrame src={src} title={title} />
       {hasText && (
-        <div style={{ marginTop: '1rem' }}>
-          <button
-            onClick={() => setShowText((v) => !v)}
-            style={{
-              background: 'transparent', border: 0, cursor: 'pointer',
-              color: 'var(--muted)', fontSize: '0.78rem', padding: '0.3rem 0',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
-            <span style={{ fontSize: '0.7rem' }}>{showText ? '▾' : '▸'}</span>
-            Source text · select to ask AI
-          </button>
-          {showText && (
-            <div style={{ marginTop: '0.4rem' }}>
-              <TextView body={body} />
-            </div>
-          )}
+        <div style={{ marginTop: '2rem' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            marginBottom: 14,
+          }}>
+            <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
+            <span className="t-caption2" style={{
+              color: 'var(--muted)', textTransform: 'uppercase',
+              letterSpacing: '0.10em', fontWeight: 700,
+            }}>Source</span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+          </div>
+          <TextView body={body} />
         </div>
       )}
     </div>
