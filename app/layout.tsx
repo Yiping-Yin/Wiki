@@ -1,6 +1,5 @@
 import './globals.css';
 import type { ReactNode } from 'react';
-import { headers } from 'next/headers';
 import { Sidebar } from '../components/Sidebar';
 import { CopyButtonInjector } from '../components/CopyButton';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
@@ -21,6 +20,7 @@ import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
 import { QuickSticky } from '../components/QuickSticky';
 import { DevStatusBadge } from '../components/DevStatusBadge';
+import { AnchorDebugOverlay } from '../components/AnchorDebugOverlay';
 
 export const metadata = {
   title: 'Loom',
@@ -48,10 +48,7 @@ export const viewport = {
   ],
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  const headerList = await headers();
-  const userAgent = headerList.get('user-agent') ?? '';
-  const inAppShell = /LoomAppShell/i.test(userAgent);
+export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -88,7 +85,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <ReadingMode />
         <QuickSwitcher />
         <DropZone />
-        {!inAppShell ? <DevStatusBadge /> : null}
+        <DevStatusBadge />
+        <AnchorDebugOverlay />
       </body>
     </html>
   );
