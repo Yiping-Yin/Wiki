@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    Loom · monochrome variant. Uses currentColor.
+    8 warp threads = the 8 verticals of L-O-O-M. See icon.svg for the
+    full reasoning.
+  -->
+  <g stroke="currentColor" stroke-width="8" stroke-linecap="round">
+    <line x1="116" y1="176" x2="116" y2="336"/>
+    <line x1="156" y1="176" x2="156" y2="336"/>
+    <line x1="196" y1="176" x2="196" y2="336"/>
+    <line x1="236" y1="176" x2="236" y2="336"/>
+    <line x1="276" y1="176" x2="276" y2="336"/>
+    <line x1="316" y1="176" x2="316" y2="336"/>
+    <line x1="356" y1="176" x2="356" y2="336"/>
+    <line x1="396" y1="176" x2="396" y2="336"/>
+  </g>
+</svg>

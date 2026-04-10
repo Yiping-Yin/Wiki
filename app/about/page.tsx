@@ -13,12 +13,10 @@ export const metadata = { title: 'About · Loom' };
 export default function AboutPage() {
   return (
     <article className="prose-notion">
-      <h1 style={{ marginBottom: '0.2rem' }}>Loom</h1>
+      <h1 style={{ marginBottom: '0.2rem', textAlign: 'left' }}>Loom</h1>
       <p style={{ color: 'var(--fg-secondary)', marginTop: 0, fontSize: '1.05rem' }}>
         Think on the Loom. Live in your <em style={{ color: 'var(--accent)', fontStyle: 'normal' }}>Kesi</em>.
       </p>
-
-      <Rule />
 
       <p>
         Loom is a thinking tool. Not a note app, not a chat app, not an AI
@@ -42,6 +40,10 @@ export default function AboutPage() {
         anchors it to the right passage, connects it to prior thoughts.
         The user&rsquo;s job is to choose what to ask and when to commit.
         Loom absorbs the organizational burden; the thinker focuses on intent.
+      </p>
+      <p style={{ color: 'var(--fg-secondary)', fontSize: '0.95rem' }}>
+        织者即智者 — the weaver is the wise one. In Chinese, <em>zhīzhě</em> means
+        both. This is not a metaphor we chose; it is one the language already knew.
       </p>
 
       <h2>How it works</h2>
@@ -189,7 +191,7 @@ function Rule() {
     <hr style={{
       border: 0,
       borderTop: '0.5px solid var(--mat-border)',
-      margin: '2.4rem 0 2rem',
+      margin: '1.6rem 0 1.4rem',
     }} />
   );
 }
@@ -211,33 +213,36 @@ function IconCell({ label, caption, children }: { label: string; caption: string
 
 function BrandIconSpecimen() {
   return (
-    <svg width="80" height="80" viewBox="0 0 512 512" aria-hidden>
-      <defs>
-        <linearGradient id="about-bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#0a84ff"/><stop offset="0.55" stopColor="#5e5ce6"/><stop offset="1" stopColor="#bf5af2"/>
-        </linearGradient>
-      </defs>
-      <rect width="512" height="512" rx="112" fill="url(#about-bg)"/>
-      <g stroke="#fff" strokeWidth="2.2" strokeLinecap="round" opacity="0.90">
-        {[128,168,208,248,288,328,368,408].map((x) => <line key={x} x1={x} y1={148} x2={x} y2={364}/>)}
-      </g>
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/icon.png" alt="" width={80} height={80} style={{ borderRadius: 18 }} aria-hidden />
   );
 }
 
 function StaticIconSpecimen() {
+  const WARPS = 12;
+  const W = 280;
+  const H = 96;
+  const PAD = 14;
+  const gap = (W - PAD * 2) / (WARPS - 1);
+
   return (
-    <svg width="140" height="60" viewBox="0 0 280 96" aria-hidden style={{ color: 'var(--fg)' }}>
+    <svg width="220" height="90" viewBox={`0 0 ${W} ${H}`} aria-hidden style={{ color: 'var(--fg)' }}>
       <defs>
-        <linearGradient id="about-silk" x1="0" y1="6" x2="0" y2="90" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.10"/>
+        <linearGradient id="about-static-silk" x1="0" y1="0" x2="0" y2={H} gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0"/>
+          <stop offset="25%" stopColor="currentColor" stopOpacity="0.35"/>
           <stop offset="50%" stopColor="currentColor" stopOpacity="0.50"/>
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.10"/>
+          <stop offset="75%" stopColor="currentColor" stopOpacity="0.35"/>
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0"/>
         </linearGradient>
       </defs>
-      <g strokeLinecap="round">
-        {Array.from({length:12},(_,i)=>{const x=14+i*23;return <line key={i} x1={x} y1="6" x2={x} y2="90" stroke="url(#about-silk)" strokeWidth="1"/>;})}
-      </g>
+      {Array.from({ length: WARPS }, (_, i) => {
+        const x = PAD + i * gap;
+        return (
+          <line key={i} x1={x} y1="4" x2={x} y2={H - 4}
+            stroke="url(#about-static-silk)" strokeWidth="1" strokeLinecap="round" />
+        );
+      })}
     </svg>
   );
 }
@@ -246,12 +251,14 @@ function StaticIconSpecimen() {
 function ActiveIconSpecimen() {
   return (
     <svg width="140" height="60" viewBox="0 0 220 80" aria-hidden style={{ color: 'var(--fg)' }}>
+      {/* 3 warp threads + 1 ghost thread (destination) */}
       <g stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.35">
         <line x1="60" y1="16" x2="60" y2="64"/>
         <line x1="90" y1="16" x2="90" y2="64"/>
         <line x1="120" y1="16" x2="120" y2="64"/>
         <line x1="150" y1="16" x2="150" y2="64" opacity="0.2"/>
       </g>
+      {/* 1 shuttle — blue accent, weaves toward the 4th thread */}
       <rect x="56" y="36" width="14" height="3" rx="1.5" fill="var(--accent)">
         <animate attributeName="x" values="56;150;150;56;56" keyTimes="0;0.55;0.65;0.97;1" dur="2.4s" repeatCount="indefinite"/>
         <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.05;0.62;0.7;1" dur="2.4s" repeatCount="indefinite"/>
@@ -261,62 +268,148 @@ function ActiveIconSpecimen() {
 }
 
 function HomeLoomSpecimen() {
+  // Shuttle with ease-in-out (human hand rhythm).
+  // Thread brightness follows an arc: center brightest, edges dimmer (silk tension).
+  // Fade duration also varies: center threads linger, edge threads dissipate faster.
   const WARPS = 8;
   const W = 240;
   const H = 100;
   const PAD = 24;
   const gap = (W - PAD * 2) / (WARPS - 1);
-  const durs = [4.0, 5.2, 3.6, 4.8, 3.4, 5.6, 4.2, 3.8];
-  const dirs = [1, -1, 1, -1, 1, -1, 1, -1];
-  const delays = [0, -1.4, -0.6, -3.0, -1.9, -3.8, -0.9, -2.4];
+  const DUR = 10;
+  const DIM = 0.06;
+
+  // Arc-shaped brightness: center threads peak brighter, edges dimmer.
+  // Thread 0,7 (edges) → 0.30; Thread 3,4 (center) → 0.50
+  function peakForThread(i: number): number {
+    const center = (WARPS - 1) / 2; // 3.5
+    const dist = Math.abs(i - center) / center; // 0 at center, 1 at edge
+    return 0.50 - dist * 0.20; // 0.50 → 0.30
+  }
+
+  // Fade duration: center threads linger longer (high tension, slow decay).
+  function fadeForThread(i: number): number {
+    const center = (WARPS - 1) / 2;
+    const dist = Math.abs(i - center) / center;
+    return 0.20 - dist * 0.08; // center 0.20, edge 0.12
+  }
+
+  // Ease-in-out: shuttle starts fast, slows in middle, speeds at end.
+  // Map linear thread position to eased time using cubic approximation.
+  function easeInOut(t: number): number {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function threadKeyframes(i: number) {
+    const norm = i / (WARPS - 1);
+    // Apply easing to thread peak times — non-linear spacing
+    const easedNorm = easeInOut(norm);
+    const fwd = easedNorm * 0.36 + 0.08;
+    const ret = 1.0 - fwd;
+    const rise = 0.03;
+    const hold = 0.02;
+    const fade = fadeForThread(i);
+    const bright = peakForThread(i);
+
+    const fwdEnd = fwd + hold + fade;
+    const retStart = ret - rise;
+    const overlaps = fwdEnd >= retStart - 0.01;
+
+    const pts: [number, number][] = [];
+
+    if (overlaps) {
+      pts.push([0, DIM]);
+      pts.push([fwd - rise, DIM]);
+      pts.push([fwd, bright]);
+      pts.push([ret + hold, bright]);
+      pts.push([ret + hold + fade, DIM]);
+      pts.push([1, DIM]);
+    } else {
+      pts.push([0, DIM]);
+      pts.push([fwd - rise, DIM]);
+      pts.push([fwd, bright]);
+      pts.push([fwd + hold, bright]);
+      pts.push([fwd + hold + fade, DIM]);
+      pts.push([ret - rise, DIM]);
+      pts.push([ret, bright]);
+      pts.push([ret + hold, bright]);
+      pts.push([Math.min(0.98, ret + hold + fade), DIM]);
+      pts.push([1, DIM]);
+    }
+
+    const clean: [number, number][] = [];
+    for (const [t, v] of pts) {
+      const tc = Math.max(0, Math.min(1, t));
+      if (clean.length > 0 && tc <= clean[clean.length - 1][0] + 0.003) continue;
+      clean.push([tc, v]);
+    }
+    if (clean[clean.length - 1][0] < 0.999) {
+      clean.push([1, DIM]);
+    } else {
+      clean[clean.length - 1][0] = 1;
+    }
+
+    // Generate keySplines: ease-out for rise (fast attack), ease-in for fade (slow decay)
+    const splines: string[] = [];
+    for (let k = 0; k < clean.length - 1; k++) {
+      const from = clean[k][1];
+      const to = clean[k + 1][1];
+      if (to > from) {
+        // Rising: fast attack, ease-out
+        splines.push('0.1 0.8 0.3 1');
+      } else if (to < from) {
+        // Fading: slow smooth decay, ease-in
+        splines.push('0.4 0 0.8 0.4');
+      } else {
+        // Hold or dim-to-dim: linear
+        splines.push('0 0 1 1');
+      }
+    }
+
+    return {
+      keyTimes: clean.map(([t]) => t.toFixed(3)).join(';'),
+      values: clean.map(([, v]) => v.toFixed(2)).join(';'),
+      keySplines: splines.join('; '),
+    };
+  }
+
+  const xStart = PAD - 6;
+  const xEnd = W - PAD - 30;
 
   return (
     <svg width="240" height="100" viewBox={`0 0 ${W} ${H}`} aria-hidden style={{ color: 'var(--fg)' }}>
-      <defs>
-        <linearGradient id="about-alive-base" x1="0" y1="0" x2="0" y2={H} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0"/>
-          <stop offset="20%" stopColor="currentColor" stopOpacity="0.15"/>
-          <stop offset="50%" stopColor="currentColor" stopOpacity="0.20"/>
-          <stop offset="80%" stopColor="currentColor" stopOpacity="0.15"/>
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0"/>
-        </linearGradient>
-        {Array.from({ length: WARPS }, (_, i) => (
-          <linearGradient key={i} id={`about-alive-sh-${i}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="0"/>
-            <stop offset="20%" stopColor="currentColor" stopOpacity="0.08">
-              <animate attributeName="offset"
-                values={dirs[i] === 1 ? '0.05;0.40;0.75;0.40;0.05' : '0.75;0.40;0.05;0.40;0.75'}
-                dur={`${durs[i]}s`} begin={`${delays[i]}s`} repeatCount="indefinite" />
-            </stop>
-            <stop offset="35%" stopColor="currentColor" stopOpacity="0.75">
-              <animate attributeName="offset"
-                values={dirs[i] === 1 ? '0.15;0.48;0.82;0.48;0.15' : '0.82;0.48;0.15;0.48;0.82'}
-                dur={`${durs[i]}s`} begin={`${delays[i]}s`} repeatCount="indefinite" />
-            </stop>
-            <stop offset="50%" stopColor="currentColor" stopOpacity="0.08">
-              <animate attributeName="offset"
-                values={dirs[i] === 1 ? '0.25;0.58;0.92;0.58;0.25' : '0.92;0.58;0.25;0.58;0.92'}
-                dur={`${durs[i]}s`} begin={`${delays[i]}s`} repeatCount="indefinite" />
-            </stop>
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0"/>
-          </linearGradient>
-        ))}
-      </defs>
-      <g>
-        {Array.from({ length: WARPS }, (_, i) => {
-          const x = PAD + i * gap;
-          return <line key={`b${i}`} x1={x} y1="0" x2={x} y2={H} stroke="url(#about-alive-base)" strokeWidth="1" />;
-        })}
-      </g>
-      <g>
-        {Array.from({ length: WARPS }, (_, i) => {
-          const x = PAD + i * gap;
-          return <line key={`s${i}`} x1={x} y1="0" x2={x} y2={H} stroke={`url(#about-alive-sh-${i})`} strokeWidth="1" />;
-        })}
-      </g>
-      <rect x={PAD - 6} y={H / 2 - 0.75} width={36} height={1.5} rx={0.75} fill="var(--accent)">
-        <animate attributeName="x" values={`${PAD - 6};${W - PAD - 30};${PAD - 6}`} keyTimes="0;0.5;1" dur="10s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0;0.55;0.55;0.55;0" keyTimes="0;0.08;0.45;0.92;1" dur="10s" repeatCount="indefinite" />
+      {Array.from({ length: WARPS }, (_, i) => {
+        const x = PAD + i * gap;
+        const { keyTimes, values, keySplines } = threadKeyframes(i);
+        return (
+          <line key={i} x1={x} y1="4" x2={x} y2={H - 4}
+            stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity={DIM}>
+            <animate attributeName="opacity"
+              values={values}
+              keyTimes={keyTimes}
+              calcMode="spline"
+              keySplines={keySplines}
+              dur={`${DUR}s`}
+              repeatCount="indefinite" />
+          </line>
+        );
+      })}
+      {/* Shuttle — spline ease-in-out */}
+      <rect x={xStart} y={H / 2 - 0.75} width={36} height={1.5} rx={0.75} fill="var(--accent)">
+        <animate attributeName="x"
+          values={`${xStart};${xEnd};${xStart}`}
+          keyTimes="0;0.5;1"
+          calcMode="spline"
+          keySplines="0.42 0 0.58 1; 0.42 0 0.58 1"
+          dur={`${DUR}s`} repeatCount="indefinite" />
+        <animate attributeName="opacity"
+          values="0;0.55;0.55;0.55;0"
+          keyTimes="0;0.06;0.45;0.94;1"
+          calcMode="spline"
+          keySplines="0.25 0.1 0.25 1; 0 0 1 1; 0 0 1 1; 0.75 0 0.75 0.9"
+          dur={`${DUR}s`} repeatCount="indefinite" />
       </rect>
     </svg>
   );

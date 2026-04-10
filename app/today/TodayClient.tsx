@@ -150,7 +150,7 @@ export function TodayClient({
 
 function Block({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: '2.4rem' }}>
+    <section style={{ marginBottom: '1.6rem' }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         marginBottom: 14,

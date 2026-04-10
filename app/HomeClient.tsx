@@ -46,8 +46,7 @@ async function loadDocs(): Promise<IndexDoc[]> {
 export function HomeClient(_props: unknown) {
   const [history] = useHistory();
   const [docs, setDocs] = useState<IndexDoc[]>([]);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); loadDocs().then(setDocs); }, []);
+  useEffect(() => { loadDocs().then(setDocs); }, []);
 
   const docsById = useMemo(() => {
     const m = new Map<string, IndexDoc>();
@@ -71,9 +70,6 @@ export function HomeClient(_props: unknown) {
     }
     return out;
   }, [history, docsById]);
-
-  // Wait for client hydration first.
-  if (!mounted) return null;
 
   if (resume.length === 0) {
     return <HomeLoom />;
@@ -161,36 +157,16 @@ function relativeTime(ts: number): string {
  * the light moves ON it.
  */
 function HomeLoom() {
-  const WARPS = 8;
-  const W = 400;
-  const H = 200;
-  const PAD = 48;
-  const gap = (W - PAD * 2) / (WARPS - 1);
-
-  // Each thread: position, shimmer period, direction (1=down, -1=up), phase delay
-  const threads: { x: number; dur: number; dir: 1 | -1; delay: number }[] = [
-    { x: PAD + 0 * gap, dur: 4.0, dir:  1, delay: 0    },
-    { x: PAD + 1 * gap, dur: 5.2, dir: -1, delay: -1.4 },
-    { x: PAD + 2 * gap, dur: 3.6, dir:  1, delay: -0.6 },
-    { x: PAD + 3 * gap, dur: 4.8, dir: -1, delay: -3.0 },
-    { x: PAD + 4 * gap, dur: 3.4, dir:  1, delay: -1.9 },
-    { x: PAD + 5 * gap, dur: 5.6, dir: -1, delay: -3.8 },
-    { x: PAD + 6 * gap, dur: 4.2, dir:  1, delay: -0.9 },
-    { x: PAD + 7 * gap, dur: 3.8, dir: -1, delay: -2.4 },
-  ];
+  // 12 static silk-sheen warps — full viewport height, pure CSS.
+  const WARPS = 12;
 
   return (
     <div style={{
       position: 'relative',
       width: '100%',
-      minHeight: 'calc(100vh - 6rem)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      height: 'calc(100vh - 6rem)',
     }}>
-      {/* §5 Aurora halo — ambient light diffusing from the silk.
-          Two soft radial gradients: a warm pink-purple and a cool blue,
-          offset from center, very low opacity. */}
+      {/* §5 Aurora halo */}
       <div aria-hidden style={{
         position: 'absolute',
         inset: 0,
@@ -200,82 +176,28 @@ function HomeLoom() {
           radial-gradient(ellipse 50% 45% at 58% 52%, rgba(10,132,255,0.05) 0%, transparent 70%)
         `,
       }} />
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        aria-hidden
-        style={{
-          position: 'relative',
-          width: W, maxWidth: '72vw', height: 'auto',
-          display: 'block', color: 'var(--fg)',
-        }}
-      >
-        <defs>
-          {/* Base thread: always visible, dim — the silk is always there */}
-          <linearGradient id="home-warp-base"
-            x1="0" y1="0" x2="0" y2={H}
-            gradientUnits="userSpaceOnUse">
-            <stop offset="0%"   stopColor="currentColor" stopOpacity="0"/>
-            <stop offset="20%"  stopColor="currentColor" stopOpacity="0.15"/>
-            <stop offset="50%"  stopColor="currentColor" stopOpacity="0.20"/>
-            <stop offset="80%"  stopColor="currentColor" stopOpacity="0.15"/>
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0"/>
-          </linearGradient>
-          {/* Per-thread shimmer: a bright band that travels up/down the thread */}
-          {threads.map((t, i) => (
-              <linearGradient key={i} id={`home-shimmer-${i}`}
-                x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"  stopColor="currentColor" stopOpacity="0"/>
-                <stop offset="20%" stopColor="currentColor" stopOpacity="0.08">
-                  <animate attributeName="offset"
-                    values={t.dir === 1 ? '0.05;0.40;0.75;0.40;0.05' : '0.75;0.40;0.05;0.40;0.75'}
-                    dur={`${t.dur}s`} begin={`${t.delay}s`}
-                    repeatCount="indefinite" />
-                </stop>
-                <stop offset="35%" stopColor="currentColor" stopOpacity="0.70">
-                  <animate attributeName="offset"
-                    values={t.dir === 1 ? '0.15;0.48;0.82;0.48;0.15' : '0.82;0.48;0.15;0.48;0.82'}
-                    dur={`${t.dur}s`} begin={`${t.delay}s`}
-                    repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="currentColor" stopOpacity="0.08">
-                  <animate attributeName="offset"
-                    values={t.dir === 1 ? '0.25;0.58;0.92;0.58;0.25' : '0.92;0.58;0.25;0.58;0.92'}
-                    dur={`${t.dur}s`} begin={`${t.delay}s`}
-                    repeatCount="indefinite" />
-                </stop>
-                <stop offset="100%" stopColor="currentColor" stopOpacity="0"/>
-              </linearGradient>
-          ))}
-        </defs>
-
-        {/* Warp threads: base layer (always visible) */}
-        <g>
-          {threads.map((t, i) => (
-            <line key={`base-${i}`}
-              x1={t.x} y1="0" x2={t.x} y2={H}
-              stroke="url(#home-warp-base)"
-              strokeWidth="1"
-            />
-          ))}
-        </g>
-
-        {/* Warp threads: shimmer layer (light traveling on silk) */}
-        <g>
-          {threads.map((t, i) => (
-            <line key={`shimmer-${i}`}
-              x1={t.x} y1="0" x2={t.x} y2={H}
-              stroke={`url(#home-shimmer-${i})`}
-              strokeWidth="1"
-            />
-          ))}
-        </g>
-
-        {/* Weft shuttle */}
-        <rect x={PAD - 20} y={H / 2 - 0.5} width={70} height={1} rx={0.5} fill="var(--accent)">
-          <animate attributeName="x" values={`${PAD - 20};${W - PAD - 50};${PAD - 20}`} keyTimes="0;0.5;1" dur="10s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0;0.45;0.45;0.45;0" keyTimes="0;0.08;0.45;0.92;1" dur="10s" repeatCount="indefinite" />
-        </rect>
-      </svg>
+      {/* 12 warp threads — absolute positioned for reliable full height */}
+      {Array.from({ length: WARPS }, (_, i) => {
+        const left = 50 + (i - (WARPS - 1) / 2) * 1.8; // centered, 1.8vw apart
+        return (
+          <div key={i} aria-hidden style={{
+            position: 'absolute',
+            left: `${left}vw`,
+            top: '8vh',
+            bottom: '8vh',
+            width: 1,
+            background: `linear-gradient(to bottom,
+              transparent 0%,
+              color-mix(in srgb, var(--fg) 30%, transparent) 20%,
+              color-mix(in srgb, var(--fg) 50%, transparent) 45%,
+              color-mix(in srgb, var(--fg) 54%, transparent) 50%,
+              color-mix(in srgb, var(--fg) 50%, transparent) 55%,
+              color-mix(in srgb, var(--fg) 30%, transparent) 80%,
+              transparent 100%
+            )`,
+          }} />
+        );
+      })}
     </div>
   );
 }

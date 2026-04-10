@@ -152,15 +152,15 @@ export function FreeInput() {
         <div
           onClick={activate}
           style={{
-            height: 2,
-            borderRadius: 1,
-            background: 'var(--accent)',
-            opacity: 0.2,
+            height: 1,
+            borderRadius: 0.5,
+            background: 'var(--mat-border)',
+            opacity: 0.5,
             cursor: 'pointer',
-            transition: 'opacity 0.2s var(--ease)',
+            transition: 'opacity 0.2s var(--ease), background 0.2s var(--ease)',
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.5'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.2'; }}
+          onMouseEnter={(e) => { const s = (e.currentTarget as HTMLElement).style; s.opacity = '0.8'; s.background = 'var(--accent)'; }}
+          onMouseLeave={(e) => { const s = (e.currentTarget as HTMLElement).style; s.opacity = '0.5'; s.background = 'var(--mat-border)'; }}
         />
       </div>
     );

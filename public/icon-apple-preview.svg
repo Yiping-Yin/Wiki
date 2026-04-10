@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Loom · The Definitive Mark · Apple-optimized preview -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#082060"/>
+      <stop offset="0.50" stop-color="#3a35a0"/>
+      <stop offset="1" stop-color="#6a30a8"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="50%" cy="48%" r="58%">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.60" stop-color="#000000" stop-opacity="0.12"/>
+      <stop offset="0.85" stop-color="#000000" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.60"/>
+    </radialGradient>
+    <linearGradient id="silk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="0.10" stop-color="#f0f0ff" stop-opacity="0.58"/>
+      <stop offset="0.30" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="0.50" stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="0.70" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="0.90" stop-color="#f0f0ff" stop-opacity="0.52"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.18" stop-color="#ffffff" stop-opacity="0.60"/>
+      <stop offset="0.38" stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="0.50" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.62" stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="0.82" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="clip"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <rect width="512" height="512" fill="url(#vignette)"/>
+    <rect x="136.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="174.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="212.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="238.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="266.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="292.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="330.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="368.5" y="142" width="5" height="228" rx="2.5" fill="url(#silk)"/>
+    <rect x="137.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+    <rect x="175.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+    <rect x="213.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+    <rect x="239.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+    <rect x="267.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+    <rect x="293.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+    <rect x="331.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+    <rect x="369.8" y="142" width="2.4" height="228" rx="1.2" fill="url(#core)"/>
+  </g>
+</svg>

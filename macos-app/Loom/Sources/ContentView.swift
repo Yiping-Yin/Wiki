@@ -617,7 +617,12 @@ struct LoomWebView: NSViewRepresentable {
             if debugState.recoveryMessage != "" {
                 debugState.recoveryMessage = ""
             }
-            scheduleRootFallbackCheck(for: webView)
+            // Only run root fallback check on first load of "/" (no back history).
+            // Avoid running on every navigation — it causes false runtime-error
+            // detection that redirects unrelated pages to /about.
+            if let url = webView.url, url.path == "/" || url.path.isEmpty, !webView.canGoBack {
+                scheduleRootFallbackCheck(for: webView)
+            }
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -859,22 +864,11 @@ struct LoomWebView: NSViewRepresentable {
             guard let webView else { return }
             let now = Date()
             if let lastRuntimeRecoveryAt, now.timeIntervalSince(lastRuntimeRecoveryAt) < 5 {
-                guard let base = fallbackURL else {
-                    DispatchQueue.main.async {
-                        self.debugState.recoveryMessage = "skipped runtime recovery (throttled)"
-                    }
-                    return
-                }
-                var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
-                components?.path = "/about"
-                components?.query = nil
-                components?.fragment = nil
-                guard let target = components?.url else { return }
-                lastRequestedURL = nil
-                let request = URLRequest(url: target, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
-                webView.load(request)
+                // Throttle: don't redirect to /about — just stop retrying.
+                // Jumping to /about on repeated errors caused a bug where
+                // navigating to any page would bounce back to /about.
                 DispatchQueue.main.async {
-                    self.debugState.recoveryMessage = "fallback to /about after repeated runtime errors"
+                    self.debugState.recoveryMessage = "skipped runtime recovery (throttled)"
                 }
                 return
             }
