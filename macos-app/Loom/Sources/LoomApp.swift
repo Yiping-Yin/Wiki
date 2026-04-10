@@ -22,6 +22,12 @@ struct LoomApp: App {
                 Button("Open in Browser") { NotificationCenter.default.post(name: .loomOpenInBrowser, object: nil) }
                     .keyboardShortcut("o", modifiers: [.command, .shift])
             }
+            CommandGroup(after: .toolbar) {
+                Button("Back") { NotificationCenter.default.post(name: .loomGoBack, object: nil) }
+                    .keyboardShortcut("[", modifiers: .command)
+                Button("Forward") { NotificationCenter.default.post(name: .loomGoForward, object: nil) }
+                    .keyboardShortcut("]", modifiers: .command)
+            }
         }
     }
 }
@@ -45,4 +51,6 @@ extension Notification.Name {
     static let loomReview = Notification.Name("loomReview")
     static let loomReload = Notification.Name("loomReload")
     static let loomOpenInBrowser = Notification.Name("loomOpenInBrowser")
+    static let loomGoBack = Notification.Name("loomGoBack")
+    static let loomGoForward = Notification.Name("loomGoForward")
 }

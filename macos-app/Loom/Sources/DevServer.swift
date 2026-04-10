@@ -1,8 +1,8 @@
 import Foundation
 
-/// Manages the Next.js dev server lifecycle.
-/// Starts `npx next dev` as a child process, monitors readiness,
-/// and terminates it when the app quits.
+/// Manages the local Next.js server lifecycle for the macOS shell app.
+/// Prefers a stable production server (`next start`) when a build exists,
+/// and only falls back to the dev script when no build is available.
 class DevServer: ObservableObject {
     enum Status: Equatable {
         case idle
@@ -16,6 +16,7 @@ class DevServer: ObservableObject {
 
     private var process: Process?
     private var healthTimer: Timer?
+    private var healthTask: URLSessionDataTask?
     private var healthCheckAttempts = 0
     private var retryAttempt = 0
     private var pendingRetry: DispatchWorkItem?
@@ -68,6 +69,8 @@ class DevServer: ObservableObject {
 
         healthTimer?.invalidate()
         healthTimer = nil
+        healthTask?.cancel()
+        healthTask = nil
         healthCheckAttempts = 0
         ignoredTerminationPID = nil
 
@@ -98,6 +101,8 @@ class DevServer: ObservableObject {
         pendingRetry = nil
         healthTimer?.invalidate()
         healthTimer = nil
+        healthTask?.cancel()
+        healthTask = nil
         if let pipe = process?.standardError as? Pipe {
             pipe.fileHandleForReading.readabilityHandler = nil
         }
@@ -131,10 +136,9 @@ class DevServer: ObservableObject {
         let p = Process()
         p.currentDirectoryURL = URL(fileURLWithPath: projectPath)
 
-        // Use the user's shell to get PATH (includes nvm/homebrew node)
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         p.executableURL = URL(fileURLWithPath: shell)
-        p.arguments = ["-lc", "exec npx next dev -p \(currentPort) -H 0.0.0.0"]
+        p.arguments = ["-lc", "exec \(launchCommand(projectPath: projectPath, port: currentPort))"]
 
         // High priority so local dev server can become responsive quickly
         p.qualityOfService = .userInitiated
@@ -298,34 +302,58 @@ class DevServer: ObservableObject {
         return snapshot.joined(separator: "\n")
     }
 
+    private func launchCommand(projectPath: String, port: Int) -> String {
+        let buildIdPath = "\(projectPath)/.next/BUILD_ID"
+        if FileManager.default.fileExists(atPath: buildIdPath) {
+            return "npx next start -p \(port) -H 0.0.0.0"
+        }
+        return "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+    }
+
     private func nextFallbackPort() -> Int? {
         let candidates = [preferredPort] + fallbackPorts
         return candidates.first { !attemptedPorts.contains($0) }
     }
 
     private func checkHealth(completion: @escaping (Bool) -> Void) {
+        healthTask?.cancel()
+        healthTask = nil
+
         guard let url = URL(string: "http://localhost:\(currentPort)/") else {
             completion(false)
             return
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 1.5
-        let task = healthSession.dataTask(with: request) { data, response, _ in
-            guard let http = response as? HTTPURLResponse else {
-                DispatchQueue.main.async { completion(false) }
-                return
-            }
-
-            let statusOK = (200..<500).contains(http.statusCode)
-            let poweredBy = (http.value(forHTTPHeaderField: "x-powered-by") ?? "").lowercased()
-            let looksLikeNextHeader = poweredBy.contains("next")
-            let bodyText = data.flatMap { String(data: $0, encoding: .utf8) }?.lowercased() ?? ""
-            let looksLikeNextBody = bodyText.contains("__next")
-            let ok = statusOK && (looksLikeNextHeader || looksLikeNextBody)
+        var task: URLSessionDataTask?
+        task = healthSession.dataTask(with: request) { [weak self] data, response, _ in
             DispatchQueue.main.async {
+                guard let self else { return }
+                guard self.healthTask === task else { return }
+                defer { self.healthTask = nil }
+
+                guard let http = response as? HTTPURLResponse else {
+                    completion(false)
+                    return
+                }
+
+                let statusOK = (200..<500).contains(http.statusCode)
+                let poweredBy = (http.value(forHTTPHeaderField: "x-powered-by") ?? "").lowercased()
+                let looksLikeNextHeader = poweredBy.contains("next")
+                let bodyText = data.flatMap { String(data: $0, encoding: .utf8) }?.lowercased() ?? ""
+                let looksLikeNextBody = bodyText.contains("__next")
+                let location = (http.value(forHTTPHeaderField: "location") ?? "").lowercased()
+                let redirectStatus = (300..<400).contains(http.statusCode)
+                let looksLikeNextRedirect = redirectStatus && (
+                    location.hasPrefix("/")
+                        || location.contains("localhost")
+                        || location.contains("_next")
+                )
+                let ok = statusOK && (looksLikeNextHeader || looksLikeNextBody || looksLikeNextRedirect)
                 completion(ok)
             }
         }
-        task.resume()
+        healthTask = task
+        task?.resume()
     }
 }

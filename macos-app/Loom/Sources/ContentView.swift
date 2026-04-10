@@ -290,6 +290,21 @@ struct LoomWebView: NSViewRepresentable {
             name: .loomOpenInBrowser,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.goBack),
+            name: .loomGoBack,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.goForward),
+            name: .loomGoForward,
+            object: nil
+        )
+
+        // Enable swipe back/forward gesture
+        webView.allowsBackForwardNavigationGestures = true
 
         return webView
     }
@@ -314,20 +329,29 @@ struct LoomWebView: NSViewRepresentable {
             NotificationCenter.default.removeObserver(self)
         }
 
-        func syncState(from webView: WKWebView) {
-            DispatchQueue.main.async {
+        private func updateDebugState(from webView: WKWebView, errorMessage: String? = nil) {
+            let apply = {
                 self.debugState.currentURL = webView.url?.absoluteString ?? ""
                 self.debugState.pageTitle = webView.title ?? ""
                 self.debugState.isLoading = webView.isLoading
+                if let errorMessage {
+                    self.debugState.lastError = errorMessage
+                }
             }
+            if Thread.isMainThread {
+                apply()
+            } else {
+                DispatchQueue.main.async(execute: apply)
+            }
+        }
+
+        func syncState(from webView: WKWebView) {
+            updateDebugState(from: webView)
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             lastRequestedURL = webView.url
-            syncState(from: webView)
-            DispatchQueue.main.async {
-                self.debugState.lastError = ""
-            }
+            updateDebugState(from: webView, errorMessage: "")
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -339,17 +363,21 @@ struct LoomWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            DispatchQueue.main.async {
-                self.debugState.lastError = error.localizedDescription
-                self.syncState(from: webView)
+            if (error as NSError).code == NSURLErrorCancelled {
+                syncState(from: webView)
+                return
             }
+            lastRequestedURL = nil
+            updateDebugState(from: webView, errorMessage: error.localizedDescription)
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            DispatchQueue.main.async {
-                self.debugState.lastError = error.localizedDescription
-                self.syncState(from: webView)
+            if (error as NSError).code == NSURLErrorCancelled {
+                syncState(from: webView)
+                return
             }
+            lastRequestedURL = nil
+            updateDebugState(from: webView, errorMessage: error.localizedDescription)
         }
 
         @objc func triggerSearch() {
@@ -373,8 +401,21 @@ struct LoomWebView: NSViewRepresentable {
             NSWorkspace.shared.open(url)
         }
 
+        @objc func goBack() {
+            guard let webView, webView.canGoBack else { return }
+            webView.goBack()
+            syncState(from: webView)
+        }
+
+        @objc func goForward() {
+            guard let webView, webView.canGoForward else { return }
+            webView.goForward()
+            syncState(from: webView)
+        }
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             if let url = navigationAction.request.url,
+               navigationAction.targetFrame?.isMainFrame != false,
                url.scheme?.hasPrefix("http") == true,
                let host = url.host,
                host != "localhost",
