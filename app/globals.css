@@ -264,12 +264,19 @@ body.loom-study-mode .doc-outline {
 /* AnchorCards are always visible in study mode — handled by JS */
 
 /* §37 · Chat focus mode (selection ✦)
-   The scratch discussion appears below the focused passage, but the main
-   source body remains intact. Focus is local, not a whole-page collapse. */
+   The focused passage stays bright; everything else dims to background.
+   This creates visual room for the discussion overlay below the passage. */
+body.loom-chat-focus-active main .loom-source-prose > * {
+  opacity: 0.15;
+  transition: opacity 0.3s var(--ease);
+  pointer-events: none;
+}
 body.loom-chat-focus-active main .loom-source-prose > [data-loom-chat-focus] {
+  opacity: 1;
   position: relative;
   z-index: 2;
   scroll-margin-top: 2rem;
+  pointer-events: auto;
 }
 
 @media (max-width: 900px) {

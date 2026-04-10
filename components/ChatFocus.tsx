@@ -16,7 +16,7 @@
  * anchored note, which later appears as part of the centered Live Note
  * during review mode.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import {
@@ -48,6 +48,11 @@ const MAIN_FOCUS_CLASS = 'loom-chat-focus-active';
 
 function stableFragmentAnchorId(blockId: string, charStart: number, charEnd: number) {
   return `${blockId}::frag:${Math.max(0, charStart)}-${Math.max(charStart, charEnd)}`;
+}
+
+function normalizedBlockText(el: HTMLElement | null) {
+  if (!el) return '';
+  return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 280);
 }
 
 function rangeTextOffsets(block: HTMLElement, range: Range) {
@@ -187,6 +192,13 @@ export function ChatFocus() {
   }, [anchor, ctx?.docId, loading, traces.length]);
 
   const activeTrace: Trace | null = traces.find((t) => t.id === activeTraceId) ?? rootReadingTraces(traces)[0] ?? null;
+  const existingNotes = useMemo(
+    () =>
+      (activeTrace?.events ?? [])
+        .filter((e): e is Extract<typeof e, { kind: 'thought-anchor' }> => e.kind === 'thought-anchor')
+        .map((e) => ({ summary: e.summary, quote: e.quote })),
+    [activeTrace?.events],
+  );
 
   // Listen for activation
   useEffect(() => {
@@ -450,11 +462,6 @@ export function ChatFocus() {
       : text;
     messages.push({ role: 'user', content: userText });
 
-    // Collect existing anchored notes so the AI builds on prior understanding
-    const existingNotes = (activeTrace?.events ?? [])
-      .filter((e): e is Extract<typeof e, { kind: 'thought-anchor' }> => e.kind === 'thought-anchor')
-      .map((e) => ({ summary: e.summary, quote: e.quote }));
-
     const answer = await streamChat(
       messages,
       discussionSystemPrompt({
@@ -473,7 +480,7 @@ export function ChatFocus() {
       setStreamBuf('');
       setTimeout(() => inputRef.current?.focus(), 30);
     }
-  }, [draft, streaming, ctx, turns, anchor, streamChat]);
+  }, [draft, streaming, ctx, turns, anchor, streamChat, existingNotes]);
 
   const commit = useCallback(async () => {
     if (turns.length === 0 || committing || !ctx || !anchor) return;
@@ -566,12 +573,15 @@ export function ChatFocus() {
       const anchorBlockId = focusedEl && proseContainer
         ? ensureBlockAnchorId(focusedEl, proseContainer)
         : focusedEl?.id ?? 'loom-block-0';
+      const anchorBlockText = normalizedBlockText(focusedEl);
       const rangeStartId = proseContainer && rangeStartElRef.current
         ? ensureBlockAnchorId(rangeStartElRef.current, proseContainer)
         : anchorId;
+      const rangeStartText = normalizedBlockText(rangeStartElRef.current);
       const rangeEndId = proseContainer && rangeEndElRef.current
         ? ensureBlockAnchorId(rangeEndElRef.current, proseContainer)
         : anchorId;
+      const rangeEndText = normalizedBlockText(rangeEndElRef.current);
       const anchorType: 'heading' | 'paragraph' = focusedEl?.tagName.match(/^H[1-6]$/)
         ? 'heading' : 'paragraph';
 
@@ -582,9 +592,20 @@ export function ChatFocus() {
         traceId,
         (e) =>
           e.kind === 'thought-anchor'
-          && e.anchorId === anchorId
-          && (e.rangeStartId ?? e.anchorId) === rangeStartId
-          && (e.rangeEndId ?? e.anchorId) === rangeEndId,
+          && (
+            (
+              e.anchorId === anchorId
+              && (e.rangeStartId ?? e.anchorId) === rangeStartId
+              && (e.rangeEndId ?? e.anchorId) === rangeEndId
+            )
+            || (
+              (e.anchorBlockText ?? '') === anchorBlockText
+              && (e.anchorCharStart ?? 0) === (anchor.charStart ?? 0)
+              && (e.anchorCharEnd ?? 0) === (anchor.charEnd ?? Math.max(0, anchor.text.length))
+              && (e.rangeStartText ?? '') === rangeStartText
+              && (e.rangeEndText ?? '') === rangeEndText
+            )
+          ),
       );
 
       await append(traceId, {
@@ -592,11 +613,14 @@ export function ChatFocus() {
         anchorType,
         anchorId,
         anchorBlockId,
+        anchorBlockText,
         anchorOffsetPx: anchor.localOffsetPx ?? 4,
         anchorCharStart: anchor.charStart,
         anchorCharEnd: anchor.charEnd,
         rangeStartId,
+        rangeStartText,
         rangeEndId,
+        rangeEndText,
         summary,
         content,
         quote: anchor.text,
@@ -624,12 +648,14 @@ export function ChatFocus() {
       }}
     >
       {/* Hairline left border anchors the discussion to the doc visually,
-          like a margin note bracket. */}
+          like a margin note bracket. Background ensures no text bleed-through. */}
       <div style={{
         borderLeft: '1px solid var(--accent)',
         paddingLeft: '1rem',
         paddingTop: '0.4rem',
-        opacity: 0.95,
+        paddingBottom: '0.4rem',
+        background: 'var(--bg)',
+        borderRadius: '0 8px 8px 0',
       }}>
         {/* Accumulated turns */}
         {turns.map((t, i) => (
@@ -687,38 +713,43 @@ export function ChatFocus() {
             color: 'var(--accent)',
             fontSize: '0.78rem',
             flexShrink: 0,
+            ...(streaming ? { animation: 'loomPulse 2s ease-in-out infinite' } : {}),
           }}>✦</span>
-          <textarea
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              const el = e.target as HTMLTextAreaElement;
-              el.style.height = 'auto';
-              el.style.height = Math.min(120, el.scrollHeight) + 'px';
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-            }}
-            placeholder={turns.length > 0 ? 'ask another…' : 'ask about this passage…'}
-            rows={1}
-            style={{
-              flex: 1,
-              background: 'transparent',
-              border: 0,
-              outline: 0,
-              color: 'var(--fg)',
-              fontSize: '0.88rem',
-              fontFamily: 'var(--display)',
-              letterSpacing: '-0.012em',
-              minWidth: 0,
-              resize: 'none',
-              lineHeight: 1.5,
-              minHeight: 22,
-              maxHeight: 120,
-              padding: 0,
-            }}
-          />
+          {streaming && !committing ? (
+            <span style={{ flex: 1, minHeight: 22 }} />
+          ) : (
+            <textarea
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                const el = e.target as HTMLTextAreaElement;
+                el.style.height = 'auto';
+                el.style.height = Math.min(120, el.scrollHeight) + 'px';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+              }}
+              placeholder={turns.length > 0 ? 'ask another…' : 'ask about this passage…'}
+              rows={1}
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 0,
+                outline: 0,
+                color: 'var(--fg)',
+                fontSize: '0.88rem',
+                fontFamily: 'var(--display)',
+                letterSpacing: '-0.012em',
+                minWidth: 0,
+                resize: 'none',
+                lineHeight: 1.5,
+                minHeight: 22,
+                maxHeight: 120,
+                padding: 0,
+              }}
+            />
+          )}
           {turns.length > 0 && !streaming && !committing && (
             <button
               onClick={commit}
