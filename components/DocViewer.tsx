@@ -11,7 +11,7 @@
  *
  * For text formats, the body is supplied by the page (already cleaned).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export function DocViewer({
   ext,
@@ -26,54 +26,421 @@ export function DocViewer({
 }) {
   const e = ext.toLowerCase();
 
-  if (e === '.pdf') return <PdfFrame src={sourceUrl} title={title} />;
+  if (e === '.pdf') return <PdfWithText src={sourceUrl} title={title} body={body} />;
   if (e === '.csv' || e === '.tsv') return <CsvTable url={sourceUrl} sep={e === '.tsv' ? '\t' : ','} />;
   if (e === '.json') return <JsonView url={sourceUrl} />;
   if (e === '.ipynb') return <NotebookView url={sourceUrl} />;
   if (e === '.md' || e === '.txt') return <TextView body={body} />;
+  if (e === '.xlsx' || e === '.xls') return <BinaryEmbed ext={ext} sourceUrl={sourceUrl} title={title} body={body} kind="spreadsheet" />;
+  if (e === '.docx' || e === '.doc') return <BinaryEmbed ext={ext} sourceUrl={sourceUrl} title={title} body={body} kind="document" />;
+  if (e === '.pptx' || e === '.ppt') return <BinaryEmbed ext={ext} sourceUrl={sourceUrl} title={title} body={body} kind="slides" />;
 
-  // Binary fallback: docx/pptx/xlsx etc.
+  // Generic fallback
+  return <BinaryEmbed ext={ext} sourceUrl={sourceUrl} title={title} body={body} kind="file" />;
+}
+
+const KIND_META: Record<string, { icon: string; tint: string; label: string }> = {
+  spreadsheet: { icon: '▦', tint: 'var(--tint-green)',  label: 'Spreadsheet' },
+  document:    { icon: '¶', tint: 'var(--tint-blue)',   label: 'Document' },
+  slides:      { icon: '◧', tint: 'var(--tint-orange)', label: 'Slides' },
+  file:        { icon: '◆', tint: 'var(--tint-purple)', label: 'File' },
+};
+
+function BinaryEmbed({
+  ext, sourceUrl, title, body, kind,
+}: { ext: string; sourceUrl: string; title: string; body: string; kind: string }) {
+  const meta = KIND_META[kind] ?? KIND_META.file;
+  const hasExtracted = body && body.length > 30 && !body.startsWith('[Binary');
   return (
-    <div style={{
-      margin: '1.2rem 0', padding: '2rem', textAlign: 'center',
-      border: 'var(--hairline)', borderRadius: 'var(--r-3)',
-      background: 'var(--surface-2)',
-    }}>
-      <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📎</div>
-      <div style={{ fontSize: '0.95rem', color: 'var(--fg)', fontWeight: 600 }}>{ext.slice(1).toUpperCase()} file</div>
-      <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: 4, marginBottom: 14 }}>
-        Browser can&apos;t preview this type. Open in the native app.
+    <figure style={{ margin: '1.4rem 0' }}>
+      <div className="material-thick" style={{
+        borderRadius: 'var(--r-3)',
+        padding: '1.6rem 1.6rem 1.4rem',
+        display: 'flex', gap: '1.2rem', alignItems: 'flex-start',
+      }}>
+        <div style={{
+          width: 64, height: 80, flexShrink: 0,
+          borderRadius: 'var(--r-2)',
+          background: `linear-gradient(160deg, ${meta.tint}, ${meta.tint}aa)`,
+          color: '#fff', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          fontSize: '1.7rem', fontWeight: 700,
+          boxShadow: 'var(--shadow-2), inset 0 0.5px 0 rgba(255,255,255,0.5)',
+        }}>
+          {meta.icon}
+          <span style={{ fontSize: '0.55rem', letterSpacing: '0.06em', marginTop: 2, opacity: 0.95 }}>
+            {ext.slice(1).toUpperCase()}
+          </span>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="t-caption" style={{
+            color: 'var(--muted)', textTransform: 'uppercase',
+            letterSpacing: '0.08em', fontWeight: 700,
+          }}>{meta.label}</div>
+          <div className="t-title3" style={{
+            marginTop: 4, color: 'var(--fg)',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          }}>{title}</div>
+          <div className="t-footnote" style={{ marginTop: 8, color: 'var(--muted)' }}>
+            {hasExtracted
+              ? 'Original preserved · text extracted below for search & review'
+              : 'Original preserved · open in the native app to view'}
+          </div>
+          <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a href={sourceUrl} target="_blank" rel="noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'var(--accent)', color: '#fff',
+              padding: '0.5rem 1rem', borderRadius: 999,
+              textDecoration: 'none', fontSize: '0.82rem', fontWeight: 600,
+              boxShadow: 'var(--shadow-1)',
+            }}>Open original <span aria-hidden>↗</span></a>
+            <a href={sourceUrl} download style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'var(--surface-2)', color: 'var(--fg)',
+              padding: '0.5rem 1rem', borderRadius: 999,
+              textDecoration: 'none', fontSize: '0.82rem', fontWeight: 600,
+              border: '0.5px solid var(--mat-border)',
+            }}>Download</a>
+          </div>
+        </div>
       </div>
-      <a
-        href={sourceUrl}
-        target="_blank"
-        rel="noreferrer"
-        style={{
-          display: 'inline-block',
-          background: 'var(--accent)', color: '#fff',
-          padding: '0.55rem 1.2rem', borderRadius: 'var(--r-1)',
-          textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600,
-        }}
-      >Open original →</a>
+      {hasExtracted && (
+        <details style={{ marginTop: '0.8rem' }}>
+          <summary style={{
+            cursor: 'pointer', color: 'var(--muted)',
+            fontSize: '0.78rem', padding: '0.4rem 0.2rem',
+            listStyle: 'none',
+          }}>▾ Extracted text ({body.length.toLocaleString()} chars)</summary>
+          <div style={{ marginTop: '0.4rem', opacity: 0.92 }}>
+            <TextView body={body} />
+          </div>
+        </details>
+      )}
+    </figure>
+  );
+}
+
+/**
+ * PDF with selectable extracted text below the iframe.
+ * The PDF iframe is for visual reading; the text below is for
+ * SelectionWarp interaction (select → ask AI). This is the bridge
+ * that makes 69% of knowledge docs (PDFs) usable with the core loop.
+ */
+function PdfWithText({ src, title, body }: { src: string; title: string; body: string }) {
+  const hasText = body && body.length > 30 && !body.startsWith('[Binary');
+  const [showText, setShowText] = useState(hasText);
+  return (
+    <div>
+      <PdfFrame src={src} title={title} />
+      {hasText && (
+        <div style={{ marginTop: '1rem' }}>
+          <button
+            onClick={() => setShowText((v) => !v)}
+            style={{
+              background: 'transparent', border: 0, cursor: 'pointer',
+              color: 'var(--muted)', fontSize: '0.78rem', padding: '0.3rem 0',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <span style={{ fontSize: '0.7rem' }}>{showText ? '▾' : '▸'}</span>
+            Source text · select to ask AI
+          </button>
+          {showText && (
+            <div style={{ marginTop: '0.4rem' }}>
+              <TextView body={body} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 function PdfFrame({ src, title }: { src: string; title: string }) {
+  const [zoom, setZoom] = useState<'page-fit' | 'page-width' | 100 | 125 | 150 | 200>('page-width');
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const ref = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false); };
+    if (fullscreen) window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [fullscreen]);
+
+  const zoomParam = typeof zoom === 'number' ? zoom : zoom;
+  // toolbar=0 + navpanes=0 = hide PDF.js's own UI; only the document remains.
+  // statusbar=0 hides the bottom info strip in Chromium PDF viewer.
+  const iframeSrc = `${src}#toolbar=0&navpanes=0&statusbar=0&view=FitH&zoom=${zoomParam}`;
+
+  const frame = (
+    <iframe
+      ref={ref}
+      src={iframeSrc}
+      title={title}
+      key={iframeSrc}
+      className="loom-pdf-frame"
+      style={{
+        width: '100%',
+        height: fullscreen ? '100vh' : '88vh',
+        border: 0, display: 'block',
+        background: 'var(--surface-2)',
+      }}
+    />
+  );
+
+  if (fullscreen) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.92)',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <div className="material-thick" style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '0.55rem 0.85rem',
+          borderRadius: 0,
+          borderBottom: '0.5px solid var(--mat-border)',
+        }}>
+          <button
+            onClick={() => setFullscreen(false)}
+            aria-label="Exit fullscreen"
+            style={{
+              width: 12, height: 12, borderRadius: '50%',
+              background: '#ff5f57', border: '0.5px solid rgba(0,0,0,0.18)',
+              cursor: 'pointer', padding: 0,
+            }}
+          />
+          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#febc2e', border: '0.5px solid rgba(0,0,0,0.18)' }} />
+          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#28c840', border: '0.5px solid rgba(0,0,0,0.18)' }} />
+          <div style={{ flex: 1, textAlign: 'center' }} className="t-footnote">
+            <span style={{ fontWeight: 600, color: 'var(--fg-secondary)' }}>{title}</span>
+          </div>
+          <ZoomControl zoom={zoom} setZoom={setZoom} />
+          <span className="t-caption2" style={{
+            color: 'var(--muted)', fontFamily: 'var(--mono)',
+            border: '0.5px solid var(--mat-border)', borderRadius: 4,
+            padding: '2px 6px',
+          }}>esc</span>
+        </div>
+        {frame}
+      </div>
+    );
+  }
+
+  return (
+    <ViewerFrame
+      title={title}
+      subtitle="PDF"
+      openHref={src}
+      flush
+      extra={
+        <>
+          <ZoomControl zoom={zoom} setZoom={setZoom} />
+          <button
+            onClick={() => setFullscreen(true)}
+            title="Fullscreen"
+            aria-label="Fullscreen"
+            style={iconBtn}
+          >⛶</button>
+        </>
+      }
+    >
+      {frame}
+    </ViewerFrame>
+  );
+}
+
+const iconBtn: React.CSSProperties = {
+  background: 'transparent', border: 0, cursor: 'pointer',
+  padding: '4px 7px', borderRadius: 6,
+  color: 'var(--fg-secondary)', fontSize: '0.92rem',
+  lineHeight: 1, fontFamily: 'var(--mono)',
+  flexShrink: 0,
+};
+
+function ZoomControl({
+  zoom, setZoom,
+}: {
+  zoom: 'page-fit' | 'page-width' | 100 | 125 | 150 | 200;
+  setZoom: (z: 'page-fit' | 'page-width' | 100 | 125 | 150 | 200) => void;
+}) {
+  const order: Array<'page-fit' | 'page-width' | 100 | 125 | 150 | 200> = ['page-fit', 'page-width', 100, 125, 150, 200];
+  const idx = order.indexOf(zoom);
+  const dec = () => setZoom(order[Math.max(0, idx - 1)]);
+  const inc = () => setZoom(order[Math.min(order.length - 1, idx + 1)]);
+  const label = zoom === 'page-fit' ? 'Fit' : zoom === 'page-width' ? 'Width' : `${zoom}%`;
   return (
     <div style={{
-      margin: '1.2rem 0',
-      border: 'var(--hairline)',
+      display: 'inline-flex', alignItems: 'center',
+      border: '0.5px solid var(--mat-border)',
+      borderRadius: 999,
+      background: 'var(--bg-elevated)',
+      flexShrink: 0,
+    }}>
+      <button onClick={dec} aria-label="Zoom out" style={{ ...iconBtn, padding: '2px 9px' }}>−</button>
+      <span className="t-caption2" style={{
+        color: 'var(--fg-secondary)', fontWeight: 700,
+        minWidth: 38, textAlign: 'center',
+        fontFamily: 'var(--mono)',
+        fontVariantNumeric: 'tabular-nums',
+      }}>{label}</span>
+      <button onClick={inc} aria-label="Zoom in" style={{ ...iconBtn, padding: '2px 9px' }}>+</button>
+    </div>
+  );
+}
+
+/* ─────────── Shared viewer chrome ─────────── */
+
+function ViewerFrame({
+  title, subtitle, openHref, children, flush, extra,
+}: {
+  title: string;
+  subtitle: string;
+  openHref?: string;
+  children: React.ReactNode;
+  /** Render body flush against title bar with no inner padding (for iframes). */
+  flush?: boolean;
+  /** Optional toolbar content (e.g. zoom + fullscreen) inserted before "Open ↗". */
+  extra?: React.ReactNode;
+}) {
+  // Stealth chrome · the controls are absolute-positioned and only visible
+  // on hover. The document is the host; the chrome is a guest that withdraws.
+  return (
+    <figure className="loom-viewer-frame" style={{
+      margin: '1.4rem 0',
       borderRadius: 'var(--r-3)',
       overflow: 'hidden',
-      boxShadow: 'var(--shadow-2)',
-      background: 'var(--bg)',
+      background: 'var(--bg-elevated)',
+      border: '0.5px solid var(--mat-border)',
+      position: 'relative',
     }}>
-      <iframe
-        src={src + '#toolbar=1'}
-        title={title}
-        style={{ width: '100%', height: '85vh', border: 0, display: 'block' }}
-      />
+      {/* Floating controls — absolute, fade in on hover */}
+      <div className="loom-viewer-chrome material-thick" style={{
+        position: 'absolute',
+        top: 12, right: 12,
+        zIndex: 5,
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '5px 8px',
+        borderRadius: 999,
+        opacity: 0,
+        transition: 'opacity 0.22s var(--ease)',
+        pointerEvents: 'none',
+      }}>
+        {extra}
+        {openHref && (
+          <a href={openHref} target="_blank" rel="noreferrer" className="t-caption2" style={{
+            color: 'var(--accent)', textDecoration: 'none', fontWeight: 700,
+            padding: '2px 6px',
+          }}>Open ↗</a>
+        )}
+      </div>
+
+      {/* Floating title — absolute top-left, also fade in */}
+      <div className="loom-viewer-title material-thick" style={{
+        position: 'absolute',
+        top: 12, left: 12,
+        zIndex: 5,
+        padding: '4px 11px',
+        borderRadius: 999,
+        opacity: 0,
+        transition: 'opacity 0.22s var(--ease)',
+        pointerEvents: 'none',
+        maxWidth: 'calc(100% - 240px)',
+      }}>
+        <span className="t-caption2" style={{
+          color: 'var(--fg-secondary)', fontWeight: 600,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          display: 'block',
+        }}>
+          {title} <span style={{ color: 'var(--muted)', marginLeft: 4 }}>· {subtitle}</span>
+        </span>
+      </div>
+
+      <div style={flush ? {} : { background: 'var(--bg-elevated)' }}>
+        {children}
+      </div>
+
+      <style>{`
+        .loom-viewer-frame:hover .loom-viewer-chrome,
+        .loom-viewer-frame:hover .loom-viewer-title {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `}</style>
+    </figure>
+  );
+}
+
+function LoadingPane({ label }: { label: string }) {
+  return (
+    <div style={{
+      margin: '1.4rem 0', padding: '1.2rem 1.4rem',
+      borderRadius: 'var(--r-3)',
+      border: '0.5px solid var(--mat-border)',
+      background: 'var(--bg-elevated)',
+      boxShadow: 'var(--shadow-1)',
+      color: 'var(--muted)',
+      display: 'flex', alignItems: 'center', gap: 12,
+    }} className="t-footnote">
+      <WeftShuttle width={64} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+/** Weft shuttle progress · kesi-native loading indicator. Used everywhere a spinner would have been. */
+export function WeftShuttle({ width = 64, height = 14 }: { width?: number; height?: number }) {
+  return (
+    <div style={{
+      position: 'relative',
+      width, height,
+      borderRadius: 999,
+      background: 'transparent',
+      overflow: 'hidden',
+      flexShrink: 0,
+    }}>
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `repeating-linear-gradient(90deg,
+          var(--muted) 0,
+          var(--muted) 0.5px,
+          transparent 0.5px,
+          transparent 5px
+        )`,
+        opacity: 0.36,
+      }} />
+      <div className="loom-shuttle-pane" style={{
+        position: 'absolute',
+        top: 'calc(50% - 1.5px)',
+        width: Math.max(12, width * 0.22), height: 3,
+        borderRadius: 999,
+        background: 'var(--accent)',
+      }} />
+      <style>{`
+        .loom-shuttle-pane {
+          animation: shuttleSlidePane 1.5s cubic-bezier(0.55, 0, 0.45, 1) infinite alternate;
+        }
+        @keyframes shuttleSlidePane {
+          from { left: 2px; }
+          to   { left: calc(100% - ${Math.max(12, width * 0.22)}px - 2px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ErrorPane({ msg }: { msg: string }) {
+  return (
+    <div style={{
+      margin: '1.4rem 0', padding: '0.95rem 1.2rem',
+      borderRadius: 'var(--r-2)',
+      border: '0.5px solid var(--mat-border)',
+      background: 'var(--bg-elevated)',
+      boxShadow: 'var(--shadow-1)',
+      color: 'var(--tint-red)',
+    }} className="t-footnote">
+      ⚠ {msg}
     </div>
   );
 }
@@ -104,41 +471,40 @@ function CsvTable({ url, sep }: { url: string; sep: string }) {
     }).catch((e) => setError(e.message));
   }, [url, sep]);
 
-  if (error) return <div style={{ color: '#dc2626' }}>⚠ {error}</div>;
-  if (!rows) return <div style={{ padding: '1rem', color: 'var(--muted)' }}>Loading CSV…</div>;
+  if (error) return <ErrorPane msg={error} />;
+  if (!rows) return <LoadingPane label="" />;
 
   const [header, ...data] = rows;
   return (
-    <div style={{
-      margin: '1.2rem 0', border: 'var(--hairline)', borderRadius: 'var(--r-2)',
-      overflow: 'hidden', boxShadow: 'var(--shadow-1)',
-    }}>
-      <div style={{ padding: '0.5rem 0.9rem', background: 'var(--surface-2)', fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 600, borderBottom: 'var(--hairline)' }}>
-        📊 Showing first {data.length} rows · {header.length} columns
-      </div>
-      <div style={{ overflowX: 'auto', maxHeight: '60vh' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+    <ViewerFrame title={`${data.length} rows · ${header.length} columns`} subtitle="CSV">
+      <div style={{ overflowX: 'auto', maxHeight: '62vh' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
           <thead>
             <tr>
               {header.map((h, i) => (
                 <th key={i} style={{
-                  padding: '0.5rem 0.8rem', textAlign: 'left',
-                  background: 'var(--bg)', borderBottom: 'var(--hairline)',
-                  fontWeight: 600, position: 'sticky', top: 0,
-                  whiteSpace: 'nowrap',
+                  padding: '0.55rem 0.85rem', textAlign: 'left',
+                  background: 'var(--bg-elevated)',
+                  borderBottom: '0.5px solid var(--mat-border)',
+                  fontWeight: 700, position: 'sticky', top: 0, zIndex: 1,
+                  whiteSpace: 'nowrap', color: 'var(--fg)',
                 }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.map((row, ri) => (
-              <tr key={ri} style={{ borderBottom: '0.5px solid var(--border)' }}>
+              <tr key={ri} style={{
+                borderBottom: '0.5px solid var(--mat-border)',
+                background: ri % 2 === 0 ? 'transparent' : 'var(--surface-2)',
+              }}>
                 {row.map((cell, ci) => (
                   <td key={ci} style={{
-                    padding: '0.4rem 0.8rem', whiteSpace: 'nowrap',
+                    padding: '0.4rem 0.85rem', whiteSpace: 'nowrap',
                     color: 'var(--fg)',
                     fontFamily: isNumeric(cell) ? 'var(--mono)' : 'inherit',
                     textAlign: isNumeric(cell) ? 'right' : 'left',
+                    fontVariantNumeric: 'tabular-nums',
                   }}>{cell}</td>
                 ))}
               </tr>
@@ -146,7 +512,7 @@ function CsvTable({ url, sep }: { url: string; sep: string }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </ViewerFrame>
   );
 }
 
@@ -164,14 +530,17 @@ function JsonView({ url }: { url: string }) {
     }).catch((e) => setError(e.message));
   }, [url]);
 
-  if (error) return <div style={{ color: '#dc2626' }}>⚠ {error}</div>;
+  if (error) return <ErrorPane msg={error} />;
   return (
-    <pre style={{
-      margin: '1.2rem 0', padding: '1.1rem 1.3rem',
-      background: 'var(--code-bg)', border: 'var(--hairline)',
-      borderRadius: 'var(--r-2)', overflow: 'auto', maxHeight: '70vh',
-      fontSize: '0.82rem', fontFamily: 'var(--mono)', lineHeight: 1.55,
-    }}>{text || 'Loading…'}</pre>
+    <ViewerFrame title="Pretty-printed" subtitle="JSON">
+      <pre style={{
+        margin: 0, padding: '1.2rem 1.4rem',
+        background: 'var(--code-bg)',
+        overflow: 'auto', maxHeight: '70vh',
+        fontSize: '0.82rem', fontFamily: 'var(--mono)', lineHeight: 1.6,
+        color: 'var(--fg)',
+      }}>{text || ''}</pre>
+    </ViewerFrame>
   );
 }
 
@@ -190,40 +559,84 @@ function NotebookView({ url }: { url: string }) {
     }).catch((e) => setError(e.message));
   }, [url]);
 
-  if (error) return <div style={{ color: '#dc2626' }}>⚠ {error}</div>;
-  if (!cells) return <div style={{ padding: '1rem', color: 'var(--muted)' }}>Loading notebook…</div>;
+  if (error) return <ErrorPane msg={error} />;
+  if (!cells) return <LoadingPane label="" />;
+
+  const codeCells = cells.filter((c) => c.cell_type === 'code').length;
+  const mdCells = cells.filter((c) => c.cell_type === 'markdown').length;
 
   return (
-    <div style={{ margin: '1.2rem 0', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-      {cells.map((cell, i) => {
-        const src = Array.isArray(cell.source) ? cell.source.join('') : cell.source ?? '';
-        if (cell.cell_type === 'markdown') {
-          return (
-            <div key={i} style={{ padding: '0.7rem 1rem', borderLeft: '3px solid var(--accent)', background: 'var(--accent-soft)', borderRadius: '0 var(--r-1) var(--r-1) 0', fontSize: '0.92rem' }}>
-              {src}
-            </div>
-          );
-        }
-        if (cell.cell_type === 'code') {
-          return (
-            <div key={i}>
-              <pre style={{ margin: 0, padding: '0.9rem 1.1rem', background: 'var(--code-bg)', border: 'var(--hairline)', borderRadius: 'var(--r-1)', fontSize: '0.82rem', fontFamily: 'var(--mono)', overflow: 'auto' }}>
-                <code>{src}</code>
-              </pre>
-              {cell.outputs && cell.outputs.length > 0 && (
-                <div style={{ marginTop: 4, padding: '0.6rem 1rem', background: 'rgba(0,113,227,0.05)', borderRadius: 'var(--r-1)', fontSize: '0.78rem', fontFamily: 'var(--mono)', color: 'var(--muted)', maxHeight: 200, overflow: 'auto' }}>
-                  {cell.outputs.map((out: any, j: number) => {
-                    const outText = out.text ?? out.data?.['text/plain'] ?? '';
-                    return <div key={j}>{Array.isArray(outText) ? outText.join('') : outText}</div>;
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        }
-        return null;
-      })}
-    </div>
+    <ViewerFrame
+      title={`${codeCells} code · ${mdCells} markdown`}
+      subtitle="Jupyter Notebook"
+    >
+      <div style={{
+        padding: '1rem 1.2rem',
+        display: 'flex', flexDirection: 'column', gap: '0.85rem',
+        background: 'var(--bg)',
+        maxHeight: '76vh', overflow: 'auto',
+      }}>
+        {cells.map((cell, i) => {
+          const src = Array.isArray(cell.source) ? cell.source.join('') : cell.source ?? '';
+          if (cell.cell_type === 'markdown') {
+            return (
+              <div key={i} style={{
+                padding: '0.75rem 1.05rem',
+                borderLeft: '3px solid var(--accent)',
+                background: 'var(--accent-soft)',
+                borderRadius: '0 var(--r-1) var(--r-1) 0',
+                color: 'var(--fg)',
+              }} className="t-footnote">
+                {src}
+              </div>
+            );
+          }
+          if (cell.cell_type === 'code') {
+            return (
+              <div key={i} style={{
+                borderRadius: 'var(--r-1)',
+                border: '0.5px solid var(--mat-border)',
+                background: 'var(--code-bg)',
+                overflow: 'hidden',
+              }}>
+                <div className="t-caption2" style={{
+                  padding: '4px 12px',
+                  background: 'var(--surface-2)',
+                  borderBottom: '0.5px solid var(--mat-border)',
+                  color: 'var(--muted)',
+                  fontFamily: 'var(--mono)',
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  fontWeight: 700,
+                }}>In [{i + 1}]</div>
+                <pre style={{
+                  margin: 0, padding: '0.85rem 1.1rem',
+                  fontSize: '0.82rem', fontFamily: 'var(--mono)',
+                  overflow: 'auto', color: 'var(--fg)', lineHeight: 1.55,
+                }}>
+                  <code>{src}</code>
+                </pre>
+                {cell.outputs && cell.outputs.length > 0 && (
+                  <div style={{
+                    padding: '0.7rem 1.1rem',
+                    background: 'var(--accent-soft)',
+                    borderTop: '0.5px solid var(--mat-border)',
+                    fontSize: '0.78rem', fontFamily: 'var(--mono)',
+                    color: 'var(--fg)',
+                    maxHeight: 220, overflow: 'auto',
+                  }}>
+                    {cell.outputs.map((out: any, j: number) => {
+                      const outText = out.text ?? out.data?.['text/plain'] ?? '';
+                      return <div key={j}>{Array.isArray(outText) ? outText.join('') : outText}</div>;
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    </ViewerFrame>
   );
 }
 
