@@ -15,7 +15,9 @@
     "search": "tsx scripts/build-search-index.ts",
     "batch": "tsx scripts/batch-process.ts",
     "index": "pagefind --site .next/server/app --output-path public/pagefind",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "app": "cd macos-app/Loom && xcodegen generate && xcodebuild -scheme Loom -configuration Debug build && rm -rf /Applications/Loom.app && cp -R ~/Library/Developer/Xcode/DerivedData/Loom-*/Build/Products/Debug/Loom.app /Applications/Loom.app && echo '✓ Loom.app installed'",
+    "app:open": "open /Applications/Loom.app"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
