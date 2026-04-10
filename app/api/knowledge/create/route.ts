@@ -33,8 +33,12 @@ export async function POST(req: Request) {
     const trimmed = name.trim();
     const dirPath = path.join(KNOWLEDGE_ROOT, trimmed);
 
-    // Create directory if it doesn't exist
+    // Create directory with a placeholder so ingest registers it
     await fs.mkdir(dirPath, { recursive: true });
+    const readmePath = path.join(dirPath, `${trimmed}.md`);
+    try { await fs.access(readmePath); } catch {
+      await fs.writeFile(readmePath, `# ${trimmed}\n`);
+    }
 
     // Re-run ingest to update navigation
     const projectRoot = process.cwd();
