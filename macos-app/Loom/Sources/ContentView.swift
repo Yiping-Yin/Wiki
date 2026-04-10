@@ -6,6 +6,7 @@ final class WebDebugState: ObservableObject {
     @Published var pageTitle: String = ""
     @Published var isLoading: Bool = false
     @Published var lastError: String = ""
+    @Published var consoleMessage: String = ""
 }
 
 struct ContentView: View {
@@ -49,6 +50,7 @@ struct ContentView: View {
                 }
             }
 
+            #if DEBUG
             VStack {
                 HStack {
                     Spacer()
@@ -58,6 +60,7 @@ struct ContentView: View {
             }
             .padding(.top, 14)
             .padding(.trailing, 16)
+            #endif
         }
         .animation(.easeInOut(duration: 0.3), value: server.status)
         .background(WindowConfigurator(title: windowTitle))
@@ -112,7 +115,7 @@ struct DevHUD: View {
                 .font(.system(size: 11, weight: .medium))
             }
 
-            if !webState.currentURL.isEmpty || !webState.pageTitle.isEmpty || webState.isLoading || !webState.lastError.isEmpty {
+            if !webState.currentURL.isEmpty || !webState.pageTitle.isEmpty || webState.isLoading || !webState.lastError.isEmpty || !webState.consoleMessage.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
                     if !webState.currentURL.isEmpty {
                         Text("webview: \(webState.currentURL)")
@@ -134,6 +137,12 @@ struct DevHUD: View {
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(.red)
                             .lineLimit(2)
+                    }
+                    if !webState.consoleMessage.isEmpty {
+                        Text("js: \(webState.consoleMessage)")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.orange)
+                            .lineLimit(3)
                     }
                 }
             }
@@ -227,7 +236,7 @@ struct LoomWebView: NSViewRepresentable {
 
     private func isLoopbackHost(_ host: String?) -> Bool {
         guard let host else { return false }
-        return host == "localhost" || host == "127.0.0.1" || host == "::1"
+        return host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "0.0.0.0"
     }
 
     private func desiredURL(for webView: WKWebView) -> URL {
@@ -255,6 +264,41 @@ struct LoomWebView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         config.websiteDataStore = .default()
+        let userContentController = WKUserContentController()
+        let debugScript = """
+        (() => {
+          const post = (kind, payload) => {
+            try {
+              window.webkit?.messageHandlers?.loomDebug?.postMessage({ kind, payload: String(payload ?? '') });
+            } catch {}
+          };
+          const stringify = (value) => {
+            try { return typeof value === 'string' ? value : JSON.stringify(value); }
+            catch { return String(value); }
+          };
+          const oldError = console.error.bind(console);
+          console.error = (...args) => {
+            post('console.error', args.map(stringify).join(' '));
+            oldError(...args);
+          };
+          const oldWarn = console.warn.bind(console);
+          console.warn = (...args) => {
+            post('console.warn', args.map(stringify).join(' '));
+            oldWarn(...args);
+          };
+          window.addEventListener('error', (event) => {
+            post('window.error', event.message || event.error || 'unknown error');
+          });
+          window.addEventListener('unhandledrejection', (event) => {
+            post('unhandledrejection', stringify(event.reason));
+          });
+        })();
+        """
+        userContentController.addUserScript(
+            WKUserScript(source: debugScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        )
+        userContentController.add(context.coordinator, name: "loomDebug")
+        config.userContentController = userContentController
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -315,7 +359,7 @@ struct LoomWebView: NSViewRepresentable {
         context.coordinator.syncState(from: nsView)
     }
 
-    class Coordinator: NSObject, WKNavigationDelegate {
+    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         weak var webView: WKWebView?
         var lastRequestedURL: URL?
         var fallbackURL: URL?
@@ -380,6 +424,16 @@ struct LoomWebView: NSViewRepresentable {
             updateDebugState(from: webView, errorMessage: error.localizedDescription)
         }
 
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == "loomDebug" else { return }
+            guard let body = message.body as? [String: Any] else { return }
+            let kind = body["kind"] as? String ?? "message"
+            let payload = body["payload"] as? String ?? ""
+            DispatchQueue.main.async {
+                self.debugState.consoleMessage = "\(kind): \(payload)"
+            }
+        }
+
         @objc func triggerSearch() {
             webView?.evaluateJavaScript("""
                 window.dispatchEvent(new KeyboardEvent('keydown', {key: 'k', metaKey: true}));
@@ -393,7 +447,16 @@ struct LoomWebView: NSViewRepresentable {
         }
 
         @objc func triggerReload() {
-            webView?.reload()
+            guard let webView else { return }
+            if let currentURL = webView.url {
+                webView.load(URLRequest(url: currentURL))
+            } else if let fallbackURL {
+                lastRequestedURL = nil
+                webView.load(URLRequest(url: fallbackURL))
+            } else {
+                webView.reload()
+            }
+            syncState(from: webView)
         }
 
         @objc func openInBrowser() {
@@ -420,7 +483,8 @@ struct LoomWebView: NSViewRepresentable {
                let host = url.host,
                host != "localhost",
                host != "127.0.0.1",
-               host != "::1" {
+               host != "::1",
+               host != "0.0.0.0" {
                 NSWorkspace.shared.open(url)
                 decisionHandler(.cancel)
                 return

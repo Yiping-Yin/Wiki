@@ -110,8 +110,8 @@ class DevServer: ObservableObject {
             ignoredTerminationPID = p.processIdentifier
             p.terminate()
             let pid = p.processIdentifier
-            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2) { [weak p] in
-                guard let p, p.isRunning else { return }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2) { [p] in
+                guard p.isRunning else { return }
                 kill(pid, SIGKILL)
             }
         }
