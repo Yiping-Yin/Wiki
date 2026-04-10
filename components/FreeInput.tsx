@@ -24,13 +24,16 @@ export function FreeInput() {
   const ctx = contextFromPathname(pathname);
   const [value, setValue] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { traces } = useTracesForDoc(ctx.isFree ? ctx.docId : null);
   const append = useAppendEvent();
 
-  // Only render on free-mode pages (non-document)
-  if (!ctx.isFree) return null;
+  // Only render on free-mode pages that are thinking surfaces
+  // Not on /kesi (visual page), /about (prose), /browse, /knowledge index
+  const thinkingPages = ['/', '/today'];
+  if (!ctx.isFree || !thinkingPages.includes(pathname)) return null;
 
   const send = async () => {
     const text = value.trim();
@@ -130,6 +133,39 @@ export function FreeInput() {
     }
   };
 
+  const activate = () => {
+    setExpanded(true);
+    setTimeout(() => taRef.current?.focus(), 50);
+  };
+
+  // Collapsed: a single thin accent line at the bottom — §2 summoned, not opened
+  if (!expanded && !value && !streaming) {
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        padding: '0 max(1rem, calc((100vw - 760px) / 2)) 0.8rem',
+      }}>
+        <div
+          onClick={activate}
+          style={{
+            height: 2,
+            borderRadius: 1,
+            background: 'var(--accent)',
+            opacity: 0.2,
+            cursor: 'pointer',
+            transition: 'opacity 0.2s var(--ease)',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.5'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.2'; }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{
       position: 'fixed',
@@ -152,6 +188,7 @@ export function FreeInput() {
         borderRadius: 16,
         padding: '0.6rem 0.8rem',
         boxShadow: 'var(--shadow-2)',
+        animation: 'lpFade 0.18s var(--ease)',
       }}>
         <span style={{
           color: 'var(--accent)',
@@ -174,7 +211,11 @@ export function FreeInput() {
               e.preventDefault();
               send();
             }
+            if (e.key === 'Escape' && !value) {
+              setExpanded(false);
+            }
           }}
+          onBlur={() => { if (!value && !streaming) setExpanded(false); }}
           placeholder="think…"
           rows={1}
           disabled={streaming}
