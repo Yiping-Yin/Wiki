@@ -1,5 +1,6 @@
 import './globals.css';
 import type { ReactNode } from 'react';
+import { headers } from 'next/headers';
 import { Sidebar } from '../components/Sidebar';
 import { CopyButtonInjector } from '../components/CopyButton';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
@@ -18,6 +19,7 @@ import { LoomCursor } from '../components/LoomCursor';
 import { SelectionWarp } from '../components/SelectionWarp';
 import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
+import { QuickSticky } from '../components/QuickSticky';
 import { DevStatusBadge } from '../components/DevStatusBadge';
 
 export const metadata = {
@@ -46,7 +48,11 @@ export const viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const headerList = await headers();
+  const userAgent = headerList.get('user-agent') ?? '';
+  const inAppShell = /LoomAppShell/i.test(userAgent);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -66,6 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <FreeInput />
           </main>
         </div>
+        <QuickSticky />
         <CopyButtonInjector />
         <HighlightOverlay />
         <SWRegister />
@@ -81,7 +88,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ReadingMode />
         <QuickSwitcher />
         <DropZone />
-        <DevStatusBadge />
+        {!inAppShell ? <DevStatusBadge /> : null}
       </body>
     </html>
   );

@@ -142,6 +142,8 @@ export function TodayClient({
           <DocList items={pins.map((p) => ({ id: p.id, title: p.title, href: p.href, sub: '' }))} />
         </Block>
       )}
+
+      <ReviewCards traces={traces} docsById={docsById} />
     </div>
   );
 }
@@ -218,4 +220,106 @@ function timeOfDay(ts: number): string {
   const h = d.getHours();
   const m = d.getMinutes();
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
+/**
+ * ReviewCards — flashcard-style review from recent anchored notes.
+ *
+ * Shows quotes from the last 3 days' anchored notes. Click to reveal
+ * the summary (what you understood). Click the doc title to jump back.
+ *
+ * §1: only appears when there are notes to review.
+ * §④: faster than flipping through a notebook.
+ * No separate quiz page needed — review happens on /today.
+ */
+function ReviewCards({ traces, docsById }: { traces: any[]; docsById: Map<string, DocLite> }) {
+  const [revealed, setRevealed] = useState<Set<number>>(new Set());
+  const threeDaysAgo = Date.now() - 3 * 86400000;
+
+  const cards = useMemo(() => {
+    const out: { quote: string; summary: string; content: string; docTitle: string; href: string; at: number }[] = [];
+    for (const t of traces) {
+      if (t.kind !== 'reading' || t.parentId || !t.source?.docId) continue;
+      for (const e of t.events) {
+        if (e.kind !== 'thought-anchor') continue;
+        if (e.at < threeDaysAgo) continue;
+        if (!e.quote || !e.summary) continue;
+        const meta = docsById.get(t.source.docId);
+        out.push({
+          quote: e.quote,
+          summary: e.summary,
+          content: e.content,
+          docTitle: meta?.title ?? t.source.sourceTitle ?? '',
+          href: meta?.href ?? t.source.href,
+          at: e.at,
+        });
+      }
+    }
+    // Shuffle for variety
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out.slice(0, 5);
+  }, [traces, docsById, threeDaysAgo]);
+
+  if (cards.length === 0) return null;
+
+  const toggle = (i: number) => {
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i); else next.add(i);
+      return next;
+    });
+  };
+
+  return (
+    <Block label="Review">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {cards.map((card, i) => (
+          <div
+            key={i}
+            onClick={() => toggle(i)}
+            style={{
+              padding: '0.75rem 1rem',
+              borderRadius: 10,
+              border: '0.5px solid var(--mat-border)',
+              background: revealed.has(i) ? 'var(--accent-soft)' : 'transparent',
+              cursor: 'pointer',
+              transition: 'background 0.18s var(--ease)',
+            }}
+          >
+            <div style={{
+              fontSize: '0.9rem', lineHeight: 1.55,
+              color: 'var(--fg)',
+              fontStyle: 'italic',
+            }}>
+              &ldquo;{card.quote.length > 120 ? card.quote.slice(0, 117) + '…' : card.quote}&rdquo;
+            </div>
+            {revealed.has(i) && (
+              <div style={{ marginTop: 8, animation: 'lpFade 0.18s var(--ease)' }}>
+                <div style={{
+                  fontSize: '0.88rem', lineHeight: 1.5,
+                  color: 'var(--fg)', fontWeight: 600,
+                  marginBottom: 4,
+                }}>
+                  {card.summary}
+                </div>
+                <Link
+                  href={card.href}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    fontSize: '0.75rem', color: 'var(--accent)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {card.docTitle} →
+                </Link>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Block>
+  );
 }
