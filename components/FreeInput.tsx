@@ -30,10 +30,10 @@ export function FreeInput() {
   const { traces } = useTracesForDoc(ctx.isFree ? ctx.docId : null);
   const append = useAppendEvent();
 
-  // Only render on free-mode pages that are thinking surfaces
-  // Not on /kesi (visual page), /about (prose), /browse, /knowledge index
-  const thinkingPages = ['/', '/today'];
-  if (!ctx.isFree || !thinkingPages.includes(pathname)) return null;
+  // Only render on /today — the daily thinking surface.
+  // Home page has HomeLoom when empty and Resume list when not;
+  // neither needs a persistent input. /kesi, /about etc. are not thinking pages.
+  if (!ctx.isFree || pathname !== '/today') return null;
 
   const send = async () => {
     const text = value.trim();
