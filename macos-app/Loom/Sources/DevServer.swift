@@ -108,11 +108,15 @@ class DevServer: ObservableObject {
         }
         if let p = process, p.isRunning {
             ignoredTerminationPID = p.processIdentifier
-            p.terminate()
             let pid = p.processIdentifier
+            // Try process-group termination first (if child created its own group),
+            // then fall back to terminating the tracked process.
+            _ = kill(-pid, SIGTERM)
+            p.terminate()
             DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2) { [p] in
                 guard p.isRunning else { return }
-                kill(pid, SIGKILL)
+                _ = kill(-pid, SIGKILL)
+                _ = kill(pid, SIGKILL)
             }
         }
         process = nil
@@ -138,7 +142,7 @@ class DevServer: ObservableObject {
 
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         p.executableURL = URL(fileURLWithPath: shell)
-        p.arguments = ["-lc", "exec \(launchCommand(projectPath: projectPath, port: currentPort))"]
+        p.arguments = ["-lc", launchCommand(projectPath: projectPath, port: currentPort)]
 
         // High priority so local dev server can become responsive quickly
         p.qualityOfService = .userInitiated
@@ -304,10 +308,15 @@ class DevServer: ObservableObject {
 
     private func launchCommand(projectPath: String, port: Int) -> String {
         let buildIdPath = "\(projectPath)/.next/BUILD_ID"
+        let runtimeCommand: String
         if FileManager.default.fileExists(atPath: buildIdPath) {
-            return "npx next start -p \(port) -H 0.0.0.0"
+            runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
+        } else {
+            runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
         }
-        return "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+        // Create an isolated process group when available so stop() can kill
+        // the entire server tree reliably using negative PIDs.
+        return "if command -v setsid >/dev/null 2>&1; then exec setsid \(runtimeCommand); else exec \(runtimeCommand); fi"
     }
 
     private func nextFallbackPort() -> Int? {
@@ -316,8 +325,8 @@ class DevServer: ObservableObject {
     }
 
     private func checkHealth(completion: @escaping (Bool) -> Void) {
-        healthTask?.cancel()
-        healthTask = nil
+        // Avoid overlapping probes: if one is already in-flight, wait for it.
+        if healthTask != nil { return }
 
         guard let url = URL(string: "http://localhost:\(currentPort)/") else {
             completion(false)
@@ -337,7 +346,7 @@ class DevServer: ObservableObject {
                     return
                 }
 
-                let statusOK = (200..<500).contains(http.statusCode)
+                let statusOK = (100..<600).contains(http.statusCode)
                 let poweredBy = (http.value(forHTTPHeaderField: "x-powered-by") ?? "").lowercased()
                 let looksLikeNextHeader = poweredBy.contains("next")
                 let bodyText = data.flatMap { String(data: $0, encoding: .utf8) }?.lowercased() ?? ""

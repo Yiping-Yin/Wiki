@@ -409,6 +409,13 @@ function NewTopicButton({ onCreated }: { onCreated: (href: string) => void }) {
     if (editing) setTimeout(() => inputRef.current?.focus(), 50);
   }, [editing]);
 
+  // Listen for native ⌘N from macOS app
+  useEffect(() => {
+    const onNative = () => setEditing(true);
+    window.addEventListener('loom:new-topic', onNative);
+    return () => window.removeEventListener('loom:new-topic', onNative);
+  }, []);
+
   const submit = async () => {
     const name = value.trim();
     if (!name || busy) return;

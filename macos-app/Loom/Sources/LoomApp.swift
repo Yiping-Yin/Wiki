@@ -28,6 +28,10 @@ struct LoomApp: App {
                 Button("Forward") { NotificationCenter.default.post(name: .loomGoForward, object: nil) }
                     .keyboardShortcut("]", modifiers: .command)
             }
+            CommandGroup(replacing: .newItem) {
+                Button("New Topic") { NotificationCenter.default.post(name: .loomNewTopic, object: nil) }
+                    .keyboardShortcut("n", modifiers: .command)
+            }
         }
     }
 }
@@ -53,4 +57,5 @@ extension Notification.Name {
     static let loomOpenInBrowser = Notification.Name("loomOpenInBrowser")
     static let loomGoBack = Notification.Name("loomGoBack")
     static let loomGoForward = Notification.Name("loomGoForward")
+    static let loomNewTopic = Notification.Name("loomNewTopic")
 }

@@ -237,7 +237,12 @@ struct LoomWebView: NSViewRepresentable {
 
     private func isLoopbackHost(_ host: String?) -> Bool {
         guard let host else { return false }
-        return host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "0.0.0.0"
+        switch host.lowercased() {
+        case "localhost", "127.0.0.1", "::1", "0.0.0.0":
+            return true
+        default:
+            return false
+        }
     }
 
     private func desiredURL(for webView: WKWebView) -> URL {
@@ -348,6 +353,13 @@ struct LoomWebView: NSViewRepresentable {
             object: nil
         )
 
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.newTopic),
+            name: .loomNewTopic,
+            object: nil
+        )
+
         // Enable swipe back/forward gesture
         webView.allowsBackForwardNavigationGestures = true
 
@@ -358,6 +370,11 @@ struct LoomWebView: NSViewRepresentable {
         context.coordinator.fallbackURL = url
         loadIfNeeded(nsView, coordinator: context.coordinator)
         context.coordinator.syncState(from: nsView)
+    }
+
+    static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
+        nsView.navigationDelegate = nil
+        nsView.configuration.userContentController.removeScriptMessageHandler(forName: "loomDebug")
     }
 
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -495,6 +512,13 @@ struct LoomWebView: NSViewRepresentable {
             guard let webView, webView.canGoForward else { return }
             webView.goForward()
             syncState(from: webView)
+        }
+
+        @objc func newTopic() {
+            // Dispatch a custom event that the Sidebar's NewTopicButton listens for
+            webView?.evaluateJavaScript("""
+                window.dispatchEvent(new CustomEvent('loom:new-topic'));
+            """)
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
