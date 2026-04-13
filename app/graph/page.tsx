@@ -151,6 +151,7 @@ export default function GraphPage() {
   const [query, setQuery] = useState('');
   const [familyFilter, setFamilyFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -162,7 +163,9 @@ export default function GraphPage() {
       setScopeFilter(
         requestedScope === 'nearby' || requestedScope === 'incoming' || requestedScope === 'outgoing'
           ? requestedScope
-          : 'all',
+          : params.get('focus')
+            ? 'nearby'
+            : 'all',
       );
     } catch {
       setFocusDocId(null);
@@ -371,11 +374,19 @@ export default function GraphPage() {
 
   const focusPanelNode = (panel: PanelNode) => {
     setFocusDocId(panel.docId);
+    setScopeFilter((prev) => (prev === 'all' ? 'nearby' : prev));
   };
 
   const clearFocus = () => {
     setFocusDocId(null);
     setScopeFilter('all');
+  };
+
+  const copyView = async () => {
+    if (typeof window === 'undefined' || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
   };
 
   if (panelCount === 0) return null;
@@ -641,6 +652,9 @@ export default function GraphPage() {
                 </button>
                 <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(focusPanel.docId)}`)} style={focusLinkStyle}>
                   Open this panel in Kesi
+                </button>
+                <button type="button" onClick={copyView} style={focusLinkStyle}>
+                  {copied ? 'Link copied' : 'Copy this view'}
                 </button>
                 <button type="button" onClick={clearFocus} style={focusLinkStyle}>
                   Clear focus
