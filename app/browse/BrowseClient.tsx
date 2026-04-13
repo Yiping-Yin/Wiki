@@ -13,6 +13,14 @@
  */
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { LearningStatusInline } from '../../components/LearningStatusInline';
+import { useHistory } from '../../lib/use-history';
+import { useAllTraces, type Trace } from '../../lib/trace';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -21,6 +29,26 @@ type DocCard = {
 };
 type Category = { slug: string; label: string; count: number; docs: DocCard[] };
 type LLMSection = { section: string; chapters: { slug: string; title: string }[] };
+
+type BrowseDocSurface = DocCard & {
+  docId: string;
+  categorySlug: string;
+  viewedAt: number;
+  touchedAt: number;
+  latestSummary: string;
+  latestQuote?: string;
+  learning: LearningSurfaceSummary;
+};
+
+type BrowseCollectionSurface = {
+  slug: string;
+  label: string;
+  href: string;
+  count: number;
+  activeDoc: BrowseDocSurface | null;
+  activeCount: number;
+  touchedAt: number;
+};
 
 function groupTop(cats: Category[]) {
   const groups = new Map<string, Category[]>();
@@ -68,6 +96,25 @@ function matchesSection(section: LLMSection, query: string) {
   return hay.includes(query);
 }
 
+function actionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  if (nextAction === 'refresh') return 'Refresh';
+  if (nextAction === 'rehearse') return 'Rehearsal';
+  if (nextAction === 'examine') return 'Examiner';
+  if (nextAction === 'capture') return 'Open';
+  return 'Review';
+}
+
+function formatWhen(ts: number) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const day = 86_400_000;
+  if (diff < day) return 'today';
+  if (diff < day * 2) return 'yesterday';
+  if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
+  if (diff < day * 30) return `${Math.floor(diff / (day * 7))}w ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export function BrowseClient({
   categories,
   llmSections,
@@ -77,8 +124,114 @@ export function BrowseClient({
   llmSections: LLMSection[];
   totalDocs: number;
 }) {
+  const router = useRouter();
+  const [history] = useHistory();
+  const { traces } = useAllTraces();
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
+
+  const viewedByDocId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const entry of history) {
+      if (!entry.id.startsWith('know/')) continue;
+      map.set(entry.id, Math.max(map.get(entry.id) ?? 0, entry.viewedAt));
+    }
+    return map;
+  }, [history]);
+
+  const tracesByDocId = useMemo(() => {
+    const map = new Map<string, Trace[]>();
+    for (const trace of traces) {
+      if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
+      if (!trace.source.docId.startsWith('know/')) continue;
+      const current = map.get(trace.source.docId) ?? [];
+      current.push(trace);
+      map.set(trace.source.docId, current);
+    }
+    return map;
+  }, [traces]);
+
+  const collectionSurfaces = useMemo(() => {
+    return categories.map((category) => {
+      const docSurfaces = category.docs
+        .map((doc) => {
+          const docId = `know/${doc.id}`;
+          const viewedAt = viewedByDocId.get(docId) ?? 0;
+          const traceSet = tracesByDocId.get(docId) ?? [];
+          const learning = summarizeLearningSurface(traceSet, viewedAt);
+          return {
+            ...doc,
+            docId,
+            categorySlug: category.slug,
+            viewedAt,
+            touchedAt: Math.max(learning.touchedAt, viewedAt),
+            latestSummary: learning.latestSummary,
+            latestQuote: learning.latestQuote,
+            learning,
+          } satisfies BrowseDocSurface;
+        })
+        .sort((a, b) => {
+          const rank = (surface: BrowseDocSurface) => {
+            if (surface.learning.finished) return 3;
+            if (surface.learning.anchorCount > 0) return 0;
+            if (surface.viewedAt > 0) return 1;
+            return 2;
+          };
+          return rank(a) - rank(b) || b.touchedAt - a.touchedAt || a.title.localeCompare(b.title);
+        });
+
+      const activeDoc = docSurfaces.find((doc) => doc.touchedAt > 0 || doc.learning.anchorCount > 0) ?? docSurfaces[0] ?? null;
+      return {
+        slug: category.slug,
+        label: category.label.replace(/^[^·]+·\s*/, ''),
+        href: `/knowledge/${category.slug}`,
+        count: category.count,
+        activeDoc,
+        activeCount: docSurfaces.filter((doc) => doc.touchedAt > 0 || doc.learning.anchorCount > 0).length,
+        touchedAt: activeDoc?.touchedAt ?? 0,
+      } satisfies BrowseCollectionSurface;
+    }).sort((a, b) => b.touchedAt - a.touchedAt || b.activeCount - a.activeCount || a.label.localeCompare(b.label));
+  }, [categories, tracesByDocId, viewedByDocId]);
+
+  const focusCollection = collectionSurfaces.find((collection) => collection.activeDoc && collection.touchedAt > 0) ?? null;
+
+  const openPrimaryAction = (collection: BrowseCollectionSurface) => {
+    const activeDoc = collection.activeDoc;
+    if (!activeDoc) {
+      router.push(collection.href);
+      return;
+    }
+    if (activeDoc.learning.nextAction === 'refresh') {
+      const reviewPayload: ReviewResumePayload = { href: activeDoc.href, anchorId: null };
+      const refreshPayload: RefreshResumePayload = { href: activeDoc.href, source: 'browse' };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+        sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+      } catch {}
+      router.push(activeDoc.href);
+      return;
+    }
+    if (activeDoc.learning.nextAction === 'rehearse' || activeDoc.learning.nextAction === 'examine') {
+      const payload: OverlayResumePayload = {
+        href: activeDoc.href,
+        overlay: activeDoc.learning.nextAction === 'rehearse' ? 'rehearsal' : 'examiner',
+      };
+      try {
+        sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(activeDoc.href);
+      return;
+    }
+    if (activeDoc.learning.nextAction === 'review') {
+      const payload: ReviewResumePayload = { href: activeDoc.href, anchorId: null };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(activeDoc.href);
+      return;
+    }
+    router.push(activeDoc.href);
+  };
 
   const filteredCategories = useMemo(() => {
     const base = categories.filter((category) => category.docs.length > 0);
@@ -96,6 +249,119 @@ export function BrowseClient({
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
+      {focusCollection && (
+        <section
+          style={{
+            padding: '0.1rem 0 1rem',
+            marginBottom: 20,
+            borderBottom: '0.5px solid var(--mat-border)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
+            <span
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+              }}
+            >
+              Continue collection
+            </span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+            {focusCollection.activeDoc && <LearningStatusInline status={focusCollection.activeDoc.learning} compact />}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div
+                style={{
+                  fontFamily: 'var(--display)',
+                  fontSize: '1.18rem',
+                  fontWeight: 650,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.25,
+                  marginBottom: 6,
+                }}
+              >
+                {focusCollection.label}
+              </div>
+              <div
+                className="t-caption2"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  color: 'var(--muted)',
+                  letterSpacing: '0.04em',
+                  marginBottom: 8,
+                }}
+              >
+                <span>{focusCollection.count} docs</span>
+                {focusCollection.activeCount > 0 && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span>{focusCollection.activeCount} touched</span>
+                  </>
+                )}
+                {focusCollection.touchedAt > 0 && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span>{formatWhen(focusCollection.touchedAt)}</span>
+                  </>
+                )}
+              </div>
+              <div
+                style={{
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.55,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {focusCollection.activeDoc?.latestSummary
+                  || focusCollection.activeDoc?.latestQuote
+                  || focusCollection.activeDoc?.preview
+                  || 'Return to the collection you left warmest.'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => openPrimaryAction(focusCollection)} style={browseActionStyle(true)}>
+                {actionLabel(focusCollection.activeDoc?.learning.nextAction ?? 'capture')}
+              </button>
+              <button type="button" onClick={() => router.push(focusCollection.href)} style={browseActionStyle(false)}>
+                Collection
+              </button>
+              {focusCollection.activeDoc && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/kesi?focus=${encodeURIComponent(focusCollection.activeDoc!.docId)}`)}
+                    style={browseActionStyle(false)}
+                  >
+                    Kesi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/graph?focus=${encodeURIComponent(focusCollection.activeDoc!.docId)}`)}
+                    style={browseActionStyle(false)}
+                  >
+                    Relations
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       <div
         style={{
           display: 'flex',
@@ -253,6 +519,20 @@ export function BrowseClient({
       )}
     </div>
   );
+}
+
+function browseActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    padding: 0,
+    cursor: 'pointer',
+  };
 }
 
 function Block({ label, children }: { label: string; children: React.ReactNode }) {
