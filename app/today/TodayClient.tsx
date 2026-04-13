@@ -252,6 +252,14 @@ export function TodayClient({
     router.push(surface.href);
   };
 
+  const openKesi = (surface: StudySurface) => {
+    router.push(`/kesi?focus=${encodeURIComponent(surface.docId)}`);
+  };
+
+  const openRelations = (surface: StudySurface) => {
+    router.push(`/graph?focus=${encodeURIComponent(surface.docId)}`);
+  };
+
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
       {focusSurface && (
@@ -348,6 +356,20 @@ export function TodayClient({
                 style={todayActionStyle(false)}
               >
                 Source
+              </button>
+              <button
+                type="button"
+                onClick={() => openKesi(focusSurface)}
+                style={todayActionStyle(false)}
+              >
+                Kesi
+              </button>
+              <button
+                type="button"
+                onClick={() => openRelations(focusSurface)}
+                style={todayActionStyle(false)}
+              >
+                Relations
               </button>
             </div>
           </div>
