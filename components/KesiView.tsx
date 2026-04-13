@@ -479,6 +479,11 @@ export function KesiView() {
     syncKesiFocusParam(panel.docId);
   };
 
+  const clearFocus = () => {
+    setFocusDocId(null);
+    syncKesiFocusParam(null);
+  };
+
   const content = !mounted || loading
     ? <LoadingKesiShell />
     : panels.length === 0
@@ -509,6 +514,26 @@ export function KesiView() {
           >
             Relations
           </button>
+          {focusPanel && (
+            <button
+              type="button"
+              onClick={clearFocus}
+              style={{
+                appearance: 'none',
+                border: 0,
+                background: 'transparent',
+                color: 'var(--fg-secondary)',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                padding: 0,
+                cursor: 'pointer',
+                marginRight: 10,
+              }}
+            >
+              Clear focus
+            </button>
+          )}
           <span className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', fontWeight: 700 }}>
             {sortedPanels.length}
           </span>
