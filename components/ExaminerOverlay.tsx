@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
 import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { AIExaminer } from './unified/AIExaminer';
 import { WeftShuttle } from './DocViewer';
@@ -49,6 +50,17 @@ export function ExaminerOverlay() {
   }, [active]);
 
   useEffect(() => { setActive(false); }, [pathname]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(OVERLAY_RESUME_KEY);
+      if (!raw) return;
+      const payload = JSON.parse(raw) as OverlayResumePayload;
+      if (payload.overlay !== 'examiner' || payload.href !== window.location.pathname) return;
+      sessionStorage.removeItem(OVERLAY_RESUME_KEY);
+      setActive(true);
+    } catch {}
+  }, []);
 
   if (!mounted) return null;
   if (ctx.isFree) return null;

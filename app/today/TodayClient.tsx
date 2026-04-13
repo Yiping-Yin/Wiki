@@ -17,8 +17,13 @@
  */
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { useHistory } from '../../lib/use-history';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { usePins } from '../../lib/use-pins';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { summarizeLearningStatus, type LearningStatusSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 
 type DocLite = {
@@ -32,18 +37,19 @@ type DocLite = {
   preview: string;
 };
 
-const DAY_MS = 86400000;
-
-type ReadingFocus = {
-  traceId: string;
+type StudySurface = {
+  id: string;
   docId: string;
   title: string;
   href: string;
-  lastTouched: number;
-  stitchedToday: number;
+  pinned: boolean;
+  viewedAt: number;
+  touchedAt: number;
+  kind: 'knowledge' | 'wiki' | 'upload' | 'other';
+  learning: LearningStatusSummary;
   latestSummary: string;
   latestQuote?: string;
-  crystallizedToday: boolean;
+  preview: string;
 };
 
 export function TodayClient({
@@ -55,6 +61,7 @@ export function TodayClient({
   docsLite: DocLite[];
   daily: unknown;
 }) {
+  const router = useRouter();
   const [history] = useHistory();
   const { pins } = usePins();
   const { traces } = useAllTraces();
@@ -67,117 +74,153 @@ export function TodayClient({
     return m;
   }, [docsLite]);
 
-  const today0 = useMemo(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime();
-  }, []);
-
-  const readToday = useMemo(() => {
-    const seen = new Set<string>();
-    const out: { id: string; title: string; href: string; viewedAt: number }[] = [];
-    for (const h of history) {
-      if (h.viewedAt < today0) continue;
-      if (seen.has(h.id)) continue;
-      seen.add(h.id);
-      const meta = docsById.get(h.id);
-      out.push({
-        id: h.id,
-        title: meta?.title ?? h.title,
-        href: meta?.href ?? h.href,
-        viewedAt: h.viewedAt,
-      });
+  const viewedByDocId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const entry of history) {
+      map.set(entry.id, Math.max(map.get(entry.id) ?? 0, entry.viewedAt));
     }
-    return out;
-  }, [history, docsById, today0]);
+    return map;
+  }, [history]);
 
-  const readingFocus = useMemo(() => {
-    const out: ReadingFocus[] = [];
+  const pinnedByDocId = useMemo(() => {
+    const map = new Set<string>();
+    for (const pin of pins) map.add(pin.id);
+    return map;
+  }, [pins]);
+
+  const surfaces = useMemo(() => {
+    const byDocId = new Map<string, StudySurface>();
+
     for (const trace of traces) {
       if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
       const meta = docsById.get(trace.source.docId);
-      let stitchedToday = 0;
+      const viewedAt = viewedByDocId.get(trace.source.docId) ?? 0;
       let latestSummary = '';
       let latestQuote = '';
       let latestAnchorAt = 0;
-      let crystallizedToday = false;
 
       for (const event of trace.events) {
-        if (event.kind === 'thought-anchor' && event.at >= today0) {
-          stitchedToday += 1;
+        if (event.kind === 'thought-anchor') {
           if (event.at >= latestAnchorAt) {
             latestAnchorAt = event.at;
             latestSummary = event.summary;
             latestQuote = event.quote ?? '';
           }
         }
-        if (event.kind === 'crystallize' && event.at >= today0 && !event.anchorId) {
-          crystallizedToday = true;
-        }
       }
 
-      const touchedToday = trace.updatedAt >= today0 || stitchedToday > 0 || crystallizedToday;
-      if (!touchedToday) continue;
+      const kind = trace.source.href.startsWith('/knowledge/')
+        ? 'knowledge'
+        : trace.source.href.startsWith('/wiki/')
+          ? 'wiki'
+          : trace.source.href.startsWith('/uploads/')
+            ? 'upload'
+            : 'other';
 
-      out.push({
-        traceId: trace.id,
+      byDocId.set(trace.source.docId, {
+        id: trace.source.docId,
         docId: trace.source.docId,
         title: meta?.title ?? trace.source.sourceTitle ?? trace.title,
         href: meta?.href ?? trace.source.href,
-        lastTouched: Math.max(trace.updatedAt, latestAnchorAt, trace.crystallizedAt ?? 0),
-        stitchedToday,
+        pinned: pinnedByDocId.has(trace.source.docId),
+        viewedAt,
+        touchedAt: Math.max(trace.updatedAt, latestAnchorAt, trace.crystallizedAt ?? 0, viewedAt),
+        kind,
+        learning: summarizeLearningStatus(trace, viewedAt),
         latestSummary,
         latestQuote: latestQuote || undefined,
-        crystallizedToday,
+        preview: meta?.preview ?? '',
       });
     }
-    return out.sort((a, b) => b.lastTouched - a.lastTouched);
-  }, [traces, today0, docsById]);
 
-  const continueWeaving = useMemo(() => {
-    return readingFocus.filter((item) => !item.crystallizedToday);
-  }, [readingFocus]);
+    for (const pin of pins) {
+      if (byDocId.has(pin.id)) continue;
+      const meta = docsById.get(pin.id);
+      const kind = pin.href.startsWith('/knowledge/')
+        ? 'knowledge'
+        : pin.href.startsWith('/wiki/')
+          ? 'wiki'
+          : pin.href.startsWith('/uploads/')
+            ? 'upload'
+            : 'other';
+      byDocId.set(pin.id, {
+        id: pin.id,
+        docId: pin.id,
+        title: meta?.title ?? pin.title,
+        href: meta?.href ?? pin.href,
+        pinned: true,
+        viewedAt: viewedByDocId.get(pin.id) ?? 0,
+        touchedAt: pin.pinnedAt,
+        kind,
+        learning: summarizeLearningStatus(null, viewedByDocId.get(pin.id) ?? 0),
+        latestSummary: '',
+        preview: meta?.preview ?? '',
+      });
+    }
 
-  const wovenToday = useMemo(() => {
-    return readingFocus.filter((item) => item.crystallizedToday);
-  }, [readingFocus]);
+    return Array.from(byDocId.values()).sort((a, b) => {
+      return Number(b.pinned) - Number(a.pinned) || b.touchedAt - a.touchedAt;
+    });
+  }, [docsById, pins, traces, viewedByDocId, pinnedByDocId]);
+
+  const captureNext = useMemo(() => {
+    return surfaces.filter((surface) => surface.learning.stage === 'new' || surface.learning.stage === 'opened');
+  }, [surfaces]);
+
+  const rehearseNext = useMemo(() => {
+    return surfaces.filter((surface) => surface.learning.stage === 'captured');
+  }, [surfaces]);
+
+  const examineNext = useMemo(() => {
+    return surfaces.filter((surface) => surface.learning.stage === 'rehearsed');
+  }, [surfaces]);
+
+  const revisit = useMemo(() => {
+    return surfaces.filter((surface) => surface.learning.stage === 'examined' || surface.learning.stage === 'crystallized');
+  }, [surfaces]);
 
   if (!mounted) return null;
-  if (
-    readToday.length === 0 &&
-    pins.length === 0 &&
-    continueWeaving.length === 0 &&
-    wovenToday.length === 0
-  ) return null;
+  if (surfaces.length === 0) return null;
+
+  const openNext = (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => {
+    if (next === 'source') {
+      router.push(surface.href);
+      return;
+    }
+    if (next === 'review') {
+      const payload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      try { sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload)); } catch {}
+      router.push(surface.href);
+      return;
+    }
+    const payload: OverlayResumePayload = { href: surface.href, overlay: next };
+    try { sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload)); } catch {}
+    router.push(surface.href);
+  };
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
-      {continueWeaving.length > 0 && (
-        <Block label="Continue weaving">
-          <FocusList
-            items={continueWeaving}
-            emptyTone="No unfinished threads today."
-          />
+      {captureNext.length > 0 && (
+        <Block label="Capture next">
+          <ScheduleList items={captureNext} next="source" cta="Open source" onOpen={openNext} />
         </Block>
       )}
 
-      {wovenToday.length > 0 && (
-        <Block label="Woven today">
-          <FocusList
-            items={wovenToday}
-            emptyTone=""
-            mode="woven"
-          />
+      {rehearseNext.length > 0 && (
+        <Block label="Rehearse next">
+          <ScheduleList items={rehearseNext} next="rehearsal" cta="Open rehearsal" onOpen={openNext} />
         </Block>
       )}
 
-      {readToday.length > 0 && (
-        <Block label="Read today">
-          <DocList items={readToday.map((r) => ({ ...r, sub: timeOfDay(r.viewedAt) }))} />
+      {examineNext.length > 0 && (
+        <Block label="Examine next">
+          <ScheduleList items={examineNext} next="examiner" cta="Open examiner" onOpen={openNext} />
         </Block>
       )}
 
-      {pins.length > 0 && (
-        <Block label="Pinned">
-          <DocList items={pins.map((p) => ({ id: p.id, title: p.title, href: p.href, sub: '' }))} />
+      {revisit.length > 0 && (
+        <Block label="Revisit">
+          <ScheduleList items={revisit} next="review" cta="Open review" onOpen={openNext} />
         </Block>
       )}
 
@@ -211,74 +254,23 @@ function Block({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function DocList({
+function ScheduleList({
   items,
+  next,
+  cta,
+  onOpen,
 }: {
-  items: { id: string; title: string; href: string; sub: string }[];
+  items: StudySurface[];
+  next: 'source' | 'rehearsal' | 'examiner' | 'review';
+  cta: string;
+  onOpen?: (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => void;
 }) {
-  return (
-    <ul style={{
-      listStyle: 'none', padding: 0, margin: 0,
-      display: 'flex', flexDirection: 'column', gap: 0,
-    }}>
-      {items.map((it) => (
-        <li key={it.id}>
-          <Link
-            href={it.href}
-            style={{
-              display: 'flex', alignItems: 'baseline', gap: 14,
-              padding: '0.6rem 0',
-              color: 'var(--fg)', textDecoration: 'none',
-              borderBottom: '0.5px solid var(--mat-border)',
-            }}
-          >
-            <span style={{
-              flex: 1, minWidth: 0,
-              fontFamily: 'var(--display)',
-              fontSize: '1rem',
-              fontWeight: 500,
-              letterSpacing: '-0.012em',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{it.title}</span>
-            {it.sub && (
-              <span suppressHydrationWarning className="t-caption" style={{
-                color: 'var(--muted)', flexShrink: 0,
-                fontVariantNumeric: 'tabular-nums',
-              }}>{it.sub}</span>
-            )}
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function FocusList({
-  items,
-  emptyTone,
-  mode = 'open',
-}: {
-  items: ReadingFocus[];
-  emptyTone: string;
-  mode?: 'open' | 'woven';
-}) {
-  if (items.length === 0 && emptyTone) {
-    return (
-      <div className="t-footnote" style={{ color: 'var(--muted)', fontStyle: 'italic' }}>
-        {emptyTone}
-      </div>
-    );
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {items.map((item, index) => (
-        <Link
-          key={item.traceId}
-          href={item.href}
+        <div
+          key={item.id}
           style={{
-            display: 'block',
-            textDecoration: 'none',
             color: 'var(--fg)',
             padding: '0.8rem 0',
             borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
@@ -288,14 +280,14 @@ function FocusList({
             <span
               className="t-caption2"
               style={{
-                color: mode === 'woven' ? 'var(--accent)' : 'var(--muted)',
+                color: item.pinned ? 'var(--accent)' : 'var(--muted)',
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 fontWeight: 700,
                 flexShrink: 0,
               }}
             >
-              {mode === 'woven' ? 'Finished' : 'Open'}
+              {kindLabel(item.kind)}
             </span>
             <span
               style={{
@@ -317,11 +309,11 @@ function FocusList({
               className="t-caption"
               style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}
             >
-              {timeOfDay(item.lastTouched)}
+              {timeOfDay(item.touchedAt)}
             </span>
           </div>
 
-          {(item.latestSummary || item.latestQuote) && (
+          {(item.latestSummary || item.latestQuote || item.preview) && (
             <div
               style={{
                 marginTop: 6,
@@ -335,46 +327,51 @@ function FocusList({
                 WebkitBoxOrient: 'vertical',
               }}
             >
-              {item.latestSummary || item.latestQuote}
+              {item.latestSummary || item.latestQuote || item.preview}
             </div>
           )}
 
-          <div
-            className="t-caption2"
-            style={{
-              marginTop: 7,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              color: 'var(--muted)',
-              letterSpacing: '0.04em',
-              flexWrap: 'wrap',
-            }}
-          >
-            {item.stitchedToday > 0 && (
-              <span>
-                {item.stitchedToday} stitch{item.stitchedToday > 1 ? 'es' : ''} today
-              </span>
-            )}
-            {item.stitchedToday > 0 && item.latestQuote && <span aria-hidden>·</span>}
-            {item.latestQuote && (
-              <span
-                style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  maxWidth: '100%',
-                  fontStyle: 'italic',
-                }}
-              >
-                {item.latestQuote.length > 90 ? `${item.latestQuote.slice(0, 90)}…` : item.latestQuote}
-              </span>
-            )}
+          <div style={{ marginTop: 7 }}>
+            <LearningStatusInline status={item.learning} compact />
           </div>
-        </Link>
+
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => onOpen?.(item, next)}
+              style={{
+                padding: '0.42rem 0.72rem',
+                borderRadius: 999,
+                border: '0.5px solid var(--mat-border)',
+                background: 'var(--bg-translucent)',
+                color: 'var(--fg)',
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-1)',
+              }}
+            >
+              {cta}
+            </button>
+          </div>
+        </div>
       ))}
     </div>
   );
+}
+
+function kindLabel(kind: StudySurface['kind']) {
+  switch (kind) {
+    case 'knowledge':
+      return 'Knowledge';
+    case 'wiki':
+      return 'LLM';
+    case 'upload':
+      return 'Upload';
+    default:
+      return 'Source';
+  }
 }
 
 function timeOfDay(ts: number): string {
