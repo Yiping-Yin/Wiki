@@ -89,14 +89,14 @@ export function CapturePrompt() {
       }}
     >
       <div
-        className="material-thick"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          padding: '0.55rem 0.8rem 0.55rem 0.9rem',
-          borderRadius: 999,
-          boxShadow: 'var(--shadow-2)',
+          padding: '0.48rem 0.7rem 0.48rem 0.8rem',
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
+          background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
           maxWidth: '100%',
         }}
       >
@@ -123,7 +123,7 @@ export function CapturePrompt() {
               maxWidth: '100%',
             }}
           >
-            已捕获 · “{state.quote}”
+            已挂到边上 · “{state.quote}”
           </div>
           <button
             type="button"

@@ -32,9 +32,9 @@ export function PDFNotes({ src, title, height = 720 }: { src: string; title?: st
       style={{
         position: 'relative',
         margin: '1.4rem 0',
-        borderRadius: 12,
         overflow: 'hidden',
-        border: '0.5px solid var(--mat-border)',
+        borderTop: '0.5px solid var(--mat-border)',
+        borderBottom: '0.5px solid var(--mat-border)',
       }}
     >
       {/* Floating header — visible only on hover, doesn't take layout space */}
@@ -43,11 +43,10 @@ export function PDFNotes({ src, title, height = 720 }: { src: string; title?: st
           position: 'absolute',
           top: 8, left: 8, right: 8,
           display: 'flex', alignItems: 'center', gap: 8,
-          padding: '0.35rem 0.7rem',
-          borderRadius: 999,
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          padding: '0.35rem 0.1rem',
+          background: 'color-mix(in srgb, var(--bg) 92%, transparent)',
+          backdropFilter: 'saturate(150%) blur(12px)',
+          WebkitBackdropFilter: 'saturate(150%) blur(12px)',
           fontSize: '0.78rem',
           color: 'var(--fg)',
           opacity: hover ? 1 : 0,
@@ -55,7 +54,7 @@ export function PDFNotes({ src, title, height = 720 }: { src: string; title?: st
           transition: 'opacity 0.2s var(--ease), transform 0.2s var(--ease)',
           pointerEvents: hover ? 'auto' : 'none',
           zIndex: 2,
-          border: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
         }}>
           <span style={{
             flex: 1, minWidth: 0,

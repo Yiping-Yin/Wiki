@@ -68,13 +68,13 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
 
   return (
     <div style={{
-      marginTop: '2rem', padding: '1rem 1.2rem',
-      border: 'var(--hairline)', borderRadius: 'var(--r-2)',
-      background: 'var(--surface-2)',
+      marginTop: '2rem', padding: '0.9rem 0 1rem',
+      borderTop: '0.5px solid var(--mat-border)',
+      borderBottom: '0.5px solid var(--mat-border)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', fontWeight: 700 }}>
-          📝 My notes
+          My note
         </span>
         <span style={{ fontSize: '0.7rem', color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
           {open && value && (
@@ -92,7 +92,7 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
           {!open && (
             <button
               onClick={() => setOpen(true)}
-              style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 8px', cursor: 'pointer', color: 'var(--muted)', fontSize: '0.7rem' }}
+              style={{ background: 'transparent', border: 0, borderBottom: '0.5px solid var(--mat-border)', padding: '1px 0', cursor: 'pointer', color: 'var(--muted)', fontSize: '0.7rem' }}
             >open</button>
           )}
         </span>
@@ -119,13 +119,10 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
           {suggestion && (
             <div style={{
               marginTop: 6,
-              padding: '0.5rem 0.75rem',
-              background: 'var(--bg-translucent)',
-              backdropFilter: 'saturate(180%) blur(20px)',
-              WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-              border: '0.5px solid var(--accent)',
-              borderRadius: 'var(--r-1)',
-              boxShadow: 'var(--shadow-1)',
+              padding: '0.45rem 0',
+              background: 'transparent',
+              borderTop: '0.5px solid var(--accent)',
+              borderBottom: '0.5px solid var(--accent)',
               display: 'flex', alignItems: 'flex-start', gap: 8,
               fontSize: '0.78rem', lineHeight: 1.5,
               animation: 'lpFade 0.18s var(--ease)',
@@ -138,18 +135,18 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
                 <button
                   onClick={accept}
                   style={{
-                    background: 'var(--accent)', color: '#fff',
-                    border: 0, borderRadius: 'var(--r-1)',
-                    padding: '2px 8px', cursor: 'pointer',
+                    background: 'transparent', color: 'var(--accent)',
+                    border: 0, borderBottom: '0.5px solid var(--accent)',
+                    padding: '2px 0', cursor: 'pointer',
                     fontSize: '0.66rem', fontWeight: 600,
                   }}
                 >Tab</button>
                 <button
                   onClick={dismiss}
                   style={{
-                    background: 'transparent', border: 'var(--hairline)',
-                    borderRadius: 'var(--r-1)',
-                    padding: '2px 8px', cursor: 'pointer',
+                    background: 'transparent', border: 0,
+                    borderBottom: '0.5px solid var(--mat-border)',
+                    padding: '2px 0', cursor: 'pointer',
                     fontSize: '0.66rem', color: 'var(--muted)',
                   }}
                 >Esc</button>
@@ -175,9 +172,10 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
 
 function tabBtn(active: boolean): React.CSSProperties {
   return {
-    background: active ? 'var(--accent)' : 'transparent',
-    color: active ? '#fff' : 'var(--muted)',
-    border: '1px solid ' + (active ? 'var(--accent)' : 'var(--border)'),
-    borderRadius: 4, padding: '1px 8px', cursor: 'pointer', fontSize: '0.7rem',
+    background: 'transparent',
+    color: active ? 'var(--fg)' : 'var(--muted)',
+    border: 0,
+    borderBottom: '0.5px solid ' + (active ? 'var(--accent)' : 'var(--mat-border)'),
+    borderRadius: 0, padding: '1px 0', cursor: 'pointer', fontSize: '0.7rem',
   };
 }

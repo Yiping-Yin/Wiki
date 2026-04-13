@@ -33,42 +33,39 @@ export function PageHero({
   });
 
   return (
-    <section className="material-thick" style={{
-      position: 'relative', overflow: 'hidden',
-      borderRadius: 'var(--r-3)',
-      padding: '2.6rem 2.4rem 2.2rem',
-      marginBottom: '1.8rem',
-      isolation: 'isolate',
+    <section style={{
+      position: 'relative',
+      padding: '0.35rem 0 1.2rem',
+      marginBottom: '1.6rem',
+      borderBottom: '0.5px solid var(--mat-border)',
     }}>
-      <div className="hero-aurora" aria-hidden style={{ inset: '-30% -10%' }} />
-      <div className="hero-grain" aria-hidden />
-      <div style={{ position: 'relative' }}>
-        <h1 className="t-largeTitle" style={{
-          margin: 0, color: 'var(--fg)', border: 0, padding: 0,
-          fontSize: 'clamp(2.2rem, 4.2vw, 3rem)',
-        }}>{title}</h1>
-        {meaningfulStats && meaningfulStats.length > 0 && (
-          <div style={{
-            marginTop: '0.95rem',
-            display: 'flex', gap: '1.6rem', flexWrap: 'wrap',
-          }}>
-            {meaningfulStats.map((s, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span className="t-title3" style={{
-                  color: 'var(--fg)', fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                }}>{s.value}</span>
-                <span className="t-footnote" style={{ color: 'var(--muted)' }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {actions && (
-          <div style={{ marginTop: '1rem', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {actions}
-          </div>
-        )}
-      </div>
+      <h1 className="t-largeTitle" style={{
+        margin: 0, color: 'var(--fg)', border: 0, padding: 0,
+        fontSize: 'clamp(2.1rem, 4vw, 2.8rem)',
+      }}>{title}</h1>
+      {meaningfulStats && meaningfulStats.length > 0 && (
+        <div style={{
+          marginTop: '0.7rem',
+          display: 'flex', gap: '1rem', flexWrap: 'wrap',
+          color: 'var(--muted)',
+          alignItems: 'center',
+        }}>
+          {meaningfulStats.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span className="t-title3" style={{
+                color: 'var(--fg)', fontWeight: 650,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{s.value}</span>
+              <span className="t-footnote" style={{ color: 'var(--muted)' }}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {actions && (
+        <div style={{ marginTop: '0.9rem', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {actions}
+        </div>
+      )}
     </section>
   );
 }
