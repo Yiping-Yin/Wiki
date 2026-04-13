@@ -3,8 +3,6 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { KesiSwatch } from '../../../../components/KesiSwatch';
-import { LearningStatusInline } from '../../../../components/LearningStatusInline';
 import { useHistory } from '../../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../../lib/trace';
 import type { KnowledgeCategory } from '../../../../lib/knowledge-types';
@@ -174,22 +172,9 @@ export function CollectionContextClient({
     : [];
   const currentGroupIndex = currentGroupDocs.findIndex((doc) => doc.id === currentDocId);
   const continueDoc = surfaces.find((surface) => surface.id !== currentDocId && (surface.state === 'woven' || surface.state === 'opened')) ?? null;
-  const startDoc = docs[currentIndex + 1] ?? docs[0] ?? null;
   const mapHref = currentGroup?.label
     ? `/knowledge/${category.slug}#${encodeURIComponent(currentGroup.label)}`
     : `/knowledge/${category.slug}`;
-  const baseSequence = currentGroupDocs.length > 0 ? currentGroupDocs : surfaces;
-  const sequenceAnchorIndex =
-    currentGroupIndex >= 0
-      ? currentGroupIndex
-      : baseSequence.findIndex((doc) => doc.id === currentDocId);
-  const sequenceDocs =
-    baseSequence.length <= 3 || sequenceAnchorIndex < 0
-      ? baseSequence.slice(0, 3)
-      : baseSequence.slice(
-          Math.max(0, sequenceAnchorIndex - 1),
-          Math.min(baseSequence.length, sequenceAnchorIndex + 2),
-        );
 
   const actionDoc = continueDoc ?? currentSurface ?? null;
 
@@ -230,64 +215,27 @@ export function CollectionContextClient({
   return (
     <section
       style={{
-        marginTop: '0.8rem',
-        marginBottom: '1rem',
-        paddingBottom: '0.9rem',
+        marginTop: '0.35rem',
+        marginBottom: '0.8rem',
+        paddingBottom: '0.7rem',
         borderBottom: '0.5px solid var(--mat-border)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            className="t-caption2"
-            style={{
-              color: 'var(--muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
-              marginBottom: 6,
-            }}
-          >
-            Collection
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--display)', fontSize: '0.95rem', fontWeight: 600, letterSpacing: '-0.012em' }}>
-              {currentGroup?.label || category.label}
-            </span>
-            <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.04em' }}>
-              {currentIndex + 1} of {docs.length}
-            </span>
-            {currentSurface && (
-              <span className="t-caption2" style={{ color: currentSurface.state === 'finished' ? 'var(--accent)' : 'var(--muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>
-                {stateLabel(currentSurface)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ width: 96, opacity: 0.18, flexShrink: 0 }}>
-          <KesiSwatch categorySlug={category.slug} height={20} />
-        </div>
-      </div>
-
-      {currentSurface && (
-        <div style={{ marginTop: 6 }}>
-          <LearningStatusInline status={currentSurface.learning} compact />
-        </div>
-      )}
-
       <div
         className="t-caption2"
         style={{
           color: 'var(--muted)',
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 6,
           flexWrap: 'wrap',
           letterSpacing: '0.04em',
-          marginTop: 8,
         }}
       >
+        <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+          Collection
+        </span>
+        <span aria-hidden>·</span>
         <Link href={`/knowledge/${category.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
           {category.label}
         </Link>
@@ -295,68 +243,43 @@ export function CollectionContextClient({
         <Link href={mapHref} style={{ color: 'inherit', textDecoration: 'none' }}>
           {currentGroup?.label || 'All material'}
         </Link>
-        {currentSurface?.touchedAt ? (
+        <span aria-hidden>·</span>
+        <span>
+          {currentIndex + 1} / {docs.length}
+        </span>
+        {currentSurface?.touchedAt && currentSurface.state !== 'new' ? (
           <>
             <span aria-hidden>·</span>
-            <span>{stateLabel(currentSurface).toLowerCase()}</span>
-            <span aria-hidden>·</span>
-            <span>touched {formatWhen(currentSurface.touchedAt)}</span>
+            <span>{formatWhen(currentSurface.touchedAt)}</span>
           </>
         ) : null}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
-        <button type="button" onClick={() => openPrimaryAction(actionDoc)} style={collectionActionStyle(true)}>
-          {primaryActionLabel(actionDoc?.learning.nextAction ?? 'capture')}
-        </button>
-        <button type="button" onClick={() => router.push(`/knowledge/${category.slug}`)} style={collectionActionStyle(false)}>
-          Collection
-        </button>
-        <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(docIdFor(actionDoc ?? currentSurface ?? docs[0]))}`)} style={collectionActionStyle(false)}>
-          Kesi
-        </button>
-        <button type="button" onClick={() => router.push(`/graph?focus=${encodeURIComponent(docIdFor(actionDoc ?? currentSurface ?? docs[0]))}`)} style={collectionActionStyle(false)}>
-          Relations
-        </button>
+      <div
+        style={{
+          color: 'var(--fg-secondary)',
+          fontSize: '0.86rem',
+          lineHeight: 1.55,
+          marginTop: 6,
+          overflow: 'hidden',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+        }}
+      >
+        {continueDoc ? docSummary(continueDoc) : currentSurface ? docSummary(currentSurface) : ''}
       </div>
 
-      {sequenceDocs.length > 1 && (
-        <div
-          className="t-caption2"
-          style={{
-            color: 'var(--muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            flexWrap: 'wrap',
-            letterSpacing: '0.04em',
-            marginTop: 8,
-          }}
-        >
-          {sequenceDocs.map((doc, index) => {
-            const active = doc.id === currentDocId;
-            const seqIndex =
-              currentGroupIndex >= 0
-                ? Math.max(0, currentGroupIndex - 1) + index + 1
-                : docs.findIndex((item) => item.id === doc.id) + 1;
-            return (
-              <span key={doc.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                {index > 0 && <span aria-hidden>·</span>}
-                <Link
-                  href={doc.href}
-                  style={{
-                    color: active ? 'var(--fg)' : 'inherit',
-                    textDecoration: 'none',
-                    fontWeight: active ? 600 : 500,
-                  }}
-                >
-                  {seqIndex} {doc.title}
-                </Link>
-              </span>
-            );
-          })}
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+        <button type="button" onClick={() => openPrimaryAction(actionDoc)} style={collectionActionStyle(true)}>
+          {continueDoc ? 'Continue collection' : 'All material'}
+        </button>
+        {continueDoc && (
+          <Link href={mapHref} style={{ ...collectionActionStyle(false), textDecoration: 'none' }}>
+            All material
+          </Link>
+        )}
+      </div>
     </section>
   );
 }
