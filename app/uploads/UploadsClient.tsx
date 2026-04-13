@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { UploadButton } from './UploadButton';
 
 export type UploadListItem = {
@@ -110,6 +114,14 @@ function stateOrder(item: UploadSurface) {
     default:
       return 3;
   }
+}
+
+function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  if (nextAction === 'refresh') return 'Refresh';
+  if (nextAction === 'rehearse') return 'Rehearsal';
+  if (nextAction === 'examine') return 'Examiner';
+  if (nextAction === 'capture') return 'Open';
+  return 'Review';
 }
 
 function UploadBlock({
@@ -235,6 +247,7 @@ function UploadBlock({
 }
 
 export function UploadsClient({ items }: { items: UploadListItem[] }) {
+  const router = useRouter();
   const { traces } = useAllTraces();
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
@@ -251,6 +264,40 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
   const openItems = surfaces.filter((item) => item.state === 'woven' || item.state === 'opened');
   const finishedItems = surfaces.filter((item) => item.state === 'finished');
   const newItems = surfaces.filter((item) => item.state === 'new');
+  const focusItem = openItems[0] ?? finishedItems[0] ?? newItems[0] ?? null;
+
+  const openPrimaryAction = (item: UploadSurface) => {
+    if (item.learning.nextAction === 'refresh') {
+      const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: null };
+      const refreshPayload: RefreshResumePayload = { href: item.href, source: 'upload' };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+        sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+      } catch {}
+      router.push(item.href);
+      return;
+    }
+    if (item.learning.nextAction === 'rehearse' || item.learning.nextAction === 'examine') {
+      const payload: OverlayResumePayload = {
+        href: item.href,
+        overlay: item.learning.nextAction === 'rehearse' ? 'rehearsal' : 'examiner',
+      };
+      try {
+        sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(item.href);
+      return;
+    }
+    if (item.learning.nextAction === 'review') {
+      const payload: ReviewResumePayload = { href: item.href, anchorId: null };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(item.href);
+      return;
+    }
+    router.push(item.href);
+  };
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
@@ -262,6 +309,98 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
         <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
         <UploadButton variant="button" />
       </div>
+
+      {focusItem && (
+        <section
+          style={{
+            padding: '0.1rem 0 1rem',
+            marginBottom: 20,
+            borderBottom: '0.5px solid var(--mat-border)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
+            <span
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+              }}
+            >
+              Return to this source
+            </span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+            <LearningStatusInline status={focusItem.learning} compact />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div
+                style={{
+                  fontFamily: 'var(--display)',
+                  fontSize: '1.18rem',
+                  fontWeight: 650,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.25,
+                  marginBottom: 6,
+                }}
+              >
+                {focusItem.title}
+              </div>
+
+              <div
+                className="t-caption2"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  color: 'var(--muted)',
+                  letterSpacing: '0.04em',
+                  marginBottom: 8,
+                }}
+              >
+                <span>{focusItem.ext.slice(1).toUpperCase()}</span>
+                <span aria-hidden>·</span>
+                <span>{formatSize(focusItem.size)}</span>
+                <span aria-hidden>·</span>
+                <span>{formatWhen(focusItem.touchedAt)}</span>
+              </div>
+
+              <div
+                style={{
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.55,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {focusItem.latestSummary || focusItem.preview || focusItem.latestQuote || 'Open this source and keep weaving from what has landed here.'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => openPrimaryAction(focusItem)} style={uploadActionStyle(true)}>
+                {primaryActionLabel(focusItem.learning.nextAction)}
+              </button>
+              <button type="button" onClick={() => router.push(focusItem.href)} style={uploadActionStyle(false)}>
+                Source
+              </button>
+              <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(`upload/${focusItem.name}`)}`)} style={uploadActionStyle(false)}>
+                Kesi
+              </button>
+              <button type="button" onClick={() => router.push(`/graph?focus=${encodeURIComponent(`upload/${focusItem.name}`)}`)} style={uploadActionStyle(false)}>
+                Relations
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div
         style={{
@@ -332,4 +471,18 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       <UploadBlock label="Recently landed" items={newItems} />
     </div>
   );
+}
+
+function uploadActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    padding: 0,
+    cursor: 'pointer',
+  };
 }
