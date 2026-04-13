@@ -230,7 +230,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           fontFamily: 'var(--mono)',
         }}
       >
-        AI Examiner · {contextNotes.length} notes available
+        Examiner · {contextNotes.length} notes available
       </div>
 
       {/* Idle: show "start" button */}
@@ -247,7 +247,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           }}
         >
           <div style={{ fontSize: '0.82rem', textAlign: 'center', maxWidth: 320 }}>
-            Let AI probe for gaps in your understanding of this doc.
+            Probe for gaps in your understanding of this doc.
           </div>
           <button
             type="button"

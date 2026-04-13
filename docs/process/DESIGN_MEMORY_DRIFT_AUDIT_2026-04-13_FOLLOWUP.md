@@ -222,6 +222,25 @@ Design effect:
 - user-visible navigation and utility links now rely more on spacing,
   position, and label hierarchy than on CTA-style arrow decoration
 
+### 12. Examiner naming reduced further
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/unified/AIExaminer.tsx` now uses `Examiner` instead of
+  `AI Examiner`
+- `components/QuickSwitcher.tsx` now surfaces the same shorter tool label
+
+Design effect:
+
+- the tool reads more like a Loom-native study surface and less like a named
+  assistant feature
+- quick-switcher language is now more consistent with the quieter examiner
+  overlay
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -267,5 +286,6 @@ Residual note:
 - service-worker update chrome removed from the product shell
 - examiner CTA and loading states quieted
 - arrow-style CTA labels reduced across user-facing surfaces
+- examiner naming reduced further
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level
