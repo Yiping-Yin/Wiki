@@ -308,7 +308,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                 <span aria-hidden>·</span>
                 <button
                   type="button"
-                  onClick={() => router.push('/graph')}
+                  onClick={() => router.push(`/graph?focus=${encodeURIComponent(docId)}`)}
                   style={{
                     appearance: 'none',
                     border: 0,

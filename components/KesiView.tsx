@@ -430,7 +430,7 @@ export function KesiView() {
           <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           <button
             type="button"
-            onClick={() => router.push('/graph')}
+            onClick={() => router.push(returnPanel ? `/graph?focus=${encodeURIComponent(returnPanel.docId)}` : '/graph')}
             style={{
               appearance: 'none',
               border: 0,

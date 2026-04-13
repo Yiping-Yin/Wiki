@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
@@ -111,6 +111,16 @@ function buildPanels(traces: Trace[]) {
 export default function GraphPage() {
   const router = useRouter();
   const { traces } = useAllTraces();
+  const [focusDocId, setFocusDocId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setFocusDocId(params.get('focus'));
+    } catch {
+      setFocusDocId(null);
+    }
+  }, []);
 
   const { nodes, edges, panelCount, relationCount, panels } = useMemo(() => {
     const { panels, tracesByDocId } = buildPanels(traces);
@@ -142,11 +152,15 @@ export default function GraphPage() {
         style: {
           width: 250,
           padding: 14,
-          border: '0.5px solid var(--mat-border)',
+          border: panel.docId === focusDocId
+            ? '0.5px solid color-mix(in srgb, var(--accent) 38%, var(--mat-border))'
+            : '0.5px solid var(--mat-border)',
           borderRadius: 14,
-          background: 'color-mix(in srgb, var(--bg-elevated) 92%, white)',
+          background: panel.docId === focusDocId
+            ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-elevated))'
+            : 'color-mix(in srgb, var(--bg-elevated) 92%, white)',
           color: 'var(--fg)',
-          boxShadow: 'var(--shadow-1)',
+          boxShadow: panel.docId === focusDocId ? 'var(--shadow-2)' : 'var(--shadow-1)',
         },
       }));
     });
@@ -199,12 +213,13 @@ export default function GraphPage() {
       relationCount: flowEdges.length,
       panels,
     };
-  }, [traces]);
+  }, [traces, focusDocId]);
 
   const panelByDocId = useMemo(
     () => new Map(panels.map((panel) => [panel.docId, panel] as const)),
     [panels],
   );
+  const focusPanel = focusDocId ? panelByDocId.get(focusDocId) ?? null : null;
 
   const openReview = (panel: PanelNode) => {
     const payload: ReviewResumePayload = { href: panel.href, anchorId: null };
@@ -261,6 +276,11 @@ export default function GraphPage() {
         <div style={{ fontSize: '0.84rem', color: 'var(--muted)', marginTop: 4 }}>
           {panelCount} woven panels · {relationCount} cross-document references
         </div>
+        {focusPanel && (
+          <div style={{ fontSize: '0.78rem', color: 'var(--fg-secondary)', marginTop: 6 }}>
+            Focused on {focusPanel.title} · {focusPanel.learning.nextAction}
+          </div>
+        )}
         <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 6 }}>
           Click any panel to continue it through its current weave.
         </div>
