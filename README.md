@@ -14,6 +14,7 @@ In the AI era, two things matter that no chat tool gives you at the same time: *
 
 - `npm run knowledge:refresh` rebuilds the local knowledge caches under `knowledge/.cache/` and prunes old generated files from `public/`.
 - `npm run verify` runs typecheck, production build, and smoke checks in the correct order.
+- GitHub Actions runs `build -> typecheck -> smoke` and intentionally skips the chat-specific smoke path.
 - Generated knowledge bodies, manifests, and derived indexes now live in `knowledge/.cache/` rather than tracked `public/` or `lib/` files.
 
 ---
