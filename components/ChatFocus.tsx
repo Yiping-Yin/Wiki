@@ -27,6 +27,7 @@ import {
 import { recompileSystemPrompt, commitSystemPrompt, discussionSystemPrompt } from '../lib/ai/system-prompt';
 import { readAiCliPreference } from '../lib/ai-cli';
 import { contextFromPathname } from '../lib/doc-context';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
 import { getCurrentDocBody } from './DocBodyProvider';
 import { WeftShuttle } from './DocViewer';
@@ -153,6 +154,7 @@ function deriveAnchorRange(block: HTMLElement, proseContainer: HTMLElement) {
 
 export function ChatFocus() {
   const pathname = usePathname() ?? '/';
+  const smallScreen = useSmallScreen();
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [focusedEl, setFocusedEl] = useState<HTMLElement | null>(null);
   const [draft, setDraft] = useState('');
@@ -741,12 +743,16 @@ export function ChatFocus() {
     <div
       ref={overlayRef}
       style={{
-        position: 'absolute',
-        top: position.top,
-        left: position.left,
+        position: smallScreen ? 'fixed' : 'absolute',
+        top: smallScreen ? 'auto' : position.top,
+        left: smallScreen ? 12 : position.left,
+        right: smallScreen ? 12 : 'auto',
+        bottom: smallScreen ? 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)' : 'auto',
         // 长度(横向)和主体 prose 一样宽,读作文档的延续。
         // 高度(纵向)紧凑,只够一行输入 + 回答内容。
-        width: position.width,
+        width: smallScreen ? 'auto' : position.width,
+        maxHeight: smallScreen ? 'min(56vh, 440px)' : 'none',
+        overflowY: smallScreen ? 'auto' : 'visible',
         zIndex: 60,
         opacity: 1,
         animation: 'chatFocusIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both',
@@ -755,12 +761,16 @@ export function ChatFocus() {
       {/* Hairline left border anchors the discussion to the doc visually,
           like a margin note bracket. Background ensures no text bleed-through. */}
       <div style={{
-        borderLeft: '1px solid var(--accent)',
-        paddingLeft: '1rem',
-        paddingTop: '0.4rem',
-        paddingBottom: '0.4rem',
+        borderLeft: smallScreen ? 'none' : '1px solid var(--accent)',
+        borderTop: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
+        borderBottom: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
+        paddingLeft: smallScreen ? '0.9rem' : '1rem',
+        paddingRight: smallScreen ? '0.9rem' : 0,
+        paddingTop: smallScreen ? '0.75rem' : '0.4rem',
+        paddingBottom: smallScreen ? '0.8rem' : '0.4rem',
         background: 'var(--bg)',
-        borderRadius: '0 8px 8px 0',
+        borderRadius: smallScreen ? 14 : '0 8px 8px 0',
+        boxShadow: smallScreen ? 'var(--shadow-2)' : 'none',
       }}>
         {/* Accumulated turns */}
         {turns.map((t, i) => (
