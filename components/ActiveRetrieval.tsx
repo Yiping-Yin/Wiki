@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { traceStore } from '../lib/trace';
 import { findSimilarNotes, type SimilarNote } from '../lib/note/similarity';
 import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
@@ -106,6 +107,7 @@ function anchorMatchScore(resultText: string, event: {
 export function ActiveRetrieval() {
   const pathname = usePathname();
   const ctx = contextFromPathname(pathname);
+  const smallScreen = useSmallScreen();
   const isReading =
     pathname.startsWith('/wiki/') ||
     pathname.startsWith('/knowledge/') ||
@@ -219,7 +221,7 @@ export function ActiveRetrieval() {
   return (
     <>
       {matches.map((m, i) => (
-        <RetrievalDot key={i} match={m} docsById={docsById} />
+        <RetrievalDot key={i} match={m} docsById={docsById} smallScreen={smallScreen} />
       ))}
     </>
   );
@@ -228,9 +230,11 @@ export function ActiveRetrieval() {
 function RetrievalDot({
   match,
   docsById,
+  smallScreen,
 }: {
   match: Match;
   docsById: Map<string, IndexDoc>;
+  smallScreen: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -282,8 +286,10 @@ function RetrievalDot({
     <div
       style={{
         position: 'fixed',
-        top: pos.top,
-        left: Math.max(4, pos.left),
+        top: smallScreen ? 'auto' : pos.top,
+        left: smallScreen ? 12 : Math.max(4, pos.left),
+        right: smallScreen ? 12 : 'auto',
+        bottom: smallScreen ? 'max(12px, env(safe-area-inset-bottom, 0px) + 56px)' : 'auto',
         zIndex: 50,
       }}
     >
@@ -296,21 +302,22 @@ function RetrievalDot({
           height: 6,
           borderRadius: '50%',
           background: 'var(--tint-blue, #0a84ff)',
-          opacity: hovered ? 0.9 : 0.45,
+          opacity: hovered || smallScreen ? 0.9 : 0.45,
           cursor: 'pointer',
           transition: 'opacity 0.15s ease, transform 0.15s ease',
-          transform: hovered ? 'scale(1.5)' : 'scale(1)',
+          transform: hovered || smallScreen ? 'scale(1.5)' : 'scale(1)',
         }}
       />
 
       {/* Hover popover */}
-      {hovered && (
+      {(hovered || smallScreen) && (
         <div
           style={{
             position: 'absolute',
-            top: -8,
-            left: 16,
-            width: 280,
+            top: smallScreen ? 'auto' : -8,
+            left: smallScreen ? 0 : 16,
+            bottom: smallScreen ? 16 : 'auto',
+            width: smallScreen ? 'min(100vw - 24px, 320px)' : 280,
             padding: '10px 0 8px 10px',
             background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
             borderTop: '0.5px solid var(--mat-border)',
@@ -319,8 +326,11 @@ function RetrievalDot({
             lineHeight: 1.5,
             color: 'var(--fg)',
             zIndex: 100,
+            borderRadius: smallScreen ? 14 : 0,
+            boxShadow: smallScreen ? 'var(--shadow-1)' : 'none',
           }}
-          >
+          onMouseLeave={smallScreen ? undefined : () => setHovered(false)}
+        >
           <div style={{ fontSize: '0.62rem', color: 'var(--tint-blue, #0a84ff)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 6 }}>
             Nearby panel{match.results.length > 1 ? 's' : ''}
           </div>

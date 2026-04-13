@@ -10,6 +10,7 @@
  * This component should therefore be a whisper, not a form.
  */
 import { useEffect, useState } from 'react';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 type State = {
   anchorId: string;
@@ -21,6 +22,7 @@ type State = {
 } | null;
 
 export function CapturePrompt() {
+  const smallScreen = useSmallScreen();
   const [state, setState] = useState<State>(null);
   const [fading, setFading] = useState(false);
 
@@ -78,10 +80,19 @@ export function CapturePrompt() {
     <div
       style={{
         position: 'fixed',
-        left: state.left === null ? '50%' : `clamp(20px, ${state.left}px, calc(100vw - 20px))`,
-        top: state.top ?? 'auto',
-        bottom: state.top === null ? (state.bottom ?? 20) : 'auto',
-        transform: state.left === null ? 'translateX(-50%)' : 'translateX(-18%)',
+        left: smallScreen
+          ? '12px'
+          : state.left === null
+            ? '50%'
+            : `clamp(20px, ${state.left}px, calc(100vw - 20px))`,
+        right: smallScreen ? '12px' : 'auto',
+        top: smallScreen ? 'auto' : state.top ?? 'auto',
+        bottom: smallScreen
+          ? 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)'
+          : state.top === null
+            ? (state.bottom ?? 20)
+            : 'auto',
+        transform: smallScreen ? 'none' : state.left === null ? 'translateX(-50%)' : 'translateX(-18%)',
         zIndex: 920,
         opacity: fading ? 0 : 1,
         transition: 'opacity 0.35s ease, top 0.2s ease, bottom 0.2s ease, left 0.2s ease',
@@ -98,6 +109,8 @@ export function CapturePrompt() {
           borderBottom: '0.5px solid var(--mat-border)',
           background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
           maxWidth: '100%',
+          borderRadius: smallScreen ? 14 : 0,
+          boxShadow: smallScreen ? 'var(--shadow-1)' : 'none',
         }}
       >
         <span
