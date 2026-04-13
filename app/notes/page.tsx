@@ -131,6 +131,14 @@ export default function NotesPage() {
     router.push(note.href);
   };
 
+  const openKesi = (note: NoteItem) => {
+    router.push(`/kesi?focus=${encodeURIComponent(note.docId)}`);
+  };
+
+  const openRelations = (note: NoteItem) => {
+    router.push(`/graph?focus=${encodeURIComponent(note.docId)}`);
+  };
+
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       <div
@@ -262,6 +270,12 @@ export default function NotesPage() {
               <Link href={focus.href} style={notesActionStyle(false)}>
                 Source
               </Link>
+              <button type="button" onClick={() => openKesi(focus)} style={notesActionStyle(false)}>
+                Kesi
+              </button>
+              <button type="button" onClick={() => openRelations(focus)} style={notesActionStyle(false)}>
+                Relations
+              </button>
             </div>
           </div>
         </section>

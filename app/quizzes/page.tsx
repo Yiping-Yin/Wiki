@@ -69,6 +69,7 @@ export default function QuizzesPage() {
         const meta = wiki ?? know ?? null;
         return {
           key: r.docId + r.attemptedAt,
+          docId: meta?.id ?? (wiki ? r.docId : `know/${r.docId}`),
           title: meta?.title ?? prettifyId(r.docId),
           href: meta?.href ?? '#',
           score: r.score,
@@ -83,6 +84,12 @@ export default function QuizzesPage() {
   if (items.length === 0) return null;
 
   const focus = items.find((item) => item.weak) ?? items[0];
+  const openKesi = () => {
+    router.push(`/kesi?focus=${encodeURIComponent(focus.docId)}`);
+  };
+  const openRelations = () => {
+    router.push(`/graph?focus=${encodeURIComponent(focus.docId)}`);
+  };
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
@@ -182,6 +189,12 @@ export default function QuizzesPage() {
                 style={quizActionStyle(true)}
               >
                 Source
+              </button>
+              <button type="button" onClick={openKesi} style={quizActionStyle(false)}>
+                Kesi
+              </button>
+              <button type="button" onClick={openRelations} style={quizActionStyle(false)}>
+                Relations
               </button>
             </div>
           </div>
