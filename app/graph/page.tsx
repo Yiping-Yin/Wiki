@@ -632,28 +632,6 @@ export default function GraphPage() {
                 >
                   {focusPanel.summary || 'This panel is woven, and its threads are visible here.'}
                 </div>
-                {focusInsights && (
-                  <div
-                    className="t-caption2"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      flexWrap: 'wrap',
-                      color: 'var(--muted)',
-                      letterSpacing: '0.04em',
-                      marginTop: 8,
-                    }}
-                  >
-                    <span>Nearby · {focusInsights.nearbyCount}</span>
-                    {focusInsights.sameFamilyCount > 0 ? (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span>Same family · {focusInsights.sameFamilyCount}</span>
-                      </>
-                    ) : null}
-                  </div>
-                )}
                 {(focusRelated.incoming.length > 0 || focusRelated.outgoing.length > 0) && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {focusRelated.incoming.length > 0 && (

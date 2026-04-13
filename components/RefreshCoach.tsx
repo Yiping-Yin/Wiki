@@ -150,19 +150,6 @@ export function RefreshCoach() {
               ? 'Held up'
               : 'Keep this weave warm'}
         </span>
-        <span className="t-caption2" style={{ color: 'var(--muted)' }}>
-          {completion === 'settled'
-            ? 'back in kesi'
-            : completion === 'verified'
-              ? 'verification complete'
-              : payload?.source === 'kesi'
-                ? 'return from kesi'
-                : payload?.source === 'today'
-                  ? 'return from today'
-                  : payload?.source === 'graph'
-                    ? 'return from relations'
-                  : 'one more pass'}
-        </span>
       </div>
 
       <div className="t-footnote" style={{ color: 'var(--fg-secondary)', lineHeight: 1.5 }}>
@@ -216,24 +203,16 @@ function refreshPrimaryAction(nextAction: LearningSurfaceSummary['nextAction']) 
 }
 
 function refreshBodyText(learning: LearningSurfaceSummary, source?: RefreshResumePayload['source']) {
-  const from =
-    source === 'kesi'
-      ? 'from kesi'
-      : source === 'today'
-        ? 'from today'
-        : source === 'graph'
-          ? 'from relations'
-          : 'from this thread';
   if (learning.nextAction === 'refresh') {
-    return `You came back ${from}. Re-enter review and warm the panel back up.`;
+    return 'Re-enter review and warm the panel back up.';
   }
   if (learning.nextAction === 'rehearse') {
-    return `You came back ${from}. The panel needs another written pass before it will hold.`;
+    return 'The panel needs another written pass before it will hold.';
   }
   if (learning.nextAction === 'examine') {
-    return `You came back ${from}. The panel is ready to verify while the weave is still warm.`;
+    return 'The panel is ready to verify while the weave is still warm.';
   }
-  return `You came back ${from}. Review the current shape and decide whether to deepen or settle it.`;
+  return 'Review the current shape and decide whether to deepen or settle it.';
 }
 
 function actionStyle(primary: boolean) {
