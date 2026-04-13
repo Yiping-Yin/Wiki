@@ -124,6 +124,7 @@ export default function GraphPage() {
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [familyFilter, setFamilyFilter] = useState<string>('all');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'nearby' | 'incoming' | 'outgoing'>('all');
 
   useEffect(() => {
     try {
@@ -272,21 +273,35 @@ export default function GraphPage() {
   const visibleDocIds = useMemo(() => {
     const q = query.trim().toLowerCase();
     const ids = new Set<string>();
-    for (const panel of panels) {
+    const matchesBaseFilters = (panel: PanelNode) => {
       const matchesFamily = familyFilter === 'all' || panel.family === familyFilter;
       const matchesQuery = !q
         || panel.title.toLowerCase().includes(q)
         || panel.summary.toLowerCase().includes(q)
         || panel.family.toLowerCase().includes(q);
-      if (matchesFamily && matchesQuery) ids.add(panel.docId);
-    }
-    if (focusPanel) {
+      return matchesFamily && matchesQuery;
+    };
+
+    if (scopeFilter === 'all' || !focusPanel) {
+      for (const panel of panels) {
+        if (matchesBaseFilters(panel)) ids.add(panel.docId);
+      }
+    } else {
       ids.add(focusPanel.docId);
-      for (const related of focusRelated.incoming) ids.add(related.panel.docId);
-      for (const related of focusRelated.outgoing) ids.add(related.panel.docId);
+      const related =
+        scopeFilter === 'incoming'
+          ? focusRelated.incoming
+          : scopeFilter === 'outgoing'
+            ? focusRelated.outgoing
+            : [...focusRelated.incoming, ...focusRelated.outgoing];
+      for (const item of related) {
+        if (matchesBaseFilters(item.panel)) ids.add(item.panel.docId);
+      }
     }
+
+    if (focusPanel) ids.add(focusPanel.docId);
     return ids;
-  }, [familyFilter, focusPanel, focusRelated.incoming, focusRelated.outgoing, panels, query]);
+  }, [familyFilter, focusPanel, focusRelated.incoming, focusRelated.outgoing, panels, query, scopeFilter]);
 
   const visibleNodes = useMemo(
     () => nodes.filter((node) => visibleDocIds.has(node.id)),
@@ -389,6 +404,39 @@ export default function GraphPage() {
             );
           })}
         </div>
+        {focusPanel && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+            {([
+              ['all', 'All'],
+              ['nearby', 'Nearby'],
+              ['incoming', 'Incoming'],
+              ['outgoing', 'Outgoing'],
+            ] as const).map(([value, label]) => {
+              const active = scopeFilter === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setScopeFilter(value)}
+                  style={{
+                    appearance: 'none',
+                    border: 0,
+                    borderBottom: `0.5px solid ${active ? 'var(--accent)' : 'var(--mat-border)'}`,
+                    background: 'transparent',
+                    color: active ? 'var(--accent)' : 'var(--fg-secondary)',
+                    padding: '0.28rem 0',
+                    fontSize: '0.76rem',
+                    fontWeight: active ? 700 : 600,
+                    letterSpacing: '0.02em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {focusPanel && (
           <div
             style={{
