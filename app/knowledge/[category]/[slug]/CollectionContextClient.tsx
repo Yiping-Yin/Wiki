@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { KesiSwatch } from '../../../../components/KesiSwatch';
 import { LearningStatusInline } from '../../../../components/LearningStatusInline';
 import { useHistory } from '../../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../../lib/trace';
 import type { KnowledgeCategory } from '../../../../lib/knowledge-types';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../../../lib/learning-status';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../../../lib/review-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../../../lib/refresh-resume';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../../../lib/overlay-resume';
 
 export type CollectionDocCard = {
   id: string;
@@ -86,6 +90,14 @@ function docSummary(surface: CollectionSurface) {
   return '';
 }
 
+function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  if (nextAction === 'refresh') return 'Refresh';
+  if (nextAction === 'rehearse') return 'Rehearsal';
+  if (nextAction === 'examine') return 'Examiner';
+  if (nextAction === 'capture') return 'Open';
+  return 'Review';
+}
+
 export function CollectionContextClient({
   category,
   docs,
@@ -97,6 +109,7 @@ export function CollectionContextClient({
   groups: CollectionGroupCard[];
   currentDocId: string;
 }) {
+  const router = useRouter();
   const [history] = useHistory();
   const { traces } = useAllTraces();
 
@@ -178,6 +191,42 @@ export function CollectionContextClient({
           Math.min(baseSequence.length, sequenceAnchorIndex + 2),
         );
 
+  const actionDoc = continueDoc ?? currentSurface ?? null;
+
+  const openPrimaryAction = (surface: CollectionSurface | null) => {
+    if (!surface) return;
+    if (surface.learning.nextAction === 'refresh') {
+      const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'knowledge' };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+        sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+      } catch {}
+      router.push(surface.href);
+      return;
+    }
+    if (surface.learning.nextAction === 'rehearse' || surface.learning.nextAction === 'examine') {
+      const payload: OverlayResumePayload = {
+        href: surface.href,
+        overlay: surface.learning.nextAction === 'rehearse' ? 'rehearsal' : 'examiner',
+      };
+      try {
+        sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(surface.href);
+      return;
+    }
+    if (surface.learning.nextAction === 'review') {
+      const payload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(surface.href);
+      return;
+    }
+    router.push(surface.href);
+  };
+
   return (
     <section
       style={{
@@ -246,22 +295,6 @@ export function CollectionContextClient({
         <Link href={mapHref} style={{ color: 'inherit', textDecoration: 'none' }}>
           {currentGroup?.label || 'All material'}
         </Link>
-        {continueDoc && (
-          <>
-            <span aria-hidden>·</span>
-            <Link href={continueDoc.href} style={{ color: 'inherit', textDecoration: 'none' }}>
-              Continue {continueDoc.title}
-            </Link>
-          </>
-        )}
-        {!continueDoc && startDoc && startDoc.id !== currentDocId && (
-          <>
-            <span aria-hidden>·</span>
-            <Link href={startDoc.href} style={{ color: 'inherit', textDecoration: 'none' }}>
-              Next {startDoc.title}
-            </Link>
-          </>
-        )}
         {currentSurface?.touchedAt ? (
           <>
             <span aria-hidden>·</span>
@@ -270,6 +303,21 @@ export function CollectionContextClient({
             <span>touched {formatWhen(currentSurface.touchedAt)}</span>
           </>
         ) : null}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+        <button type="button" onClick={() => openPrimaryAction(actionDoc)} style={collectionActionStyle(true)}>
+          {primaryActionLabel(actionDoc?.learning.nextAction ?? 'capture')}
+        </button>
+        <button type="button" onClick={() => router.push(`/knowledge/${category.slug}`)} style={collectionActionStyle(false)}>
+          Collection
+        </button>
+        <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(docIdFor(actionDoc ?? currentSurface ?? docs[0]))}`)} style={collectionActionStyle(false)}>
+          Kesi
+        </button>
+        <button type="button" onClick={() => router.push(`/graph?focus=${encodeURIComponent(docIdFor(actionDoc ?? currentSurface ?? docs[0]))}`)} style={collectionActionStyle(false)}>
+          Relations
+        </button>
       </div>
 
       {sequenceDocs.length > 1 && (
@@ -311,4 +359,18 @@ export function CollectionContextClient({
       )}
     </section>
   );
+}
+
+function collectionActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    padding: 0,
+    cursor: 'pointer',
+  };
 }
