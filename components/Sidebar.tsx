@@ -122,17 +122,20 @@ export function Sidebar() {
           aria-label="Open menu"
           className="mobile-menu-btn"
           style={{
-            position: 'fixed', top: 14, left: 14, zIndex: 66,
+            position: 'fixed',
+            top: 'max(12px, env(safe-area-inset-top, 0px) + 6px)',
+            left: 'max(12px, env(safe-area-inset-left, 0px) + 6px)',
+            zIndex: 66,
             background: 'var(--bg-translucent)',
             border: 'var(--hairline)',
             borderRadius: 'var(--r-1)',
-            padding: '0.4rem 0.55rem',
+            padding: '0.34rem 0.48rem',
             cursor: 'pointer',
             color: 'var(--fg)',
             backdropFilter: 'saturate(180%) blur(20px)',
             WebkitBackdropFilter: 'saturate(180%) blur(20px)',
             boxShadow: 'var(--shadow-1)',
-            fontSize: '0.9rem',
+            fontSize: '0.82rem',
             lineHeight: 1,
           }}
         >☰</button>
@@ -154,7 +157,7 @@ export function Sidebar() {
       <aside
         className={`sidebar material-thick ${visible ? 'open' : ''}`}
         style={{
-          width: 288,
+          width: 'min(288px, calc(100vw - 32px))',
           padding: '1.5rem 1rem 4rem 1.1rem',
           position: 'fixed', top: 0, left: 0,
           height: '100vh',

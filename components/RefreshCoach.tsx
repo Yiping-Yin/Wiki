@@ -147,6 +147,8 @@ export function RefreshCoach() {
                 ? 'return from kesi'
                 : payload?.source === 'today'
                   ? 'return from today'
+                  : payload?.source === 'graph'
+                    ? 'return from relations'
                   : 'one more pass'}
         </span>
       </div>
@@ -214,7 +216,14 @@ function refreshPrimaryAction(nextAction: LearningSurfaceSummary['nextAction']) 
 }
 
 function refreshBodyText(learning: LearningSurfaceSummary, source?: RefreshResumePayload['source']) {
-  const from = source === 'kesi' ? 'from kesi' : source === 'today' ? 'from today' : 'from this thread';
+  const from =
+    source === 'kesi'
+      ? 'from kesi'
+      : source === 'today'
+        ? 'from today'
+        : source === 'graph'
+          ? 'from relations'
+          : 'from this thread';
   if (learning.nextAction === 'refresh') {
     return `You came back ${from}. Re-enter review and warm the panel back up.`;
   }
