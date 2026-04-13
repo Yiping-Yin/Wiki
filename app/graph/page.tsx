@@ -174,7 +174,7 @@ export default function GraphPage() {
     });
 
     const seenEdges = new Set<string>();
-    const previewMap = new Map<string, PanelNode[]>();
+    const previewMap = new Map<string, { incoming: PanelNode[]; outgoing: PanelNode[] }>();
     const flowEdges: Array<{
       id: string;
       source: string;
@@ -184,7 +184,7 @@ export default function GraphPage() {
     }> = [];
 
     for (const panel of panels) {
-      previewMap.set(panel.docId, []);
+      previewMap.set(panel.docId, { incoming: [], outgoing: [] });
       const traceSet = tracesByDocId.get(panel.docId) ?? [];
       const latestByAnchor = new Map<string, { content: string; at: number }>();
       for (const trace of traceSet) {
@@ -205,8 +205,16 @@ export default function GraphPage() {
           const key = `${panel.docId}=>${targetPanel.docId}`;
           if (seenEdges.has(key)) continue;
           seenEdges.add(key);
-          previewMap.set(panel.docId, [...(previewMap.get(panel.docId) ?? []), targetPanel]);
-          previewMap.set(targetPanel.docId, [...(previewMap.get(targetPanel.docId) ?? []), panel]);
+          const sourcePreview = previewMap.get(panel.docId) ?? { incoming: [], outgoing: [] };
+          const targetPreview = previewMap.get(targetPanel.docId) ?? { incoming: [], outgoing: [] };
+          previewMap.set(panel.docId, {
+            ...sourcePreview,
+            outgoing: [...sourcePreview.outgoing, targetPanel],
+          });
+          previewMap.set(targetPanel.docId, {
+            ...targetPreview,
+            incoming: [...targetPreview.incoming, panel],
+          });
           flowEdges.push({
             id: key,
             source: panel.docId,
@@ -233,7 +241,9 @@ export default function GraphPage() {
     [panels],
   );
   const focusPanel = focusDocId ? panelByDocId.get(focusDocId) ?? null : null;
-  const focusRelated = focusPanel ? relationPreview.get(focusPanel.docId) ?? [] : [];
+  const focusRelated = focusPanel
+    ? relationPreview.get(focusPanel.docId) ?? { incoming: [], outgoing: [] }
+    : { incoming: [], outgoing: [] };
 
   const openReview = (panel: PanelNode) => {
     const payload: ReviewResumePayload = { href: panel.href, anchorId: null };
@@ -360,41 +370,60 @@ export default function GraphPage() {
                 >
                   {focusPanel.summary || 'This panel is woven, and its threads are visible here.'}
                 </div>
-                {focusRelated.length > 0 && (
-                  <div
-                    className="t-caption2"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      flexWrap: 'wrap',
-                      color: 'var(--muted)',
-                      letterSpacing: '0.04em',
-                      marginTop: 10,
-                    }}
-                  >
-                    <span>Threaded with</span>
-                    {focusRelated.slice(0, 4).map((panel, index) => (
-                      <button
-                        key={panel.docId}
-                        type="button"
-                        onClick={() => focusPanelNode(panel)}
+                {(focusRelated.incoming.length > 0 || focusRelated.outgoing.length > 0) && (
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {focusRelated.incoming.length > 0 && (
+                      <div
+                        className="t-caption2"
                         style={{
-                          appearance: 'none',
-                          border: 0,
-                          background: 'transparent',
-                          color: 'var(--accent)',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          letterSpacing: '0.02em',
-                          padding: 0,
-                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          color: 'var(--muted)',
+                          letterSpacing: '0.04em',
                         }}
                       >
-                        {panel.title}
-                        {index < Math.min(focusRelated.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
-                      </button>
-                    ))}
+                        <span>Referenced by</span>
+                        {focusRelated.incoming.slice(0, 4).map((panel, index) => (
+                          <button
+                            key={`in-${panel.docId}`}
+                            type="button"
+                            onClick={() => focusPanelNode(panel)}
+                            style={focusLinkStyle}
+                          >
+                            {panel.title}
+                            {index < Math.min(focusRelated.incoming.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {focusRelated.outgoing.length > 0 && (
+                      <div
+                        className="t-caption2"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          color: 'var(--muted)',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        <span>Points to</span>
+                        {focusRelated.outgoing.slice(0, 4).map((panel, index) => (
+                          <button
+                            key={`out-${panel.docId}`}
+                            type="button"
+                            onClick={() => focusPanelNode(panel)}
+                            style={focusLinkStyle}
+                          >
+                            {panel.title}
+                            {index < Math.min(focusRelated.outgoing.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -438,6 +467,18 @@ export default function GraphPage() {
     </div>
   );
 }
+
+const focusLinkStyle = {
+  appearance: 'none' as const,
+  border: 0,
+  background: 'transparent',
+  color: 'var(--accent)',
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  letterSpacing: '0.02em',
+  padding: 0,
+  cursor: 'pointer',
+};
 
 function focusActionStyle(primary: boolean) {
   return {
