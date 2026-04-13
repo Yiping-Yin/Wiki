@@ -264,7 +264,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
               <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
               <button
                 type="button"
-                onClick={() => router.push('/kesi')}
+                onClick={() => router.push(`/kesi?focus=${encodeURIComponent(docId)}`)}
                 style={{
                   appearance: 'none',
                   border: 0,

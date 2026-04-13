@@ -98,8 +98,8 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
   }, [docId, router]);
 
   const openKesi = useCallback(() => {
-    router.push('/kesi');
-  }, [router]);
+    router.push(docId ? `/kesi?focus=${encodeURIComponent(docId)}` : '/kesi');
+  }, [docId, router]);
 
   const openRelations = useCallback(() => {
     router.push(docId ? `/graph?focus=${encodeURIComponent(docId)}` : '/graph');

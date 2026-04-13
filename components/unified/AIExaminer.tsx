@@ -206,8 +206,8 @@ export function AIExaminer({ docId, contextNotes }: Props) {
 
   const openKesi = useCallback(() => {
     window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
-    router.push('/kesi');
-  }, [router]);
+    router.push(docId ? `/kesi?focus=${encodeURIComponent(docId)}` : '/kesi');
+  }, [docId, router]);
 
   const openRelations = useCallback(() => {
     window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));

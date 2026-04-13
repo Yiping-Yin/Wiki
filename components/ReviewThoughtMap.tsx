@@ -320,7 +320,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           onAppendVersion={handleAppendVersion}
           activeAnchorId={activeAnchorId}
           panelCrystallized={panelCrystallized}
-          onOpenKesi={() => router.push('/kesi')}
+          onOpenKesi={() => router.push(ctx.docId ? `/kesi?focus=${encodeURIComponent(ctx.docId)}` : '/kesi')}
           onOpenRelations={() => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph')}
         />
       ) : (

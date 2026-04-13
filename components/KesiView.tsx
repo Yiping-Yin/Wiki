@@ -229,6 +229,14 @@ function urlReferencesDoc(url: string, docHref: string): boolean {
   return false;
 }
 
+function syncKesiFocusParam(docId: string | null) {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (docId) url.searchParams.set('focus', docId);
+  else url.searchParams.delete('focus');
+  window.history.replaceState({}, '', url.toString());
+}
+
 type ViewMode = 'recent' | 'dense';
 type SourceFilter = 'all' | 'knowledge' | 'wiki' | 'upload';
 type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
@@ -238,13 +246,22 @@ export function KesiView() {
   const removeEvents = useRemoveEvents();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [focusDocId, setFocusDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('recent');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>('all');
   const { knowledgeCategories } = useKnowledgeNav();
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setFocusDocId(params.get('focus'));
+    } catch {
+      setFocusDocId(null);
+    }
+  }, []);
 
   const tracesByDocId = useMemo(() => {
     const map = new Map<string, Trace[]>();
@@ -392,7 +409,10 @@ export function KesiView() {
     };
   }, [panels]);
 
-  const returnPanel = sortedPanels[0] ?? null;
+  const focusPanel = focusDocId
+    ? sortedPanels.find((panel) => panel.docId === focusDocId) ?? null
+    : null;
+  const returnPanel = focusPanel ?? sortedPanels[0] ?? null;
   const refreshPanels = sortedPanels
     .filter((panel) => panel.learning.nextAction === 'refresh' && panel.docId !== returnPanel?.docId)
     .slice(0, 4);
@@ -452,6 +472,11 @@ export function KesiView() {
     } else {
       openReview(panel);
     }
+  };
+
+  const focusPanelInKesi = (panel: Panel) => {
+    setFocusDocId(panel.docId);
+    syncKesiFocusParam(panel.docId);
   };
 
   const content = !mounted || loading
@@ -599,7 +624,7 @@ export function KesiView() {
                         <button
                           key={panel.docId}
                           type="button"
-                          onClick={() => openPrimaryAction(panel)}
+                          onClick={() => focusPanelInKesi(panel)}
                           style={{
                             appearance: 'none',
                             border: 0,
@@ -1154,7 +1179,7 @@ export function KesiView() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openPrimaryAction(relatedPanel);
+                                focusPanelInKesi(relatedPanel);
                               }}
                               style={{
                                 appearance: 'none',
@@ -1181,7 +1206,7 @@ export function KesiView() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openPrimaryAction(panel);
+                          focusPanelInKesi(panel);
                         }}
                         style={actionStyle(true)}
                       >

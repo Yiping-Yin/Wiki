@@ -99,7 +99,7 @@ export function RefreshCoach() {
     });
   };
 
-  const openKesi = () => router.push('/kesi');
+  const openKesi = () => router.push(ctx.docId ? `/kesi?focus=${encodeURIComponent(ctx.docId)}` : '/kesi');
   const openRelations = () => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph');
 
   const primaryAction = refreshPrimaryAction(learning.nextAction);

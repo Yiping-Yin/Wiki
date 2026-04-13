@@ -117,6 +117,8 @@ export default function GraphPage() {
   const router = useRouter();
   const { traces } = useAllTraces();
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [familyFilter, setFamilyFilter] = useState<string>('all');
 
   useEffect(() => {
     try {
@@ -237,10 +239,42 @@ export default function GraphPage() {
     () => new Map(panels.map((panel) => [panel.docId, panel] as const)),
     [panels],
   );
+  const familyOptions = useMemo(
+    () => ['all', ...Array.from(new Set(panels.map((panel) => panel.family))).sort()],
+    [panels],
+  );
   const focusPanel = focusDocId ? panelByDocId.get(focusDocId) ?? null : null;
   const focusRelated = focusPanel
     ? relationPreview.get(focusPanel.docId) ?? { incoming: [], outgoing: [] }
     : { incoming: [], outgoing: [] };
+
+  const visibleDocIds = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const ids = new Set<string>();
+    for (const panel of panels) {
+      const matchesFamily = familyFilter === 'all' || panel.family === familyFilter;
+      const matchesQuery = !q
+        || panel.title.toLowerCase().includes(q)
+        || panel.summary.toLowerCase().includes(q)
+        || panel.family.toLowerCase().includes(q);
+      if (matchesFamily && matchesQuery) ids.add(panel.docId);
+    }
+    if (focusPanel) {
+      ids.add(focusPanel.docId);
+      for (const panel of focusRelated.incoming) ids.add(panel.docId);
+      for (const panel of focusRelated.outgoing) ids.add(panel.docId);
+    }
+    return ids;
+  }, [familyFilter, focusPanel, focusRelated.incoming, focusRelated.outgoing, panels, query]);
+
+  const visibleNodes = useMemo(
+    () => nodes.filter((node) => visibleDocIds.has(node.id)),
+    [nodes, visibleDocIds],
+  );
+  const visibleEdges = useMemo(
+    () => edges.filter((edge) => visibleDocIds.has(edge.source) && visibleDocIds.has(edge.target)),
+    [edges, visibleDocIds],
+  );
 
   const focusPanelNode = (panel: PanelNode) => {
     setFocusDocId(panel.docId);
@@ -263,6 +297,76 @@ export default function GraphPage() {
         </h1>
         <div style={{ fontSize: '0.84rem', color: 'var(--muted)', marginTop: 4 }}>
           {panelCount} woven panels · {relationCount} cross-document references
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '0.25rem 0 0.65rem',
+            marginTop: 14,
+            borderTop: '0.5px solid var(--mat-border)',
+          }}
+        >
+          <span
+            aria-hidden
+            style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
+          >
+            Graph
+          </span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a woven panel…"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              border: 0,
+              outline: 'none',
+              background: 'transparent',
+              color: 'var(--fg)',
+              fontFamily: 'var(--display)',
+              fontSize: '0.92rem',
+              letterSpacing: '-0.01em',
+            }}
+          />
+          <span
+            className="t-caption2"
+            style={{
+              color: 'var(--muted)',
+              fontFamily: 'var(--mono)',
+              fontVariantNumeric: 'tabular-nums',
+              flexShrink: 0,
+            }}
+          >
+            {visibleNodes.length}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+          {familyOptions.map((family) => {
+            const active = familyFilter === family;
+            return (
+              <button
+                key={family}
+                type="button"
+                onClick={() => setFamilyFilter(family)}
+                style={{
+                  appearance: 'none',
+                  border: 0,
+                  borderBottom: `0.5px solid ${active ? 'var(--accent)' : 'var(--mat-border)'}`,
+                  background: 'transparent',
+                  color: active ? 'var(--accent)' : 'var(--fg-secondary)',
+                  padding: '0.28rem 0',
+                  fontSize: '0.76rem',
+                  fontWeight: active ? 700 : 600,
+                  letterSpacing: '0.02em',
+                  cursor: 'pointer',
+                }}
+              >
+                {family === 'all' ? 'All' : family}
+              </button>
+            );
+          })}
         </div>
         {focusPanel && (
           <div
@@ -410,8 +514,8 @@ export default function GraphPage() {
       </div>
       <div style={{ height: 'calc(100vh - 84px)' }}>
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={visibleNodes}
+          edges={visibleEdges}
           fitView
           minZoom={0.35}
           maxZoom={1.4}
