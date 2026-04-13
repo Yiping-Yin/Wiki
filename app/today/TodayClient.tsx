@@ -284,7 +284,6 @@ export function TodayClient({
               Keep the thread warm
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            <LearningStatusInline status={focusSurface.learning} compact />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
@@ -313,12 +312,10 @@ export function TodayClient({
                   letterSpacing: '0.04em',
                   marginBottom: 8,
                 }}
-              >
-                <span>{kindLabel(focusSurface.kind)}</span>
-                <span aria-hidden>·</span>
-                <span>{timeOfDay(focusSurface.touchedAt)}</span>
-                <span aria-hidden>·</span>
-                <span>{focusSurface.learning.anchorCount} stitches</span>
+                >
+                  <span>{kindLabel(focusSurface.kind)}</span>
+                  <span aria-hidden>·</span>
+                  <span>{timeOfDay(focusSurface.touchedAt)}</span>
               </div>
 
               <div

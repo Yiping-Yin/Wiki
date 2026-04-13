@@ -199,7 +199,6 @@ export function HomeClient(_props: unknown) {
               Keep this thread warm
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            <LearningStatusInline status={current.learning} compact />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
@@ -228,10 +227,8 @@ export function HomeClient(_props: unknown) {
                   letterSpacing: '0.04em',
                   marginBottom: 8,
                 }}
-              >
-                <span>{relativeTime(current.viewedAt)}</span>
-                <span aria-hidden>·</span>
-                <span>{current.learning.anchorCount} stitches</span>
+                >
+                  <span>{relativeTime(current.viewedAt)}</span>
               </div>
 
               <div
