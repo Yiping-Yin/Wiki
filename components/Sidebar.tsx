@@ -222,7 +222,6 @@ export function Sidebar() {
 
         <Section title="Elsewhere" open={true} onToggle={() => {}} collapsible={false}>
           <SubtleLink href="/browse" active={isActive('/browse')} onNav={() => setOpen(false)}>Reference</SubtleLink>
-          <SubtleLink href="/highlights" active={isActive('/highlights')} onNav={() => setOpen(false)}>Marked lines</SubtleLink>
         </Section>
 
         {/* LLM reference wiki */}

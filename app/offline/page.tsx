@@ -42,7 +42,7 @@ export default function OfflinePage() {
           <a href="/" className="t-footnote" style={pillStyle}>Continue weaving</a>
           <a href="/today" className="t-footnote" style={pillStyle}>Keep moving</a>
           <a href="/kesi" className="t-footnote" style={pillStyle}>Open Kesi</a>
-          <a href="/highlights" className="t-footnote" style={pillStyle}>Return to source</a>
+          <a href="/knowledge" className="t-footnote" style={pillStyle}>Open Knowledge</a>
           {/* Plain anchors are intentional — this page must work without the JS router. */}
         </div>
       </div>
