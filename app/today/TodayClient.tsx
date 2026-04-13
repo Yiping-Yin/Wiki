@@ -232,7 +232,7 @@ export function TodayClient({
       return;
     }
     if (next === 'review') {
-      const payload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      const payload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
       try { sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload)); } catch {}
       router.push(surface.href);
       return;
@@ -243,7 +243,7 @@ export function TodayClient({
   };
 
   const openRefresh = (surface: StudySurface) => {
-    const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: null };
+    const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
     const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'today' };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
