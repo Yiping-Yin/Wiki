@@ -26,6 +26,7 @@ import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh
 import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
+import { latestVisitAt } from '../../lib/trace/source-bound';
 
 type DocLite = {
   id: string;
@@ -389,7 +390,7 @@ export function TodayClient({
         </Block>
       )}
 
-      <ReviewCards traces={traces} docsById={docsById} />
+      <ReviewCards traces={traces} docsById={docsById} onOpenReview={openNext} />
     </div>
   );
 }
@@ -589,19 +590,58 @@ function todayPrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction'
  * §④: faster than flipping through a notebook.
  * No separate quiz page needed — review happens on /today.
  */
-function ReviewCards({ traces, docsById }: { traces: Trace[]; docsById: Map<string, DocLite> }) {
+function ReviewCards({
+  traces,
+  docsById,
+  onOpenReview,
+}: {
+  traces: Trace[];
+  docsById: Map<string, DocLite>;
+  onOpenReview: (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => void;
+}) {
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const threeDaysAgo = Date.now() - 3 * 86400000;
 
   const cards = useMemo(() => {
-    const out: { quote: string; summary: string; content: string; docTitle: string; href: string; at: number }[] = [];
+    const out: Array<{
+      quote: string;
+      summary: string;
+      content: string;
+      docTitle: string;
+      href: string;
+      at: number;
+      anchorId: string;
+      surface: StudySurface;
+    }> = [];
     for (const t of traces) {
       if (t.kind !== 'reading' || t.parentId || !t.source?.docId) continue;
+      const meta = docsById.get(t.source.docId);
+      const viewedAt = latestVisitAt(t);
+      const learning = summarizeLearningSurface(t, viewedAt);
+      const surface: StudySurface = {
+        id: t.source.docId,
+        docId: t.source.docId,
+        title: meta?.title ?? t.source.sourceTitle ?? '',
+        href: meta?.href ?? t.source.href,
+        pinned: false,
+        viewedAt,
+        touchedAt: learning.touchedAt,
+        kind: t.source.href.startsWith('/knowledge/')
+          ? 'knowledge'
+          : t.source.href.startsWith('/wiki/')
+            ? 'wiki'
+            : t.source.href.startsWith('/uploads/')
+              ? 'upload'
+              : 'other',
+        learning,
+        latestSummary: learning.latestSummary,
+        latestQuote: learning.latestQuote,
+        preview: meta?.preview ?? '',
+      };
       for (const e of t.events) {
         if (e.kind !== 'thought-anchor') continue;
         if (e.at < threeDaysAgo) continue;
         if (!e.quote || !e.summary) continue;
-        const meta = docsById.get(t.source.docId);
         out.push({
           quote: e.quote,
           summary: e.summary,
@@ -609,6 +649,8 @@ function ReviewCards({ traces, docsById }: { traces: Trace[]; docsById: Map<stri
           docTitle: meta?.title ?? t.source.sourceTitle ?? '',
           href: meta?.href ?? t.source.href,
           at: e.at,
+          anchorId: e.anchorId,
+          surface,
         });
       }
     }
@@ -662,16 +704,40 @@ function ReviewCards({ traces, docsById }: { traces: Trace[]; docsById: Map<stri
                 }}>
                   {card.summary}
                 </div>
-                <Link
-                  href={card.href}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    fontSize: '0.75rem', color: 'var(--accent)',
-                    textDecoration: 'none',
-                  }}
-                >
-                  {card.docTitle}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const payload: ReviewResumePayload = { href: card.href, anchorId: card.anchorId };
+                      try { sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload)); } catch {}
+                      onOpenReview(card.surface, 'review');
+                    }}
+                    style={{
+                      appearance: 'none',
+                      border: 0,
+                      background: 'transparent',
+                      color: 'var(--accent)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      padding: 0,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Review
+                  </button>
+                  <Link
+                    href={card.href}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      fontSize: '0.75rem', color: 'var(--fg-secondary)',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {card.docTitle}
+                  </Link>
+                </div>
               </div>
             )}
           </div>
