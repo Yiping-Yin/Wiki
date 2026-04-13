@@ -6,6 +6,7 @@
  * becomes the primary surface instead of exploding all notes at once.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { AnchorCard } from './AnchorCard';
 
 export type AnchorDotProps = {
@@ -90,6 +91,7 @@ function locateAnchorEl(anchorId: string, anchorBlockId?: string, anchorBlockTex
 }
 
 export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffsetPx, rangeStartId, rangeStartText, rangeEndId, rangeEndText, summary, content, quote, clusterIndex = 0 }: AnchorDotProps) {
+  const smallScreen = useSmallScreen();
   const [pos, setPos] = useState<{ relativeTop: number; viewportTop: number; fixedRight: number; outAbove: boolean } | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -266,11 +268,12 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
         type="button"
         aria-label={pinned ? 'Close anchored note' : 'Open anchored note'}
         onMouseEnter={() => {
+          if (smallScreen) return;
           if (globallyPinnedId && globallyPinnedId !== anchorId) return;
           cancelClose();
           if (!pinned) setPreviewOpen(true);
         }}
-        onMouseLeave={scheduleClose}
+        onMouseLeave={smallScreen ? undefined : scheduleClose}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -298,15 +301,15 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
           position: 'absolute',
           top: pos.relativeTop,
           right: 12 + clusterIndex * 10,
-          width: 22,
-          height: 22,
+          width: smallScreen ? 28 : 22,
+          height: smallScreen ? 28 : 22,
           borderRadius: '50%',
           background: 'transparent',
           border: 0,
           cursor: 'pointer',
           zIndex: 10,
           padding: 0,
-          margin: '-8px',
+          margin: smallScreen ? '-11px' : '-8px',
           appearance: 'none',
           display: 'flex',
           alignItems: 'center',
@@ -329,7 +332,9 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
       {cardMounted && (
         <div style={{
           opacity: cardVisible ? 1 : 0,
-          transform: cardVisible ? 'translateX(0)' : 'translateX(8px)',
+          transform: smallScreen
+            ? cardVisible ? 'translateY(0)' : 'translateY(8px)'
+            : cardVisible ? 'translateX(0)' : 'translateX(8px)',
           transition: 'opacity 0.2s ease, transform 0.2s ease',
         }}>
           <AnchorCard

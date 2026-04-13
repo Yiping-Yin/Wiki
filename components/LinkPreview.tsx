@@ -8,6 +8,7 @@
  * /api/search-index, cached in module memory.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 type DocMeta = { title: string; href: string; category: string; preview?: string };
 
@@ -60,6 +61,7 @@ async function loadPreview(href: string): Promise<string | undefined> {
 }
 
 export function LinkPreview() {
+  const smallScreen = useSmallScreen();
   const [hovered, setHovered] = useState<{ x: number; y: number; meta: DocMeta; preview?: string } | null>(null);
   const timer = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -72,6 +74,7 @@ export function LinkPreview() {
       href.startsWith('/wiki/') || href.startsWith('/knowledge/');
 
     const onMouseOver = (e: MouseEvent) => {
+      if (smallScreen) return;
       const a = (e.target as HTMLElement).closest('a') as HTMLAnchorElement | null;
       if (!a || !a.href) return;
       const url = new URL(a.href, window.location.href);
@@ -100,6 +103,7 @@ export function LinkPreview() {
     };
 
     const onMouseOut = (e: MouseEvent) => {
+      if (smallScreen) return;
       const a = (e.target as HTMLElement).closest('a');
       if (!a) return;
       if (timer.current) window.clearTimeout(timer.current);
@@ -109,18 +113,52 @@ export function LinkPreview() {
       }, 120);
     };
 
+    const openPreview = async (anchor: HTMLAnchorElement) => {
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      const path = url.pathname;
+      const meta = _hrefIndex?.get(path);
+      if (!meta) return;
+      const rect = anchor.getBoundingClientRect();
+      const preview = await loadPreview(path);
+      setHovered({
+        x: rect.left + rect.width / 2 + window.scrollX,
+        y: rect.bottom + window.scrollY + 6,
+        meta,
+        preview,
+      });
+    };
+
+    const onClick = (e: MouseEvent) => {
+      if (!smallScreen) return;
+      const a = (e.target as HTMLElement).closest('a') as HTMLAnchorElement | null;
+      if (!a || !a.href) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      const path = url.pathname;
+      if (!isInternalDoc(path)) return;
+      const segs = path.split('/').filter(Boolean);
+      if (segs[0] === 'wiki' && segs.length !== 2) return;
+      if (segs[0] === 'knowledge' && segs.length !== 3) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void openPreview(a);
+    };
+
     const onScroll = () => setHovered(null);
 
     document.addEventListener('mouseover', onMouseOver);
     document.addEventListener('mouseout', onMouseOut);
+    document.addEventListener('click', onClick, true);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       document.removeEventListener('mouseover', onMouseOver);
       document.removeEventListener('mouseout', onMouseOut);
+      document.removeEventListener('click', onClick, true);
       window.removeEventListener('scroll', onScroll);
       if (timer.current) window.clearTimeout(timer.current);
     };
-  }, []);
+  }, [smallScreen]);
 
   if (!hovered) return null;
 
@@ -134,14 +172,22 @@ export function LinkPreview() {
       onMouseEnter={() => { insideCard.current = true; }}
       onMouseLeave={() => { insideCard.current = false; setHovered(null); }}
       style={{
-        position: 'absolute', left, top: hovered.y, zIndex: 95,
-        width: W, padding: '0.9rem 1rem',
+        position: smallScreen ? 'fixed' : 'absolute',
+        left: smallScreen ? 12 : left,
+        right: smallScreen ? 12 : 'auto',
+        top: smallScreen ? 'auto' : hovered.y,
+        bottom: smallScreen ? 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)' : 'auto',
+        zIndex: 95,
+        width: smallScreen ? 'auto' : W,
+        padding: '0.9rem 1rem',
         color: 'var(--fg)',
         background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
         borderTop: '0.5px solid var(--mat-border)',
         borderBottom: '0.5px solid var(--mat-border)',
         fontSize: '0.85rem', lineHeight: 1.5,
         animation: 'lpFade 0.18s var(--ease-spring)',
+        borderRadius: smallScreen ? 14 : 0,
+        boxShadow: smallScreen ? 'var(--shadow-1)' : 'none',
       }}
     >
       <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)', fontWeight: 700, marginBottom: 4 }}>
@@ -163,6 +209,7 @@ export function LinkPreview() {
             borderBottom: '0.5px solid var(--accent)', padding: '3px 0', fontSize: '0.75rem',
             textDecoration: 'none', fontWeight: 600,
           }}
+          onClick={() => setHovered(null)}
         >Open</a>
       </div>
     </div>
