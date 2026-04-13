@@ -321,27 +321,12 @@ export function KesiView() {
     }
   };
 
-  if (loading || !mounted) return null;
-  if (panels.length === 0) return <EmptyKesiCanvas />;
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        minHeight: 'calc(100vh - 4rem)',
-        padding: '2.4rem 1.25rem 4rem',
-        background: `
-          radial-gradient(ellipse 60% 50% at 50% 24%, rgba(255,255,255,0.92) 0%, transparent 70%),
-          radial-gradient(ellipse 70% 60% at 24% 24%, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 60%)
-        `,
-      }}
-    >
-      <div
-        style={{
-          width: 'min(1180px, 100%)',
-          margin: '0 auto',
-        }}
-      >
+  const content = !mounted || loading
+    ? <LoadingKesiShell />
+    : panels.length === 0
+      ? <EmptyKesiCanvas />
+      : (
+        <>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
           <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
           <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 700 }}>
@@ -921,8 +906,101 @@ export function KesiView() {
             </section>
           ))}
         </div>
+        </>
+      );
+
+  return (
+    <KesiShell>
+      {content}
+    </KesiShell>
+  );
+}
+
+function KesiShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        minHeight: 'calc(100vh - 4rem)',
+        padding: '2.4rem 1.25rem 4rem',
+        background: `
+          radial-gradient(ellipse 60% 50% at 50% 24%, rgba(255,255,255,0.92) 0%, transparent 70%),
+          radial-gradient(ellipse 70% 60% at 24% 24%, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 60%)
+        `,
+      }}
+    >
+      <div
+        style={{
+          width: 'min(1180px, 100%)',
+          margin: '0 auto',
+        }}
+      >
+        {children}
       </div>
     </div>
+  );
+}
+
+function LoadingKesiShell() {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
+        <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 700 }}>
+          Kesi
+        </span>
+        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+      </div>
+
+      <div
+        className="material-thick"
+        style={{
+          padding: '1rem 1.05rem 1.05rem',
+          borderRadius: 'var(--r-3)',
+          marginBottom: 18,
+          boxShadow: 'var(--shadow-1)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.4 }} />
+          <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+            Return to weave
+          </span>
+          <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ width: '42%', height: 16, borderRadius: 999, background: 'var(--surface-2)' }} />
+          <div style={{ width: '78%', height: 12, borderRadius: 999, background: 'var(--surface-2)' }} />
+          <div style={{ width: '64%', height: 12, borderRadius: 999, background: 'var(--surface-2)' }} />
+        </div>
+      </div>
+
+      <div
+        className="material-thick"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0.5rem 0.8rem',
+          borderRadius: 999,
+          marginBottom: 18,
+          boxShadow: 'var(--shadow-1)',
+          color: 'var(--muted)',
+        }}
+      >
+        <span aria-hidden style={{ fontSize: '0.8rem', lineHeight: 1 }}>⌕</span>
+        <span
+          style={{
+            flex: 1,
+            height: 12,
+            borderRadius: 999,
+            background: 'var(--surface-2)',
+          }}
+        />
+      </div>
+
+      <EmptyKesiCanvas />
+    </>
   );
 }
 
