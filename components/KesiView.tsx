@@ -267,6 +267,9 @@ export function KesiView() {
   }, [panels]);
 
   const returnPanel = sortedPanels[0] ?? null;
+  const refreshPanels = sortedPanels
+    .filter((panel) => panel.learning.nextAction === 'refresh' && panel.traceId !== returnPanel?.traceId)
+    .slice(0, 4);
 
   const openReview = (panel: Panel) => {
     const payload: ReviewResumePayload = {
@@ -458,6 +461,93 @@ export function KesiView() {
                   </button>
                 )}
               </div>
+            </div>
+          </section>
+        )}
+
+        {refreshPanels.length > 0 && (
+          <section
+            className="material-thick"
+            style={{
+              padding: '0.95rem 1.05rem',
+              borderRadius: 'var(--r-3)',
+              marginBottom: 18,
+              boxShadow: 'var(--shadow-1)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span aria-hidden style={{ width: 14, height: 1, background: 'var(--tint-orange)', opacity: 0.65 }} />
+              <span
+                className="t-caption2"
+                style={{
+                  color: 'var(--muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 700,
+                }}
+              >
+                Needs refresh
+              </span>
+              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+              <span className="t-caption2" style={{ color: 'var(--tint-orange)', letterSpacing: '0.08em', fontWeight: 700 }}>
+                {refreshPanels.length}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {refreshPanels.map((panel, index) => (
+                <div
+                  key={panel.traceId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '0.78rem 0',
+                    borderBottom: index < refreshPanels.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: 'var(--display)',
+                        fontSize: '0.98rem',
+                        fontWeight: 600,
+                        letterSpacing: '-0.012em',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {panel.title}
+                    </div>
+                    <div
+                      className="t-caption2"
+                      style={{
+                        marginTop: 5,
+                        color: 'var(--muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span>{panel.family}</span>
+                      <span aria-hidden>·</span>
+                      <span>{formatWhen(panel.crystallizedAt)}</span>
+                      <span aria-hidden>·</span>
+                      <span>{Math.max(1, Math.round(panel.learning.daysSinceTouch))}d cold</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openRefresh(panel)}
+                    style={actionStyle(true)}
+                  >
+                    Refresh
+                  </button>
+                </div>
+              ))}
             </div>
           </section>
         )}
