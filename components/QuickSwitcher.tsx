@@ -10,6 +10,8 @@
  * Trigger: ⌘P / Ctrl+P · Esc closes · ↑↓ navigates · Enter opens.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { contextFromPathname } from '../lib/doc-context';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 
 type Doc = { id: string; title: string; href: string; category: string };
@@ -69,6 +71,8 @@ const KIND_META = {
 } as const;
 
 export function QuickSwitcher() {
+  const pathname = usePathname() ?? '/';
+  const ctx = contextFromPathname(pathname);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -137,13 +141,15 @@ export function QuickSwitcher() {
   const toolActions: Result[] = useMemo(() => [
     { kind: 'doc' as const, key: 'tool:rehearsal', title: 'Rehearsal', sub: 'Deepen a panel from memory', href: '__action:rehearsal' },
     { kind: 'doc' as const, key: 'tool:examiner', title: 'Examiner', sub: 'Verify a woven understanding', href: '__action:examiner' },
+    { kind: 'doc' as const, key: 'tool:kesi', title: 'Kesi', sub: 'Open the settled fabric', href: '/kesi' },
+    { kind: 'doc' as const, key: 'tool:relations', title: 'Relations', sub: ctx.isFree ? 'Open the panel relation layer' : 'Open the current panel in relations', href: ctx.isFree ? '/graph' : `__action:relations:${ctx.docId}` },
     { kind: 'doc' as const, key: 'tool:ingestion', title: 'Import', sub: 'Drag-drop files', href: '__action:ingestion' },
     { kind: 'doc' as const, key: 'tool:recursing', title: 'Reconstructions', sub: 'Past rehearsals', href: '__action:recursing' },
     { kind: 'doc' as const, key: 'tool:thoughtmap', title: 'Thought Map', sub: '⌘/ · Settle the current weave', href: '__action:thoughtmap' },
     { kind: 'doc' as const, key: 'tool:help', title: 'Help', sub: 'Usage guide', href: '/help' },
     { kind: 'doc' as const, key: 'tool:export-json', title: 'Export Notes (JSON)', sub: 'Full backup', href: '__action:export-json' },
     { kind: 'doc' as const, key: 'tool:export-md', title: 'Export Notes (Markdown)', sub: 'Human-readable', href: '__action:export-md' },
-  ], []);
+  ], [ctx.docId, ctx.isFree]);
 
   // Score & merge — content first, tools last.
   const grouped = useMemo(() => {
@@ -201,6 +207,9 @@ export function QuickSwitcher() {
       window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'recursing' } }));
     } else if (r.href === '__action:thoughtmap') {
       window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
+    } else if (r.href.startsWith('__action:relations:')) {
+      const docId = r.href.slice('__action:relations:'.length);
+      window.location.href = `/graph?focus=${encodeURIComponent(docId)}`;
     } else if (r.href === '__action:export-json') {
       window.dispatchEvent(new CustomEvent('loom:export', { detail: { format: 'json' } }));
     } else if (r.href === '__action:export-md') {
