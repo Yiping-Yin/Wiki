@@ -130,14 +130,6 @@ export function HomeClient(_props: unknown) {
     router.push(item.href);
   };
 
-  const openKesi = (item: ResumeItem) => {
-    router.push(`/kesi?focus=${encodeURIComponent(item.id)}`);
-  };
-
-  const openRelations = (item: ResumeItem) => {
-    router.push(`/graph?focus=${encodeURIComponent(item.id)}`);
-  };
-
   const openPrimaryAction = (item: ResumeItem) => {
     if (item.learning.nextAction === 'revisit') {
       openReview(item);

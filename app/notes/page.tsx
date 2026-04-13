@@ -132,14 +132,6 @@ export default function NotesPage() {
     router.push(note.href);
   };
 
-  const openKesi = (note: NoteItem) => {
-    router.push(`/kesi?focus=${encodeURIComponent(note.docId)}`);
-  };
-
-  const openRelations = (note: NoteItem) => {
-    router.push(`/graph?focus=${encodeURIComponent(note.docId)}`);
-  };
-
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       <div

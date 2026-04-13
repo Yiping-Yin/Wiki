@@ -252,14 +252,6 @@ export function TodayClient({
     router.push(surface.href);
   };
 
-  const openKesi = (surface: StudySurface) => {
-    router.push(`/kesi?focus=${encodeURIComponent(surface.docId)}`);
-  };
-
-  const openRelations = (surface: StudySurface) => {
-    router.push(`/graph?focus=${encodeURIComponent(surface.docId)}`);
-  };
-
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
       {focusSurface && (
