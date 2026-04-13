@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
@@ -202,10 +201,6 @@ function UploadBlock({
             >
               {item.latestSummary || item.preview || item.latestQuote || 'Open this source to start weaving against it.'}
             </div>
-            <div style={{ marginTop: 7 }}>
-              <LearningStatusInline status={item.learning} compact />
-            </div>
-
             <div
               className="t-caption2"
               style={{

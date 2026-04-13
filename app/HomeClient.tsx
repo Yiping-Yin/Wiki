@@ -16,7 +16,6 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../components/QuietGuideCard';
-import { LearningStatusInline } from '../components/LearningStatusInline';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
 import { setReviewResume, continuePanelLifecycle } from '../lib/panel-resume';
 import { useHistory } from '../lib/use-history';
@@ -219,13 +218,11 @@ export function HomeClient(_props: unknown) {
                   }}>{item.latestSummary}</span>
                 ) : null}
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <LearningStatusInline status={item.learning} compact />
-                <span suppressHydrationWarning className="t-caption" style={{
-                  color: 'var(--muted)',
-                  fontVariantNumeric: 'tabular-nums',
-                }}>{relativeTime(item.viewedAt)}</span>
-              </span>
+              <span suppressHydrationWarning className="t-caption" style={{
+                color: 'var(--muted)',
+                fontVariantNumeric: 'tabular-nums',
+                flexShrink: 0,
+              }}>{relativeTime(item.viewedAt)}</span>
             </Link>
           </li>
         ))}

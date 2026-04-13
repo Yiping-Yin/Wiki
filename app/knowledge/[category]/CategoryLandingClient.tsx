@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { CategoryHero } from '../../../components/CategoryHero';
 import { QuietGuideCard } from '../../../components/QuietGuideCard';
-import { LearningStatusInline } from '../../../components/LearningStatusInline';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
 import type { KnowledgeCategory } from '../../../lib/knowledge-types';
@@ -496,9 +495,6 @@ function SurfaceList({ items }: { items: CategorySurface[] }) {
               {docSummary(surface)}
             </div>
           )}
-          <div style={{ marginTop: 7 }}>
-            <LearningStatusInline status={surface.learning} compact />
-          </div>
         </Link>
       ))}
     </div>

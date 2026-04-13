@@ -19,7 +19,6 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../../components/QuietGuideCard';
-import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { useHistory } from '../../lib/use-history';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { usePins } from '../../lib/use-pins';
@@ -436,10 +435,6 @@ function ScheduleList({
               {item.latestSummary || item.latestQuote || item.preview}
             </div>
           )}
-
-          <div style={{ marginTop: 7 }}>
-            <LearningStatusInline status={item.learning} compact />
-          </div>
 
           <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
             <button
