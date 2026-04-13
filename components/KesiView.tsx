@@ -13,6 +13,8 @@ import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/le
 import { useAllTraces, useRemoveEvents, type Trace } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../lib/refresh-resume';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
 
 const TINTS = [
   'var(--tint-blue)',   'var(--tint-indigo)', 'var(--tint-purple)',
@@ -271,6 +273,33 @@ export function KesiView() {
     };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openRefresh = (panel: Panel) => {
+    const reviewPayload: ReviewResumePayload = {
+      href: panel.href,
+      anchorId: panel.sections[0]?.anchorId ?? null,
+    };
+    const refreshPayload: RefreshResumePayload = {
+      href: panel.href,
+      source: 'kesi',
+    };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openOverlay = (panel: Panel, overlay: OverlayResumePayload['overlay']) => {
+    const payload: OverlayResumePayload = {
+      href: panel.href,
+      overlay,
+    };
+    try {
+      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
     } catch {}
     router.push(panel.href);
   };
@@ -593,11 +622,19 @@ export function KesiView() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openReview(panel);
+                          if (panel.learning.nextAction === 'refresh') {
+                            openRefresh(panel);
+                          } else if (panel.learning.nextAction === 'rehearse') {
+                            openOverlay(panel, 'rehearsal');
+                          } else if (panel.learning.nextAction === 'examine') {
+                            openOverlay(panel, 'examiner');
+                          } else {
+                            openReview(panel);
+                          }
                         }}
                         style={actionStyle(true)}
                       >
-                        Review
+                        {primaryActionLabel(panel.learning.nextAction)}
                       </button>
                       <button
                         type="button"
@@ -723,6 +760,22 @@ function actionStyle(primary: boolean) {
     letterSpacing: '0.04em',
     cursor: 'pointer',
   } as const;
+}
+
+function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  switch (nextAction) {
+    case 'refresh':
+      return 'Refresh';
+    case 'rehearse':
+      return 'Rehearsal';
+    case 'examine':
+      return 'Examiner';
+    case 'capture':
+      return 'Source';
+    case 'revisit':
+    default:
+      return 'Review';
+  }
 }
 
 function recencySort(recency: LearningSurfaceSummary['recency']) {

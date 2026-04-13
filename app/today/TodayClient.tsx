@@ -181,6 +181,17 @@ export function TodayClient({
     return surfaces.filter((surface) => surface.learning.nextAction === 'rehearse');
   }, [surfaces]);
 
+  const weakSpots = useMemo(() => {
+    return surfaces
+      .filter((surface) => surface.learning.weakSpot)
+      .sort((a, b) => {
+        if (b.learning.retryCount !== a.learning.retryCount) {
+          return b.learning.retryCount - a.learning.retryCount;
+        }
+        return a.learning.daysSinceTouch - b.learning.daysSinceTouch;
+      });
+  }, [surfaces]);
+
   const examineNext = useMemo(() => {
     return surfaces.filter((surface) => surface.learning.nextAction === 'examine');
   }, [surfaces]);
@@ -233,6 +244,12 @@ export function TodayClient({
       {rehearseNext.length > 0 && (
         <Block label="Rehearse next">
           <ScheduleList items={rehearseNext} next="rehearsal" cta="Open rehearsal" onOpen={openNext} />
+        </Block>
+      )}
+
+      {weakSpots.length > 0 && (
+        <Block label="Still failing">
+          <ScheduleList items={weakSpots} next="rehearsal" cta="Rehearse again" onOpen={openNext} />
         </Block>
       )}
 

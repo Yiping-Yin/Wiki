@@ -11,6 +11,7 @@ export type LearningStage =
 
 export type LearningRecency = 'fresh' | 'cooling' | 'stale';
 export type LearningNextAction = 'capture' | 'rehearse' | 'examine' | 'revisit' | 'refresh';
+export type LearningQuality = 'untested' | 'fragile' | 'developing' | 'solid';
 
 export type LearningStatusSummary = {
   stage: LearningStage;
@@ -18,8 +19,12 @@ export type LearningStatusSummary = {
   captureCount: number;
   rehearsalCount: number;
   examinerCount: number;
+  passCount: number;
+  retryCount: number;
   crystallized: boolean;
   verified: boolean;
+  quality: LearningQuality;
+  weakSpot: boolean;
   recency: LearningRecency;
   daysSinceTouch: number;
   nextAction: LearningNextAction;
@@ -36,6 +41,13 @@ export type LearningSurfaceSummary = LearningStatusSummary & {
 function asTraceList(traces: Trace | Trace[] | null | undefined): Trace[] {
   if (!traces) return [];
   return Array.isArray(traces) ? traces : [traces];
+}
+
+function examinerVerdictFromContent(content: string): 'pass' | 'retry' | null {
+  const lower = content.toLowerCase();
+  if (lower.includes('**verdict**: pass')) return 'pass';
+  if (lower.includes('**verdict**: retry')) return 'retry';
+  return null;
 }
 
 function inferTouchedAt(traces: Trace[], viewedAt: number) {
@@ -73,6 +85,8 @@ export function summarizeLearningStatus(
   let captureCount = 0;
   let rehearsalCount = 0;
   let examinerCount = 0;
+  let passCount = 0;
+  let retryCount = 0;
   let crystallized = false;
 
   for (const trace of traceList) {
@@ -82,6 +96,9 @@ export function summarizeLearningStatus(
           rehearsalCount += 1;
         } else if (event.anchorBlockId === 'loom-examiner-root') {
           examinerCount += 1;
+          const verdict = examinerVerdictFromContent(event.content);
+          if (verdict === 'pass') passCount += 1;
+          if (verdict === 'retry') retryCount += 1;
         } else {
           captureCount += 1;
         }
@@ -116,6 +133,15 @@ export function summarizeLearningStatus(
           : recency === 'stale'
             ? 'refresh'
             : 'revisit';
+  const quality: LearningQuality =
+    passCount === 0 && retryCount === 0
+      ? 'untested'
+      : retryCount > passCount || (retryCount >= 2 && passCount === 0)
+        ? 'fragile'
+        : retryCount > 0 || (passCount > 0 && !crystallized)
+          ? 'developing'
+          : 'solid';
+  const weakSpot = quality === 'fragile';
 
   return {
     stage,
@@ -123,8 +149,12 @@ export function summarizeLearningStatus(
     captureCount,
     rehearsalCount,
     examinerCount,
+    passCount,
+    retryCount,
     crystallized,
     verified,
+    quality,
+    weakSpot,
     recency,
     daysSinceTouch,
     nextAction,

@@ -24,6 +24,14 @@ export function LearningStatusInline({
       : status.recency === 'stale'
         ? 'var(--tint-orange)'
         : 'var(--muted)';
+  const qualityColor =
+    status.quality === 'solid'
+      ? 'var(--tint-green)'
+      : status.quality === 'fragile'
+        ? 'var(--tint-red)'
+        : status.quality === 'developing'
+          ? 'var(--tint-orange)'
+          : 'var(--muted)';
 
   if (compact) {
     const label = compactStageLabel(status);
@@ -45,6 +53,16 @@ export function LearningStatusInline({
         }}
       >
         <span>{label}</span>
+        {status.quality !== 'untested' && (
+          <span
+            style={{
+            color: qualityColor,
+            opacity: status.quality === 'developing' ? 0.86 : 1,
+          }}
+          >
+            {status.quality}
+          </span>
+        )}
         {status.opened && (
           <span
             style={{
@@ -109,6 +127,18 @@ export function LearningStatusInline({
           {labelForStep(step.key, step.label, status)}
         </span>
       ))}
+      {status.quality !== 'untested' && (
+        <span
+          style={{
+            color: qualityColor,
+            textTransform: 'uppercase',
+            fontWeight: 700,
+            opacity: status.quality === 'developing' ? 0.86 : 1,
+          }}
+        >
+          {status.quality}
+        </span>
+      )}
       {status.opened && (
         <span
           style={{
