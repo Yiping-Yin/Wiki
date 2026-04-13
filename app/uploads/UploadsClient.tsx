@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { LearningStatusInline } from '../../components/LearningStatusInline';
+import { summarizeLearningStatus, type LearningStatusSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
 import { UploadButton } from './UploadButton';
@@ -22,6 +24,7 @@ type UploadSurface = UploadListItem & {
   anchorCount: number;
   latestSummary: string;
   latestQuote?: string;
+  learning: LearningStatusSummary;
 };
 
 function formatSize(bytes: number) {
@@ -91,6 +94,7 @@ function uploadSurface(item: UploadListItem, traces: Trace[]): UploadSurface {
       touchedAt: item.mtime,
       anchorCount: 0,
       latestSummary: '',
+      learning: summarizeLearningStatus(null, 0),
     };
   }
 
@@ -104,6 +108,7 @@ function uploadSurface(item: UploadListItem, traces: Trace[]): UploadSurface {
     anchorCount: summary.anchorCount,
     latestSummary: summary.latestSummary,
     latestQuote: summary.latestQuote,
+    learning: summarizeLearningStatus(rootTrace, latestVisitAt(rootTrace)),
   };
 }
 
@@ -211,6 +216,9 @@ function UploadBlock({
               }}
             >
               {item.latestSummary || item.preview || item.latestQuote || 'Open this source to start weaving against it.'}
+            </div>
+            <div style={{ marginTop: 7 }}>
+              <LearningStatusInline status={item.learning} compact />
             </div>
 
             <div

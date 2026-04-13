@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { CategoryHero } from '../../../components/CategoryHero';
 import { KesiSwatch } from '../../../components/KesiSwatch';
+import { LearningStatusInline } from '../../../components/LearningStatusInline';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
 import type { KnowledgeCategory } from '../../../lib/knowledge-types';
+import { summarizeLearningStatus, type LearningStatusSummary } from '../../../lib/learning-status';
 
 export type CategoryDocCard = {
   id: string;
@@ -34,6 +36,7 @@ type CategorySurface = CategoryDocCard & {
   anchorCount: number;
   latestSummary: string;
   latestQuote?: string;
+  learning: LearningStatusSummary;
 };
 
 function docIdFor(doc: CategoryDocCard) {
@@ -159,6 +162,7 @@ export function CategoryLandingClient({
             touchedAt: viewedAt,
             anchorCount: 0,
             latestSummary: '',
+            learning: summarizeLearningStatus(null, viewedAt),
           } satisfies CategorySurface;
         }
 
@@ -170,6 +174,7 @@ export function CategoryLandingClient({
           anchorCount: summary.anchorCount,
           latestSummary: summary.latestSummary,
           latestQuote: summary.latestQuote,
+          learning: summarizeLearningStatus(trace, viewedAt),
         } satisfies CategorySurface;
       })
       .sort((a, b) => stateRank(a) - stateRank(b) || b.touchedAt - a.touchedAt || a.subOrder - b.subOrder);
@@ -550,6 +555,9 @@ function SurfaceList({ items }: { items: CategorySurface[] }) {
               {docSummary(surface)}
             </div>
           )}
+          <div style={{ marginTop: 7 }}>
+            <LearningStatusInline status={surface.learning} compact />
+          </div>
         </Link>
       ))}
     </div>

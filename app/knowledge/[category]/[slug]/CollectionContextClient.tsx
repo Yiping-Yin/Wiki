@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { KesiSwatch } from '../../../../components/KesiSwatch';
+import { LearningStatusInline } from '../../../../components/LearningStatusInline';
 import { useHistory } from '../../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../../lib/trace';
 import type { KnowledgeCategory } from '../../../../lib/knowledge-types';
+import { summarizeLearningStatus, type LearningStatusSummary } from '../../../../lib/learning-status';
 
 export type CollectionDocCard = {
   id: string;
@@ -33,6 +35,7 @@ type CollectionSurface = CollectionDocCard & {
   anchorCount: number;
   latestSummary: string;
   latestQuote?: string;
+  learning: LearningStatusSummary;
 };
 
 function docIdFor(doc: CollectionDocCard) {
@@ -159,6 +162,7 @@ export function CollectionContextClient({
             touchedAt: viewedAt,
             anchorCount: 0,
             latestSummary: '',
+            learning: summarizeLearningStatus(null, viewedAt),
           } satisfies CollectionSurface;
         }
 
@@ -170,6 +174,7 @@ export function CollectionContextClient({
           anchorCount: summary.anchorCount,
           latestSummary: summary.latestSummary,
           latestQuote: summary.latestQuote,
+          learning: summarizeLearningStatus(trace, viewedAt),
         } satisfies CollectionSurface;
       })
       .sort((a, b) => stateRank(a) - stateRank(b) || b.touchedAt - a.touchedAt || a.subOrder - b.subOrder);
@@ -252,6 +257,11 @@ export function CollectionContextClient({
               </>
             ) : null}
           </div>
+          {currentSurface && (
+            <div style={{ marginTop: 8 }}>
+              <LearningStatusInline status={currentSurface.learning} />
+            </div>
+          )}
         </div>
 
         <div style={{ width: 'min(220px, 100%)', marginLeft: 'auto' }}>
