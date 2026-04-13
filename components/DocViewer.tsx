@@ -12,6 +12,7 @@
  * For text formats, the body is supplied by the page (already cleaned).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 export function DocViewer({
   ext,
@@ -175,6 +176,7 @@ function PdfWithText({ src, title, body }: { src: string; title: string; body: s
 }
 
 function PdfFrame({ src, title }: { src: string; title: string }) {
+  const smallScreen = useSmallScreen();
   const [zoom, setZoom] = useState<'page-fit' | 'page-width' | 100 | 125 | 150 | 200>('page-width');
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -199,7 +201,7 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
       className="loom-pdf-frame"
       style={{
         width: '100%',
-        height: fullscreen ? '100vh' : '92vh',
+        height: fullscreen ? '100vh' : smallScreen ? '78vh' : '92vh',
         border: 0, display: 'block',
         background: 'var(--surface-2)',
       }}
@@ -215,7 +217,9 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
       }}>
         <div className="material-thick" style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '0.55rem 0.85rem',
+          padding: smallScreen
+            ? 'max(8px, env(safe-area-inset-top, 0px)) 12px 0.55rem'
+            : '0.55rem 0.85rem',
           borderRadius: 0,
           borderBottom: '0.5px solid var(--mat-border)',
         }}>
@@ -254,14 +258,15 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
       {/* Floating controls — absolute, fade in on hover */}
       <div className="loom-pdf-chrome material-thick" style={{
         position: 'absolute',
-        top: 12, right: 12,
+        top: smallScreen ? 'max(8px, env(safe-area-inset-top, 0px))' : 12,
+        right: smallScreen ? 8 : 12,
         zIndex: 5,
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '5px 8px',
-        borderRadius: 999,
-        opacity: 0,
+        borderRadius: smallScreen ? 14 : 999,
+        opacity: smallScreen ? 1 : 0,
         transition: 'opacity 0.22s var(--ease)',
-        pointerEvents: 'none',
+        pointerEvents: smallScreen ? 'auto' : 'none',
       }}>
         <ZoomControl zoom={zoom} setZoom={setZoom} />
         <button
@@ -279,14 +284,16 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
       {/* Floating title — absolute top-left, also fade in */}
       <div className="loom-pdf-title material-thick" style={{
         position: 'absolute',
-        top: 12, left: 12,
+        top: smallScreen ? 'auto' : 12,
+        left: smallScreen ? 8 : 12,
+        bottom: smallScreen ? 8 : 'auto',
         zIndex: 5,
         padding: '4px 11px',
-        borderRadius: 999,
-        opacity: 0,
+        borderRadius: smallScreen ? 14 : 999,
+        opacity: smallScreen ? 1 : 0,
         transition: 'opacity 0.22s var(--ease)',
-        pointerEvents: 'none',
-        maxWidth: 'calc(100% - 260px)',
+        pointerEvents: smallScreen ? 'auto' : 'none',
+        maxWidth: smallScreen ? 'calc(100% - 16px)' : 'calc(100% - 260px)',
       }}>
         <span className="t-caption2" style={{
           color: 'var(--fg-secondary)', fontWeight: 600,

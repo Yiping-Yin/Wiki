@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 /** Detect knowledge category from current URL path. Returns the
  *  category directory name for the Knowledge system, or null. */
@@ -22,6 +23,7 @@ function detectCategory(pathname: string, knowledgeCategories: Array<{ slug: str
 
 export function DropZone() {
   const pathname = usePathname() ?? '/';
+  const smallScreen = useSmallScreen();
   const { knowledgeCategories } = useKnowledgeNav();
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -108,17 +110,21 @@ export function DropZone() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         pointerEvents: dragging || busy ? 'none' : 'auto',
         animation: 'lpFade 0.18s var(--ease)',
+        padding: smallScreen
+          ? 'max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px))'
+          : 0,
       }}
       role="button"
       aria-label="Dismiss upload overlay"
       onClick={() => { if (error) setError(null); }}
     >
       <div className="glass" style={{
-        padding: '2.5rem 3rem',
-        borderRadius: 'var(--r-4)',
+        padding: smallScreen ? '1.35rem 1.15rem' : '2.5rem 3rem',
+        borderRadius: smallScreen ? '18px' : 'var(--r-4)',
         border: '2px dashed ' + (dragging ? 'var(--accent)' : 'rgba(255,255,255,0.3)'),
         textAlign: 'center',
-        maxWidth: 480,
+        width: smallScreen ? '100%' : 'auto',
+        maxWidth: smallScreen ? 380 : 480,
         boxShadow: 'var(--shadow-3)',
       }}>
         <div style={{
