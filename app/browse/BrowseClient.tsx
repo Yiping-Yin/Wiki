@@ -12,10 +12,11 @@
  * grammar as /notes /highlights /quizzes.
  */
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
-import { summarizeLearningSurface } from '../../lib/learning-status';
+import { summarizeLearningSurface, type LearningNextAction } from '../../lib/learning-status';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -88,6 +89,7 @@ export function BrowseClient({
   llmSections: LLMSection[];
   totalDocs: number;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [history] = useHistory();
   const { traces } = useAllTraces();
@@ -119,12 +121,14 @@ export function BrowseClient({
   }, [categories, normalizedQuery]);
 
   const categoryProgress = useMemo(() => {
-    const map = new Map<string, { touched: number; crystallized: number; examined: number; stale: number }>();
+    const map = new Map<string, { touched: number; crystallized: number; examined: number; stale: number; latestTouched: number; nextAction: LearningNextAction }>();
     for (const category of categories) {
       let touched = 0;
       let crystallized = 0;
       let examined = 0;
       let stale = 0;
+      let latestTouched = 0;
+      let nextAction: LearningNextAction = 'capture';
       for (const doc of category.docs) {
         const docId = docIdForCategoryDoc(doc.id);
         const viewedAt = viewedByDocId.get(docId) ?? 0;
@@ -134,8 +138,12 @@ export function BrowseClient({
         if (learning.crystallized) crystallized += 1;
         if (learning.examinerCount > 0) examined += 1;
         if (learning.opened && learning.recency === 'stale') stale += 1;
+        latestTouched = Math.max(latestTouched, learning.touchedAt);
+        if (browseNextActionRank[learning.nextAction] < browseNextActionRank[nextAction]) {
+          nextAction = learning.nextAction;
+        }
       }
-      map.set(category.slug, { touched, crystallized, examined, stale });
+      map.set(category.slug, { touched, crystallized, examined, stale, latestTouched, nextAction });
     }
     return map;
   }, [categories, tracesByDocId, viewedByDocId]);
@@ -145,11 +153,127 @@ export function BrowseClient({
     return llmSections.filter((section) => matchesSection(section, normalizedQuery));
   }, [llmSections, normalizedQuery]);
 
+  const focusCollection = useMemo(() => {
+    return filteredCategories
+      .filter((category) => (categoryProgress.get(category.slug)?.touched ?? 0) > 0)
+      .sort((a, b) => {
+        const ap = categoryProgress.get(a.slug)!;
+        const bp = categoryProgress.get(b.slug)!;
+        if (browseNextActionRank[ap.nextAction] !== browseNextActionRank[bp.nextAction]) {
+          return browseNextActionRank[ap.nextAction] - browseNextActionRank[bp.nextAction];
+        }
+        return bp.latestTouched - ap.latestTouched;
+      })[0] ?? null;
+  }, [filteredCategories, categoryProgress]);
+
   const groups = useMemo(() => groupTop(filteredCategories), [filteredCategories]);
   const hasResults = groups.length > 0 || filteredSections.length > 0;
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
+      {focusCollection && (() => {
+        const progress = categoryProgress.get(focusCollection.slug)!;
+        return (
+          <section
+            className="material-thick"
+            style={{
+              padding: '1rem 1.05rem 1.05rem',
+              borderRadius: 'var(--r-3)',
+              marginBottom: 20,
+              boxShadow: 'var(--shadow-1)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
+              <span
+                className="t-caption2"
+                style={{
+                  color: 'var(--muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 700,
+                }}
+              >
+                Continue collection
+              </span>
+              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--display)',
+                    fontSize: '1.18rem',
+                    fontWeight: 650,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.25,
+                    marginBottom: 6,
+                  }}
+                >
+                  {displayLabel(focusCollection.label)}
+                </div>
+
+                <div
+                  className="t-caption2"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    color: 'var(--muted)',
+                    letterSpacing: '0.04em',
+                    marginBottom: 8,
+                  }}
+                >
+                  <span>{focusCollection.count} docs</span>
+                  <span aria-hidden>·</span>
+                  <span>{progress.touched} touched</span>
+                  {progress.examined > 0 && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{progress.examined} examined</span>
+                    </>
+                  )}
+                  {progress.crystallized > 0 && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{progress.crystallized} settled</span>
+                    </>
+                  )}
+                  {progress.stale > 0 && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{progress.stale} stale</span>
+                    </>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    color: 'var(--fg-secondary)',
+                    fontSize: '0.9rem',
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {browseFocusLine(progress.nextAction)}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/knowledge/${focusCollection.slug}`)}
+                  style={browseActionStyle(true)}
+                >
+                  {browsePrimaryLabel(progress.nextAction)}
+                </button>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       <div
         className="material-thick"
         style={{
@@ -328,6 +452,61 @@ export function BrowseClient({
       )}
     </div>
   );
+}
+
+const browseNextActionRank: Record<LearningNextAction, number> = {
+  refresh: 0,
+  examine: 1,
+  rehearse: 2,
+  revisit: 3,
+  capture: 4,
+};
+
+function browsePrimaryLabel(nextAction: LearningNextAction) {
+  switch (nextAction) {
+    case 'refresh':
+      return 'Refresh collection';
+    case 'examine':
+      return 'Verify collection';
+    case 'rehearse':
+      return 'Rehearse collection';
+    case 'capture':
+      return 'Open collection';
+    default:
+      return 'Review collection';
+  }
+}
+
+function browseFocusLine(nextAction: LearningNextAction) {
+  switch (nextAction) {
+    case 'refresh':
+      return 'This collection has cooled. Re-enter it and warm the weave back up.';
+    case 'examine':
+      return 'This collection is ready to verify. Move from rehearsal into examiner while it is still coherent.';
+    case 'rehearse':
+      return 'This collection has captures that still need shaping into stronger understanding.';
+    case 'capture':
+      return 'You have opened this collection before, but the weave has barely started. Return and capture the live passages.';
+    default:
+      return 'This collection is already in motion. Return to review and keep the weave coherent.';
+  }
+}
+
+function browseActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
+    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
+    color: primary ? 'var(--accent)' : 'var(--fg)',
+    borderRadius: 999,
+    padding: '0.52rem 0.82rem',
+    fontSize: '0.82rem',
+    fontWeight: 650,
+    letterSpacing: '-0.01em',
+    lineHeight: 1,
+    cursor: 'pointer',
+    boxShadow: primary ? 'var(--shadow-1)' : 'none',
+  };
 }
 
 function Block({ label, children }: { label: string; children: React.ReactNode }) {
