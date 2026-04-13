@@ -91,9 +91,9 @@ export function CapturePrompt() {
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           gap: 10,
-          padding: '0.48rem 0.7rem 0.48rem 0.8rem',
+          padding: '0.52rem 0.78rem 0.56rem 0.82rem',
           borderTop: '0.5px solid var(--mat-border)',
           borderBottom: '0.5px solid var(--mat-border)',
           background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
@@ -111,7 +111,19 @@ export function CapturePrompt() {
         >
           ◆
         </span>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            className="t-caption2"
+            style={{
+              color: 'var(--accent)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontWeight: 700,
+              marginBottom: 3,
+            }}
+          >
+            Anchored
+          </div>
           <div
             className="t-footnote"
             style={{
@@ -123,25 +135,45 @@ export function CapturePrompt() {
               maxWidth: '100%',
             }}
           >
-            已挂到边上 · “{state.quote}”
+            “{state.quote}”
           </div>
-          <button
-            type="button"
-            onClick={continueToThought}
-            className="t-caption2"
-            style={{
-              color: 'var(--accent)',
-              letterSpacing: '0.03em',
-              fontWeight: 700,
-              marginTop: 2,
-              border: 0,
-              background: 'transparent',
-              padding: 0,
-              cursor: 'pointer',
-            }}
-          >
-            {state.reviewHint}
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={continueToThought}
+              className="t-caption2"
+              style={{
+                color: 'var(--accent)',
+                letterSpacing: '0.03em',
+                fontWeight: 700,
+                border: 0,
+                background: 'transparent',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
+              Review now
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setState(null);
+                setFading(false);
+              }}
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                letterSpacing: '0.03em',
+                fontWeight: 700,
+                border: 0,
+                background: 'transparent',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
+              Keep reading
+            </button>
+          </div>
         </div>
       </div>
     </div>

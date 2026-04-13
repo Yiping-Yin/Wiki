@@ -145,7 +145,7 @@ export function QuickSwitcher() {
     { kind: 'doc' as const, key: 'tool:export-md', title: 'Export Notes (Markdown)', sub: 'Human-readable', href: '__action:export-md' },
   ], []);
 
-  // Score & merge — group order: collections, weeks, tools, documents
+  // Score & merge — content first, tools last.
   const grouped = useMemo(() => {
     const score = (label: string) => fuzzy(q, label);
     const rank = (r: Result) => Math.min(score(r.title), score(`${r.title} ${r.sub}`));
@@ -168,7 +168,7 @@ export function QuickSwitcher() {
 
   // Flatten to a single keyboard-navigable list
   const flat: Result[] = useMemo(
-    () => [...grouped.tools, ...grouped.collections, ...grouped.weeks, ...grouped.docs],
+    () => [...grouped.collections, ...grouped.weeks, ...grouped.docs, ...grouped.tools],
     [grouped],
   );
 
@@ -331,10 +331,10 @@ export function QuickSwitcher() {
             </div>
           ) : (
             <>
-              {renderGroup('Tools', grouped.tools)}
               {renderGroup('Collections', grouped.collections)}
               {renderGroup('Weeks', grouped.weeks)}
               {renderGroup(q.trim() ? 'Documents' : 'Recent', grouped.docs)}
+              {renderGroup('Tools', grouped.tools)}
             </>
           )}
           {!q && (
