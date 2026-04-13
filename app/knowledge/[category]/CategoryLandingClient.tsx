@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { CategoryHero } from '../../../components/CategoryHero';
-import { KesiSwatch } from '../../../components/KesiSwatch';
 import { LearningStatusInline } from '../../../components/LearningStatusInline';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
@@ -285,13 +284,9 @@ export function CategoryLandingClient({
                 WebkitBoxOrient: 'vertical',
               }}
             >
-              {continueDoc ? docSummary(continueDoc) : startDoc?.preview?.slice(0, 220) || 'Open the collection and begin weaving.'}
+                {continueDoc ? docSummary(continueDoc) : startDoc?.preview?.slice(0, 220) || 'Open the collection and begin weaving.'}
+              </div>
             </div>
-          </div>
-
-          <div style={{ width: 'min(220px, 100%)', marginLeft: 'auto', alignSelf: 'center' }}>
-            <KesiSwatch categorySlug={category.slug} height={28} />
-          </div>
 
           <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
             <button
@@ -299,29 +294,11 @@ export function CategoryLandingClient({
               onClick={() => continueDoc ? openPrimaryAction(continueDoc) : startDoc ? router.push(startDoc.href) : null}
               style={categoryActionStyle(true)}
             >
-              {continueDoc ? primaryActionLabel(continueDoc.learning.nextAction) : 'Open'}
+              Continue collection
             </button>
-            <button type="button" onClick={() => router.push(`/knowledge/${category.slug}`)} style={categoryActionStyle(false)}>
-              Collection
-            </button>
-            {continueDoc && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/kesi?focus=${encodeURIComponent(docIdFor(continueDoc))}`)}
-                  style={categoryActionStyle(false)}
-                >
-                  Kesi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/graph?focus=${encodeURIComponent(docIdFor(continueDoc))}`)}
-                  style={categoryActionStyle(false)}
-                >
-                  Relations
-                </button>
-              </>
-            )}
+            <Link href={`/knowledge/${category.slug}`} style={{ ...categoryActionStyle(false), textDecoration: 'none' }}>
+              All material
+            </Link>
           </div>
         </div>
       </section>

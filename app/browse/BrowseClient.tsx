@@ -14,7 +14,6 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
@@ -252,7 +251,7 @@ export function BrowseClient({
       {focusCollection && (
         <section
           style={{
-            padding: '0.1rem 0 1rem',
+            padding: '0.1rem 0 0.8rem',
             marginBottom: 20,
             borderBottom: '0.5px solid var(--mat-border)',
           }}
@@ -265,13 +264,12 @@ export function BrowseClient({
                 color: 'var(--muted)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                fontWeight: 700,
+              fontWeight: 700,
               }}
             >
               Continue collection
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            {focusCollection.activeDoc && <LearningStatusInline status={focusCollection.activeDoc.learning} compact />}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
@@ -334,29 +332,11 @@ export function BrowseClient({
 
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => openPrimaryAction(focusCollection)} style={browseActionStyle(true)}>
-                {actionLabel(focusCollection.activeDoc?.learning.nextAction ?? 'capture')}
+                Continue collection
               </button>
-              <button type="button" onClick={() => router.push(focusCollection.href)} style={browseActionStyle(false)}>
-                Collection
-              </button>
-              {focusCollection.activeDoc && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/kesi?focus=${encodeURIComponent(focusCollection.activeDoc!.docId)}`)}
-                    style={browseActionStyle(false)}
-                  >
-                    Kesi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/graph?focus=${encodeURIComponent(focusCollection.activeDoc!.docId)}`)}
-                    style={browseActionStyle(false)}
-                  >
-                    Relations
-                  </button>
-                </>
-              )}
+              <Link href={focusCollection.href} style={{ ...browseActionStyle(false), textDecoration: 'none' }}>
+                Open collection
+              </Link>
             </div>
           </div>
         </section>
