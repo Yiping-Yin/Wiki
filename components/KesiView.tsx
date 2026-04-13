@@ -208,6 +208,27 @@ function panelSummary(summary: string, sections: PanelSection[]) {
   return '';
 }
 
+function extractMarkdownLinkUrls(content: string): string[] {
+  if (!content) return [];
+  const urls: string[] = [];
+  const re = /\[[^\]]*\]\(([^)]+)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content)) !== null) {
+    const url = m[1].trim().split(/\s+/)[0];
+    if (url) urls.push(url);
+  }
+  return urls;
+}
+
+function urlReferencesDoc(url: string, docHref: string): boolean {
+  if (!url || !docHref) return false;
+  const cleanUrl = url.split('#')[0].split('?')[0];
+  if (cleanUrl === docHref) return true;
+  if (cleanUrl.endsWith(docHref)) return true;
+  if (cleanUrl.endsWith(docHref.replace(/^\//, ''))) return true;
+  return false;
+}
+
 type ViewMode = 'recent' | 'dense';
 type SourceFilter = 'all' | 'knowledge' | 'wiki' | 'upload';
 type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
@@ -248,6 +269,44 @@ export function KesiView() {
       };
     });
   }, [traces, knowledgeCategories, tracesByDocId]);
+
+  const relationCounts = useMemo(() => {
+    const counts = new Map<string, { incoming: number; outgoing: number }>();
+    const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
+    const seen = new Set<string>();
+
+    for (const panel of panels) {
+      counts.set(panel.docId, { incoming: 0, outgoing: 0 });
+    }
+
+    for (const panel of panels) {
+      const traceSet = tracesByDocId.get(panel.docId) ?? [];
+      const latestByAnchor = new Map<string, { content: string; at: number }>();
+      for (const trace of traceSet) {
+        for (const event of trace.events) {
+          if (event.kind !== 'thought-anchor') continue;
+          const prev = latestByAnchor.get(event.anchorId);
+          if (!prev || event.at > prev.at) {
+            latestByAnchor.set(event.anchorId, { content: event.content, at: event.at });
+          }
+        }
+      }
+
+      for (const { content } of latestByAnchor.values()) {
+        for (const url of extractMarkdownLinkUrls(content)) {
+          const target = Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
+          if (!target || target.docId === panel.docId) continue;
+          const key = `${panel.docId}=>${target.docId}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          counts.get(panel.docId)!.outgoing += 1;
+          counts.get(target.docId)!.incoming += 1;
+        }
+      }
+    }
+
+    return counts;
+  }, [panels, tracesByDocId]);
 
   const visiblePanels = useMemo(() => {
     const q = query.trim();
@@ -369,6 +428,24 @@ export function KesiView() {
             Kesi
           </span>
           <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+          <button
+            type="button"
+            onClick={() => router.push('/graph')}
+            style={{
+              appearance: 'none',
+              border: 0,
+              background: 'transparent',
+              color: 'var(--fg-secondary)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              padding: 0,
+              cursor: 'pointer',
+              marginRight: 10,
+            }}
+          >
+            Relations
+          </button>
           <span className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', fontWeight: 700 }}>
             {sortedPanels.length}
           </span>
@@ -431,6 +508,16 @@ export function KesiView() {
                   <span>{formatWhen(returnPanel.crystallizedAt)}</span>
                   <span aria-hidden>·</span>
                   <span>{returnPanel.stitches} stitches</span>
+                  {(() => {
+                    const relation = relationCounts.get(returnPanel.docId);
+                    if (!relation || relation.incoming + relation.outgoing === 0) return null;
+                    return (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span>{relation.incoming + relation.outgoing} threads</span>
+                      </>
+                    );
+                  })()}
                   {returnPanel.collectionLabel && returnPanel.collectionLabel !== returnPanel.family && (
                     <>
                       <span aria-hidden>·</span>
@@ -553,6 +640,16 @@ export function KesiView() {
                       <span>{formatWhen(panel.crystallizedAt)}</span>
                       <span aria-hidden>·</span>
                       <span>touched {Math.max(1, Math.round(panel.learning.daysSinceTouch))}d ago</span>
+                      {(() => {
+                        const relation = relationCounts.get(panel.docId);
+                        if (!relation || relation.incoming + relation.outgoing === 0) return null;
+                        return (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>{relation.incoming + relation.outgoing} threads</span>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -638,6 +735,16 @@ export function KesiView() {
                       <span>{formatWhen(panel.crystallizedAt)}</span>
                       <span aria-hidden>·</span>
                       <span>{primaryActionLabel(panel.learning.nextAction)}</span>
+                      {(() => {
+                        const relation = relationCounts.get(panel.docId);
+                        if (!relation || relation.incoming + relation.outgoing === 0) return null;
+                        return (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>{relation.incoming + relation.outgoing} threads</span>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -903,6 +1010,16 @@ export function KesiView() {
                       <span>{formatWhen(panel.crystallizedAt)}</span>
                       <span aria-hidden>·</span>
                       <span>{panel.stitches} stitches</span>
+                      {(() => {
+                        const relation = relationCounts.get(panel.docId);
+                        if (!relation || relation.incoming + relation.outgoing === 0) return null;
+                        return (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>{relation.incoming + relation.outgoing} threads</span>
+                          </>
+                        );
+                      })()}
                       {panel.collectionLabel && panel.collectionLabel !== panel.family && (
                         <>
                           <span aria-hidden>·</span>
