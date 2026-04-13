@@ -169,180 +169,109 @@ export function CollectionContextClient({
     ? `/knowledge/${category.slug}#${encodeURIComponent(currentGroup.label)}`
     : `/knowledge/${category.slug}`;
 
-  return (
-    <section
-      className="material-thick"
-      style={{
-        padding: '1rem 1.1rem',
-        borderRadius: 'var(--r-3)',
-        marginTop: '1rem',
-        marginBottom: '1.2rem',
-        boxShadow: 'var(--shadow-1)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 240 }}>
-          <div
-            className="t-caption2"
-            style={{
-              color: 'var(--muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
-              marginBottom: 8,
-            }}
-          >
-            Collection context
-          </div>
+  const sequenceDocs = currentGroupDocs.length > 0 ? currentGroupDocs : surfaces.slice(0, 4);
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--display)', fontSize: '1rem', fontWeight: 600, letterSpacing: '-0.012em' }}>
-              {currentGroup?.label || category.label}
-            </span>
-            <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
-              {currentIndex + 1} of {docs.length}
-            </span>
-            {currentSurface && (
-              <span className="t-caption2" style={{ color: currentSurface.state === 'finished' ? 'var(--accent)' : 'var(--muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>
-                {stateLabel(currentSurface)}
+  return (
+    <section style={{ marginTop: '0.9rem', marginBottom: '1.1rem' }}>
+      <div
+        className="material-thick"
+        style={{
+          padding: '0.82rem 0.95rem 0.9rem',
+          borderRadius: 'var(--r-3)',
+          boxShadow: 'var(--shadow-1)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+                marginBottom: 6,
+              }}
+            >
+              Collection
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'var(--display)', fontSize: '0.96rem', fontWeight: 600, letterSpacing: '-0.012em' }}>
+                {currentGroup?.label || category.label}
               </span>
+              <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.04em' }}>
+                {currentIndex + 1} of {docs.length}
+              </span>
+              {currentSurface && (
+                <span className="t-caption2" style={{ color: currentSurface.state === 'finished' ? 'var(--accent)' : 'var(--muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>
+                  {stateLabel(currentSurface)}
+                </span>
+              )}
+            </div>
+            {currentSurface && (
+              <div style={{ marginTop: 6 }}>
+                <LearningStatusInline status={currentSurface.learning} compact />
+              </div>
             )}
           </div>
 
-          <div
-            className="t-caption2"
-            style={{
-              marginTop: 7,
-              color: 'var(--muted)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span>{viewedCount} viewed</span>
-            <span aria-hidden>·</span>
-            <span>{finishedCount} finished</span>
-            {currentSurface?.touchedAt ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>touched {formatWhen(currentSurface.touchedAt)}</span>
-              </>
-            ) : null}
+          <div style={{ width: 120, opacity: 0.28, flexShrink: 0 }}>
+            <KesiSwatch categorySlug={category.slug} height={24} />
           </div>
-          {currentSurface && (
-            <div style={{ marginTop: 8 }}>
-              <LearningStatusInline status={currentSurface.learning} />
-            </div>
-          )}
         </div>
 
-        <div style={{ width: 'min(220px, 100%)', marginLeft: 'auto' }}>
-          <KesiSwatch categorySlug={category.slug} height={34} />
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: '0.95rem' }}>
-        <Link
-          href={`/knowledge/${category.slug}`}
+        <div
+          className="t-caption2"
           style={{
-            display: 'inline-flex',
+            color: 'var(--muted)',
+            display: 'flex',
             alignItems: 'center',
             gap: 8,
-            padding: '0.5rem 0.78rem',
-            borderRadius: 999,
-            border: '0.5px solid var(--mat-border)',
-            textDecoration: 'none',
-            color: 'var(--fg)',
+            flexWrap: 'wrap',
+            letterSpacing: '0.04em',
           }}
         >
-          <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-            Collection
-          </span>
-          <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{category.label}</span>
-        </Link>
-
-        <Link
-          href={mapHref}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '0.5rem 0.78rem',
-            borderRadius: 999,
-            border: '0.5px solid var(--mat-border)',
-            textDecoration: 'none',
-            color: 'var(--fg)',
-          }}
-        >
-          <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-            Map
-          </span>
-          <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
+          <Link href={`/knowledge/${category.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+            {category.label}
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href={mapHref} style={{ color: 'inherit', textDecoration: 'none' }}>
             {currentGroup?.label || 'All material'}
-          </span>
-        </Link>
-
-        {continueDoc && (
-          <Link
-            href={continueDoc.href}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '0.5rem 0.78rem',
-              borderRadius: 999,
-              border: '0.5px solid var(--mat-border)',
-              textDecoration: 'none',
-              color: 'var(--fg)',
-              boxShadow: 'var(--shadow-1)',
-            }}
-          >
-            <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-              Continue
-            </span>
-            <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{continueDoc.title}</span>
           </Link>
-        )}
+          {continueDoc && (
+            <>
+              <span aria-hidden>·</span>
+              <Link href={continueDoc.href} style={{ color: 'inherit', textDecoration: 'none' }}>
+                Continue {continueDoc.title}
+              </Link>
+            </>
+          )}
+          {!continueDoc && startDoc && startDoc.id !== currentDocId && (
+            <>
+              <span aria-hidden>·</span>
+              <Link href={startDoc.href} style={{ color: 'inherit', textDecoration: 'none' }}>
+                Next {startDoc.title}
+              </Link>
+            </>
+          )}
+          <span aria-hidden>·</span>
+          <span>{viewedCount} viewed</span>
+          <span aria-hidden>·</span>
+          <span>{finishedCount} finished</span>
+          {currentSurface?.touchedAt ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>touched {formatWhen(currentSurface.touchedAt)}</span>
+            </>
+          ) : null}
+        </div>
 
-        {!continueDoc && startDoc && startDoc.id !== currentDocId && (
-          <Link
-            href={startDoc.href}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '0.5rem 0.78rem',
-              borderRadius: 999,
-              border: '0.5px solid var(--mat-border)',
-              textDecoration: 'none',
-              color: 'var(--fg)',
-            }}
-          >
-            <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-              Next
-            </span>
-            <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{startDoc.title}</span>
-          </Link>
-        )}
-      </div>
-
-      {currentGroupDocs.length > 1 && (
-        <div style={{ marginTop: '1rem' }}>
-          <div
-            className="t-caption2"
-            style={{
-              color: 'var(--muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
-              marginBottom: 8,
-            }}
-          >
-            This sequence
-          </div>
+        {sequenceDocs.length > 1 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {currentGroupDocs.map((doc, index) => {
+            {sequenceDocs.map((doc, index) => {
               const active = doc.id === currentDocId;
               return (
                 <Link
@@ -352,17 +281,16 @@ export function CollectionContextClient({
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    padding: '0.46rem 0.72rem',
+                    padding: '0.4rem 0.66rem',
                     borderRadius: 999,
                     border: `0.5px solid ${active ? 'var(--accent)' : 'var(--mat-border)'}`,
                     textDecoration: 'none',
                     color: active ? 'var(--fg)' : 'var(--fg-secondary)',
                     background: active ? 'var(--accent-soft)' : 'transparent',
-                    boxShadow: active ? 'var(--shadow-1)' : 'none',
                   }}
                 >
                   <span className="t-caption2" style={{ color: active ? 'var(--accent)' : 'var(--muted)', fontFamily: 'var(--mono)', fontVariantNumeric: 'tabular-nums' }}>
-                    {index + 1}
+                    {currentGroupIndex >= 0 ? index + 1 : docs.findIndex((item) => item.id === doc.id) + 1}
                   </span>
                   <span style={{ fontFamily: 'var(--display)', fontWeight: active ? 600 : 500 }}>
                     {doc.title}
@@ -371,13 +299,8 @@ export function CollectionContextClient({
               );
             })}
           </div>
-          {currentGroupIndex >= 0 && (
-            <div className="t-caption2" style={{ marginTop: 8, color: 'var(--muted)', letterSpacing: '0.04em' }}>
-              {currentGroup?.label || 'Current sequence'} · {currentGroupIndex + 1} of {currentGroupDocs.length}
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
