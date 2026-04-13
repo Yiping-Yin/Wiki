@@ -8,9 +8,7 @@ import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
-import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
+import { continuePanelLifecycle } from '../../lib/panel-resume';
 import { UploadButton } from './UploadButton';
 
 export type UploadListItem = {
@@ -268,36 +266,12 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
   const focusItem = openItems[0] ?? finishedItems[0] ?? newItems[0] ?? null;
 
   const openPrimaryAction = (item: UploadSurface) => {
-    if (item.learning.nextAction === 'refresh') {
-      const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: item.learning.latestAnchorId };
-      const refreshPayload: RefreshResumePayload = { href: item.href, source: 'upload' };
-      try {
-        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
-        sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
-      } catch {}
-      router.push(item.href);
-      return;
-    }
-    if (item.learning.nextAction === 'rehearse' || item.learning.nextAction === 'examine') {
-      const payload: OverlayResumePayload = {
-        href: item.href,
-        overlay: item.learning.nextAction === 'rehearse' ? 'rehearsal' : 'examiner',
-      };
-      try {
-        sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
-      } catch {}
-      router.push(item.href);
-      return;
-    }
-    if (item.learning.nextAction === 'revisit') {
-      const payload: ReviewResumePayload = { href: item.href, anchorId: item.learning.latestAnchorId };
-      try {
-        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-      } catch {}
-      router.push(item.href);
-      return;
-    }
-    router.push(item.href);
+    continuePanelLifecycle(router, {
+      href: item.href,
+      nextAction: item.learning.nextAction,
+      latestAnchorId: item.learning.latestAnchorId,
+      refreshSource: 'upload',
+    });
   };
 
   return (

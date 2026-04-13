@@ -18,9 +18,7 @@ import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../components/QuietGuideCard';
 import { LearningStatusInline } from '../components/LearningStatusInline';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
-import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../lib/refresh-resume';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
+import { setReviewResume, continuePanelLifecycle } from '../lib/panel-resume';
 import { useHistory } from '../lib/use-history';
 import { useAllTraces, type Trace } from '../lib/trace';
 
@@ -129,28 +127,7 @@ export function HomeClient(_props: unknown) {
   const current = resume[0] ?? null;
 
   const openReview = (item: ResumeItem, anchorId: string | null = null) => {
-    const payload: ReviewResumePayload = { href: item.href, anchorId: anchorId ?? item.learning.latestAnchorId };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(item.href);
-  };
-
-  const openRefresh = (item: ResumeItem) => {
-    const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: item.learning.latestAnchorId };
-    const refreshPayload: RefreshResumePayload = { href: item.href, source: 'kesi' };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
-      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
-    } catch {}
-    router.push(item.href);
-  };
-
-  const openOverlay = (item: ResumeItem, overlay: OverlayResumePayload['overlay']) => {
-    const payload: OverlayResumePayload = { href: item.href, overlay };
-    try {
-      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
+    setReviewResume({ href: item.href, anchorId: anchorId ?? item.learning.latestAnchorId });
     router.push(item.href);
   };
 
@@ -163,17 +140,16 @@ export function HomeClient(_props: unknown) {
   };
 
   const openPrimaryAction = (item: ResumeItem) => {
-    if (item.learning.nextAction === 'refresh') {
-      openRefresh(item);
-    } else if (item.learning.nextAction === 'rehearse') {
-      openOverlay(item, 'rehearsal');
-    } else if (item.learning.nextAction === 'examine') {
-      openOverlay(item, 'examiner');
-    } else if (item.learning.nextAction === 'capture') {
-      router.push(item.href);
-    } else {
+    if (item.learning.nextAction === 'revisit') {
       openReview(item);
+      return;
     }
+    continuePanelLifecycle(router, {
+      href: item.href,
+      nextAction: item.learning.nextAction,
+      latestAnchorId: item.learning.latestAnchorId,
+      refreshSource: 'kesi',
+    });
   };
 
   return (

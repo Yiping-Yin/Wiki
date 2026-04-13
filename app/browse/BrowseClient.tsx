@@ -17,9 +17,7 @@ import { useRouter } from 'next/navigation';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
-import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
+import { continuePanelLifecycle } from '../../lib/panel-resume';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -200,36 +198,12 @@ export function BrowseClient({
       router.push(collection.href);
       return;
     }
-    if (activeDoc.learning.nextAction === 'refresh') {
-      const reviewPayload: ReviewResumePayload = { href: activeDoc.href, anchorId: activeDoc.learning.latestAnchorId };
-      const refreshPayload: RefreshResumePayload = { href: activeDoc.href, source: 'browse' };
-      try {
-        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
-        sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
-      } catch {}
-      router.push(activeDoc.href);
-      return;
-    }
-    if (activeDoc.learning.nextAction === 'rehearse' || activeDoc.learning.nextAction === 'examine') {
-      const payload: OverlayResumePayload = {
-        href: activeDoc.href,
-        overlay: activeDoc.learning.nextAction === 'rehearse' ? 'rehearsal' : 'examiner',
-      };
-      try {
-        sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
-      } catch {}
-      router.push(activeDoc.href);
-      return;
-    }
-    if (activeDoc.learning.nextAction === 'revisit') {
-      const payload: ReviewResumePayload = { href: activeDoc.href, anchorId: activeDoc.learning.latestAnchorId };
-      try {
-        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-      } catch {}
-      router.push(activeDoc.href);
-      return;
-    }
-    router.push(activeDoc.href);
+    continuePanelLifecycle(router, {
+      href: activeDoc.href,
+      nextAction: activeDoc.learning.nextAction,
+      latestAnchorId: activeDoc.learning.latestAnchorId,
+      refreshSource: 'browse',
+    });
   };
 
   const filteredCategories = useMemo(() => {

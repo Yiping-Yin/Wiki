@@ -8,9 +8,7 @@ import { useHistory } from '../../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../../lib/trace';
 import type { KnowledgeCategory } from '../../../../lib/knowledge-types';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../../../lib/learning-status';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../../../lib/review-resume';
-import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../../../lib/refresh-resume';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../../../lib/overlay-resume';
+import { continuePanelLifecycle } from '../../../../lib/panel-resume';
 
 export type CollectionDocCard = {
   id: string;
@@ -181,36 +179,12 @@ export function CollectionContextClient({
 
   const openPrimaryAction = (surface: CollectionSurface | null) => {
     if (!surface) return;
-    if (surface.learning.nextAction === 'refresh') {
-      const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
-      const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'knowledge' };
-      try {
-        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
-        sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
-      } catch {}
-      router.push(surface.href);
-      return;
-    }
-    if (surface.learning.nextAction === 'rehearse' || surface.learning.nextAction === 'examine') {
-      const payload: OverlayResumePayload = {
-        href: surface.href,
-        overlay: surface.learning.nextAction === 'rehearse' ? 'rehearsal' : 'examiner',
-      };
-      try {
-        sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
-      } catch {}
-      router.push(surface.href);
-      return;
-    }
-    if (surface.learning.nextAction === 'revisit') {
-      const payload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
-      try {
-        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-      } catch {}
-      router.push(surface.href);
-      return;
-    }
-    router.push(surface.href);
+    continuePanelLifecycle(router, {
+      href: surface.href,
+      nextAction: surface.learning.nextAction,
+      latestAnchorId: surface.learning.latestAnchorId,
+      refreshSource: 'knowledge',
+    });
   };
 
   return (
