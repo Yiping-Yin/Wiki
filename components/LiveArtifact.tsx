@@ -15,11 +15,11 @@
  * empty until the user has actually started thinking with AI.
  */
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRemoveEvents, useAppendEvent, useBacklinksForDoc, useAllTraces } from '../lib/trace';
 import { LOOM_CRYSTALLIZED_EVENT, type CrystallizedDetail, dispatchCrystallized } from '../lib/crystallize-events';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
 import { useReadingThoughtAnchors } from './thought-anchor-model';
 import { VersionedAnchorCard } from './VersionedAnchorCard';
 
@@ -63,6 +63,14 @@ export function LiveArtifact({ docId }: { docId: string }) {
   const [settledPulse, setSettledPulse] = useState(false);
   const [settledSummary, setSettledSummary] = useState('');
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  const openBacklinkReview = (href: string, anchorId: string) => {
+    const payload: ReviewResumePayload = { href, anchorId };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(href);
+  };
 
   // Free-mode still streams a recompiled artifact; doc-mode is derived from
   // committed thought-anchors and does not need this path.
@@ -560,8 +568,9 @@ export function LiveArtifact({ docId }: { docId: string }) {
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
               {backlinks.slice(0, 10).map((b) => (
                 <li key={`${b.fromTraceId}-${b.fromAnchorId}`}>
-                  <Link
-                    href={b.fromDocHref}
+                  <button
+                    type="button"
+                    onClick={() => openBacklinkReview(b.fromDocHref, b.fromAnchorId)}
                     style={{
                       display: 'flex',
                       alignItems: 'baseline',
@@ -572,6 +581,12 @@ export function LiveArtifact({ docId }: { docId: string }) {
                       fontSize: '0.82rem',
                       lineHeight: 1.45,
                       textDecoration: 'none',
+                      appearance: 'none',
+                      border: 0,
+                      background: 'transparent',
+                      width: '100%',
+                      textAlign: 'left',
+                      cursor: 'pointer',
                     }}
                   >
                     <span style={{ color: 'var(--accent)', flexShrink: 0, fontWeight: 600 }}>
@@ -590,7 +605,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                     >
                       — {b.fromAnchorSummary}
                     </span>
-                  </Link>
+                  </button>
                 </li>
               ))}
               {backlinks.length > 10 && (
