@@ -23,7 +23,7 @@ import { useHistory } from '../../lib/use-history';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { usePins } from '../../lib/use-pins';
 import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
-import { summarizeLearningStatus, type LearningStatusSummary } from '../../lib/learning-status';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 
 type DocLite = {
@@ -46,7 +46,7 @@ type StudySurface = {
   viewedAt: number;
   touchedAt: number;
   kind: 'knowledge' | 'wiki' | 'upload' | 'other';
-  learning: LearningStatusSummary;
+  learning: LearningSurfaceSummary;
   latestSummary: string;
   latestQuote?: string;
   preview: string;
@@ -126,7 +126,7 @@ export function TodayClient({
         viewedAt,
         touchedAt: Math.max(trace.updatedAt, latestAnchorAt, trace.crystallizedAt ?? 0, viewedAt),
         kind,
-        learning: summarizeLearningStatus(trace, viewedAt),
+        learning: summarizeLearningSurface(trace, viewedAt),
         latestSummary,
         latestQuote: latestQuote || undefined,
         preview: meta?.preview ?? '',
@@ -152,31 +152,44 @@ export function TodayClient({
         viewedAt: viewedByDocId.get(pin.id) ?? 0,
         touchedAt: pin.pinnedAt,
         kind,
-        learning: summarizeLearningStatus(null, viewedByDocId.get(pin.id) ?? 0),
+        learning: summarizeLearningSurface([], viewedByDocId.get(pin.id) ?? 0),
         latestSummary: '',
         preview: meta?.preview ?? '',
       });
     }
 
+    const recencyRank = { stale: 0, cooling: 1, fresh: 2 } as const;
+    const nextRank = { capture: 0, rehearse: 1, examine: 2, refresh: 3, revisit: 4 } as const;
+
     return Array.from(byDocId.values()).sort((a, b) => {
+      if (nextRank[a.learning.nextAction] !== nextRank[b.learning.nextAction]) {
+        return nextRank[a.learning.nextAction] - nextRank[b.learning.nextAction];
+      }
+      if (recencyRank[a.learning.recency] !== recencyRank[b.learning.recency]) {
+        return recencyRank[a.learning.recency] - recencyRank[b.learning.recency];
+      }
       return Number(b.pinned) - Number(a.pinned) || b.touchedAt - a.touchedAt;
     });
   }, [docsById, pins, traces, viewedByDocId, pinnedByDocId]);
 
   const captureNext = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.stage === 'new' || surface.learning.stage === 'opened');
+    return surfaces.filter((surface) => surface.learning.nextAction === 'capture');
   }, [surfaces]);
 
   const rehearseNext = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.stage === 'captured');
+    return surfaces.filter((surface) => surface.learning.nextAction === 'rehearse');
   }, [surfaces]);
 
   const examineNext = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.stage === 'rehearsed');
+    return surfaces.filter((surface) => surface.learning.nextAction === 'examine');
+  }, [surfaces]);
+
+  const refreshNext = useMemo(() => {
+    return surfaces.filter((surface) => surface.learning.nextAction === 'refresh');
   }, [surfaces]);
 
   const revisit = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.stage === 'examined' || surface.learning.stage === 'crystallized');
+    return surfaces.filter((surface) => surface.learning.nextAction === 'revisit');
   }, [surfaces]);
 
   if (!mounted) return null;
@@ -215,6 +228,12 @@ export function TodayClient({
       {examineNext.length > 0 && (
         <Block label="Examine next">
           <ScheduleList items={examineNext} next="examiner" cta="Open examiner" onOpen={openNext} />
+        </Block>
+      )}
+
+      {refreshNext.length > 0 && (
+        <Block label="Refresh stale">
+          <ScheduleList items={refreshNext} next="review" cta="Refresh in review" onOpen={openNext} />
         </Block>
       )}
 

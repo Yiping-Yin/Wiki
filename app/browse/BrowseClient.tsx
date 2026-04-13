@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
-import { summarizeLearningStatus } from '../../lib/learning-status';
+import { summarizeLearningSurface } from '../../lib/learning-status';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -118,21 +118,23 @@ export function BrowseClient({
   }, [categories, normalizedQuery]);
 
   const categoryProgress = useMemo(() => {
-    const map = new Map<string, { touched: number; crystallized: number; examined: number }>();
+    const map = new Map<string, { touched: number; crystallized: number; examined: number; stale: number }>();
     for (const category of categories) {
       let touched = 0;
       let crystallized = 0;
       let examined = 0;
+      let stale = 0;
       for (const doc of category.docs) {
         const docId = docIdForCategoryDoc(doc.id);
         const viewedAt = viewedByDocId.get(docId) ?? 0;
         const trace = tracesByDocId.get(docId);
-        const learning = summarizeLearningStatus(trace, viewedAt);
+        const learning = summarizeLearningSurface(trace, viewedAt);
         if (learning.opened) touched += 1;
         if (learning.crystallized) crystallized += 1;
         if (learning.examinerCount > 0) examined += 1;
+        if (learning.opened && learning.recency === 'stale') stale += 1;
       }
-      map.set(category.slug, { touched, crystallized, examined });
+      map.set(category.slug, { touched, crystallized, examined, stale });
     }
     return map;
   }, [categories, tracesByDocId, viewedByDocId]);
@@ -267,6 +269,7 @@ export function BrowseClient({
                     {categoryProgress.get(c.slug)!.touched} touched
                     {categoryProgress.get(c.slug)!.examined > 0 && ` · ${categoryProgress.get(c.slug)!.examined} examined`}
                     {categoryProgress.get(c.slug)!.crystallized > 0 && ` · ${categoryProgress.get(c.slug)!.crystallized} finished`}
+                    {categoryProgress.get(c.slug)!.stale > 0 && ` · ${categoryProgress.get(c.slug)!.stale} stale`}
                   </div>
                 ) : null}
               </li>

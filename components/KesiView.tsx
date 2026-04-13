@@ -8,6 +8,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { LearningStatusInline } from './LearningStatusInline';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
 import { useAllTraces, useRemoveEvents, type Trace } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
@@ -49,6 +51,7 @@ type Panel = BasePanel & {
   sourceType: 'knowledge' | 'wiki' | 'upload' | 'other';
   collectionLabel: string;
   collectionHref?: string;
+  learning: LearningSurfaceSummary;
 };
 
 function buildPanels(traces: Trace[]): BasePanel[] {
@@ -185,6 +188,7 @@ function panelSummary(summary: string, sections: PanelSection[]) {
 
 type ViewMode = 'recent' | 'dense';
 type SourceFilter = 'all' | 'knowledge' | 'wiki' | 'upload';
+type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
 
 export function KesiView() {
   const { traces, loading } = useAllTraces();
@@ -194,6 +198,7 @@ export function KesiView() {
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('recent');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>('all');
   const { knowledgeCategories } = useKnowledgeNav();
 
   useEffect(() => { setMounted(true); }, []);
@@ -206,6 +211,9 @@ export function KesiView() {
         family: familyLabelForHref(panel.href, knowledgeCategories),
         summary: panelSummary(panel.summary, panel.sections),
         ...meta,
+        learning: summarizeLearningSurface(
+          traces.find((trace) => trace.id === panel.traceId) ?? null,
+        ),
       };
     });
   }, [traces, knowledgeCategories]);
@@ -214,18 +222,23 @@ export function KesiView() {
     const q = query.trim();
     return panels.filter((panel) => {
       if (sourceFilter !== 'all' && panel.sourceType !== sourceFilter) return false;
+      if (recencyFilter !== 'all' && panel.learning.recency !== recencyFilter) return false;
       if (!q) return true;
       return matchesQuery(panel, q);
     });
-  }, [panels, query, sourceFilter]);
+  }, [panels, query, sourceFilter, recencyFilter]);
 
   const sortedPanels = useMemo(() => {
     const next = [...visiblePanels];
     next.sort((a, b) => {
       if (viewMode === 'dense') {
-        return b.stitches - a.stitches || b.crystallizedAt - a.crystallizedAt;
+        return b.stitches - a.stitches
+          || recencySort(a.learning.recency) - recencySort(b.learning.recency)
+          || b.crystallizedAt - a.crystallizedAt;
       }
-      return b.crystallizedAt - a.crystallizedAt || b.stitches - a.stitches;
+      return recencySort(a.learning.recency) - recencySort(b.learning.recency)
+        || b.crystallizedAt - a.crystallizedAt
+        || b.stitches - a.stitches;
     });
     return next;
   }, [visiblePanels, viewMode]);
@@ -245,6 +258,9 @@ export function KesiView() {
       knowledge: panels.filter((panel) => panel.sourceType === 'knowledge').length,
       wiki: panels.filter((panel) => panel.sourceType === 'wiki').length,
       upload: panels.filter((panel) => panel.sourceType === 'upload').length,
+      fresh: panels.filter((panel) => panel.learning.recency === 'fresh').length,
+      cooling: panels.filter((panel) => panel.learning.recency === 'cooling').length,
+      stale: panels.filter((panel) => panel.learning.recency === 'stale').length,
     };
   }, [panels]);
 
@@ -375,6 +391,26 @@ export function KesiView() {
             active={sourceFilter === 'upload'}
             onClick={() => setSourceFilter('upload')}
             label={`Uploads · ${filterCounts.upload}`}
+          />
+          <ToolbarChip
+            active={recencyFilter === 'all'}
+            onClick={() => setRecencyFilter('all')}
+            label={`Any time · ${filterCounts.all}`}
+          />
+          <ToolbarChip
+            active={recencyFilter === 'fresh'}
+            onClick={() => setRecencyFilter('fresh')}
+            label={`Fresh · ${filterCounts.fresh}`}
+          />
+          <ToolbarChip
+            active={recencyFilter === 'cooling'}
+            onClick={() => setRecencyFilter('cooling')}
+            label={`Cooling · ${filterCounts.cooling}`}
+          />
+          <ToolbarChip
+            active={recencyFilter === 'stale'}
+            onClick={() => setRecencyFilter('stale')}
+            label={`Stale · ${filterCounts.stale}`}
           />
         </div>
 
@@ -533,6 +569,10 @@ export function KesiView() {
                       )}
                     </div>
 
+                    <div style={{ marginBottom: 8 }}>
+                      <LearningStatusInline status={panel.learning} compact />
+                    </div>
+
                     <div
                       style={{
                         color: 'var(--fg-secondary)',
@@ -683,6 +723,10 @@ function actionStyle(primary: boolean) {
     letterSpacing: '0.04em',
     cursor: 'pointer',
   } as const;
+}
+
+function recencySort(recency: LearningSurfaceSummary['recency']) {
+  return recency === 'stale' ? 0 : recency === 'cooling' ? 1 : 2;
 }
 
 function EmptyKesiCanvas() {
