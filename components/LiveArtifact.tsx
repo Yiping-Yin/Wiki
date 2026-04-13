@@ -25,6 +25,18 @@ import { VersionedAnchorCard } from './VersionedAnchorCard';
 
 const NoteRenderer = dynamic(() => import('./NoteRenderer').then((m) => m.NoteRenderer), { ssr: false });
 
+function extractMarkdownLinkUrls(content: string): string[] {
+  if (!content) return [];
+  const urls: string[] = [];
+  const re = /\[[^\]]*\]\(([^)]+)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(content)) !== null) {
+    const url = match[1].trim().split(/\s+/)[0];
+    if (url) urls.push(url);
+  }
+  return urls;
+}
+
 export function LiveArtifact({ docId }: { docId: string }) {
   const { readingTraces, primaryReadingTrace: readingTrace, thoughtItems, loading } = useReadingThoughtAnchors(docId);
   const router = useRouter();
@@ -126,6 +138,22 @@ export function LiveArtifact({ docId }: { docId: string }) {
 
   const totalVersions = versions.length;
   const latestArtifact = versions[totalVersions - 1]?.content ?? '';
+  const outgoingDocThreads = useMemo(() => {
+    const refs = new Set<string>();
+    const ownHref = readingTrace?.source?.href ?? '';
+    for (const thought of thoughtItems) {
+      for (const url of extractMarkdownLinkUrls(thought.content)) {
+        const clean = url.split('#')[0].split('?')[0];
+        if (!clean || clean === ownHref) continue;
+        refs.add(clean);
+      }
+    }
+    return refs.size;
+  }, [readingTrace?.source?.href, thoughtItems]);
+  const incomingDocThreads = useMemo(
+    () => new Set(backlinks.map((backlink) => backlink.fromDocId)).size,
+    [backlinks],
+  );
 
   // §22 race fix: when the trace's latest recompile event matches our
   // in-flight stream buffer, the new permanent version has landed —
@@ -259,10 +287,46 @@ export function LiveArtifact({ docId }: { docId: string }) {
                 color: 'var(--fg-secondary)',
                 fontSize: '0.86rem',
                 lineHeight: 1.5,
+                marginBottom: incomingDocThreads + outgoingDocThreads > 0 ? 8 : 0,
               }}
             >
               {settledSummary || readingTrace?.crystallizedSummary || 'This panel is no longer provisional. It now lives in your kesi.'}
             </div>
+            {incomingDocThreads + outgoingDocThreads > 0 && (
+              <div
+                className="t-caption2"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  color: 'var(--muted)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {incomingDocThreads > 0 && <span>{incomingDocThreads} incoming threads</span>}
+                {incomingDocThreads > 0 && outgoingDocThreads > 0 && <span aria-hidden>·</span>}
+                {outgoingDocThreads > 0 && <span>{outgoingDocThreads} outgoing threads</span>}
+                <span aria-hidden>·</span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/graph')}
+                  style={{
+                    appearance: 'none',
+                    border: 0,
+                    background: 'transparent',
+                    color: 'var(--fg-secondary)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    padding: 0,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Relations
+                </button>
+              </div>
+            )}
           </div>
         )}
 
