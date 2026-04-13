@@ -5,9 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
-import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
+import { continuePanelLifecycle, openPanelReview } from '../../lib/panel-resume';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
@@ -426,53 +424,29 @@ export default function GraphPage() {
   };
 
   const openReview = (panel: PanelNode) => {
-    const payload: ReviewResumePayload = {
+    openPanelReview(router, {
       href: panel.href,
       anchorId: panel.latestAnchorId,
-    };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(panel.href);
+    });
   };
 
   const openRefresh = (panel: PanelNode) => {
-    const reviewPayload: ReviewResumePayload = {
+    continuePanelLifecycle(router, {
       href: panel.href,
-      anchorId: panel.latestAnchorId,
-    };
-    const refreshPayload: RefreshResumePayload = {
-      href: panel.href,
-      source: 'graph',
-    };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
-      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
-    } catch {}
-    router.push(panel.href);
-  };
-
-  const openOverlay = (panel: PanelNode, overlay: OverlayResumePayload['overlay']) => {
-    const payload: OverlayResumePayload = {
-      href: panel.href,
-      overlay,
-    };
-    try {
-      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(panel.href);
+      nextAction: 'refresh',
+      latestAnchorId: panel.latestAnchorId,
+      refreshSource: 'graph',
+    });
   };
 
   const openPrimaryAction = (panel: PanelNode) => {
-    if (panel.learning.nextAction === 'refresh') {
-      openRefresh(panel);
-    } else if (panel.learning.nextAction === 'rehearse') {
-      openOverlay(panel, 'rehearsal');
-    } else if (panel.learning.nextAction === 'examine') {
-      openOverlay(panel, 'examiner');
-    } else {
-      openReview(panel);
-    }
+    if (panel.learning.nextAction === 'revisit') return openReview(panel);
+    continuePanelLifecycle(router, {
+      href: panel.href,
+      nextAction: panel.learning.nextAction,
+      latestAnchorId: panel.latestAnchorId,
+      refreshSource: 'graph',
+    });
   };
 
   if (panelCount === 0) return null;

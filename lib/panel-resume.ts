@@ -66,3 +66,17 @@ export function continuePanelLifecycle(
 
   router.push(href);
 }
+
+export function openPanelReview(
+  router: RouterLike,
+  {
+    href,
+    anchorId,
+  }: {
+    href: string;
+    anchorId?: string | null;
+  },
+) {
+  setReviewResume({ href, anchorId: anchorId ?? null });
+  router.push(href);
+}
