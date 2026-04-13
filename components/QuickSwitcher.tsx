@@ -161,7 +161,7 @@ export function QuickSwitcher() {
     return {
       collections: filterAndSort(collections, q.trim() ? 5 : 0),
       weeks:       filterAndSort(weeks,       q.trim() ? 8 : 0),
-      tools:       filterAndSort(toolActions,  q.trim() ? 5 : 3),
+      tools:       filterAndSort(toolActions,  q.trim() ? 5 : 0),
       docs:        filterAndSort(allDocResults, q.trim() ? 30 : 12),
     };
   }, [q, collections, weeks, allDocResults, toolActions]);

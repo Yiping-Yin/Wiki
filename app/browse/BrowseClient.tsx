@@ -252,24 +252,6 @@ export function BrowseClient({
                 >
                   {categoryPreview(c)}
                 </div>
-                {categoryProgress.get(c.slug)?.touched ? (
-                  <div
-                    className="t-caption2"
-                    style={{
-                      color: 'var(--muted)',
-                      marginTop: -4,
-                      marginBottom: 10,
-                      marginLeft: 2,
-                      lineHeight: 1.5,
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    {categoryProgress.get(c.slug)!.touched} touched
-                    {categoryProgress.get(c.slug)!.examined > 0 && ` · ${categoryProgress.get(c.slug)!.examined} examined`}
-                    {categoryProgress.get(c.slug)!.crystallized > 0 && ` · ${categoryProgress.get(c.slug)!.crystallized} finished`}
-                    {categoryProgress.get(c.slug)!.stale > 0 && ` · ${categoryProgress.get(c.slug)!.stale} stale`}
-                  </div>
-                ) : null}
               </li>
             ))}
           </ul>

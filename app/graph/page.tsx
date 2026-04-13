@@ -5,9 +5,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
-import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
@@ -245,44 +242,6 @@ export default function GraphPage() {
     ? relationPreview.get(focusPanel.docId) ?? { incoming: [], outgoing: [] }
     : { incoming: [], outgoing: [] };
 
-  const openReview = (panel: PanelNode) => {
-    const payload: ReviewResumePayload = { href: panel.href, anchorId: null };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(panel.href);
-  };
-
-  const openRefresh = (panel: PanelNode) => {
-    const reviewPayload: ReviewResumePayload = { href: panel.href, anchorId: null };
-    const refreshPayload: RefreshResumePayload = { href: panel.href, source: 'kesi' };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
-      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
-    } catch {}
-    router.push(panel.href);
-  };
-
-  const openOverlay = (panel: PanelNode, overlay: OverlayResumePayload['overlay']) => {
-    const payload: OverlayResumePayload = { href: panel.href, overlay };
-    try {
-      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(panel.href);
-  };
-
-  const openPrimaryAction = (panel: PanelNode) => {
-    if (panel.learning.nextAction === 'refresh') {
-      openRefresh(panel);
-    } else if (panel.learning.nextAction === 'rehearse') {
-      openOverlay(panel, 'rehearsal');
-    } else if (panel.learning.nextAction === 'examine') {
-      openOverlay(panel, 'examiner');
-    } else {
-      openReview(panel);
-    }
-  };
-
   const focusPanelNode = (panel: PanelNode) => {
     setFocusDocId(panel.docId);
     syncFocusParam(panel.docId);
@@ -352,8 +311,6 @@ export default function GraphPage() {
                   }}
                 >
                   <span>{focusPanel.family}</span>
-                  <span aria-hidden>·</span>
-                  <span>{focusPanel.learning.nextAction}</span>
                   <span aria-hidden>·</span>
                   <span>{new Date(focusPanel.crystallizedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                 </div>
@@ -428,21 +385,18 @@ export default function GraphPage() {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => openPrimaryAction(focusPanel)} style={focusActionStyle(true)}>
-                  {primaryActionLabel(focusPanel.learning.nextAction)}
-                </button>
-                <button type="button" onClick={() => router.push(focusPanel.href)} style={focusActionStyle(false)}>
-                  Source
+                <button type="button" onClick={() => router.push(focusPanel.href)} style={focusActionStyle(true)}>
+                  Open source
                 </button>
                 <button type="button" onClick={() => router.push('/kesi')} style={focusActionStyle(false)}>
-                  Kesi
+                  Back to Kesi
                 </button>
               </div>
             </div>
           </div>
         )}
         <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 6 }}>
-          Click any panel to continue it through its current weave.
+          Click any panel to inspect its relations.
         </div>
       </div>
       <div style={{ height: 'calc(100vh - 84px)' }}>
@@ -495,19 +449,4 @@ function focusActionStyle(primary: boolean) {
     cursor: 'pointer',
     boxShadow: primary ? 'var(--shadow-1)' : 'none',
   };
-}
-
-function primaryActionLabel(nextAction: PanelNode['learning']['nextAction']) {
-  switch (nextAction) {
-    case 'refresh':
-      return 'Refresh';
-    case 'rehearse':
-      return 'Rehearsal';
-    case 'examine':
-      return 'Examiner';
-    case 'capture':
-      return 'Open';
-    default:
-      return 'Review';
-  }
 }
