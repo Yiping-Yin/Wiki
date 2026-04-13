@@ -313,7 +313,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       {focusItem && (
         <section
           style={{
-            padding: '0.1rem 0 1rem',
+            padding: '0.1rem 0 0.8rem',
             marginBottom: 20,
             borderBottom: '0.5px solid var(--mat-border)',
           }}
@@ -326,13 +326,12 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
                 color: 'var(--muted)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                fontWeight: 700,
+              fontWeight: 700,
               }}
             >
               Return to this source
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            <LearningStatusInline status={focusItem.learning} compact />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
@@ -359,15 +358,15 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
                   flexWrap: 'wrap',
                   color: 'var(--muted)',
                   letterSpacing: '0.04em',
-                  marginBottom: 8,
-                }}
-              >
-                <span>{focusItem.ext.slice(1).toUpperCase()}</span>
-                <span aria-hidden>·</span>
-                <span>{formatSize(focusItem.size)}</span>
-                <span aria-hidden>·</span>
-                <span>{formatWhen(focusItem.touchedAt)}</span>
-              </div>
+                marginBottom: 8,
+              }}
+            >
+              <span>{focusItem.ext.slice(1).toUpperCase()}</span>
+              <span aria-hidden>·</span>
+              <span>{formatSize(focusItem.size)}</span>
+              <span aria-hidden>·</span>
+              <span>{formatWhen(focusItem.touchedAt)}</span>
+            </div>
 
               <div
                 style={{
@@ -386,17 +385,11 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
 
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => openPrimaryAction(focusItem)} style={uploadActionStyle(true)}>
-                {primaryActionLabel(focusItem.learning.nextAction)}
+                Continue source
               </button>
-              <button type="button" onClick={() => router.push(focusItem.href)} style={uploadActionStyle(false)}>
-                Source
-              </button>
-              <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(`upload/${focusItem.name}`)}`)} style={uploadActionStyle(false)}>
-                Kesi
-              </button>
-              <button type="button" onClick={() => router.push(`/graph?focus=${encodeURIComponent(`upload/${focusItem.name}`)}`)} style={uploadActionStyle(false)}>
-                Relations
-              </button>
+              <Link href={focusItem.href} style={{ ...uploadActionStyle(false), textDecoration: 'none' }}>
+                Open source
+              </Link>
             </div>
           </div>
         </section>
