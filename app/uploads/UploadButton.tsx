@@ -6,7 +6,13 @@ import { useRef, useState } from 'react';
  * Sits in the Uploads header hairline. No modal, no dialog, no copy.
  * §1: the file picker IS the interface. §16: 3 steps max (click → pick → done).
  */
-export function UploadButton() {
+export function UploadButton({
+  variant = 'icon',
+  label = 'Add files',
+}: {
+  variant?: 'icon' | 'button';
+  label?: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -46,20 +52,45 @@ export function UploadButton() {
         aria-label="Upload file"
         title="Upload file"
         style={{
-          background: 'transparent',
-          border: 0,
+          background: variant === 'button' ? 'var(--bg-translucent)' : 'transparent',
+          border: variant === 'button' ? '0.5px solid var(--mat-border)' : 0,
           cursor: busy ? 'default' : 'pointer',
-          color: 'var(--muted)',
-          fontSize: '1rem',
+          color: variant === 'button' ? 'var(--fg)' : 'var(--muted)',
+          fontSize: variant === 'button' ? '0.82rem' : '1rem',
           lineHeight: 1,
-          padding: '0 4px',
-          opacity: busy ? 0.3 : 0.5,
+          padding: variant === 'button' ? '0.46rem 0.72rem' : '0 4px',
+          opacity: busy ? 0.3 : variant === 'button' ? 0.88 : 0.5,
           transition: 'opacity 0.18s var(--ease), color 0.18s var(--ease)',
           flexShrink: 0,
+          borderRadius: variant === 'button' ? 999 : 0,
+          boxShadow: variant === 'button' ? 'var(--shadow-1)' : 'none',
+          fontFamily: variant === 'button' ? 'var(--display)' : 'inherit',
+          fontWeight: variant === 'button' ? 600 : 400,
+          letterSpacing: variant === 'button' ? '-0.01em' : 'normal',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: variant === 'button' ? 8 : 0,
         }}
-        onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--accent)'; } }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'var(--muted)'; }}
-      >+</button>
+        onMouseEnter={(e) => {
+          if (!busy) {
+            e.currentTarget.style.opacity = '1';
+            e.currentTarget.style.color = variant === 'button' ? 'var(--fg)' : 'var(--accent)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = busy ? '0.3' : variant === 'button' ? '0.88' : '0.5';
+          e.currentTarget.style.color = variant === 'button' ? 'var(--fg)' : 'var(--muted)';
+        }}
+      >
+        {variant === 'button' ? (
+          <>
+            <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+              Uploads
+            </span>
+            <span>{label}</span>
+          </>
+        ) : '+'}
+      </button>
     </>
   );
 }
