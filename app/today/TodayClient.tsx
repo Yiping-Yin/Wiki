@@ -355,21 +355,7 @@ export function TodayClient({
                 onClick={() => router.push(focusSurface.href)}
                 style={todayActionStyle(false)}
               >
-                Source
-              </button>
-              <button
-                type="button"
-                onClick={() => openKesi(focusSurface)}
-                style={todayActionStyle(false)}
-              >
-                Kesi
-              </button>
-              <button
-                type="button"
-                onClick={() => openRelations(focusSurface)}
-                style={todayActionStyle(false)}
-              >
-                Relations
+                Open source
               </button>
             </div>
           </div>
