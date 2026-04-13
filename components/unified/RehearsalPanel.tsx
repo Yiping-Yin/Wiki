@@ -22,8 +22,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import type { SourceDocId } from '../../lib/note/types';
 import { appendRehearsal } from '../../lib/note/store';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
 
 const MarkdownPreview = dynamic(
   () => import('../NoteRenderer').then((m) => m.NoteRenderer),
@@ -39,11 +41,13 @@ type Props = {
 };
 
 export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' }: Props) {
+  const router = useRouter();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [transforming, setTransforming] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [bounce, setBounce] = useState(false);
+  const [savedState, setSavedState] = useState<{ mode: 'stay' | 'examine'; at: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -64,6 +68,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
       });
       setDraft('');
       onSaved?.(next);
+      setSavedState({ mode: next, at: Date.now() });
       // Micro-bounce: the panel physically pulses to confirm save
       setBounce(true);
       setStatus(null);
@@ -82,6 +87,23 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
   const saveAndExamine = useCallback(() => {
     void persistDraft('examine');
   }, [persistDraft]);
+
+  const openReview = useCallback(() => {
+    if (!docId) return;
+    const payload: ReviewResumePayload = { href: docHrefFromDocId(docId), anchorId: null };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(docHrefFromDocId(docId));
+  }, [docId, router]);
+
+  const openKesi = useCallback(() => {
+    router.push('/kesi');
+  }, [router]);
+
+  const openRelations = useCallback(() => {
+    router.push(docId ? `/graph?focus=${encodeURIComponent(docId)}` : '/graph');
+  }, [docId, router]);
 
   /**
    * ⌘K · transform the currently-selected text via AI.
@@ -313,6 +335,37 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
             Preview
           </div>
           <MarkdownPreview source={draft} />
+        </div>
+      )}
+
+      {savedState?.mode === 'stay' && !draft.trim() && (
+        <div
+          style={{
+            padding: '10px 12px',
+            borderTop: '0.5px solid var(--accent)',
+            borderBottom: '0.5px solid var(--mat-border)',
+            color: 'var(--fg-secondary)',
+            fontSize: '0.8rem',
+            lineHeight: 1.5,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          <div>
+            Saved into this weave. Continue from the current panel, open kesi, or look at its relations.
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={openReview} style={buttonStyle(true, 'muted')}>
+              Review
+            </button>
+            <button type="button" onClick={openKesi} style={buttonStyle(true, 'muted')}>
+              Kesi
+            </button>
+            <button type="button" onClick={openRelations} style={buttonStyle(true, 'muted')}>
+              Relations
+            </button>
+          </div>
         </div>
       )}
 
