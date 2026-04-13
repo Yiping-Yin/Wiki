@@ -23,6 +23,7 @@ type PanelNode = {
 type RelatedPanel = {
   panel: PanelNode;
   weight: number;
+  snippet: string;
 };
 
 function extractMarkdownLinkUrls(content: string): string[] {
@@ -67,6 +68,13 @@ function latestPanelSummary(traces: Trace[]) {
     }
   }
   return latestSummary;
+}
+
+function relationSnippet(summary: string, content: string) {
+  const base = summary.trim() || content.trim();
+  if (!base) return '';
+  const single = base.replace(/\s+/g, ' ').trim();
+  return single.length > 96 ? `${single.slice(0, 96)}…` : single;
 }
 
 function buildPanels(traces: Trace[]) {
@@ -191,17 +199,21 @@ export default function GraphPage() {
     for (const panel of panels) {
       previewMap.set(panel.docId, { incoming: new Map(), outgoing: new Map() });
       const traceSet = tracesByDocId.get(panel.docId) ?? [];
-      const latestByAnchor = new Map<string, { content: string; at: number }>();
+      const latestByAnchor = new Map<string, { content: string; summary: string; at: number }>();
       for (const trace of traceSet) {
         for (const event of trace.events) {
           if (event.kind !== 'thought-anchor') continue;
           const prev = latestByAnchor.get(event.anchorId);
           if (!prev || event.at > prev.at) {
-            latestByAnchor.set(event.anchorId, { content: event.content, at: event.at });
+            latestByAnchor.set(event.anchorId, {
+              content: event.content,
+              summary: event.summary,
+              at: event.at,
+            });
           }
         }
       }
-      for (const { content } of latestByAnchor.values()) {
+      for (const { content, summary } of latestByAnchor.values()) {
         for (const url of extractMarkdownLinkUrls(content)) {
           const targetPanel =
             Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href)) ??
@@ -215,10 +227,12 @@ export default function GraphPage() {
           sourcePreview.outgoing.set(targetPanel.docId, {
             panel: targetPanel,
             weight: edgeWeights.get(key) ?? 1,
+            snippet: relationSnippet(summary, content),
           });
           targetPreview.incoming.set(panel.docId, {
             panel,
             weight: edgeWeights.get(key) ?? 1,
+            snippet: relationSnippet(summary, content),
           });
           previewMap.set(panel.docId, sourcePreview);
           previewMap.set(targetPanel.docId, targetPreview);
@@ -269,6 +283,11 @@ export default function GraphPage() {
   const focusRelated = focusPanel
     ? relationPreview.get(focusPanel.docId) ?? { incoming: [], outgoing: [] }
     : { incoming: [], outgoing: [] };
+  const scopeCounts = {
+    nearby: focusRelated.incoming.length + focusRelated.outgoing.length,
+    incoming: focusRelated.incoming.length,
+    outgoing: focusRelated.outgoing.length,
+  };
 
   const visibleDocIds = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -408,9 +427,9 @@ export default function GraphPage() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
             {([
               ['all', 'All'],
-              ['nearby', 'Nearby'],
-              ['incoming', 'Incoming'],
-              ['outgoing', 'Outgoing'],
+              ['nearby', `Nearby · ${scopeCounts.nearby}`],
+              ['incoming', `Incoming · ${scopeCounts.incoming}`],
+              ['outgoing', `Outgoing · ${scopeCounts.outgoing}`],
             ] as const).map(([value, label]) => {
               const active = scopeFilter === value;
               return (
@@ -522,8 +541,11 @@ export default function GraphPage() {
                             onClick={() => focusPanelNode(related.panel)}
                             style={focusLinkStyle}
                           >
-                            {related.panel.title}
+                            <span>{related.panel.title}</span>
                             <span style={{ color: 'var(--muted)' }}> ×{related.weight}</span>
+                            {related.snippet ? (
+                              <span style={{ color: 'var(--muted)' }}> — {related.snippet}</span>
+                            ) : null}
                             {index < Math.min(focusRelated.incoming.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
                           </button>
                         ))}
@@ -549,8 +571,11 @@ export default function GraphPage() {
                             onClick={() => focusPanelNode(related.panel)}
                             style={focusLinkStyle}
                           >
-                            {related.panel.title}
+                            <span>{related.panel.title}</span>
                             <span style={{ color: 'var(--muted)' }}> ×{related.weight}</span>
+                            {related.snippet ? (
+                              <span style={{ color: 'var(--muted)' }}> — {related.snippet}</span>
+                            ) : null}
                             {index < Math.min(focusRelated.outgoing.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
                           </button>
                         ))}
