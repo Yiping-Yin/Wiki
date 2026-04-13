@@ -281,37 +281,37 @@ export function TodayClient({
       )}
 
       {captureNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Open">
+        <Block label="Start">
           <ScheduleList items={captureNext.filter((surface) => surface.id !== focusId)} next="source" cta="Open" onOpen={openNext} />
         </Block>
       )}
 
       {rehearseNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Write">
+        <Block label="Deepen">
           <ScheduleList items={rehearseNext.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Write" onOpen={openNext} />
         </Block>
       )}
 
       {weakSpots.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Again">
+        <Block label="Retry">
           <ScheduleList items={weakSpots.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Write again" onOpen={openNext} />
         </Block>
       )}
 
       {examineNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Ask">
+        <Block label="Verify">
           <ScheduleList items={examineNext.filter((surface) => surface.id !== focusId)} next="examiner" cta="Ask" onOpen={openNext} />
         </Block>
       )}
 
       {refreshNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Return">
+        <Block label="Warm">
           <ScheduleList items={refreshNext.filter((surface) => surface.id !== focusId)} next="review" cta="Return" onOpen={() => {}} onPrimary={openRefresh} />
         </Block>
       )}
 
       {revisit.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Keep close">
+        <Block label="Review">
           <ScheduleList items={revisit.filter((surface) => surface.id !== focusId)} next="review" cta="Review" onOpen={openNext} />
         </Block>
       )}
