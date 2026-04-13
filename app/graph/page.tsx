@@ -20,6 +20,11 @@ type PanelNode = {
   learning: ReturnType<typeof summarizeLearningSurface>;
 };
 
+type RelatedPanel = {
+  panel: PanelNode;
+  weight: number;
+};
+
 function extractMarkdownLinkUrls(content: string): string[] {
   if (!content) return [];
   const urls: string[] = [];
@@ -172,8 +177,8 @@ export default function GraphPage() {
       }));
     });
 
-    const seenEdges = new Set<string>();
-    const previewMap = new Map<string, { incoming: PanelNode[]; outgoing: PanelNode[] }>();
+    const edgeWeights = new Map<string, number>();
+    const previewMap = new Map<string, { incoming: Map<string, RelatedPanel>; outgoing: Map<string, RelatedPanel> }>();
     const flowEdges: Array<{
       id: string;
       source: string;
@@ -183,7 +188,7 @@ export default function GraphPage() {
     }> = [];
 
     for (const panel of panels) {
-      previewMap.set(panel.docId, { incoming: [], outgoing: [] });
+      previewMap.set(panel.docId, { incoming: new Map(), outgoing: new Map() });
       const traceSet = tracesByDocId.get(panel.docId) ?? [];
       const latestByAnchor = new Map<string, { content: string; at: number }>();
       for (const trace of traceSet) {
@@ -202,27 +207,43 @@ export default function GraphPage() {
             Array.from(panelByDocId.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
           if (!targetPanel || targetPanel.docId === panel.docId) continue;
           const key = `${panel.docId}=>${targetPanel.docId}`;
-          if (seenEdges.has(key)) continue;
-          seenEdges.add(key);
-          const sourcePreview = previewMap.get(panel.docId) ?? { incoming: [], outgoing: [] };
-          const targetPreview = previewMap.get(targetPanel.docId) ?? { incoming: [], outgoing: [] };
-          previewMap.set(panel.docId, {
-            ...sourcePreview,
-            outgoing: [...sourcePreview.outgoing, targetPanel],
+          edgeWeights.set(key, (edgeWeights.get(key) ?? 0) + 1);
+
+          const sourcePreview = previewMap.get(panel.docId) ?? { incoming: new Map(), outgoing: new Map() };
+          const targetPreview = previewMap.get(targetPanel.docId) ?? { incoming: new Map(), outgoing: new Map() };
+          sourcePreview.outgoing.set(targetPanel.docId, {
+            panel: targetPanel,
+            weight: edgeWeights.get(key) ?? 1,
           });
-          previewMap.set(targetPanel.docId, {
-            ...targetPreview,
-            incoming: [...targetPreview.incoming, panel],
+          targetPreview.incoming.set(panel.docId, {
+            panel,
+            weight: edgeWeights.get(key) ?? 1,
           });
-          flowEdges.push({
-            id: key,
-            source: panel.docId,
-            target: targetPanel.docId,
-            animated: false,
-            style: { stroke: 'var(--accent)', strokeWidth: 1.15 },
-          });
+          previewMap.set(panel.docId, sourcePreview);
+          previewMap.set(targetPanel.docId, targetPreview);
         }
       }
+    }
+
+    for (const [key, weight] of edgeWeights) {
+      const [source, target] = key.split('=>');
+      flowEdges.push({
+        id: key,
+        source,
+        target,
+        animated: false,
+        style: { stroke: 'var(--accent)', strokeWidth: 0.9 + Math.min(weight, 4) * 0.3 },
+      });
+    }
+
+    const orderedPreview = new Map<string, { incoming: RelatedPanel[]; outgoing: RelatedPanel[] }>();
+    for (const [docId, value] of previewMap) {
+      const sortByWeight = (items: Iterable<RelatedPanel>) =>
+        Array.from(items).sort((a, b) => b.weight - a.weight || a.panel.title.localeCompare(b.panel.title));
+      orderedPreview.set(docId, {
+        incoming: sortByWeight(value.incoming.values()),
+        outgoing: sortByWeight(value.outgoing.values()),
+      });
     }
 
     return {
@@ -231,7 +252,7 @@ export default function GraphPage() {
       panelCount: panels.length,
       relationCount: flowEdges.length,
       panels,
-      relationPreview: previewMap,
+      relationPreview: orderedPreview,
     };
   }, [traces, focusDocId]);
 
@@ -261,8 +282,8 @@ export default function GraphPage() {
     }
     if (focusPanel) {
       ids.add(focusPanel.docId);
-      for (const panel of focusRelated.incoming) ids.add(panel.docId);
-      for (const panel of focusRelated.outgoing) ids.add(panel.docId);
+      for (const related of focusRelated.incoming) ids.add(related.panel.docId);
+      for (const related of focusRelated.outgoing) ids.add(related.panel.docId);
     }
     return ids;
   }, [familyFilter, focusPanel, focusRelated.incoming, focusRelated.outgoing, panels, query]);
@@ -446,14 +467,15 @@ export default function GraphPage() {
                         }}
                       >
                         <span>Referenced by</span>
-                        {focusRelated.incoming.slice(0, 4).map((panel, index) => (
+                        {focusRelated.incoming.slice(0, 4).map((related, index) => (
                           <button
-                            key={`in-${panel.docId}`}
+                            key={`in-${related.panel.docId}`}
                             type="button"
-                            onClick={() => focusPanelNode(panel)}
+                            onClick={() => focusPanelNode(related.panel)}
                             style={focusLinkStyle}
                           >
-                            {panel.title}
+                            {related.panel.title}
+                            <span style={{ color: 'var(--muted)' }}> ×{related.weight}</span>
                             {index < Math.min(focusRelated.incoming.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
                           </button>
                         ))}
@@ -472,14 +494,15 @@ export default function GraphPage() {
                         }}
                       >
                         <span>Points to</span>
-                        {focusRelated.outgoing.slice(0, 4).map((panel, index) => (
+                        {focusRelated.outgoing.slice(0, 4).map((related, index) => (
                           <button
-                            key={`out-${panel.docId}`}
+                            key={`out-${related.panel.docId}`}
                             type="button"
-                            onClick={() => focusPanelNode(panel)}
+                            onClick={() => focusPanelNode(related.panel)}
                             style={focusLinkStyle}
                           >
-                            {panel.title}
+                            {related.panel.title}
+                            <span style={{ color: 'var(--muted)' }}> ×{related.weight}</span>
                             {index < Math.min(focusRelated.outgoing.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
                           </button>
                         ))}

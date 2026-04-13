@@ -141,7 +141,7 @@ export function QuickSwitcher() {
   const toolActions: Result[] = useMemo(() => [
     { kind: 'doc' as const, key: 'tool:rehearsal', title: 'Rehearsal', sub: 'Deepen a panel from memory', href: '__action:rehearsal' },
     { kind: 'doc' as const, key: 'tool:examiner', title: 'Examiner', sub: 'Verify a woven understanding', href: '__action:examiner' },
-    { kind: 'doc' as const, key: 'tool:kesi', title: 'Kesi', sub: 'Open the settled fabric', href: '/kesi' },
+    { kind: 'doc' as const, key: 'tool:kesi', title: 'Kesi', sub: ctx.isFree ? 'Open the settled fabric' : 'Open the current panel in kesi', href: ctx.isFree ? '/kesi' : `__action:kesi:${ctx.docId}` },
     { kind: 'doc' as const, key: 'tool:relations', title: 'Relations', sub: ctx.isFree ? 'Open the panel relation layer' : 'Open the current panel in relations', href: ctx.isFree ? '/graph' : `__action:relations:${ctx.docId}` },
     { kind: 'doc' as const, key: 'tool:ingestion', title: 'Import', sub: 'Drag-drop files', href: '__action:ingestion' },
     { kind: 'doc' as const, key: 'tool:recursing', title: 'Reconstructions', sub: 'Past rehearsals', href: '__action:recursing' },
@@ -207,6 +207,9 @@ export function QuickSwitcher() {
       window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'recursing' } }));
     } else if (r.href === '__action:thoughtmap') {
       window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
+    } else if (r.href.startsWith('__action:kesi:')) {
+      const docId = r.href.slice('__action:kesi:'.length);
+      window.location.href = `/kesi?focus=${encodeURIComponent(docId)}`;
     } else if (r.href.startsWith('__action:relations:')) {
       const docId = r.href.slice('__action:relations:'.length);
       window.location.href = `/graph?focus=${encodeURIComponent(docId)}`;
