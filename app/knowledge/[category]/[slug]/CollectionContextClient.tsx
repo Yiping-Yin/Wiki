@@ -160,16 +160,23 @@ export function CollectionContextClient({
     ? currentGroup.docs.map((doc) => surfaces.find((surface) => surface.id === doc.id) ?? null).filter(Boolean) as CollectionSurface[]
     : [];
   const currentGroupIndex = currentGroupDocs.findIndex((doc) => doc.id === currentDocId);
-  const viewedCount = surfaces.filter((surface) => surface.state !== 'new').length;
-  const finishedCount = surfaces.filter((surface) => surface.state === 'finished').length;
-
   const continueDoc = surfaces.find((surface) => surface.id !== currentDocId && (surface.state === 'woven' || surface.state === 'opened')) ?? null;
   const startDoc = docs[currentIndex + 1] ?? docs[0] ?? null;
   const mapHref = currentGroup?.label
     ? `/knowledge/${category.slug}#${encodeURIComponent(currentGroup.label)}`
     : `/knowledge/${category.slug}`;
-
-  const sequenceDocs = currentGroupDocs.length > 0 ? currentGroupDocs : surfaces.slice(0, 4);
+  const baseSequence = currentGroupDocs.length > 0 ? currentGroupDocs : surfaces;
+  const sequenceAnchorIndex =
+    currentGroupIndex >= 0
+      ? currentGroupIndex
+      : baseSequence.findIndex((doc) => doc.id === currentDocId);
+  const sequenceDocs =
+    baseSequence.length <= 3 || sequenceAnchorIndex < 0
+      ? baseSequence.slice(0, 3)
+      : baseSequence.slice(
+          Math.max(0, sequenceAnchorIndex - 1),
+          Math.min(baseSequence.length, sequenceAnchorIndex + 2),
+        );
 
   return (
     <section style={{ marginTop: '0.9rem', marginBottom: '1.1rem' }}>
@@ -257,12 +264,10 @@ export function CollectionContextClient({
               </Link>
             </>
           )}
-          <span aria-hidden>·</span>
-          <span>{viewedCount} viewed</span>
-          <span aria-hidden>·</span>
-          <span>{finishedCount} finished</span>
           {currentSurface?.touchedAt ? (
             <>
+              <span aria-hidden>·</span>
+              <span>{stateLabel(currentSurface).toLowerCase()}</span>
               <span aria-hidden>·</span>
               <span>touched {formatWhen(currentSurface.touchedAt)}</span>
             </>
@@ -273,6 +278,10 @@ export function CollectionContextClient({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {sequenceDocs.map((doc, index) => {
               const active = doc.id === currentDocId;
+              const seqIndex =
+                currentGroupIndex >= 0
+                  ? Math.max(0, currentGroupIndex - 1) + index + 1
+                  : docs.findIndex((item) => item.id === doc.id) + 1;
               return (
                 <Link
                   key={doc.id}
@@ -290,7 +299,7 @@ export function CollectionContextClient({
                   }}
                 >
                   <span className="t-caption2" style={{ color: active ? 'var(--accent)' : 'var(--muted)', fontFamily: 'var(--mono)', fontVariantNumeric: 'tabular-nums' }}>
-                    {currentGroupIndex >= 0 ? index + 1 : docs.findIndex((item) => item.id === doc.id) + 1}
+                    {seqIndex}
                   </span>
                   <span style={{ fontFamily: 'var(--display)', fontWeight: active ? 600 : 500 }}>
                     {doc.title}
