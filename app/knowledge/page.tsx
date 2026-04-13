@@ -1,5 +1,5 @@
-import { getKnowledgeCategories } from '../../lib/knowledge-store';
-import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
+import { getAllDocs, getKnowledgeCategories } from '../../lib/knowledge-store';
+import { KnowledgeHomeClient } from './KnowledgeHomeClient';
 
 export const metadata = { title: 'Your Kesi · Loom' };
 
@@ -35,9 +35,10 @@ function groupTop(cats: Awaited<ReturnType<typeof getKnowledgeCategories>>) {
 
 export default async function KnowledgeHome() {
   const knowledgeCategories = await getKnowledgeCategories();
+  const docs = await getAllDocs();
   const groups = groupTop(knowledgeCategories);
 
-  const staticGroups = groups.map((group) => ({
+  const clientGroups = groups.map((group) => ({
     label: group.label,
     count: group.count,
     items: group.items.map((category) => ({
@@ -48,5 +49,13 @@ export default async function KnowledgeHome() {
     })),
   }));
 
-  return <KnowledgeHomeStatic groups={staticGroups} />;
+  const clientDocs = docs.map((doc) => ({
+    id: doc.id,
+    title: doc.title,
+    href: `/knowledge/${doc.categorySlug}/${doc.fileSlug}`,
+    preview: doc.preview,
+    categorySlug: doc.categorySlug,
+  }));
+
+  return <KnowledgeHomeClient groups={clientGroups} docs={clientDocs} />;
 }
