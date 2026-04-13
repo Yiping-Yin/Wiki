@@ -171,12 +171,10 @@ export function HomeClient(_props: unknown) {
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       {current && (
         <section
-          className="material-thick"
           style={{
-            padding: '1rem 1.05rem 1.05rem',
-            borderRadius: 'var(--r-3)',
+            padding: '0.1rem 0 1rem',
             marginBottom: 18,
-            boxShadow: 'var(--shadow-1)',
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -190,7 +188,7 @@ export function HomeClient(_props: unknown) {
                 fontWeight: 700,
               }}
             >
-              Continue weaving
+              Keep this thread warm
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
             <LearningStatusInline status={current.learning} compact />
@@ -325,17 +323,17 @@ export function HomeClient(_props: unknown) {
 function homeActionStyle(primary: boolean) {
   return {
     appearance: 'none' as const,
-    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
-    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
-    color: primary ? 'var(--accent)' : 'var(--fg)',
+    border: 0,
+    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
     borderRadius: 999,
-    padding: '0.52rem 0.82rem',
+    padding: '0.3rem 0',
     fontSize: '0.82rem',
     fontWeight: 650,
     letterSpacing: '-0.01em',
     lineHeight: 1,
     cursor: 'pointer',
-    boxShadow: primary ? 'var(--shadow-1)' : 'none',
   };
 }
 

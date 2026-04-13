@@ -138,12 +138,10 @@ export default function HighlightsPage() {
 
       {focus && (
         <section
-          className="material-thick"
           style={{
-            padding: '1rem 1.05rem 1.05rem',
-            borderRadius: 'var(--r-3)',
+            padding: '0.1rem 0 1rem',
             marginBottom: 20,
-            boxShadow: 'var(--shadow-1)',
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -157,7 +155,7 @@ export default function HighlightsPage() {
                 fontWeight: 700,
               }}
             >
-              Return to source
+              Return to this passage
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           </div>
@@ -266,16 +264,16 @@ function highlightActionStyle() {
     alignItems: 'center',
     justifyContent: 'center',
     textDecoration: 'none',
-    border: '0.5px solid color-mix(in srgb, var(--accent) 38%, var(--mat-border))',
-    background: 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))',
+    border: 0,
+    borderBottom: '0.5px solid var(--accent)',
+    background: 'transparent',
     color: 'var(--accent)',
     borderRadius: 999,
-    padding: '0.52rem 0.82rem',
+    padding: '0.3rem 0',
     fontSize: '0.82rem',
     fontWeight: 650,
     letterSpacing: '-0.01em',
     lineHeight: 1,
-    boxShadow: 'var(--shadow-1)',
   } as const;
 }
 
