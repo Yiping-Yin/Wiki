@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useHistory } from '../lib/use-history';
+import { useAllTraces } from '../lib/trace';
 
 type IndexDoc = { id: string; title: string; href: string; category: string };
 type ResumeItem = { id: string; title: string; href: string; viewedAt: number };
@@ -47,6 +48,7 @@ async function loadDocs(): Promise<IndexDoc[]> {
 export function HomeClient(_props: unknown) {
   const [history] = useHistory();
   const [docs, setDocs] = useState<IndexDoc[]>([]);
+  const { traces } = useAllTraces();
   useEffect(() => { loadDocs().then(setDocs); }, []);
 
   const docsById = useMemo(() => {
@@ -72,6 +74,15 @@ export function HomeClient(_props: unknown) {
     return out;
   }, [history, docsById]);
 
+  const kesiCount = useMemo(() => {
+    let count = 0;
+    for (const trace of traces) {
+      if (trace.parentId !== null || !trace.source?.docId) continue;
+      if (trace.events.some((event) => event.kind === 'crystallize')) count += 1;
+    }
+    return count;
+  }, [traces]);
+
   // Auto-resume: if there's reading history, navigate directly to
   // the last-read doc. The user opens Loom → sees their book open to
   // where they left off. No homepage speed bump.
@@ -87,7 +98,7 @@ export function HomeClient(_props: unknown) {
   }, [resume, autoResumed, router]);
 
   if (resume.length === 0) {
-    return <HomeLoom />;
+    return <HomeLoom kesiCount={kesiCount} />;
   }
 
   // While auto-resuming, show nothing (avoid flash of homepage)
@@ -270,13 +281,12 @@ function getSkyPalette(): SkyPalette {
  * §1 · 润物细无声 — no text, no UI, just atmosphere.
  * §25 · The weaver sits above the noise, reading.
  */
-function HomeLoom() {
+function HomeLoom({ kesiCount }: { kesiCount: number }) {
   const p = getSkyPalette();
 
   // Layout: sky top 55%, horizon glow at 55%, mountains 40-65%, reader at ~42%, clouds 55-100%
   return (
     <div
-      aria-hidden
       style={{
         position: 'relative',
         width: '100%',
@@ -284,45 +294,46 @@ function HomeLoom() {
         overflow: 'hidden',
       }}
     >
-      {/* Sky gradient — time-of-day aware */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: `linear-gradient(to bottom, ${p.sky.map((c, i) =>
-          `${c} ${Math.round(i / (p.sky.length - 1) * 100)}%`
-        ).join(', ')})`,
-      }} />
+      <div aria-hidden style={{ position: 'absolute', inset: 0 }}>
+        {/* Sky gradient — time-of-day aware */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `linear-gradient(to bottom, ${p.sky.map((c, i) =>
+            `${c} ${Math.round(i / (p.sky.length - 1) * 100)}%`
+          ).join(', ')})`,
+        }} />
 
-      {/* Horizon glow — warm light at the horizon line */}
-      <div style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: '40%',
-        height: '30%',
-        background: `radial-gradient(ellipse 80% 50% at 50% 40%,
-          ${p.sky[p.sky.length - 2]}88 0%, transparent 70%)`,
-        pointerEvents: 'none',
-      }} />
+        {/* Horizon glow — warm light at the horizon line */}
+        <div style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: '40%',
+          height: '30%',
+          background: `radial-gradient(ellipse 80% 50% at 50% 40%,
+            ${p.sky[p.sky.length - 2]}88 0%, transparent 70%)`,
+          pointerEvents: 'none',
+        }} />
 
-      {/* Stars — visible at night/dusk, hidden during day */}
-      {p.stars > 0 && (
-        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '45%', opacity: p.stars }}>
-          {[[12, 8], [25, 15], [38, 6], [52, 18], [67, 10], [78, 22], [88, 5],
-            [15, 28], [42, 32], [70, 26], [8, 38], [55, 3], [92, 15], [30, 24],
-            [60, 35], [85, 30], [20, 42], [48, 8], [75, 38], [35, 18]].map(([x, y], i) => (
-            <circle key={i} cx={`${x}%`} cy={`${y}%`} r={i % 3 === 0 ? 1.2 : 0.7}
-              fill="white" opacity={0.3 + (i % 4) * 0.15} />
-          ))}
-        </svg>
-      )}
+        {/* Stars — visible at night/dusk, hidden during day */}
+        {p.stars > 0 && (
+          <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '45%', opacity: p.stars }}>
+            {[[12, 8], [25, 15], [38, 6], [52, 18], [67, 10], [78, 22], [88, 5],
+              [15, 28], [42, 32], [70, 26], [8, 38], [55, 3], [92, 15], [30, 24],
+              [60, 35], [85, 30], [20, 42], [48, 8], [75, 38], [35, 18]].map(([x, y], i) => (
+              <circle key={i} cx={`${x}%`} cy={`${y}%`} r={i % 3 === 0 ? 1.2 : 0.7}
+                fill="white" opacity={0.3 + (i % 4) * 0.15} />
+            ))}
+          </svg>
+        )}
 
-      {/* All scene elements in one SVG — proper z-order and proportions */}
-      <svg
-        viewBox="0 0 1600 900"
-        preserveAspectRatio="xMidYMid slice"
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-      >
+        {/* All scene elements in one SVG — proper z-order and proportions */}
+        <svg
+          viewBox="0 0 1600 900"
+          preserveAspectRatio="xMidYMid slice"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        >
         <defs>
           <radialGradient id="bookLight" cx="50%" cy="30%">
             <stop offset="0%" stopColor="#fff8e0" stopOpacity="0.9" />
@@ -399,7 +410,7 @@ function HomeLoom() {
 
         {/* ── Ground plane below ridge — fills to cloud zone ── */}
         <rect x="0" y="618" width="1600" height="282" fill={p.mountain[2]} />
-      </svg>
+        </svg>
 
       {/* Cloud sea — multiple layers with different speeds, below the ridge */}
       <style>{`
@@ -408,16 +419,16 @@ function HomeLoom() {
         @keyframes cloudDrift3 { from { transform: translateX(0); } to { transform: translateX(-50%); } }
       `}</style>
 
-      {/* Cloud layer 1 — far, slow */}
-      <div style={{
-        position: 'absolute',
-        bottom: '12%',
-        left: 0,
-        width: '200%',
-        height: '28%',
-        animation: 'cloudDrift1 90s linear infinite',
-        opacity: p.cloudOpacity[0],
-      }}>
+        {/* Cloud layer 1 — far, slow */}
+        <div style={{
+          position: 'absolute',
+          bottom: '12%',
+          left: 0,
+          width: '200%',
+          height: '28%',
+          animation: 'cloudDrift1 90s linear infinite',
+          opacity: p.cloudOpacity[0],
+        }}>
         <svg viewBox="0 0 2400 300" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
           <path d="M0,120 Q80,60 180,100 Q300,30 440,80 Q560,10 700,70
                    Q820,20 960,60 Q1080,10 1200,80
@@ -426,18 +437,18 @@ function HomeLoom() {
                    L2400,300 L0,300 Z"
             fill={p.cloud} />
         </svg>
-      </div>
+        </div>
 
-      {/* Cloud layer 2 — mid speed */}
-      <div style={{
-        position: 'absolute',
-        bottom: '4%',
-        left: 0,
-        width: '200%',
-        height: '30%',
-        animation: 'cloudDrift2 60s linear infinite',
-        opacity: p.cloudOpacity[1],
-      }}>
+        {/* Cloud layer 2 — mid speed */}
+        <div style={{
+          position: 'absolute',
+          bottom: '4%',
+          left: 0,
+          width: '200%',
+          height: '30%',
+          animation: 'cloudDrift2 60s linear infinite',
+          opacity: p.cloudOpacity[1],
+        }}>
         <svg viewBox="0 0 2400 300" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
           <path d="M0,100 Q100,40 220,80 Q360,10 500,60 Q620,0 760,50
                    Q880,10 1020,55 Q1140,5 1200,40
@@ -446,18 +457,18 @@ function HomeLoom() {
                    L2400,300 L0,300 Z"
             fill={p.cloud} />
         </svg>
-      </div>
+        </div>
 
-      {/* Cloud layer 3 — near, faster */}
-      <div style={{
-        position: 'absolute',
-        bottom: '-4%',
-        left: 0,
-        width: '200%',
-        height: '28%',
-        animation: 'cloudDrift3 40s linear infinite',
-        opacity: p.cloudOpacity[2],
-      }}>
+        {/* Cloud layer 3 — near, faster */}
+        <div style={{
+          position: 'absolute',
+          bottom: '-4%',
+          left: 0,
+          width: '200%',
+          height: '28%',
+          animation: 'cloudDrift3 40s linear infinite',
+          opacity: p.cloudOpacity[2],
+        }}>
         <svg viewBox="0 0 2400 300" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
           <path d="M0,80 Q120,20 260,60 Q400,0 540,50 Q660,5 800,40
                    Q920,0 1060,45 Q1200,10 1200,50
@@ -466,18 +477,74 @@ function HomeLoom() {
                    L2400,300 L0,300 Z"
             fill={p.cloud} />
         </svg>
+        </div>
+
+        {/* Bottom fade to page background */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '6%',
+          background: 'linear-gradient(to bottom, transparent, var(--bg))',
+          pointerEvents: 'none',
+        }} />
       </div>
 
-      {/* Bottom fade to page background */}
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '6%',
-        background: 'linear-gradient(to bottom, transparent, var(--bg))',
-        pointerEvents: 'none',
-      }} />
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          bottom: 24,
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: 10,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          paddingInline: 16,
+        }}
+      >
+        {kesiCount > 0 && (
+          <Link
+            href="/kesi"
+            className="material-thick"
+            style={{
+              textDecoration: 'none',
+              color: 'var(--fg)',
+              borderRadius: 999,
+              padding: '0.58rem 0.9rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: 'var(--shadow-1)',
+            }}
+          >
+            <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+              Kesi
+            </span>
+            <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{kesiCount}</span>
+          </Link>
+        )}
+        <Link
+          href="/browse"
+          className="material-thick"
+          style={{
+            textDecoration: 'none',
+            color: 'var(--fg)',
+            borderRadius: 999,
+            padding: '0.58rem 0.9rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            boxShadow: 'var(--shadow-1)',
+          }}
+        >
+          <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+            Browse
+          </span>
+        </Link>
+      </div>
     </div>
   );
 }

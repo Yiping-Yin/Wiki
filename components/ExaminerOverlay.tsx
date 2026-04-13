@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { AIExaminer } from './unified/AIExaminer';
+import { WeftShuttle } from './DocViewer';
 
 export function ExaminerOverlay() {
   const [active, setActive] = useState(false);
@@ -97,6 +98,12 @@ function ExaminerInner({ docId }: { docId: string }) {
     return () => window.removeEventListener('loom:trace:changed', refresh);
   }, [docId]);
 
-  if (loading) return <div style={{ color: 'var(--muted)', padding: 20, fontStyle: 'italic' }}>Loading…</div>;
+  if (loading) {
+    return (
+      <div style={{ padding: 20, display: 'flex', justifyContent: 'center' }}>
+        <WeftShuttle width={72} />
+      </div>
+    );
+  }
   return <AIExaminer docId={docId} contextNotes={contextNotes} />;
 }
