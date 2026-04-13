@@ -652,15 +652,6 @@ export default function GraphPage() {
                         <span>Same family · {focusInsights.sameFamilyCount}</span>
                       </>
                     ) : null}
-                    <span aria-hidden>·</span>
-                    <button
-                      type="button"
-                      onClick={() => focusPanelNode(focusInsights.strongest.panel)}
-                      style={focusLinkStyle}
-                    >
-                      Strongest {focusInsights.strongest.direction === 'incoming' ? 'from' : 'to'}{' '}
-                      {focusInsights.strongest.panel.title} ×{focusInsights.strongest.weight}
-                    </button>
                   </div>
                 )}
                 {(focusRelated.incoming.length > 0 || focusRelated.outgoing.length > 0) && (
@@ -697,12 +688,6 @@ export default function GraphPage() {
                 </button>
                 <button type="button" onClick={() => openPrimaryAction(focusPanel)} style={focusLinkStyle}>
                   {primaryActionLabel(focusPanel.learning.nextAction)}
-                </button>
-                <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(focusPanel.docId)}`)} style={focusLinkStyle}>
-                  Open this panel in Kesi
-                </button>
-                <button type="button" onClick={copyView} style={focusLinkStyle}>
-                  {copied ? 'Link copied' : 'Copy this view'}
                 </button>
                 <button type="button" onClick={clearFocus} style={focusLinkStyle}>
                   Clear focus
