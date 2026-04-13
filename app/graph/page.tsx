@@ -130,7 +130,7 @@ export default function GraphPage() {
     }
   }, []);
 
-  const { nodes, edges, panelCount, relationCount, panels } = useMemo(() => {
+  const { nodes, edges, panelCount, relationCount, panels, relationPreview } = useMemo(() => {
     const { panels, tracesByDocId } = buildPanels(traces);
     const panelByDocId = new Map(panels.map((panel) => [panel.docId, panel] as const));
     const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
@@ -174,6 +174,7 @@ export default function GraphPage() {
     });
 
     const seenEdges = new Set<string>();
+    const previewMap = new Map<string, PanelNode[]>();
     const flowEdges: Array<{
       id: string;
       source: string;
@@ -183,6 +184,7 @@ export default function GraphPage() {
     }> = [];
 
     for (const panel of panels) {
+      previewMap.set(panel.docId, []);
       const traceSet = tracesByDocId.get(panel.docId) ?? [];
       const latestByAnchor = new Map<string, { content: string; at: number }>();
       for (const trace of traceSet) {
@@ -203,6 +205,8 @@ export default function GraphPage() {
           const key = `${panel.docId}=>${targetPanel.docId}`;
           if (seenEdges.has(key)) continue;
           seenEdges.add(key);
+          previewMap.set(panel.docId, [...(previewMap.get(panel.docId) ?? []), targetPanel]);
+          previewMap.set(targetPanel.docId, [...(previewMap.get(targetPanel.docId) ?? []), panel]);
           flowEdges.push({
             id: key,
             source: panel.docId,
@@ -220,6 +224,7 @@ export default function GraphPage() {
       panelCount: panels.length,
       relationCount: flowEdges.length,
       panels,
+      relationPreview: previewMap,
     };
   }, [traces, focusDocId]);
 
@@ -228,6 +233,7 @@ export default function GraphPage() {
     [panels],
   );
   const focusPanel = focusDocId ? panelByDocId.get(focusDocId) ?? null : null;
+  const focusRelated = focusPanel ? relationPreview.get(focusPanel.docId) ?? [] : [];
 
   const openReview = (panel: PanelNode) => {
     const payload: ReviewResumePayload = { href: panel.href, anchorId: null };
@@ -354,6 +360,43 @@ export default function GraphPage() {
                 >
                   {focusPanel.summary || 'This panel is woven, and its threads are visible here.'}
                 </div>
+                {focusRelated.length > 0 && (
+                  <div
+                    className="t-caption2"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      color: 'var(--muted)',
+                      letterSpacing: '0.04em',
+                      marginTop: 10,
+                    }}
+                  >
+                    <span>Threaded with</span>
+                    {focusRelated.slice(0, 4).map((panel, index) => (
+                      <button
+                        key={panel.docId}
+                        type="button"
+                        onClick={() => focusPanelNode(panel)}
+                        style={{
+                          appearance: 'none',
+                          border: 0,
+                          background: 'transparent',
+                          color: 'var(--accent)',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          letterSpacing: '0.02em',
+                          padding: 0,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {panel.title}
+                        {index < Math.min(focusRelated.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => openPrimaryAction(focusPanel)} style={focusActionStyle(true)}>
