@@ -57,6 +57,11 @@ type Panel = BasePanel & {
   learning: LearningSurfaceSummary;
 };
 
+type DirectedPanelRelations = {
+  incoming: Panel[];
+  outgoing: Panel[];
+};
+
 function buildPanels(traces: Trace[]): BasePanel[] {
   const tracesByDocId = new Map<string, Trace[]>();
   for (const trace of traces) {
@@ -326,12 +331,12 @@ export function KesiView() {
   }, [panels, tracesByDocId]);
 
   const relationPreview = useMemo(() => {
-    const previews = new Map<string, Panel[]>();
+    const previews = new Map<string, DirectedPanelRelations>();
     const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
     const seen = new Set<string>();
 
     for (const panel of panels) {
-      previews.set(panel.docId, []);
+      previews.set(panel.docId, { incoming: [], outgoing: [] });
     }
 
     for (const panel of panels) {
@@ -354,8 +359,14 @@ export function KesiView() {
           const key = `${panel.docId}=>${target.docId}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          previews.set(panel.docId, [...(previews.get(panel.docId) ?? []), target]);
-          previews.set(target.docId, [...(previews.get(target.docId) ?? []), panel]);
+          previews.set(panel.docId, {
+            incoming: previews.get(panel.docId)?.incoming ?? [],
+            outgoing: [...(previews.get(panel.docId)?.outgoing ?? []), target],
+          });
+          previews.set(target.docId, {
+            incoming: [...(previews.get(target.docId)?.incoming ?? []), panel],
+            outgoing: previews.get(target.docId)?.outgoing ?? [],
+          });
         }
       }
     }
@@ -423,6 +434,52 @@ export function KesiView() {
       && panel.learning.nextAction !== 'capture'
     ))
     .slice(0, 4);
+
+  const renderRelationButtons = (
+    label: string,
+    items: Panel[],
+    limit: number,
+    opts?: { marginTop?: number },
+  ) => {
+    if (items.length === 0) return null;
+    return (
+      <div
+        className="t-caption2"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          color: 'var(--muted)',
+          letterSpacing: '0.04em',
+          marginTop: opts?.marginTop ?? 0,
+        }}
+      >
+        <span>{label}</span>
+        {items.slice(0, limit).map((relatedPanel, index) => (
+          <button
+            key={relatedPanel.docId}
+            type="button"
+            onClick={() => focusPanelInKesi(relatedPanel)}
+            style={{
+              appearance: 'none',
+              border: 0,
+              background: 'transparent',
+              color: 'var(--accent)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+              padding: 0,
+              cursor: 'pointer',
+            }}
+          >
+            {relatedPanel.title}
+            {index < Math.min(items.length, limit) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   const openReview = (panel: Panel, anchorId: string | null = null) => {
     const payload: ReviewResumePayload = {
@@ -629,43 +686,12 @@ export function KesiView() {
                   {returnPanel.summary}
                 </div>
                 {(() => {
-                  const related = relationPreview.get(returnPanel.docId) ?? [];
-                  if (related.length === 0) return null;
+                  const related = relationPreview.get(returnPanel.docId) ?? { incoming: [], outgoing: [] };
+                  if (related.incoming.length === 0 && related.outgoing.length === 0) return null;
                   return (
-                    <div
-                      className="t-caption2"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        flexWrap: 'wrap',
-                        color: 'var(--muted)',
-                        letterSpacing: '0.04em',
-                        marginTop: 10,
-                      }}
-                    >
-                      <span>Threaded with</span>
-                      {related.slice(0, 3).map((panel, index) => (
-                        <button
-                          key={panel.docId}
-                          type="button"
-                          onClick={() => focusPanelInKesi(panel)}
-                          style={{
-                            appearance: 'none',
-                            border: 0,
-                            background: 'transparent',
-                            color: 'var(--accent)',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            letterSpacing: '0.02em',
-                            padding: 0,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {panel.title}
-                          {index < Math.min(related.length, 3) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
-                        </button>
-                      ))}
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {renderRelationButtons('Referenced by', related.incoming, 3)}
+                      {renderRelationButtons('Points to', related.outgoing, 3)}
                     </div>
                   );
                 })()}
@@ -1182,46 +1208,20 @@ export function KesiView() {
                       {panel.summary}
                     </div>
                     {(() => {
-                      const related = relationPreview.get(panel.docId) ?? [];
-                      if (related.length === 0) return null;
+                      const related = relationPreview.get(panel.docId) ?? { incoming: [], outgoing: [] };
+                      if (related.incoming.length === 0 && related.outgoing.length === 0) return null;
                       return (
                         <div
-                          className="t-caption2"
                           style={{
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            flexWrap: 'wrap',
-                            color: 'var(--muted)',
-                            letterSpacing: '0.04em',
+                            flexDirection: 'column',
+                            gap: 6,
                             marginBottom: panel.sections.length > 0 ? 12 : 8,
                           }}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <span>Threaded with</span>
-                          {related.slice(0, 2).map((relatedPanel, index) => (
-                            <button
-                              key={relatedPanel.docId}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                focusPanelInKesi(relatedPanel);
-                              }}
-                              style={{
-                                appearance: 'none',
-                                border: 0,
-                                background: 'transparent',
-                                color: 'var(--accent)',
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                letterSpacing: '0.02em',
-                                padding: 0,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {relatedPanel.title}
-                              {index < Math.min(related.length, 2) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
-                            </button>
-                          ))}
+                          {renderRelationButtons('Referenced by', related.incoming, 2)}
+                          {renderRelationButtons('Points to', related.outgoing, 2)}
                         </div>
                       );
                     })()}
