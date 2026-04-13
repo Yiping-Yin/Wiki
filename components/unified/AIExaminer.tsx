@@ -26,6 +26,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Note, SourceDocId } from '../../lib/note/types';
 import { appendNote } from '../../lib/note/store';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { WeftShuttle } from '../DocViewer';
 
 type Props = {
@@ -202,11 +203,24 @@ export function AIExaminer({ docId, contextNotes }: Props) {
   }, []);
 
   const returnToRehearsal = useCallback(() => {
+    const seedDraft = buildRehearsalSeed(
+      phase.kind === 'verdict' ? phase.question : examinerHistory.lastFailedQuestion ?? '',
+      phase.kind === 'verdict' ? phase.feedback : examinerHistory.lastFailedFeedback ?? '',
+    );
+    const payload: OverlayResumePayload = {
+      href: docHrefFromDocId(docId ?? ''),
+      overlay: 'rehearsal',
+      seedDraft,
+      seedLabel: 'From examiner · work the missing edge',
+    };
+    try {
+      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
     window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: 'rehearsal' } }));
     requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'rehearsal' } }));
+      window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'rehearsal', seedDraft, seedLabel: payload.seedLabel } }));
     });
-  }, []);
+  }, [docId, examinerHistory.lastFailedFeedback, examinerHistory.lastFailedQuestion, phase]);
 
   const stop = useCallback(() => {
     setPhase({ kind: 'idle' });
@@ -663,6 +677,20 @@ function idlePromptForQuality(history: ExaminerHistory) {
     default:
       return 'Probe for gaps in your understanding of this doc.';
   }
+}
+
+function buildRehearsalSeed(question: string, feedback: string) {
+  const parts = [
+    'Rebuild the missing edge in your own words.',
+  ];
+  if (question.trim()) {
+    parts.push('', `Question: ${question.trim()}`);
+  }
+  if (feedback.trim()) {
+    parts.push('', `What was missing: ${feedback.trim()}`);
+  }
+  parts.push('', 'Answer again, cleanly and from memory:');
+  return parts.join('\n');
 }
 
 async function callAi(prompt: string): Promise<string> {

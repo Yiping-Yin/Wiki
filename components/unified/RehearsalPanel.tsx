@@ -20,7 +20,7 @@
  * validate the flow. Round 4 will upgrade to CodeMirror with markdown
  * syntax highlighting.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { SourceDocId } from '../../lib/note/types';
 import { appendRehearsal } from '../../lib/note/store';
@@ -34,15 +34,22 @@ type Props = {
   docId: SourceDocId | null;
   /** Called after a successful save so parent can refresh Notes list / continue the loop. */
   onSaved?: (next?: 'stay' | 'examine') => void;
+  seedDraft?: string;
+  seedLabel?: string;
 };
 
-export function RehearsalPanel({ docId, onSaved }: Props) {
+export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' }: Props) {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [transforming, setTransforming] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [bounce, setBounce] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!seedDraft) return;
+    setDraft((current) => (current.trim().length > 0 ? current : seedDraft));
+  }, [seedDraft]);
 
   const persistDraft = useCallback(async (next: 'stay' | 'examine') => {
     if (!docId || !draft.trim() || saving) return;
@@ -233,6 +240,19 @@ export function RehearsalPanel({ docId, onSaved }: Props) {
           </span>
         )}
       </div>
+
+      {seedLabel && (
+        <div
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {seedLabel}
+        </div>
+      )}
 
       {/* Editor */}
       <textarea

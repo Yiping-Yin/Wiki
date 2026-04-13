@@ -17,6 +17,8 @@ import { RehearsalPanel } from './unified/RehearsalPanel';
 
 export function RehearsalOverlay() {
   const [active, setActive] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState('');
+  const [resumeLabel, setResumeLabel] = useState('');
   const { mounted, visible } = useAnimatedPresence(active, 250);
   const pathname = usePathname();
   const ctx = contextFromPathname(pathname);
@@ -24,7 +26,12 @@ export function RehearsalOverlay() {
   // Triggered by ⌘E (no selection) or ⌘P → Rehearsal
   useEffect(() => {
     const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id === 'rehearsal') setActive((a) => !a);
+      const detail = (e as CustomEvent).detail;
+      if (detail?.id === 'rehearsal') {
+        if (typeof detail.seedDraft === 'string') setResumeDraft(detail.seedDraft);
+        if (typeof detail.seedLabel === 'string') setResumeLabel(detail.seedLabel);
+        setActive((a) => !a);
+      }
     };
     window.addEventListener('loom:overlay:toggle', handler);
     return () => window.removeEventListener('loom:overlay:toggle', handler);
@@ -66,6 +73,8 @@ export function RehearsalOverlay() {
       const payload = JSON.parse(raw) as OverlayResumePayload;
       if (payload.overlay !== 'rehearsal' || payload.href !== window.location.pathname) return;
       sessionStorage.removeItem(OVERLAY_RESUME_KEY);
+      setResumeDraft(payload.seedDraft ?? '');
+      setResumeLabel(payload.seedLabel ?? '');
       setActive(true);
     } catch {}
   }, []);
@@ -118,7 +127,12 @@ export function RehearsalOverlay() {
             : 'loom-modal-exit 0.2s ease both',
         }}
       >
-        <RehearsalPanel docId={ctx.docId} onSaved={onSaved} />
+        <RehearsalPanel
+          docId={ctx.docId}
+          onSaved={onSaved}
+          seedDraft={resumeDraft}
+          seedLabel={resumeLabel}
+        />
       </div>
     </div>
   );
