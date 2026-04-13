@@ -23,10 +23,26 @@ export function bucketFor(path) {
   }
 
   if (
+    path === 'README.md'
+    || path === 'app/dev/principles/page.tsx'
+    || path === 'CANVAS_SPEC.md'
+    || path === 'CAPTURE_SPEC.md'
+    || path === 'CURRENT_DESIGN_CANON.md'
+    || path === 'DESIGN_MEMORY.md'
+    || path === 'DESIGN_ONBOARDING.md'
+    || path === 'LOGO_BRIEF.md'
+    || path === 'COMMIT_PLAN.md'
+    || path === 'COMMIT_MESSAGES.md'
+    || path === 'docs'
+    || path.startsWith('docs/')
+  ) {
+    return 'docs-specs';
+  }
+
+  if (
     path === '.env.example'
     || path === '.gitignore'
     || path === 'package.json'
-    || path === 'README.md'
     || path.startsWith('app/api/')
     || path.startsWith('lib/server-config')
     || path.startsWith('lib/generated-cache')
@@ -71,15 +87,6 @@ export function bucketFor(path) {
     return 'pwa-runtime';
   }
 
-  if (
-    path === 'CANVAS_SPEC.md'
-    || path === 'CAPTURE_SPEC.md'
-    || path === 'DESIGN_MEMORY.md'
-    || path === 'LOGO_BRIEF.md'
-  ) {
-    return 'docs-specs';
-  }
-
   if (path.startsWith('app/') || path.startsWith('components/') || path === 'mdx-components.tsx') {
     return 'product-ui';
   }
@@ -100,7 +107,7 @@ export function stageHint(bucket) {
     case 'pwa-runtime':
       return 'git add public/manifest.webmanifest public/sw.js';
     case 'docs-specs':
-      return 'git add CANVAS_SPEC.md CAPTURE_SPEC.md DESIGN_MEMORY.md LOGO_BRIEF.md';
+      return 'git add README.md app/dev/principles/page.tsx docs/design docs/process docs/README.md';
     case 'product-ui':
       return 'git add app components mdx-components.tsx';
     default:
