@@ -102,11 +102,12 @@ export function BrowseClient({
   }, [history]);
 
   const tracesByDocId = useMemo(() => {
-    const map = new Map<string, Trace>();
+    const map = new Map<string, Trace[]>();
     for (const trace of traces) {
       if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
-      const existing = map.get(trace.source.docId);
-      if (!existing || trace.updatedAt > existing.updatedAt) map.set(trace.source.docId, trace);
+      const existing = map.get(trace.source.docId) ?? [];
+      existing.push(trace);
+      map.set(trace.source.docId, existing);
     }
     return map;
   }, [traces]);
@@ -127,8 +128,8 @@ export function BrowseClient({
       for (const doc of category.docs) {
         const docId = docIdForCategoryDoc(doc.id);
         const viewedAt = viewedByDocId.get(docId) ?? 0;
-        const trace = tracesByDocId.get(docId);
-        const learning = summarizeLearningSurface(trace, viewedAt);
+        const traceSet = tracesByDocId.get(docId) ?? [];
+        const learning = summarizeLearningSurface(traceSet, viewedAt);
         if (learning.opened) touched += 1;
         if (learning.crystallized) crystallized += 1;
         if (learning.examinerCount > 0) examined += 1;

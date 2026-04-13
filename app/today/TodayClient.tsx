@@ -91,21 +91,32 @@ export function TodayClient({
 
   const surfaces = useMemo(() => {
     const byDocId = new Map<string, StudySurface>();
+    const tracesByDocId = new Map<string, Trace[]>();
 
     for (const trace of traces) {
       if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
+      const current = tracesByDocId.get(trace.source.docId) ?? [];
+      current.push(trace);
+      tracesByDocId.set(trace.source.docId, current);
+    }
+
+    for (const [docId, traceSet] of tracesByDocId) {
+      const trace = traceSet.sort((a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt)[0];
+      if (!trace?.source?.docId) continue;
       const meta = docsById.get(trace.source.docId);
       const viewedAt = viewedByDocId.get(trace.source.docId) ?? 0;
       let latestSummary = '';
       let latestQuote = '';
       let latestAnchorAt = 0;
 
-      for (const event of trace.events) {
-        if (event.kind === 'thought-anchor') {
-          if (event.at >= latestAnchorAt) {
-            latestAnchorAt = event.at;
-            latestSummary = event.summary;
-            latestQuote = event.quote ?? '';
+      for (const sourceTrace of traceSet) {
+        for (const event of sourceTrace.events) {
+          if (event.kind === 'thought-anchor') {
+            if (event.at >= latestAnchorAt) {
+              latestAnchorAt = event.at;
+              latestSummary = event.summary;
+              latestQuote = event.quote ?? '';
+            }
           }
         }
       }
@@ -125,9 +136,13 @@ export function TodayClient({
         href: meta?.href ?? trace.source.href,
         pinned: pinnedByDocId.has(trace.source.docId),
         viewedAt,
-        touchedAt: Math.max(trace.updatedAt, latestAnchorAt, trace.crystallizedAt ?? 0, viewedAt),
+        touchedAt: Math.max(
+          viewedAt,
+          latestAnchorAt,
+          ...traceSet.map((t) => Math.max(t.updatedAt, t.crystallizedAt ?? 0, t.createdAt)),
+        ),
         kind,
-        learning: summarizeLearningSurface(trace, viewedAt),
+        learning: summarizeLearningSurface(traceSet, viewedAt),
         latestSummary,
         latestQuote: latestQuote || undefined,
         preview: meta?.preview ?? '',
