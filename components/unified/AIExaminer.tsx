@@ -204,16 +204,6 @@ export function AIExaminer({ docId, contextNotes }: Props) {
     window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
   }, []);
 
-  const openKesi = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
-    router.push(docId ? `/kesi?focus=${encodeURIComponent(docId)}` : '/kesi');
-  }, [docId, router]);
-
-  const openRelations = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
-    router.push(docId ? `/graph?focus=${encodeURIComponent(docId)}` : '/graph');
-  }, [docId, router]);
-
   const returnToRehearsal = useCallback(() => {
     const seedDraft = buildRehearsalSeed(
       phase.kind === 'verdict' ? phase.question : examinerHistory.lastFailedQuestion ?? '',

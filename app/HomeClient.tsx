@@ -165,7 +165,7 @@ export function HomeClient(_props: unknown) {
           color: 'var(--muted)',
           textTransform: 'uppercase', letterSpacing: '0.10em',
           fontWeight: 700,
-        }}>Resume</span>
+        }}>Recent</span>
         <span aria-hidden style={{
           flex: 1, height: 1, background: 'var(--mat-border)',
         }} />

@@ -96,14 +96,6 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
     });
   }, [docId, router, savedState?.anchorId]);
 
-  const openKesi = useCallback(() => {
-    router.push(docId ? `/kesi?focus=${encodeURIComponent(docId)}` : '/kesi');
-  }, [docId, router]);
-
-  const openRelations = useCallback(() => {
-    router.push(docId ? `/graph?focus=${encodeURIComponent(docId)}` : '/graph');
-  }, [docId, router]);
-
   /**
    * ⌘K · transform the currently-selected text via AI.
    *
