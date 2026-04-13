@@ -15,6 +15,8 @@ const STORE_NAME = 'vectors';
 type EmbeddingRecord = {
   noteId: string;
   docId: string;
+  href?: string;
+  anchorId?: string;
   vector: Float32Array;
   text: string;
   at: number;
@@ -38,6 +40,8 @@ function openDB(): Promise<IDBDatabase> {
 export async function putEmbedding(
   noteId: string,
   docId: string,
+  href: string | undefined,
+  anchorId: string | undefined,
   vector: Float32Array,
   text: string,
 ): Promise<void> {
@@ -47,6 +51,8 @@ export async function putEmbedding(
     tx.objectStore(STORE_NAME).put({
       noteId,
       docId,
+      href,
+      anchorId,
       vector,
       text,
       at: Date.now(),

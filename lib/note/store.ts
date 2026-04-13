@@ -96,7 +96,14 @@ export async function appendNote(input: {
   const noteId = newNoteId();
   if (typeof window !== 'undefined') {
     import('./embed-on-save').then(({ embedNoteAfterSave }) => {
-      void embedNoteAfterSave(noteId, input.docId, input.content, input.anchor.quote);
+      void embedNoteAfterSave(
+        noteId,
+        input.docId,
+        input.docHref,
+        anchorId,
+        input.content,
+        input.anchor.quote,
+      );
     }).catch(() => {});
   }
 

@@ -226,8 +226,8 @@ function RetrievalDot({
 
   const openReview = (result: SimilarNote) => {
     const doc = docsById.get(result.docId);
-    const href = doc?.href ?? inferHrefFromDocId(result.docId);
-    const payload: ReviewResumePayload = { href, anchorId: null };
+    const href = result.href ?? doc?.href ?? inferHrefFromDocId(result.docId);
+    const payload: ReviewResumePayload = { href, anchorId: result.anchorId ?? null };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
     } catch {}

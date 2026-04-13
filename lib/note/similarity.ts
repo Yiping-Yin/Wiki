@@ -22,6 +22,8 @@ export function cosineSim(a: Float32Array, b: Float32Array): number {
 export type SimilarNote = {
   noteId: string;
   docId: string;
+  href?: string;
+  anchorId?: string;
   score: number;
   text: string;
 };
@@ -39,6 +41,8 @@ export async function findSimilarNotes(
     .map((e) => ({
       noteId: e.noteId,
       docId: e.docId,
+      href: e.href,
+      anchorId: e.anchorId,
       score: cosineSim(queryVec, e.vector),
       text: e.text,
     }))

@@ -8,6 +8,8 @@ import { putEmbedding } from './embeddings';
 export async function embedNoteAfterSave(
   noteId: string,
   docId: string,
+  docHref: string,
+  anchorId: string,
   content: string,
   quote?: string,
 ): Promise<void> {
@@ -23,7 +25,7 @@ export async function embedNoteAfterSave(
     if (!r.ok) return;
     const { vector } = await r.json();
     if (!vector || !Array.isArray(vector)) return;
-    await putEmbedding(noteId, docId, new Float32Array(vector), text);
+    await putEmbedding(noteId, docId, docHref, anchorId, new Float32Array(vector), text);
   } catch {
     // Fire-and-forget
   }
