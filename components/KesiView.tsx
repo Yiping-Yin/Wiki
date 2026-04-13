@@ -266,6 +266,8 @@ export function KesiView() {
     };
   }, [panels]);
 
+  const returnPanel = sortedPanels[0] ?? null;
+
   const openReview = (panel: Panel) => {
     const payload: ReviewResumePayload = {
       href: panel.href,
@@ -304,6 +306,18 @@ export function KesiView() {
     router.push(panel.href);
   };
 
+  const openPrimaryAction = (panel: Panel) => {
+    if (panel.learning.nextAction === 'refresh') {
+      openRefresh(panel);
+    } else if (panel.learning.nextAction === 'rehearse') {
+      openOverlay(panel, 'rehearsal');
+    } else if (panel.learning.nextAction === 'examine') {
+      openOverlay(panel, 'examiner');
+    } else {
+      openReview(panel);
+    }
+  };
+
   if (loading || !mounted) return null;
   if (panels.length === 0) return <EmptyKesiCanvas />;
 
@@ -335,6 +349,118 @@ export function KesiView() {
             {sortedPanels.length}
           </span>
         </div>
+
+        {returnPanel && (
+          <section
+            className="material-thick"
+            style={{
+              padding: '1rem 1.05rem 1.05rem',
+              borderRadius: 'var(--r-3)',
+              marginBottom: 18,
+              boxShadow: 'var(--shadow-1)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span aria-hidden style={{ width: 14, height: 1, background: returnPanel.tint, opacity: 0.65 }} />
+              <span
+                className="t-caption2"
+                style={{
+                  color: 'var(--muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 700,
+                }}
+              >
+                Return to weave
+              </span>
+              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+              <LearningStatusInline status={returnPanel.learning} compact />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--display)',
+                    fontSize: '1.18rem',
+                    fontWeight: 650,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.25,
+                    marginBottom: 6,
+                  }}
+                >
+                  {returnPanel.title}
+                </div>
+
+                <div
+                  className="t-caption2"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    color: 'var(--muted)',
+                    letterSpacing: '0.04em',
+                    marginBottom: 8,
+                  }}
+                >
+                  <span>{returnPanel.family}</span>
+                  <span aria-hidden>·</span>
+                  <span>{formatWhen(returnPanel.crystallizedAt)}</span>
+                  <span aria-hidden>·</span>
+                  <span>{returnPanel.stitches} stitches</span>
+                  {returnPanel.collectionLabel && returnPanel.collectionLabel !== returnPanel.family && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{returnPanel.collectionLabel}</span>
+                    </>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    color: 'var(--fg-secondary)',
+                    fontSize: '0.9rem',
+                    lineHeight: 1.55,
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    maxWidth: '72ch',
+                  }}
+                >
+                  {returnPanel.summary}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => openPrimaryAction(returnPanel)}
+                  style={actionStyle(true)}
+                >
+                  {primaryActionLabel(returnPanel.learning.nextAction)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(returnPanel.href)}
+                  style={actionStyle(false)}
+                >
+                  Source
+                </button>
+                {returnPanel.collectionHref && returnPanel.collectionHref !== returnPanel.href && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(returnPanel.collectionHref!)}
+                    style={actionStyle(false)}
+                  >
+                    Collection
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         <div
           className="material-thick"
@@ -622,15 +748,7 @@ export function KesiView() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (panel.learning.nextAction === 'refresh') {
-                            openRefresh(panel);
-                          } else if (panel.learning.nextAction === 'rehearse') {
-                            openOverlay(panel, 'rehearsal');
-                          } else if (panel.learning.nextAction === 'examine') {
-                            openOverlay(panel, 'examiner');
-                          } else {
-                            openReview(panel);
-                          }
+                          openPrimaryAction(panel);
                         }}
                         style={actionStyle(true)}
                       >
