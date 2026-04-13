@@ -453,12 +453,6 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                 <button type="button" onClick={reviewNotes} style={buttonStyle(true, 'muted')}>
                   Review
                 </button>
-                <button type="button" onClick={openKesi} style={buttonStyle(true, 'muted')}>
-                  Kesi
-                </button>
-                <button type="button" onClick={openRelations} style={buttonStyle(true, 'muted')}>
-                  Relations
-                </button>
               </>
             ) : (
               <button type="button" onClick={returnToRehearsal} style={buttonStyle(true, 'muted')}>

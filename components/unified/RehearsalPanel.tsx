@@ -356,17 +356,11 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
           }}
         >
           <div>
-            Saved into this weave. Continue from the current panel, open kesi, or look at its relations.
+            Saved into this weave. Return to the current panel when you want to keep weaving.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" onClick={openReview} style={buttonStyle(true, 'muted')}>
               Review
-            </button>
-            <button type="button" onClick={openKesi} style={buttonStyle(true, 'muted')}>
-              Kesi
-            </button>
-            <button type="button" onClick={openRelations} style={buttonStyle(true, 'muted')}>
-              Relations
             </button>
           </div>
         </div>
