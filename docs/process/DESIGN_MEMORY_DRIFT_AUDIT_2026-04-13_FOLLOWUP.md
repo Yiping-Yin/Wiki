@@ -163,6 +163,25 @@ Design effect:
 - the remaining dev/debug toast surface is visually closer to Loom's quieter
   text grammar and less dependent on icon signaling
 
+### 9. Service-worker update chrome removed from the product shell
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/SWRegister.tsx` no longer renders a fixed bottom update toast,
+  reload CTA, or dismiss control
+- service-worker registration is now silent
+
+Design effect:
+
+- background update work no longer announces itself through product-surface
+  status chrome
+- new service-worker versions are picked up on the next full navigation /
+  reload rather than interrupting the current session
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -205,5 +224,6 @@ Residual note:
 - callout styling brought closer to Loom's quieter text grammar
 - utility-surface decorative markers reduced further
 - toast labels aligned with quieter utility grammar
+- service-worker update chrome removed from the product shell
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level
