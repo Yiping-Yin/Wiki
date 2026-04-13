@@ -135,11 +135,11 @@ export function QuickSwitcher() {
 
   // Learning tool actions — discoverable via ⌘P search
   const toolActions: Result[] = useMemo(() => [
-    { kind: 'doc' as const, key: 'tool:rehearsal', title: 'Rehearsal', sub: 'Write from memory', href: '__action:rehearsal' },
-    { kind: 'doc' as const, key: 'tool:examiner', title: 'Examiner', sub: 'Tests your understanding', href: '__action:examiner' },
+    { kind: 'doc' as const, key: 'tool:rehearsal', title: 'Rehearsal', sub: 'Deepen a panel from memory', href: '__action:rehearsal' },
+    { kind: 'doc' as const, key: 'tool:examiner', title: 'Examiner', sub: 'Verify a woven understanding', href: '__action:examiner' },
     { kind: 'doc' as const, key: 'tool:ingestion', title: 'Import', sub: 'Drag-drop files', href: '__action:ingestion' },
     { kind: 'doc' as const, key: 'tool:recursing', title: 'Reconstructions', sub: 'Past rehearsals', href: '__action:recursing' },
-    { kind: 'doc' as const, key: 'tool:thoughtmap', title: 'Thought Map', sub: '⌘/ · Review captures', href: '__action:thoughtmap' },
+    { kind: 'doc' as const, key: 'tool:thoughtmap', title: 'Thought Map', sub: '⌘/ · Settle the current weave', href: '__action:thoughtmap' },
     { kind: 'doc' as const, key: 'tool:help', title: 'Help', sub: 'Usage guide', href: '/help' },
     { kind: 'doc' as const, key: 'tool:export-json', title: 'Export Notes (JSON)', sub: 'Full backup', href: '__action:export-json' },
     { kind: 'doc' as const, key: 'tool:export-md', title: 'Export Notes (Markdown)', sub: 'Human-readable', href: '__action:export-md' },
