@@ -20,6 +20,7 @@
  */
 import { useEffect, useState } from 'react';
 import { ReviewThoughtMap } from './ReviewThoughtMap';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
 
 const STUDY_CLASS = 'loom-study-mode';
 
@@ -62,6 +63,26 @@ export function ReviewMode() {
     };
     window.addEventListener('loom:review:set-active', onSet);
     return () => window.removeEventListener('loom:review:set-active', onSet);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(REVIEW_RESUME_KEY);
+      if (!raw) return;
+      const payload = JSON.parse(raw) as ReviewResumePayload;
+      if (!payload?.href || payload.href !== window.location.pathname) return;
+      sessionStorage.removeItem(REVIEW_RESUME_KEY);
+      setActive(true);
+      requestAnimationFrame(() => {
+        if (payload.anchorId) {
+          window.dispatchEvent(
+            new CustomEvent('loom:review:focus-thought', {
+              detail: { anchorId: payload.anchorId },
+            }),
+          );
+        }
+      });
+    } catch {}
   }, []);
 
   // Toggle body class

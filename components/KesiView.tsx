@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAllTraces, useRemoveEvents, type Trace } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
 
 const TINTS = [
   'var(--tint-blue)',   'var(--tint-indigo)', 'var(--tint-purple)',
@@ -31,12 +32,11 @@ type PanelSection = {
   at: number;
 };
 
-type Panel = {
+type BasePanel = {
   traceId: string;
   docId: string;
   href: string;
   title: string;
-  family: string;
   summary: string;
   crystallizedAt: number;
   stitches: number;
@@ -44,8 +44,15 @@ type Panel = {
   sections: PanelSection[];
 };
 
-function buildPanels(traces: Trace[]): Panel[] {
-  const out: Panel[] = [];
+type Panel = BasePanel & {
+  family: string;
+  sourceType: 'knowledge' | 'wiki' | 'upload' | 'other';
+  collectionLabel: string;
+  collectionHref?: string;
+};
+
+function buildPanels(traces: Trace[]): BasePanel[] {
+  const out: BasePanel[] = [];
   for (const t of traces) {
     if (!t.source?.docId) continue;
     if (t.parentId !== null) continue;
@@ -84,7 +91,6 @@ function buildPanels(traces: Trace[]): Panel[] {
       docId: t.source.docId,
       href: t.source.href,
       title: t.source.sourceTitle ?? t.title,
-      family: '',
       summary: cSum,
       crystallizedAt: cAt,
       stitches: stitchCount,
@@ -134,6 +140,40 @@ function familyLabelForHref(
   return 'Other';
 }
 
+function panelSourceMeta(
+  href: string,
+  knowledgeCategories: Array<{ slug: string; label: string }>,
+) {
+  if (href.startsWith('/wiki/')) {
+    return {
+      sourceType: 'wiki' as const,
+      collectionLabel: 'LLM Reference',
+      collectionHref: '/browse',
+    };
+  }
+  const know = href.match(/^\/knowledge\/([^/]+)/);
+  if (know) {
+    const cat = knowledgeCategories.find((item) => item.slug === know[1]);
+    return {
+      sourceType: 'knowledge' as const,
+      collectionLabel: cat?.label ?? 'Knowledge',
+      collectionHref: `/knowledge/${know[1]}`,
+    };
+  }
+  if (href.startsWith('/uploads/')) {
+    return {
+      sourceType: 'upload' as const,
+      collectionLabel: 'Uploads',
+      collectionHref: '/uploads',
+    };
+  }
+  return {
+    sourceType: 'other' as const,
+    collectionLabel: 'Other',
+    collectionHref: undefined,
+  };
+}
+
 function panelSummary(summary: string, sections: PanelSection[]) {
   if (summary.trim()) return summary;
   const first = sections.find((s) => s.summary.trim());
@@ -143,36 +183,81 @@ function panelSummary(summary: string, sections: PanelSection[]) {
   return '';
 }
 
+type ViewMode = 'recent' | 'dense';
+type SourceFilter = 'all' | 'knowledge' | 'wiki' | 'upload';
+
 export function KesiView() {
   const { traces, loading } = useAllTraces();
   const removeEvents = useRemoveEvents();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [query, setQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('recent');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const { knowledgeCategories } = useKnowledgeNav();
 
   useEffect(() => { setMounted(true); }, []);
 
   const panels = useMemo(() => {
-    return buildPanels(traces).map((panel) => ({
-      ...panel,
-      family: familyLabelForHref(panel.href, knowledgeCategories),
-      summary: panelSummary(panel.summary, panel.sections),
-    }));
+    return buildPanels(traces).map((panel) => {
+      const meta = panelSourceMeta(panel.href, knowledgeCategories);
+      return {
+        ...panel,
+        family: familyLabelForHref(panel.href, knowledgeCategories),
+        summary: panelSummary(panel.summary, panel.sections),
+        ...meta,
+      };
+    });
   }, [traces, knowledgeCategories]);
+
   const visiblePanels = useMemo(() => {
     const q = query.trim();
-    if (!q) return panels;
-    return panels.filter((panel) => matchesQuery(panel, q));
-  }, [panels, query]);
+    return panels.filter((panel) => {
+      if (sourceFilter !== 'all' && panel.sourceType !== sourceFilter) return false;
+      if (!q) return true;
+      return matchesQuery(panel, q);
+    });
+  }, [panels, query, sourceFilter]);
+
+  const sortedPanels = useMemo(() => {
+    const next = [...visiblePanels];
+    next.sort((a, b) => {
+      if (viewMode === 'dense') {
+        return b.stitches - a.stitches || b.crystallizedAt - a.crystallizedAt;
+      }
+      return b.crystallizedAt - a.crystallizedAt || b.stitches - a.stitches;
+    });
+    return next;
+  }, [visiblePanels, viewMode]);
+
   const groupedPanels = useMemo(() => {
     const groups = new Map<string, Panel[]>();
-    for (const panel of visiblePanels) {
+    for (const panel of sortedPanels) {
       if (!groups.has(panel.family)) groups.set(panel.family, []);
       groups.get(panel.family)!.push(panel);
     }
     return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
-  }, [visiblePanels]);
+  }, [sortedPanels]);
+
+  const filterCounts = useMemo(() => {
+    return {
+      all: panels.length,
+      knowledge: panels.filter((panel) => panel.sourceType === 'knowledge').length,
+      wiki: panels.filter((panel) => panel.sourceType === 'wiki').length,
+      upload: panels.filter((panel) => panel.sourceType === 'upload').length,
+    };
+  }, [panels]);
+
+  const openReview = (panel: Panel) => {
+    const payload: ReviewResumePayload = {
+      href: panel.href,
+      anchorId: panel.sections[0]?.anchorId ?? null,
+    };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(panel.href);
+  };
 
   if (loading || !mounted) return null;
   if (panels.length === 0) return <EmptyKesiCanvas />;
@@ -202,7 +287,7 @@ export function KesiView() {
           </span>
           <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           <span className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', fontWeight: 700 }}>
-            {visiblePanels.length}
+            {sortedPanels.length}
           </span>
         </div>
 
@@ -260,7 +345,40 @@ export function KesiView() {
           )}
         </div>
 
-        {visiblePanels.length === 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+          <ToolbarChip
+            active={viewMode === 'recent'}
+            onClick={() => setViewMode('recent')}
+            label="Recent"
+          />
+          <ToolbarChip
+            active={viewMode === 'dense'}
+            onClick={() => setViewMode('dense')}
+            label="Dense"
+          />
+          <ToolbarChip
+            active={sourceFilter === 'all'}
+            onClick={() => setSourceFilter('all')}
+            label={`All · ${filterCounts.all}`}
+          />
+          <ToolbarChip
+            active={sourceFilter === 'knowledge'}
+            onClick={() => setSourceFilter('knowledge')}
+            label={`Knowledge · ${filterCounts.knowledge}`}
+          />
+          <ToolbarChip
+            active={sourceFilter === 'wiki'}
+            onClick={() => setSourceFilter('wiki')}
+            label={`LLM · ${filterCounts.wiki}`}
+          />
+          <ToolbarChip
+            active={sourceFilter === 'upload'}
+            onClick={() => setSourceFilter('upload')}
+            label={`Uploads · ${filterCounts.upload}`}
+          />
+        </div>
+
+        {sortedPanels.length === 0 && (
           <div
             className="material-thick"
             style={{
@@ -401,6 +519,12 @@ export function KesiView() {
                       <span>{formatWhen(panel.crystallizedAt)}</span>
                       <span aria-hidden>·</span>
                       <span>{panel.stitches} stitches</span>
+                      {panel.collectionLabel && panel.collectionLabel !== panel.family && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>{panel.collectionLabel}</span>
+                        </>
+                      )}
                       {panel.summary && (
                         <>
                           <span aria-hidden>·</span>
@@ -422,6 +546,41 @@ export function KesiView() {
                       }}
                     >
                       {panel.summary}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: panel.sections.length > 0 ? 12 : 0 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openReview(panel);
+                        }}
+                        style={actionStyle(true)}
+                      >
+                        Review
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(panel.href);
+                        }}
+                        style={actionStyle(false)}
+                      >
+                        Source
+                      </button>
+                      {panel.collectionHref && panel.collectionHref !== panel.href && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(panel.collectionHref!);
+                          }}
+                          style={actionStyle(false)}
+                        >
+                          Collection
+                        </button>
+                      )}
                     </div>
 
                     {panel.sections.length > 0 && (
@@ -480,6 +639,50 @@ export function KesiView() {
       </div>
     </div>
   );
+}
+
+function ToolbarChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '0.42rem 0.72rem',
+        borderRadius: 999,
+        border: `0.5px solid ${active ? 'var(--accent)' : 'var(--mat-border)'}`,
+        background: active ? 'var(--accent-soft)' : 'var(--bg-translucent)',
+        color: active ? 'var(--fg)' : 'var(--muted)',
+        fontSize: '0.76rem',
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function actionStyle(primary: boolean) {
+  return {
+    padding: '0.42rem 0.72rem',
+    borderRadius: 999,
+    border: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
+    background: primary ? 'var(--accent-soft)' : 'transparent',
+    color: primary ? 'var(--fg)' : 'var(--fg-secondary)',
+    fontSize: '0.76rem',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    cursor: 'pointer',
+  } as const;
 }
 
 function EmptyKesiCanvas() {
