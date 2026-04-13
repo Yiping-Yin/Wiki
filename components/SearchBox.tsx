@@ -9,7 +9,7 @@ async function loadIndex() {
   _msPromise = (async () => {
     const [{ default: MiniSearch }, res] = await Promise.all([
       import('minisearch'),
-      fetch('/search-index.json'),
+      fetch('/api/search-index'),
     ]);
     if (!res.ok) throw new Error('search index missing — run `npx tsx scripts/build-search-index.ts`');
     const payload = await res.json();

@@ -1,7 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { QuickMath } from './QuickMath';
-import { BackLinksSidebar } from './BackLinksSidebar';
 
 type Item = { id: string; text: string; level: number };
 
@@ -18,12 +16,27 @@ export function TableOfContents({ docId, docTitle }: { docId?: string; docTitle?
     let lastSig = '';
     const collect = () => {
       const headings = Array.from(main.querySelectorAll('h2, h3')) as HTMLElement[];
-      // ensure each heading has an id so anchors work even when content was rendered without one
+      // ensure each heading has an id so anchors work even when content was rendered without one.
+      // Repeated headings (e.g., two "在文中的意义" sections) would collide on slug alone —
+      // deduplicate by suffixing -2, -3, … so anchors and React keys stay unique.
+      const usedIds = new Set<string>();
       headings.forEach((h) => {
-        if (!h.id) {
-          const slug = slugify(h.textContent ?? '');
-          if (slug) h.id = slug;
+        let id = h.id;
+        if (!id) {
+          const base = slugify(h.textContent ?? '');
+          if (!base) return;
+          id = base;
+          let n = 2;
+          while (usedIds.has(id)) id = `${base}-${n++}`;
+          h.id = id;
+        } else if (usedIds.has(id)) {
+          // DOM already has a duplicate id from somewhere — rename ours
+          const base = id;
+          let n = 2;
+          while (usedIds.has(id)) id = `${base}-${n++}`;
+          h.id = id;
         }
+        usedIds.add(id);
       });
       const sig = headings.map((h) => `${h.id}:${h.textContent}`).join('|');
       if (sig === lastSig) return;
@@ -55,41 +68,35 @@ export function TableOfContents({ docId, docTitle }: { docId?: string; docTitle?
     };
   }, []);
 
+  // §1 沉浸式 — no labels, no cards, no chrome. Just the heading
+  // links, nothing else. The TOC is hidden by default (CSS opacity 0)
+  // and only appears when the user hovers the right margin.
+  if (items.length === 0) return <aside className="toc" />;
+
   return (
     <aside className="toc" style={{
       position: 'sticky', top: '2rem', alignSelf: 'flex-start',
-      width: 240, padding: '1rem', fontSize: '0.82rem',
-      maxHeight: 'calc(100vh - 4rem)', overflowY: 'auto',
+      width: 240, padding: '0.6rem 0', fontSize: '0.82rem',
     }}>
-      {items.length > 0 && (
-        <>
-          <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '0.5rem', fontWeight: 700 }}>
-            ≡ On this page
-          </div>
-          {items.map((it) => (
-            <a
-              key={it.id}
-              href={`#${it.id}`}
-              style={{
-                display: 'block',
-                padding: it.level === 3 ? '0.22rem 0 0.22rem 1.5rem' : '0.26rem 0 0.26rem 0.6rem',
-              fontSize: it.level === 3 ? '0.78rem' : '0.82rem',
-              opacity: it.level === 3 ? 0.85 : 1,
-                color: active === it.id ? 'var(--accent)' : 'var(--muted)',
-                borderLeft: active === it.id ? '2.5px solid var(--accent)' : '2.5px solid transparent',
-                fontWeight: active === it.id ? 600 : 400,
-                lineHeight: 1.4,
-              }}
-            >
-              {it.text}
-            </a>
-          ))}
-        </>
-      )}
-
-      <QuickMath />
-
-      {docId && docTitle && <BackLinksSidebar id={docId} title={docTitle} />}
+      {items.map((it, idx) => (
+        <a
+          key={`${it.id}-${idx}`}
+          href={`#${it.id}`}
+          style={{
+            display: 'block',
+            padding: it.level === 3 ? '0.18rem 0 0.18rem 1.2rem' : '0.22rem 0',
+            fontSize: it.level === 3 ? '0.78rem' : '0.82rem',
+            opacity: it.level === 3 ? 0.75 : 1,
+            color: active === it.id ? 'var(--accent)' : 'var(--muted)',
+            borderLeft: active === it.id ? '2px solid var(--accent)' : '2px solid transparent',
+            fontWeight: active === it.id ? 600 : 400,
+            lineHeight: 1.4,
+            textDecoration: 'none',
+          }}
+        >
+          {it.text}
+        </a>
+      ))}
     </aside>
   );
 }

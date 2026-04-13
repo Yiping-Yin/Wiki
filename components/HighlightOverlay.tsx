@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTracesForDoc, useRemoveEvents } from '../lib/trace';
 import { contextFromPathname } from '../lib/doc-context';
+import { rootReadingTraces } from './thought-anchor-model';
 
 const HL_ATTR = 'data-wiki-hl';
 const HL_EVENT = 'wiki:highlights:changed';
@@ -242,9 +243,7 @@ export function HighlightOverlay() {
   useEffect(() => {
     const main = document.querySelector('main') as HTMLElement | null;
     if (!main || ctx.isFree) return;
-    const readingTraces = traces
-      .filter((t) => t.kind === 'reading' && !t.parentId)
-      .sort((a, b) => b.updatedAt - a.updatedAt || b.events.length - a.events.length);
+    const readingTraces = rootReadingTraces(traces);
     if (readingTraces.length === 0) {
       stripHighlights(main);
       return;

@@ -96,6 +96,8 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
   const [studyMode, setStudyMode] = useState(false);
   const [globallyPinnedId, setGloballyPinnedId] = useState<string | null>(null);
   const [scrollPulse, setScrollPulse] = useState(false);
+  const [cardMounted, setCardMounted] = useState(false);
+  const [cardVisible, setCardVisible] = useState(false);
   const dotRef = useRef<HTMLButtonElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -243,9 +245,19 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
     }
   }, [pinned, pos]);
 
-  if (!pos) return null;
+  const mode = (!pos) ? null : pinned ? 'pinned' : previewOpen ? 'preview' : null;
+  useEffect(() => {
+    if (mode) {
+      setCardMounted(true);
+      const raf = requestAnimationFrame(() => setCardVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    setCardVisible(false);
+    const timer = window.setTimeout(() => setCardMounted(false), 200);
+    return () => window.clearTimeout(timer);
+  }, [mode]);
 
-  const mode = pinned ? 'pinned' : previewOpen ? 'preview' : null;
+  if (!pos) return null;
 
   return (
     <>
@@ -263,20 +275,24 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
           e.preventDefault();
           e.stopPropagation();
           cancelClose();
-          setPinned((v) => {
-            const next = !v;
-            if (next) {
-              window.dispatchEvent(new CustomEvent(PIN_EVENT, { detail: { anchorId } }));
-              window.dispatchEvent(new CustomEvent(PINNED_STATE_EVENT, { detail: { anchorId } }));
-              setPreviewOpen(true);
-              markNoteEngaged();
-            } else {
-              window.dispatchEvent(new CustomEvent(PINNED_STATE_EVENT, { detail: { anchorId: null } }));
-              setPreviewOpen(false);
-              engagedUntilRef.current = 0;
-            }
-            return next;
-          });
+          // §X · Side effects OUTSIDE the setState updater.
+          // Previously this was inside setPinned((v) => {...}) which caused
+          // "Cannot update a component while rendering a different component"
+          // in strict mode — React double-invokes updaters for detection,
+          // so dispatchEvent fired twice and other AnchorDots' listeners
+          // setState'd mid-render. Updaters must be pure.
+          const next = !pinned;
+          setPinned(next);
+          if (next) {
+            window.dispatchEvent(new CustomEvent(PIN_EVENT, { detail: { anchorId } }));
+            window.dispatchEvent(new CustomEvent(PINNED_STATE_EVENT, { detail: { anchorId } }));
+            setPreviewOpen(true);
+            markNoteEngaged();
+          } else {
+            window.dispatchEvent(new CustomEvent(PINNED_STATE_EVENT, { detail: { anchorId: null } }));
+            setPreviewOpen(false);
+            engagedUntilRef.current = 0;
+          }
         }}
         style={{
           position: 'absolute',
@@ -310,27 +326,33 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
           }}
         />
       </button>
-      {mode && (
-        <AnchorCard
-          ref={cardRef}
-          mode={mode}
-          docTop={pos.relativeTop}
-          viewportTop={pos.viewportTop}
-          fixedRight={pos.fixedRight}
-          attentionOpacity={1}
-          summary={summary}
-          content={content}
-          quote={quote}
-          onClose={() => {
-            window.dispatchEvent(new CustomEvent(PINNED_STATE_EVENT, { detail: { anchorId: null } }));
-            setPinned(false);
-            setPreviewOpen(false);
-            engagedUntilRef.current = 0;
-          }}
-          onMouseEnter={cancelClose}
-          onMouseLeave={scheduleClose}
-          onUserActivity={markNoteEngaged}
-        />
+      {cardMounted && (
+        <div style={{
+          opacity: cardVisible ? 1 : 0,
+          transform: cardVisible ? 'translateX(0)' : 'translateX(8px)',
+          transition: 'opacity 0.2s ease, transform 0.2s ease',
+        }}>
+          <AnchorCard
+            ref={cardRef}
+            mode={mode ?? 'preview'}
+            docTop={pos.relativeTop}
+            viewportTop={pos.viewportTop}
+            fixedRight={pos.fixedRight}
+            attentionOpacity={1}
+            summary={summary}
+            content={content}
+            quote={quote}
+            onClose={() => {
+              window.dispatchEvent(new CustomEvent(PINNED_STATE_EVENT, { detail: { anchorId: null } }));
+              setPinned(false);
+              setPreviewOpen(false);
+              engagedUntilRef.current = 0;
+            }}
+            onMouseEnter={cancelClose}
+            onMouseLeave={scheduleClose}
+            onUserActivity={markNoteEngaged}
+          />
+        </div>
       )}
     </>
   );

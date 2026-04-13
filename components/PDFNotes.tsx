@@ -1,25 +1,93 @@
 'use client';
-import { useEffect, useState } from 'react';
+/**
+ * PDFNotes · used by wiki MDX pages to embed a PDF.
+ *
+ * §1, §17, §23 — the previous version had a "✏ Notes / Hide notes" toggle
+ * with a sticky textarea pinned to the bottom of the PDF. That was a
+ * deliberate "notes happen here" container — exactly the chrome the user
+ * called out as too rigid.
+ *
+ * The new version is just the PDF, presented at full reading width with
+ * stealth chrome that fades in only on hover. Notes happen via:
+ *   1. Selecting text → SelectionWarp ✦ → ChatFocus (inline)
+ *   2. ⌘/ → Review the current woven understanding
+ *
+ * No fixed "notes" surface anymore. Notes attach to where you were
+ * thinking, not to where the box is.
+ */
+import { useState } from 'react';
 
-export function PDFNotes({ src, title, height = 600 }: { src: string; title?: string; height?: number }) {
-  const key = `pdf-notes:${src}`;
-  const [notes, setNotes] = useState('');
-  const [open, setOpen] = useState(false);
-  useEffect(() => { setNotes(localStorage.getItem(key) || ''); }, [key]);
-  useEffect(() => { localStorage.setItem(key, notes); }, [notes, key]);
+export function PDFNotes({ src, title, height = 720 }: { src: string; title?: string; height?: number }) {
+  const [hover, setHover] = useState(false);
+
+  // Strip PDF.js chrome via the URL hash (§14)
+  const cleanSrc = src.includes('#')
+    ? src
+    : `${src}#toolbar=0&navpanes=0&statusbar=0&view=FitH`;
+
   return (
-    <div style={{ margin: '1.2rem 0', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-      <div style={{ padding: '0.5rem 0.8rem', background: 'var(--code-bg)', fontSize: '0.85rem', color: 'var(--muted)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
-        <span>📄 {title ?? src} · <a href={src} target="_blank" rel="noreferrer">open</a></span>
-        <button onClick={() => setOpen((o) => !o)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 8px', cursor: 'pointer', color: 'var(--muted)', fontSize: '0.75rem' }}>
-          {open ? 'Hide notes' : '✏ Notes'}
-        </button>
-      </div>
-      <iframe src={src} title={title ?? 'PDF'} style={{ width: '100%', height, border: 0 }} />
-      {open && (
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} placeholder="Your notes (saved locally)…"
-          style={{ width: '100%', border: 0, borderTop: '1px solid var(--border)', padding: '0.6rem 0.8rem', background: 'var(--bg)', color: 'var(--fg)', fontFamily: 'inherit', fontSize: '0.85rem', resize: 'vertical' }} />
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        position: 'relative',
+        margin: '1.4rem 0',
+        borderRadius: 12,
+        overflow: 'hidden',
+        border: '0.5px solid var(--mat-border)',
+      }}
+    >
+      {/* Floating header — visible only on hover, doesn't take layout space */}
+      {title && (
+        <div style={{
+          position: 'absolute',
+          top: 8, left: 8, right: 8,
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '0.35rem 0.7rem',
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          fontSize: '0.78rem',
+          color: 'var(--fg)',
+          opacity: hover ? 1 : 0,
+          transform: hover ? 'translateY(0)' : 'translateY(-4px)',
+          transition: 'opacity 0.2s var(--ease), transform 0.2s var(--ease)',
+          pointerEvents: hover ? 'auto' : 'none',
+          zIndex: 2,
+          border: '0.5px solid var(--mat-border)',
+        }}>
+          <span style={{
+            flex: 1, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            color: 'var(--fg)',
+          }}>{title}</span>
+          <a
+            href={src}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: 'var(--accent)',
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '0.74rem',
+              flexShrink: 0,
+            }}
+          >open ↗</a>
+        </div>
       )}
+
+      <iframe
+        src={cleanSrc}
+        title={title ?? 'PDF'}
+        style={{
+          width: '100%',
+          height,
+          border: 0,
+          display: 'block',
+          background: 'var(--bg)',
+        }}
+      />
     </div>
   );
 }

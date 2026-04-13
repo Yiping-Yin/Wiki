@@ -9,22 +9,20 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 
 /** Detect knowledge category from current URL path. Returns the
  *  category directory name for the Knowledge system, or null. */
-function detectCategory(pathname: string): string | null {
+function detectCategory(pathname: string, knowledgeCategories: Array<{ slug: string; label: string }>): string | null {
   const m = pathname.match(/^\/knowledge\/([^/]+)/);
   if (!m) return null;
-  // Import is static — knowledgeCategories is baked at build time
-  try {
-    const { knowledgeCategories } = require('../lib/knowledge-nav');
-    const cat = knowledgeCategories.find((c: any) => c.slug === m[1]);
-    return cat?.label ?? null;
-  } catch { return null; }
+  const cat = knowledgeCategories.find((c) => c.slug === m[1]);
+  return cat?.label ?? null;
 }
 
 export function DropZone() {
   const pathname = usePathname() ?? '/';
+  const { knowledgeCategories } = useKnowledgeNav();
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +56,7 @@ export function DropZone() {
       setBusy(true);
       setError(null);
       try {
-        const category = detectCategory(window.location.pathname);
+        const category = detectCategory(window.location.pathname, knowledgeCategories);
         let firstHref: string | null = null;
         for (const f of files) {
           setProgress({ name: f.name, pct: 0 });
@@ -96,7 +94,7 @@ export function DropZone() {
       window.removeEventListener('dragover', onDragOver);
       window.removeEventListener('drop', onDrop);
     };
-  }, []);
+  }, [knowledgeCategories]);
 
   if (!dragging && !busy && !error) return null;
 

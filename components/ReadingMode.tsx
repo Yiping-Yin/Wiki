@@ -1,10 +1,8 @@
 'use client';
 /**
- * Reading mode: hides sidebar, TOC, scroll progress, ChatPanel.
+ * Reading mode: hides sidebar + TOC, widens prose.
  * Press `r` (outside inputs) to toggle. Persists to localStorage.
- * No floating button — toggle is in the FloatingDock.
- *
- * Other components subscribe via `useReadingMode()`.
+ * No visible affordance — §1 stealth. Power-user keystroke only.
  */
 import { useEffect, useState, useCallback } from 'react';
 
@@ -38,15 +36,15 @@ export function useReadingMode(): [boolean, () => void] {
 }
 
 export function ReadingMode() {
-  // Just registers the keyboard shortcut + initial body class.
-  // The visible toggle lives in FloatingDock.
+  // Registers the `r` hotkey + restores the persisted body class.
   const [, toggle] = useReadingMode();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Require ⌘⇧R to toggle (plain 'r' was too easy to hit accidentally)
+      if (!(e.metaKey || e.ctrlKey) || !e.shiftKey) return;
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         toggle();

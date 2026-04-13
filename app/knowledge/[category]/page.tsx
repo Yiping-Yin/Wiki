@@ -1,31 +1,25 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { knowledgeCategories } from '../../../lib/knowledge-nav';
-import { docsByCategory } from '../../../lib/knowledge';
-import { BatchRunner } from '../../../components/BatchRunner';
+import { docsByCategory, getKnowledgeCategories, groupBySubcategory } from '../../../lib/knowledge-store';
 import { CategoryHero } from '../../../components/CategoryHero';
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const knowledgeCategories = await getKnowledgeCategories();
   return knowledgeCategories.map((c) => ({ category: c.slug }));
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
+  const knowledgeCategories = await getKnowledgeCategories();
   const cat = knowledgeCategories.find((c) => c.slug === category);
   if (!cat) notFound();
-  const docs = docsByCategory(category).sort((a, b) => a.title.localeCompare(b.title));
-
-  const batchInput = docs.map((d) => ({
-    id: d.id,
-    title: d.title,
-    href: `/knowledge/${d.categorySlug}/${d.fileSlug}`,
-    hasText: d.hasText,
-  }));
+  const docs = await docsByCategory(category);
+  const groups = groupBySubcategory(docs);
 
   return (
     <div className="prose-notion">
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.8rem' }}>
-        <Link href="/knowledge">📚 Knowledge</Link>
+        <Link href="/knowledge">Knowledge</Link>
       </div>
 
       <CategoryHero
@@ -33,55 +27,72 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
         slug={cat.slug}
         count={docs.length}
         withText={docs.filter((d) => d.hasText).length}
+        subs={cat.subs}
       />
       <h1 style={{ display: 'none' }}>{cat.label}</h1>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.6rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
-        <BatchRunner
-          docs={batchInput}
-          endpoint="/api/summarize"
-          cachePathTemplate="/knowledge/summaries/{id}.json"
-          title="Auto-summarize"
-          description="3-bullet summary + key terms"
-          icon="✨"
-        />
-        <BatchRunner
-          docs={batchInput}
-          endpoint="/api/structure"
-          cachePathTemplate="/knowledge/structures/{id}.json"
-          title="Auto-structure"
-          description="Rewrite as Notion-style Markdown"
-          icon="📖"
-          concurrency={2}
-        />
-        <BatchRunner
-          docs={batchInput}
-          endpoint="/api/quiz"
-          cachePathTemplate="/knowledge/quizzes/{id}.json"
-          cacheIdTransform="slash-to-underscore"
-          title="Auto-quiz"
-          description="3 multiple-choice questions per doc"
-          icon="🧠"
-        />
-      </div>
-
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {docs.map((d) => (
-          <li key={d.id} style={{ borderBottom: '1px solid var(--border)', padding: '0.7rem 0' }}>
-            <Link href={`/knowledge/${d.categorySlug}/${d.fileSlug}`} style={{ fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none' }}>
-              {d.title}
-            </Link>
-            {d.preview && (
-              <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 3, lineHeight: 1.4 }}>
-                {d.preview.slice(0, 180)}{d.preview.length > 180 ? '…' : ''}
-              </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '1.5rem' }}>
+        {groups.map((g) => (
+          <section
+            key={g.label || '_root'}
+            id={g.label ? encodeURIComponent(g.label) : undefined}
+            style={{
+              scrollMarginTop: '2rem',
+            borderRadius: 'var(--r-3)',
+            border: '0.5px solid var(--mat-border)',
+            background: 'var(--bg-elevated)',
+            boxShadow: 'var(--shadow-1)',
+            overflow: 'hidden',
+          }}>
+            {g.label && (
+              <header style={{
+                padding: '0.85rem 1.2rem',
+                borderBottom: '0.5px solid var(--mat-border)',
+                background: 'linear-gradient(180deg, var(--surface-2), transparent)',
+                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12,
+              }}>
+                <div className="t-headline" style={{
+                  fontFamily: 'var(--display)',
+                  letterSpacing: '-0.014em', color: 'var(--fg)',
+                }}>{g.label}</div>
+                <div className="t-caption" style={{ color: 'var(--muted)', fontWeight: 600 }}>
+                  {g.docs.length} {g.docs.length === 1 ? 'item' : 'items'}
+                </div>
+              </header>
             )}
-            <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: 3 }}>
-              {d.ext.slice(1)} · {(d.size / 1024).toFixed(0)} KB{!d.hasText && ' · binary, no text'}
-            </div>
-          </li>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {g.docs.map((d, i) => (
+                <li key={d.id} style={{
+                  borderBottom: i < g.docs.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                }}>
+                  <Link href={`/knowledge/${d.categorySlug}/${d.fileSlug}`} style={{
+                    display: 'block', padding: '0.85rem 1.2rem',
+                    textDecoration: 'none', color: 'var(--fg)',
+                    transition: 'background 0.18s var(--ease)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <span className="t-headline" style={{ fontFamily: 'var(--display)' }}>{d.title}</span>
+                      <span className="t-caption2" style={{
+                        color: 'var(--muted)', fontFamily: 'var(--mono)',
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                      }}>{d.ext.slice(1)}</span>
+                    </div>
+                    {d.preview && (
+                      <div className="t-footnote" style={{
+                        color: 'var(--muted)', marginTop: 4, lineHeight: 1.5,
+                        overflow: 'hidden', display: '-webkit-box',
+                        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      }}>
+                        {d.preview.slice(0, 220)}{d.preview.length > 220 ? '…' : ''}
+                      </div>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

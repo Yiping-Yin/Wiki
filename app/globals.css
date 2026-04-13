@@ -222,6 +222,13 @@ body {
   min-width: 0;
   width: 100%;
 }
+/* Doc outline: sticky positioning in the left margin.
+   Negative margin pulls it out of the content flow into the margin space. */
+.layout .with-toc > .loom-doc-nav {
+  width: 150px;
+  margin-left: -170px;
+  margin-right: 20px;
+}
 .layout .with-toc .loom-source-prose {
   max-width: none;
   margin: 0 auto;
@@ -237,38 +244,33 @@ body {
   overflow-y: auto;
   transform: none;
 }
-.layout .with-toc > .doc-outline {
-  position: fixed;
-  right: calc(50vw + (var(--stage-width) / 2) + 28px);
-  top: 4.8rem;
-  width: clamp(140px, 12vw, 180px);
-  overflow-y: auto;
-  pointer-events: auto;
-  opacity: 0.92;
-}
+/* Doc outline positioning handled by inline styles in DocOutline.tsx */
 /* §38 · Study mode / Layer 3 (⌘/) — all thought-anchor cards become
    visible simultaneously. Prose dims so the ◆ notes become the visual
    focus. ThoughtMapTOC stays visible (not just on hover). Esc exits. */
+/* Study mode: dim the prose but keep it readable and in-place.
+   No scale, no translate — content stays where it is. The dimming
+   alone signals "this is background now, thoughts are foreground." */
 body.loom-study-mode main .loom-source-prose {
-  opacity: 0.15;
-  transform: scale(0.97) translateY(6px);
-  filter: blur(1px);
-  transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-              filter 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 0.3;
+  filter: blur(0.5px);
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 main .loom-source-prose {
   transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
               filter 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 body.loom-study-mode .toc {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-body.loom-study-mode .doc-outline {
-  opacity: 1 !important;
-  pointer-events: auto !important;
+/* Hide doc outline in study mode — thought map takes the space */
+body.loom-study-mode .doc-outline,
+body.loom-study-mode .loom-doc-nav {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease;
 }
 /* AnchorCards are always visible in study mode — handled by JS */
 
@@ -313,7 +315,7 @@ body.loom-chat-focus-active main .loom-source-prose > [data-loom-chat-focus] {
 .prose-notion {
   max-width: var(--prose-width);
   margin: 0 auto;
-  padding: 4rem 2.2rem 6rem;
+  padding: 3rem 2.2rem 6rem;
   line-height: 1.72;
   font-size: 17px;
   color: var(--fg);
@@ -474,6 +476,34 @@ body.loom-chat-focus-active main .loom-source-prose > [data-loom-chat-focus] {
   padding: 0 4px; border-radius: 4px; text-decoration: line-through;
 }
 
+/* Unified architecture · loading pulse animation for AI calls + iframe loads */
+@keyframes loom-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+@keyframes loom-overlay-fade-in {
+  from { opacity: 0; transform: scale(0.98) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes loom-overlay-fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.97); }
+}
+.loom-unified-note,
+.loom-unified-panel,
+.loom-unified-rehearsal,
+.loom-unified-examiner,
+.loom-unified-ingestion,
+.loom-unified-recursing,
+.loom-unified-main-doc {
+  font-family: var(--display);
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes loom-pulse {
+    0%, 100% { opacity: 0.8; }
+  }
+}
+
 [data-rehype-pretty-code-figure] pre { background: var(--code-bg) !important; }
 [data-rehype-pretty-code-title] {
   background: var(--surface-2); border: var(--hairline); border-bottom: none;
@@ -492,11 +522,6 @@ html:not(.dark) [data-theme='dark'] { display: none; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
-@keyframes reviewSheetIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.98); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-}
-
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
@@ -666,7 +691,6 @@ main:focus { outline: none; }
 }
 
 /* Card hover lift */
-a[href]:has(> div):hover, a[style*="cardStyle"]:hover { /* unused, kept for clarity */ }
 
 /* Apply hover lift via attribute */
 .layout main .prose-notion a[href][style*="cardStyle"]:hover,
@@ -693,6 +717,96 @@ html { scroll-behavior: smooth; }
 @keyframes heroFadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Side panel enter/exit */
+@keyframes loom-slide-in-right {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes loom-slide-out-right {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(40px); opacity: 0; }
+}
+/* Modal enter/exit */
+@keyframes loom-modal-exit {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.97); }
+}
+
+/* When a learning overlay is open, dim + slightly scale down main content.
+   The scale-down is Leica reassurance: the doc visually "recedes" to make
+   room for the overlay — the user feels the overlay is ON TOP of their work,
+   not replacing it. Their work is still there, just behind. */
+/* Dim main content when a side-panel overlay is open.
+   NO transform on main — it breaks position:fixed for descendants
+   (doc-outline, thought map). Use only opacity + filter. */
+body:has(.loom-examiner-overlay, .loom-ingestion-overlay, .loom-recursing-overlay) main {
+  opacity: 0.5;
+  filter: blur(1px);
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Page-level content entrance — opacity only, NO transform.
+   Transform on main's children breaks position:fixed for doc-outline. */
+main > * {
+  animation: loom-content-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes loom-content-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Smooth anchor scroll */
+html { scroll-behavior: smooth; }
+
+/* Macro → Micro transition: highlight the source passage briefly
+   when navigating from thought map back to document content. */
+@keyframes loom-highlight-passage {
+  0%   { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  100% { background: transparent; }
+}
+.loom-highlight-passage {
+  animation: loom-highlight-passage 1.5s ease-out both;
+  border-radius: 4px;
+}
+
+/* Thought map cards — smooth entry, exit, and reorder */
+.loom-thought-map a,
+.loom-thought-map button,
+.loom-thought-map [style*="border"] {
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s ease;
+}
+/* Cards appear with fade-in when thought map first shows */
+.loom-thought-map {
+  transition: opacity 0.3s ease !important;
+}
+
+/* Immersion: hide page chrome when scrolling down (reading).
+   Show when scrolling up (navigating) or near page top.
+   Controlled by ScrollDirection.tsx → body.scrolled-down. */
+.prose-notion > div:first-child,
+button[title*="Pin"],
+button[aria-label="Pin"] {
+  transition: opacity 0.3s ease;
+}
+body.scrolled-down .prose-notion > div:first-child,
+body.scrolled-down button[title*="Pin"],
+body.scrolled-down button[aria-label="Pin"] {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Both margins fade when reading (scrolling down) */
+/* Scrolling down: hide navigation chrome, keep thought map visible.
+   Thought map is learning content, not navigation — user needs it while reading. */
+body.scrolled-down .loom-doc-nav,
+body.scrolled-down .toc {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+.loom-doc-nav,
+.toc {
+  transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 /* Aurora mesh: three soft blooms on calm background */
 .hero-aurora {
@@ -743,18 +857,17 @@ html { scroll-behavior: smooth; }
 
 /* Stealth scrollbars · Loom 's hard rule.
  *
- * Only the browser 's native page scrollbar (on html/body) may be visible.
- * Every other scrollable container in the app — sidebar, companion, lists,
- * popovers, dropdowns, widgets, textareas — hides its scrollbar entirely.
- * Wheel / trackpad / touch / keyboard scrolling still works as expected.
- *
- * The macOS / iOS native overlay scrollbar at the page level remains active
- * and respects the user 's system "Show scroll bars" preference. */
-*:not(html):not(body) {
+ * No scrollbars anywhere — page level or nested. Wheel / trackpad / touch /
+ * keyboard scrolling still works. The intent is zero cognitive footprint:
+ * the user should not see a chrome indicator for "there is more content",
+ * only the content itself. */
+html, body, * {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-*:not(html):not(body)::-webkit-scrollbar {
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

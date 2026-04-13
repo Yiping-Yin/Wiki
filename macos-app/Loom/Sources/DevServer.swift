@@ -26,6 +26,7 @@ class DevServer: ObservableObject {
     private var attemptedPorts: Set<Int> = []
     private var recentLogs: [String] = []
     private var readyMonitorTimer: Timer?
+    private var readyMonitorFailures = 0
     private let logQueue = DispatchQueue(label: "DevServer.logQueue")
     private let maxLogLines = 30
     private let preferredPort = 3001
@@ -35,13 +36,31 @@ class DevServer: ObservableObject {
     private let projectPath: String?
     private lazy var healthSession: URLSession = {
         let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 1.5
-        config.timeoutIntervalForResource = 2.0
+        config.timeoutIntervalForRequest = 2.5
+        config.timeoutIntervalForResource = 3.0
         return URLSession(configuration: config)
     }()
 
     var serverURL: URL {
         URL(string: "http://localhost:\(currentPort)")!
+    }
+
+    private func resolvedServerMode(projectPath: String) -> String {
+        let buildIdPath = "\(projectPath)/.next-build/BUILD_ID"
+        let env = ProcessInfo.processInfo.environment
+        let explicitMode = env["LOOM_APP_SERVER_MODE"]?.lowercased()
+
+        if explicitMode == "prod" || explicitMode == "production" {
+            return FileManager.default.fileExists(atPath: buildIdPath) ? "prod" : "dev"
+        }
+        if explicitMode == "dev" || explicitMode == "development" {
+            return "dev"
+        }
+        // Default: prefer the production build whenever one exists, even in DEBUG
+        // Xcode builds. Dev mode's 5s-per-page compile wall is a 别让我等 violation;
+        // production mode serves pre-compiled pages with zero per-navigation cost.
+        // If the user really wants live Next.js dev, set LOOM_APP_SERVER_MODE=dev.
+        return FileManager.default.fileExists(atPath: buildIdPath) ? "prod" : "dev"
     }
 
     deinit {
@@ -146,10 +165,19 @@ class DevServer: ObservableObject {
 
         let p = Process()
         p.currentDirectoryURL = URL(fileURLWithPath: projectPath)
+        let serverMode = resolvedServerMode(projectPath: projectPath)
 
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         p.executableURL = URL(fileURLWithPath: shell)
         p.arguments = ["-lc", launchCommand(projectPath: projectPath, port: currentPort)]
+        var env = ProcessInfo.processInfo.environment
+        if serverMode == "dev" {
+            env["LOOM_DIST_DIR"] = ".next-app-dev"
+        } else {
+            // Production: point Next.js at the pre-built .next-build directory
+            env["LOOM_DIST_DIR"] = ".next-build"
+        }
+        p.environment = env
 
         // High priority so local dev server can become responsive quickly
         p.qualityOfService = .userInitiated
@@ -268,7 +296,12 @@ class DevServer: ObservableObject {
 
     private func startReadyMonitoring(generation: Int) {
         readyMonitorTimer?.invalidate()
-        readyMonitorTimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { [weak self] timer in
+        readyMonitorFailures = 0
+        // Next.js blocks the event loop during page compilation (up to ~10s).
+        // Tolerate several consecutive health-check failures before declaring
+        // the server unhealthy so a slow compile doesn't kill the process.
+        let maxConsecutiveFailures = 4
+        readyMonitorTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] timer in
             guard let self else {
                 timer.invalidate()
                 return
@@ -280,15 +313,22 @@ class DevServer: ObservableObject {
             guard self.status == .ready else { return }
             self.checkHealth { alive in
                 guard self.startGeneration == generation else { return }
-                if alive { return }
-                timer.invalidate()
-                self.readyMonitorTimer = nil
-                self.stop(invalidateGeneration: false)
-                self.handleFailure(
-                    "Local web server became unhealthy after startup.",
-                    retryable: true,
-                    generation: generation
-                )
+                if alive {
+                    self.readyMonitorFailures = 0
+                    return
+                }
+                self.readyMonitorFailures += 1
+                if self.readyMonitorFailures >= maxConsecutiveFailures {
+                    timer.invalidate()
+                    self.readyMonitorTimer = nil
+                    self.readyMonitorFailures = 0
+                    self.stop(invalidateGeneration: false)
+                    self.handleFailure(
+                        "Local web server became unhealthy after startup.",
+                        retryable: true,
+                        generation: generation
+                    )
+                }
             }
         }
     }
@@ -373,7 +413,7 @@ class DevServer: ObservableObject {
     }
 
     private func launchCommand(projectPath: String, port: Int) -> String {
-        let buildIdPath = "\(projectPath)/.next/BUILD_ID"
+        let buildIdPath = "\(projectPath)/.next-build/BUILD_ID"
         let devScriptPath = "\(projectPath)/scripts/dev.mjs"
         let env = ProcessInfo.processInfo.environment
         let explicitMode = env["LOOM_APP_SERVER_MODE"]?.lowercased()
@@ -395,7 +435,12 @@ class DevServer: ObservableObject {
             }
         } else {
             #if DEBUG
-            if FileManager.default.fileExists(atPath: devScriptPath) {
+            // Prefer production server even in Debug builds when a production
+            // build exists — avoids stale .next dev-cache chunk errors that
+            // plague `next dev` across code changes.
+            if FileManager.default.fileExists(atPath: buildIdPath) {
+                runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
+            } else if FileManager.default.fileExists(atPath: devScriptPath) {
                 runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
             } else {
                 runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"

@@ -1,17 +1,19 @@
-import { allDocs } from '../../lib/knowledge';
-import { knowledgeCategories } from '../../lib/knowledge-nav';
+import { getAllDocs, getKnowledgeCategories } from '../../lib/knowledge-store';
 import { chapters } from '../../lib/nav';
 import { BrowseClient } from './BrowseClient';
 
-export const metadata = { title: 'Browse · My Wiki' };
+export const metadata = { title: 'Browse · Loom' };
 
-export default function BrowsePage() {
-  // Pre-shape data for the client component
+export default async function BrowsePage() {
+  const [allDocs, knowledgeCategories] = await Promise.all([getAllDocs(), getKnowledgeCategories()]);
+  // Pre-shape data for the client component.
+  // Sort by subOrder so the row reads Week 0 → Week N naturally.
   const docsByCategory = knowledgeCategories.map((c) => ({
     ...c,
     docs: allDocs
       .filter((d) => d.categorySlug === c.slug)
-      .slice(0, 12)
+      .sort((a, b) => (a.subOrder ?? 9999) - (b.subOrder ?? 9999))
+      .slice(0, 14)
       .map((d) => ({
         id: d.id,
         title: d.title,
@@ -19,6 +21,7 @@ export default function BrowsePage() {
         ext: d.ext,
         size: d.size,
         preview: d.preview,
+        subcategory: d.subcategory ?? '',
       })),
   }));
 

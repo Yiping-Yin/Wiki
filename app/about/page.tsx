@@ -64,18 +64,163 @@ export default function AboutPage() {
         no disruption, the source is sacred.
       </p>
       <p>
+        <strong>Iterating</strong> — select the same passage again later, ask
+        another question, commit again. Your thought doesn&rsquo;t fork into a
+        second note; it <em>deepens</em>. The anchor becomes a container of
+        versions, oldest to newest. The AI sees your prior iterations and
+        builds on them instead of restarting. Depth is visible as{' '}
+        <code style={{ background: 'var(--code-bg)', padding: '1px 6px', borderRadius: 4, fontSize: '0.85em' }}>v3</code>{' '}
+        or <code style={{ background: 'var(--code-bg)', padding: '1px 6px', borderRadius: 4, fontSize: '0.85em' }}>v7</code>{' '}
+        next to the anchor — you can expand the history to see how your
+        understanding evolved.
+      </p>
+      <p>
         <strong>Reviewing</strong> — hover any dot to see its note. Press
         <kbd>⌘/</kbd> to enter review mode — the source recedes, a centered
         glass <strong>Live Note</strong> becomes the main object of attention,
         and a companion <strong>thought map</strong> accompanies it on the right.
+        The thought map doesn&rsquo;t just show <em>where</em> you thought; it
+        shows <em>how deeply</em>. A section with one deeply iterated anchor
+        carries more weight than a section with three shallow reactions.
       </p>
       <p>
-        <strong>Crystallizing</strong> — when a document&rsquo;s thought map is
-        complete, crystallize it. The panel enters your{' '}
-        <Link href="/kesi" style={{ color: 'var(--accent)' }}>kesi</Link>.
+        <strong>Connecting</strong> — write a markdown link from one anchor to
+        another document, and Loom notices. When you open the referenced
+        document, its Live Note shows a <strong>Referenced by</strong> section
+        listing every anchor in every other document that points here. The
+        weft threads from other panels become visible from this panel&rsquo;s
+        perspective.
+      </p>
+      <p>
+        <strong>Crystallizing</strong> — two scopes. Lock a single thought
+        container with <code style={{ background: 'var(--code-bg)', padding: '1px 6px', borderRadius: 4, fontSize: '0.85em' }}>◈</code>{' '}
+        when you feel that one idea has reached its final form — no more
+        versions will be appended without unlocking first. Crystallize the{' '}
+        <em>whole document</em> when its thought map is complete; the panel
+        enters your <Link href="/kesi" style={{ color: 'var(--accent)' }}>kesi</Link>.
+        Small locks for individual insights, one big lock for the whole
+        weaving.
       </p>
 
-      <h2>The five principles</h2>
+      <h2>How you learn</h2>
+      <p>
+        Learning is not reading. Reading is input. Learning is the
+        moment your brain <strong>reorganizes itself</strong> around
+        something new. That moment happens in a specific pattern:
+      </p>
+      <ol style={{ paddingLeft: '1.4rem' }}>
+        <li>
+          <strong>Ingest</strong> — new material enters your field of view.
+          You don&rsquo;t understand it yet. That&rsquo;s fine.
+        </li>
+        <li>
+          <strong>Chaotic questioning</strong> — you read and questions
+          erupt: &ldquo;what is this?&rdquo; &ldquo;why?&rdquo; &ldquo;how
+          does this connect to X?&rdquo; The questions are scattered,
+          following instinct. This is the most important phase — your brain
+          is building its first connections.
+        </li>
+        <li>
+          <strong>Systematic questioning</strong> — the questions gain
+          structure: &ldquo;section 2 contradicts section 4&rdquo;,
+          &ldquo;if A holds, then B should too, but the author
+          doesn&rsquo;t say so.&rdquo; From scattered to structured doubt.
+        </li>
+        <li>
+          <strong>Holistic grasp</strong> — you stop looking at details and
+          see the whole: &ldquo;what is this article really saying, in one
+          sentence?&rdquo; From trees to forest.
+        </li>
+        <li>
+          <strong>Reconstruction</strong> — close the book. Write what you
+          understood from memory. The parts you can&rsquo;t write are the
+          parts you haven&rsquo;t learned. This is the most painful and
+          most effective action in all of learning.
+        </li>
+        <li>
+          <strong>Verification</strong> — someone (or AI) tests you. Not
+          &ldquo;what&rsquo;s the definition&rdquo; (recall) but
+          &ldquo;what would happen in a new scenario&rdquo; (transfer).
+          If you can answer, you&rsquo;ve truly learned.
+        </li>
+      </ol>
+      <p>
+        Then the cycle recurses: your reconstruction becomes new material
+        for higher-level learning. Back to step 1.
+      </p>
+
+      <h3>The micro ↔ macro oscillation</h3>
+      <p>
+        These six phases are not linear. Your brain oscillates between
+        micro and macro constantly:
+      </p>
+      <p style={{ color: 'var(--fg-secondary)', fontSize: '0.92rem', lineHeight: 1.7 }}>
+        Read a paragraph (micro) → a question arises (micro) → you notice
+        a connection to the previous section (macro) → go back and reread
+        one sentence (micro) → &ldquo;oh, these two mean the same
+        thing&rdquo; (macro) → try to say it in your own words
+        (reconstruction) → can&rsquo;t, go back to the source (micro) →
+        this time you understand (micro) → place it in the whole picture
+        (macro).
+      </p>
+      <p>
+        <strong>Learning is not &ldquo;read first, summarize
+        later.&rdquo;</strong> Learning is the continuous oscillation
+        between micro and macro. Every jump is a deepening of
+        understanding. Loom exists to make these jumps frictionless.
+      </p>
+
+      <h3>This oscillation is weaving</h3>
+      <p>
+        A kesi weaver does not weave one thread from left to right, then
+        the next, then the next. The shuttle goes <strong>back and
+        forth</strong>. Each pass lays a single weft thread. The weaver
+        pauses, steps back, checks the pattern forming, then returns to
+        lay the next thread. Back and forth, micro and macro, thousands
+        of times.
+      </p>
+      <p>
+        Learning is the same motion:
+      </p>
+      <ul>
+        <li>The <strong>warp</strong> (经) is your source — the document
+          you&rsquo;re reading. It runs vertically, continuous, unchanging.</li>
+        <li>Each <strong>weft thread</strong> (纬) is one thought — bounded,
+          anchored to a specific passage. Broken at the boundary of each
+          idea.</li>
+        <li>The <strong>shuttle</strong> is your attention — it moves
+          across the warp (reading a passage), returns (reviewing your
+          captures), moves again (reading the next passage). Back and
+          forth.</li>
+        <li><strong>Stepping back to see the pattern</strong> = the macro
+          view. ⌘/ opens the thought map: all your weft threads visible
+          at once. Where is the pattern dense? Where are the gaps?</li>
+        <li><strong>Leaning in to lay the next thread</strong> = the micro
+          view. Click a gap in the thought map, scroll to the source,
+          read, capture. One more weft thread placed.</li>
+      </ul>
+      <p>
+        The kesi emerges from thousands of passes. Understanding emerges
+        from thousands of micro ↔ macro oscillations. <strong>The process
+        is identical. Loom is not a metaphor for weaving. Learning IS
+        weaving.</strong>
+      </p>
+      <p style={{ color: 'var(--fg-secondary)', fontSize: '0.92rem', fontStyle: 'italic' }}>
+        通经断纬 — continuous warp, broken weft. The source is continuous.
+        Your thoughts are discrete. The fabric of understanding forms at
+        the intersection.
+      </p>
+
+      <h3>How Loom supports each transition</h3>
+      <dl style={{ margin: '1rem 0' }}>
+        <DLRow word="Micro → Meso"    def="⌘E capture: write what a passage means. Your thought appears in the thought map beside the document." />
+        <DLRow word="Meso → Macro"    def="⌘/ expands the thought map: see all your captures for the entire document. Identify gaps — sections with no captures." />
+        <DLRow word="Macro → Micro"   def="Click any capture in the thought map → the document scrolls to the source passage and highlights it. Zoom back in." />
+        <DLRow word="Micro → Rehearsal" def="⌘E with no selection: the document disappears behind frosted glass. Write from memory. The friction of not seeing the source IS the learning." />
+        <DLRow word="Micro ↔ Meta"    def="Active Retrieval: while reading document B, a blue dot appears when a passage is semantically similar to a note you made on document A. Cross-document connections surface automatically." />
+      </dl>
+
+      <h2>The six principles</h2>
       <ol style={{ paddingLeft: '1.4rem' }}>
         <li>
           <strong>Loom is a loom</strong> — the product does not reference kesi;
@@ -92,6 +237,16 @@ export default function AboutPage() {
           look for them.
         </li>
         <li>
+          <strong>You are the author, always</strong> — every piece of
+          content in Loom is yours to edit. AI summaries, exam answers,
+          rehearsal transforms, capture prompts — all are drafts until you
+          say otherwise. AI is the second weaver, never the first. You can
+          rewrite, override, or discard anything the AI produces. The edit
+          is append-only: your version supersedes the AI&rsquo;s, but the
+          history is preserved. <em>The weaver chooses where to place color.
+          The loom only holds the tension.</em>
+        </li>
+        <li>
           <strong>Faster and cleaner than handwriting</strong> — not a
           replacement for pen and paper; structurally better output in less
           time. This is what kesi does to painting.
@@ -99,7 +254,9 @@ export default function AboutPage() {
         <li>
           <strong>The thought map is the pattern</strong> — a weaver&rsquo;s
           mind holds the entire fabric before the first thread is laid. Your
-          thought map is that mental pattern made visible.
+          thought map is that mental pattern made visible. It shows not only
+          where you thought but <em>how deeply</em>: a single idea iterated
+          seven times has more weight than seven scattered first reactions.
         </li>
       </ol>
 
@@ -164,12 +321,15 @@ export default function AboutPage() {
         <DLRow word="Panel"            def="One crystallized thought map — a complete piece of understanding woven from a single source." />
         <DLRow word="Warp · 经"        def="Your sustained source materials: documents, PDFs, videos. The vertical threads that run through everything." />
         <DLRow word="Weft · 纬"        def="Each individual thought, bounded by the passage it anchors to. Broken at the boundary of each color block." />
-        <DLRow word="Thought-anchor · ◆" def="One note, anchored to one passage. The atomic unit of understanding. Created when you ask AI about a passage and commit." />
-        <DLRow word="Thought map"      def="The companion structure of your anchored notes for one document — the pattern in the weaver's mind, visible at the start of reading and beside the Live Note in review." />
-        <DLRow word="Crystallize · ✦"  def="To finish a thought map and settle it into your kesi as a permanent panel." />
+        <DLRow word="Thought-anchor · ◆" def="A position in the source document holding a chain of versions of your thinking about that passage. Not a single note — a container that deepens each time you iterate. Filled ◆ means woven; hollow ◇ means bare." />
+        <DLRow word="Version · v{N}"   def="One iteration of thinking inside a thought-anchor. v1 is your first framing; v2 refines or overturns it; v3 deepens further. The latest is the public face; the history is one click away." />
+        <DLRow word="Thought map"      def="The companion structure of your anchored notes for one document — the pattern in the weaver's mind. Shows depth (× N total iterations) as well as presence, visible at the start of reading and beside the Live Note in review." />
+        <DLRow word="Backlink · Referenced by" def="An anchor in another document whose note contains a markdown link pointing here. Rendered as a 'Referenced by' block above the Live Note — the weft threads from other panels, visible from this panel's perspective." />
+        <DLRow word="Crystallize · ◈"  def="Lock a single thought container as final. No new versions can be appended without unlocking. Signals to yourself: I'm done thinking about this specific idea." />
+        <DLRow word="Crystallize (whole doc)" def="Finish the whole document's thought map and settle the panel into your kesi. The big lock." />
         <DLRow word="Trace"            def="The append-only event log for one document. The substrate of everything above." />
-        <DLRow word="Chat · ✦"         def="Select a passage → discuss it with AI. Vertical focus. Ephemeral until committed." />
-        <DLRow word="Review · ⌘/"      def="Bring the Live Note to the center and review the woven understanding of the current document, with its companion thought map on the right." />
+        <DLRow word="Chat · ✦"         def="Select a passage → discuss it with AI. Vertical focus. Ephemeral until committed. The AI sees your prior iterations on this exact passage, if any." />
+        <DLRow word="Review · ⌘/"      def="Bring the Live Note to the center and review the woven understanding of the current document, with its companion thought map on the right. Version history is expandable per anchor." />
       </dl>
 
       <p style={{ color: 'var(--fg-secondary)', fontStyle: 'italic', marginTop: '2.4rem' }}>

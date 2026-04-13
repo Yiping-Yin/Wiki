@@ -22,7 +22,6 @@ import { usePathname } from 'next/navigation';
 import {
   useTracesForDoc,
   useAppendEvent,
-  useRemoveEvents,
   type Trace,
 } from '../lib/trace';
 import { recompileSystemPrompt, commitSystemPrompt, discussionSystemPrompt } from '../lib/ai/system-prompt';
@@ -160,6 +159,10 @@ export function ChatFocus() {
   const [streaming, setStreaming] = useState(false);
   const [streamBuf, setStreamBuf] = useState('');
   const [committing, setCommitting] = useState(false);
+  /** Inline error state for AI-unreachable / streaming failure. Shown as a
+   *  quiet hint in the input area (tier-3 actionable, but non-modal and
+   *  self-clearing on next keystroke). Not a toast. */
+  const [aiError, setAiError] = useState<string | null>(null);
   const [position, setPosition] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 720 });
   const overlayRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -175,7 +178,6 @@ export function ChatFocus() {
     : null;
   const { traces, loading } = useTracesForDoc(ctx?.docId ?? null);
   const append = useAppendEvent();
-  const removeEvents = useRemoveEvents();
   const [activeTraceId, setActiveTraceId] = useState<string | null>(null);
 
   // Find or create reading trace
@@ -199,6 +201,70 @@ export function ChatFocus() {
         .map((e) => ({ summary: e.summary, quote: e.quote })),
     [activeTrace?.events],
   );
+
+  /**
+   * §X · Prior iterations on THIS exact passage.
+   *
+   * If the user has thought about this same passage before (same block text
+   * + overlapping char range), surface those prior iterations to the AI so
+   * the new discussion builds on them instead of restarting from scratch.
+   * This is the "container of versions" model made visible to the AI.
+   *
+   * Distinct from `existingNotes`, which lists ALL anchors in the whole doc.
+   */
+  const priorVersionsOnThisPassage = useMemo(() => {
+    if (!anchor || !activeTrace || !focusedEl) return [];
+    const currentBlockText = normalizedBlockText(focusedEl);
+    if (!currentBlockText) return [];
+    const cs = anchor.charStart ?? 0;
+    const ce = anchor.charEnd ?? Math.max(0, anchor.text.length);
+
+    return (activeTrace.events ?? [])
+      .filter((e): e is Extract<typeof e, { kind: 'thought-anchor' }> => e.kind === 'thought-anchor')
+      .filter((e) => {
+        const etext = e.anchorBlockText ?? '';
+        if (!etext || etext !== currentBlockText) return false;
+        const ecs = e.anchorCharStart ?? -1;
+        const ece = e.anchorCharEnd ?? -1;
+        // Ranges [ecs, ece] and [cs, ce] overlap?
+        return ecs <= ce && ece >= cs;
+      })
+      .sort((a, b) => a.at - b.at)
+      .map((e) => ({ summary: e.summary, at: e.at }));
+  }, [anchor, activeTrace, focusedEl]);
+
+  /**
+   * §X · Is the current passage inside a crystallized (locked) container?
+   *
+   * Computed at render time so the commit ✓ button can be shown as disabled
+   * with a ◈ hint rather than rejecting the user's click with an alert().
+   * This is the preserve-and-deepen fix for the original tier-3 alert — a
+   * quiet disabled state is tier-1 silent self-heal (the user sees the lock
+   * before they click, not after).
+   */
+  const isCurrentContainerLocked = useMemo(() => {
+    if (!anchor || !activeTrace || !focusedEl) return false;
+    const currentBlockText = normalizedBlockText(focusedEl);
+    if (!currentBlockText) return false;
+    const cs = anchor.charStart ?? 0;
+    const ce = anchor.charEnd ?? Math.max(0, anchor.text.length);
+    const anchorIdsAtPosition = new Set<string>();
+    for (const e of activeTrace.events) {
+      if (e.kind !== 'thought-anchor') continue;
+      const etext = e.anchorBlockText ?? '';
+      const ecs = e.anchorCharStart ?? -1;
+      const ece = e.anchorCharEnd ?? -1;
+      if (etext && etext === currentBlockText && ecs <= ce && ece >= cs) {
+        anchorIdsAtPosition.add(e.anchorId);
+      }
+    }
+    return activeTrace.events.some(
+      (e) =>
+        e.kind === 'crystallize'
+        && (e as any).anchorId !== undefined
+        && anchorIdsAtPosition.has((e as any).anchorId),
+    );
+  }, [anchor, activeTrace, focusedEl]);
 
   // Listen for activation
   useEffect(() => {
@@ -328,6 +394,7 @@ export function ChatFocus() {
     setStreamBuf('');
     setStreaming(false);
     setCommitting(false);
+    setAiError(null);
     rangeStartElRef.current = null;
     rangeEndElRef.current = null;
     abortRef.current = null;
@@ -451,6 +518,7 @@ export function ChatFocus() {
     setDraft('');
     setStreaming(true);
     setStreamBuf('');
+    setAiError(null);
 
     const messages: { role: 'user' | 'assistant'; content: string }[] = [];
     for (const t of turns) {
@@ -469,6 +537,7 @@ export function ChatFocus() {
         href: ctx.href,
         sourceBody: getCurrentDocBody(),
         existingNotes,
+        priorVersionsOnThisPassage,
       }),
       false,
       null,
@@ -479,11 +548,29 @@ export function ChatFocus() {
       setTurns((prev) => [...prev, { q: text, a: answer }]);
       setStreamBuf('');
       setTimeout(() => inputRef.current?.focus(), 30);
+    } else if (answer && answer.startsWith('[error:')) {
+      // AI unreachable. Put the user's text back into the draft so they don't
+      // lose it, and show a quiet inline hint so they know what happened.
+      // Tier-3 actionable but non-modal: self-clears on next keystroke.
+      setDraft(text);
+      setStreamBuf('');
+      const rawMsg = answer.slice(7, -1); // strip "[error: " and "]"
+      setAiError(
+        rawMsg.toLowerCase().includes('fetch') || rawMsg.toLowerCase().includes('network')
+          ? 'AI unreachable — check connection and press Enter to retry.'
+          : `AI returned an error — press Enter to retry. (${rawMsg.slice(0, 80)})`
+      );
+      setTimeout(() => inputRef.current?.focus(), 30);
     }
-  }, [draft, streaming, ctx, turns, anchor, streamChat, existingNotes]);
+  }, [draft, streaming, ctx, turns, anchor, streamChat, existingNotes, priorVersionsOnThisPassage]);
 
   const commit = useCallback(async () => {
     if (turns.length === 0 || committing || !ctx || !anchor) return;
+    // Defense-in-depth: even though the commit button is disabled when
+    // isCurrentContainerLocked is true, guard the mutation path too in
+    // case the button is invoked programmatically or by a keyboard shortcut.
+    if (isCurrentContainerLocked) return;
+
     setCommitting(true);
     setStreaming(true);
     setStreamBuf('');
@@ -585,28 +672,17 @@ export function ChatFocus() {
       const anchorType: 'heading' | 'paragraph' = focusedEl?.tagName.match(/^H[1-6]$/)
         ? 'heading' : 'paragraph';
 
-      // One passage should have one anchored note. Asking again about the
-      // same passage updates that note instead of stacking another one in
-      // the same physical slot.
-      await removeEvents(
-        traceId,
-        (e) =>
-          e.kind === 'thought-anchor'
-          && (
-            (
-              e.anchorId === anchorId
-              && (e.rangeStartId ?? e.anchorId) === rangeStartId
-              && (e.rangeEndId ?? e.anchorId) === rangeEndId
-            )
-            || (
-              (e.anchorBlockText ?? '') === anchorBlockText
-              && (e.anchorCharStart ?? 0) === (anchor.charStart ?? 0)
-              && (e.anchorCharEnd ?? 0) === (anchor.charEnd ?? Math.max(0, anchor.text.length))
-              && (e.rangeStartText ?? '') === rangeStartText
-              && (e.rangeEndText ?? '') === rangeEndText
-            )
-          ),
-      );
+      // §X · Thought anchors are versioned containers, not atomic notes.
+      // Asking again about the same passage APPENDS a new version to the
+      // existing container — the aggregation layer (buildThoughtAnchorViews)
+      // groups events by position into a version chain. The previous
+      // implementation called removeEvents() here to enforce one-note-per-
+      // passage, which killed version history. Keeping all versions is what
+      // makes the Thought Map meaningful (depth = count, not just presence).
+      //
+      // Exception: typo fixes and small corrections to the latest version
+      // are handled via direct edit (see AnchorCard), not by re-running
+      // ChatFocus. Every ChatFocus commit = a new version.
 
       await append(traceId, {
         kind: 'thought-anchor',
@@ -628,7 +704,7 @@ export function ChatFocus() {
       });
     }
     close();
-  }, [turns, committing, activeTrace, activeTraceId, ctx, anchor, append, removeEvents, streamChat, close, focusedEl]);
+  }, [turns, committing, activeTrace, activeTraceId, ctx, anchor, append, streamChat, close, focusedEl, isCurrentContainerLocked]);
 
   if (!anchor) return null;
 
@@ -718,52 +794,76 @@ export function ChatFocus() {
           {streaming && !committing ? (
             <span style={{ flex: 1, minHeight: 22 }} />
           ) : (
-            <textarea
-              ref={inputRef}
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                const el = e.target as HTMLTextAreaElement;
-                el.style.height = 'auto';
-                el.style.height = Math.min(120, el.scrollHeight) + 'px';
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-              }}
-              placeholder={turns.length > 0 ? 'ask another…' : 'ask about this passage…'}
-              rows={1}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 0,
-                outline: 0,
-                color: 'var(--fg)',
-                fontSize: '0.88rem',
-                fontFamily: 'var(--display)',
-                letterSpacing: '-0.012em',
-                minWidth: 0,
-                resize: 'none',
-                lineHeight: 1.5,
-                minHeight: 22,
-                maxHeight: 120,
-                padding: 0,
-              }}
-            />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <textarea
+                ref={inputRef}
+                value={draft}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  if (aiError) setAiError(null);
+                  const el = e.target as HTMLTextAreaElement;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(120, el.scrollHeight) + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+                }}
+                placeholder={turns.length > 0 ? 'ask another…' : 'ask about this passage…'}
+                rows={1}
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  outline: 0,
+                  color: 'var(--fg)',
+                  fontSize: '0.88rem',
+                  fontFamily: 'var(--display)',
+                  letterSpacing: '-0.012em',
+                  minWidth: 0,
+                  resize: 'none',
+                  lineHeight: 1.5,
+                  minHeight: 22,
+                  maxHeight: 120,
+                  padding: 0,
+                }}
+              />
+              {aiError && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontSize: '0.72rem',
+                    color: 'var(--tint-orange)',
+                    letterSpacing: '-0.005em',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {aiError}
+                </div>
+              )}
+            </div>
           )}
           {turns.length > 0 && !streaming && !committing && (
             <button
               onClick={commit}
-              aria-label="Commit anchored note"
-              title="✓ Commit anchored note"
+              disabled={isCurrentContainerLocked}
+              aria-label={isCurrentContainerLocked ? 'Container locked · unlock with ◈ to iterate' : 'Commit anchored note'}
+              title={isCurrentContainerLocked ? '◈ This thought is locked. Unlock via the ◈ icon on the anchor card to iterate.' : '✓ Commit anchored note'}
               style={{
-                background: 'transparent', border: 0, cursor: 'pointer',
-                color: 'var(--accent)', padding: '0 2px',
+                background: 'transparent', border: 0,
+                cursor: isCurrentContainerLocked ? 'not-allowed' : 'pointer',
+                color: isCurrentContainerLocked ? 'var(--tint-indigo)' : 'var(--accent)',
+                padding: '0 2px',
                 fontSize: '0.88rem', lineHeight: 1, flexShrink: 0,
-                opacity: 0.7,
+                opacity: isCurrentContainerLocked ? 0.42 : 0.7,
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.7'; }}
-            >✓</button>
+              onMouseEnter={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.opacity = isCurrentContainerLocked ? '0.55' : '1';
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.opacity = isCurrentContainerLocked ? '0.42' : '0.7';
+              }}
+            >{isCurrentContainerLocked ? '◈' : '✓'}</button>
           )}
           <button
             onClick={() => close()}

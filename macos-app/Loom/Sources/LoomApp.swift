@@ -12,9 +12,12 @@ struct LoomApp: App {
                 .frame(minWidth: 960, minHeight: 640)
                 .environmentObject(delegate.server)
         }
+        .defaultSize(width: 1400, height: 900)
         .windowToolbarStyle(.unified(showsTitle: true))
         .commands {
             CommandGroup(after: .textEditing) {
+                Button("Learn") { NotificationCenter.default.post(name: .loomLearn, object: nil) }
+                    .keyboardShortcut("e", modifiers: .command)
                 Button("Search") { NotificationCenter.default.post(name: .loomSearch, object: nil) }
                     .keyboardShortcut("k", modifiers: .command)
                 Button("Review") { NotificationCenter.default.post(name: .loomReview, object: nil) }
@@ -70,4 +73,6 @@ extension Notification.Name {
     static let loomGoBack = Notification.Name("loomGoBack")
     static let loomGoForward = Notification.Name("loomGoForward")
     static let loomNewTopic = Notification.Name("loomNewTopic")
+    static let loomLearn = Notification.Name("loomLearn")
+    static let loomNotchPresetSwitch = Notification.Name("loomNotchPresetSwitch")
 }

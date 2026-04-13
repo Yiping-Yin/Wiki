@@ -5,7 +5,7 @@
  * On hover of any <a href="/wiki/..."> or <a href="/knowledge/..."> for ≥350ms,
  * show a floating card near the cursor with the linked doc's title + preview +
  * category. Card hides on mouseleave or scroll. Metadata pulled lazily from
- * /search-index.json, cached in module memory.
+ * /api/search-index, cached in module memory.
  */
 import { useEffect, useRef, useState } from 'react';
 
@@ -19,7 +19,7 @@ async function loadHrefIndex(): Promise<void> {
   if (_loadPromise) return _loadPromise;
   _loadPromise = (async () => {
     try {
-      const r = await fetch('/search-index.json');
+      const r = await fetch('/api/search-index');
       if (!r.ok) return;
       const payload = await r.json();
       const stored = payload.index?.storedFields ?? {};
@@ -45,8 +45,8 @@ async function loadPreview(href: string): Promise<string | undefined> {
   const know = href.match(/^\/knowledge\/([^/]+)\/([^/]+)/);
   if (know) {
     try {
-      const id = `${know[1]}__${know[2]}`;
-      const r = await fetch(`/knowledge/docs/${id}.json`);
+      const id = `know/${know[1]}__${know[2]}`;
+      const r = await fetch(`/api/doc-body?id=${encodeURIComponent(id)}`);
       if (r.ok) {
         const j = await r.json();
         const snippet = (j.body ?? '').slice(0, 220).trim();

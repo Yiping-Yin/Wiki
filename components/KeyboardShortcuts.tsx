@@ -46,11 +46,9 @@ export function KeyboardShortcuts() {
     return () => window.removeEventListener('keydown', handler);
   }, [lastG]);
 
-  // Back-to-top moved into FloatingDock; this just owns the help modal + shortcuts.
+  // Owns the global shortcut help modal.
   return (
     <>
-      {false && showTop && null}
-
       {showHelp && (
         <div
           onClick={(e) => e.target === e.currentTarget && setShowHelp(false)}
@@ -106,6 +104,7 @@ export function KeyboardShortcuts() {
 
 const SHORTCUTS: [string, string][] = [
   ['⌘ K', 'Search'],
+  ['⌘ /', 'Review current document'],
   ['j', 'Next chapter (LLM wiki)'],
   ['k', 'Previous chapter'],
   ['g g', 'Back to top'],

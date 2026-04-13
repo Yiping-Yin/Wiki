@@ -133,6 +133,10 @@ function BinaryEmbed({
  */
 function PdfWithText({ src, title, body }: { src: string; title: string; body: string }) {
   const hasText = body && body.length > 30 && !body.startsWith('[Binary');
+  // Split extracted text into paragraphs and filter empties, capped for perf
+  const paragraphs = hasText
+    ? body.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).slice(0, 200)
+    : [];
   return (
     <div>
       <PdfFrame src={src} title={title} />
@@ -149,7 +153,23 @@ function PdfWithText({ src, title, body }: { src: string; title: string; body: s
             }}>Source</span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           </div>
-          <TextView body={body} />
+          {/*
+           * §X · PDF ✦ workaround: wrap the extracted text in a NESTED
+           * `.loom-source-prose` container AND render paragraphs inline as
+           * DIRECT children. This matters because SelectionWarp's block walk
+           * looks for "the element whose parent is the proseContainer". With
+           * paragraphs inside a TextView wrapper div, that block collapses to
+           * the wrapper; with paragraphs as direct children, each <p> is its
+           * own block → character offsets become meaningful per paragraph →
+           * Thought Map section detection and version chains work correctly.
+           */}
+          <div className="loom-source-prose">
+            {paragraphs.map((p, i) => (
+              <p key={i} style={{ fontSize: '0.95rem', lineHeight: 1.65, margin: '0 0 0.9rem' }}>
+                {p}
+              </p>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -181,7 +201,7 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
       className="loom-pdf-frame"
       style={{
         width: '100%',
-        height: fullscreen ? '100vh' : '88vh',
+        height: fullscreen ? '100vh' : '92vh',
         border: 0, display: 'block',
         background: 'var(--surface-2)',
       }}
@@ -227,26 +247,68 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
     );
   }
 
+  // PDFs carry their own visual container (the page itself), so we skip the
+  // ViewerFrame chrome and render the iframe bleed — no border, no radius, no
+  // margin — to maximize visible content. Controls float over the top and
+  // fade in on hover, just like ViewerFrame.
   return (
-    <ViewerFrame
-      title={title}
-      subtitle="PDF"
-      openHref={src}
-      flush
-      extra={
-        <>
-          <ZoomControl zoom={zoom} setZoom={setZoom} />
-          <button
-            onClick={() => setFullscreen(true)}
-            title="Fullscreen"
-            aria-label="Fullscreen"
-            style={iconBtn}
-          >⛶</button>
-        </>
-      }
-    >
+    <div className="loom-pdf-bleed" style={{ position: 'relative', margin: 0 }}>
+      {/* Floating controls — absolute, fade in on hover */}
+      <div className="loom-pdf-chrome material-thick" style={{
+        position: 'absolute',
+        top: 12, right: 12,
+        zIndex: 5,
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '5px 8px',
+        borderRadius: 999,
+        opacity: 0,
+        transition: 'opacity 0.22s var(--ease)',
+        pointerEvents: 'none',
+      }}>
+        <ZoomControl zoom={zoom} setZoom={setZoom} />
+        <button
+          onClick={() => setFullscreen(true)}
+          title="Fullscreen"
+          aria-label="Fullscreen"
+          style={iconBtn}
+        >⛶</button>
+        <a href={src} target="_blank" rel="noreferrer" className="t-caption2" style={{
+          color: 'var(--accent)', textDecoration: 'none', fontWeight: 700,
+          padding: '2px 6px',
+        }}>Open ↗</a>
+      </div>
+
+      {/* Floating title — absolute top-left, also fade in */}
+      <div className="loom-pdf-title material-thick" style={{
+        position: 'absolute',
+        top: 12, left: 12,
+        zIndex: 5,
+        padding: '4px 11px',
+        borderRadius: 999,
+        opacity: 0,
+        transition: 'opacity 0.22s var(--ease)',
+        pointerEvents: 'none',
+        maxWidth: 'calc(100% - 260px)',
+      }}>
+        <span className="t-caption2" style={{
+          color: 'var(--fg-secondary)', fontWeight: 600,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          display: 'block',
+        }}>
+          {title} <span style={{ color: 'var(--muted)', marginLeft: 4 }}>· PDF</span>
+        </span>
+      </div>
+
       {frame}
-    </ViewerFrame>
+
+      <style>{`
+        .loom-pdf-bleed:hover .loom-pdf-chrome,
+        .loom-pdf-bleed:hover .loom-pdf-title {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `}</style>
+    </div>
   );
 }
 
@@ -429,17 +491,71 @@ export function WeftShuttle({ width = 64, height = 14 }: { width?: number; heigh
   );
 }
 
-function ErrorPane({ msg }: { msg: string }) {
+/**
+ * Actionable error pane. Follows the UX standard's error tier-3 rule:
+ * every error reaching the user must answer what/where/how. `what` is the
+ * summary (first line, red). `how` is the guidance (second line, muted).
+ * Raw engine messages (`raw`) are hidden behind a "details" toggle because
+ * they're actionable only for developers, not users.
+ */
+function ErrorPane({ what, how, raw, openHref }: {
+  what: string;
+  how?: string;
+  raw?: string;
+  openHref?: string;
+}) {
+  const [showRaw, setShowRaw] = useState(false);
   return (
     <div style={{
-      margin: '1.4rem 0', padding: '0.95rem 1.2rem',
+      margin: '1.4rem 0', padding: '1rem 1.2rem',
       borderRadius: 'var(--r-2)',
       border: '0.5px solid var(--mat-border)',
       background: 'var(--bg-elevated)',
       boxShadow: 'var(--shadow-1)',
-      color: 'var(--tint-red)',
     }} className="t-footnote">
-      ⚠ {msg}
+      <div style={{ color: 'var(--tint-red)', fontWeight: 600, marginBottom: how ? 6 : 0 }}>
+        ⚠ {what}
+      </div>
+      {how && (
+        <div style={{ color: 'var(--fg-secondary)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          {how}
+          {openHref && (
+            <>
+              {' '}
+              <a href={openHref} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                Open original ↗
+              </a>
+            </>
+          )}
+        </div>
+      )}
+      {raw && (
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            onClick={() => setShowRaw((v) => !v)}
+            style={{
+              background: 'transparent', border: 0, cursor: 'pointer',
+              color: 'var(--muted)', fontSize: '0.72rem', padding: 0,
+              fontFamily: 'var(--mono)', letterSpacing: '0.04em',
+            }}
+          >
+            {showRaw ? '− hide details' : '+ show details'}
+          </button>
+          {showRaw && (
+            <pre style={{
+              marginTop: 6, padding: '8px 10px',
+              background: 'var(--code-bg)',
+              borderRadius: 'var(--r-1)',
+              color: 'var(--muted)',
+              fontSize: '0.72rem',
+              fontFamily: 'var(--mono)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}>{raw}</pre>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -470,7 +586,14 @@ function CsvTable({ url, sep }: { url: string; sep: string }) {
     }).catch((e) => setError(e.message));
   }, [url, sep]);
 
-  if (error) return <ErrorPane msg={error} />;
+  if (error) return (
+    <ErrorPane
+      what="Couldn't load this CSV file."
+      how="The file may have moved, been renamed, or the network dropped during fetch. Try refreshing, or open the original in Numbers / Excel to check it's intact."
+      raw={error}
+      openHref={url}
+    />
+  );
   if (!rows) return <LoadingPane label="" />;
 
   const [header, ...data] = rows;
@@ -529,7 +652,14 @@ function JsonView({ url }: { url: string }) {
     }).catch((e) => setError(e.message));
   }, [url]);
 
-  if (error) return <ErrorPane msg={error} />;
+  if (error) return (
+    <ErrorPane
+      what="Couldn't load this JSON file."
+      how="The file may have moved or the network dropped. Try refreshing, or open the original file directly."
+      raw={error}
+      openHref={url}
+    />
+  );
   return (
     <ViewerFrame title="Pretty-printed" subtitle="JSON">
       <pre style={{
@@ -553,12 +683,26 @@ function NotebookView({ url }: { url: string }) {
         const nb = JSON.parse(t);
         setCells(nb.cells ?? []);
       } catch (e: any) {
-        setError(e.message);
+        setError(`parse: ${e.message}`);
       }
-    }).catch((e) => setError(e.message));
+    }).catch((e) => setError(`fetch: ${e.message}`));
   }, [url]);
 
-  if (error) return <ErrorPane msg={error} />;
+  if (error) {
+    const isParse = error.startsWith('parse:');
+    return (
+      <ErrorPane
+        what={isParse ? "This notebook file isn't valid Jupyter JSON." : "Couldn't load this notebook."}
+        how={
+          isParse
+            ? 'The .ipynb file may be corrupted or saved in an unexpected format. Open it in Jupyter / VS Code to verify and re-save.'
+            : 'The file may have moved or the network dropped during fetch. Try refreshing, or open the original directly.'
+        }
+        raw={error.replace(/^(parse|fetch): /, '')}
+        openHref={url}
+      />
+    );
+  }
   if (!cells) return <LoadingPane label="" />;
 
   const codeCells = cells.filter((c) => c.cell_type === 'code').length;

@@ -1,17 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { findDoc, neighborsInCategory, relatedDocs } from '../../../../lib/knowledge';
-import { knowledgeCategories } from '../../../../lib/knowledge-nav';
+import { findDoc, getKnowledgeCategories, neighborsInCategory, relatedDocs } from '../../../../lib/knowledge-store';
 import { TrackView } from '../../../../components/TrackView';
 import { DocViewer } from '../../../../components/DocViewer';
 import { DocBodyProvider } from '../../../../components/DocBodyProvider';
 import { DocOutline } from '../../../../components/DocOutline';
-import { ThoughtMapTOC } from '../../../../components/ThoughtMapTOC';
 import { PinButton } from '../../../../components/PinButton';
 import { LiveArtifact } from '../../../../components/LiveArtifact';
 import { AnchorLayer } from '../../../../components/AnchorLayer';
+import { readKnowledgeDocBody } from '../../../../lib/knowledge-doc-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,30 +16,27 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   const { category, slug } = await params;
   const categorySlug = decodeURIComponent(category);
   const fileSlug = decodeURIComponent(slug);
-  const doc = findDoc(categorySlug, fileSlug);
+  const doc = await findDoc(categorySlug, fileSlug);
   return { title: doc ? `${doc.title} · ${doc.category}` : 'Knowledge' };
 }
 
 async function loadBody(id: string): Promise<string> {
-  try {
-    const p = path.join(process.cwd(), 'public', 'knowledge', 'docs', `${id}.json`);
-    const raw = await fs.readFile(p, 'utf-8');
-    return JSON.parse(raw).body ?? '';
-  } catch {
-    return '';
-  }
+  return (await readKnowledgeDocBody(id))?.body ?? '';
 }
 
 export default async function DocPage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   const { category, slug } = await params;
   const categorySlug = decodeURIComponent(category);
   const fileSlug = decodeURIComponent(slug);
-  const doc = findDoc(categorySlug, fileSlug);
+  const [doc, knowledgeCategories] = await Promise.all([
+    findDoc(categorySlug, fileSlug),
+    getKnowledgeCategories(),
+  ]);
   if (!doc) notFound();
 
   const body = await loadBody(doc.id);
   const cat = knowledgeCategories.find((c) => c.slug === categorySlug);
-  const { prev, next } = neighborsInCategory(categorySlug, fileSlug);
+  const { prev, next } = await neighborsInCategory(categorySlug, fileSlug);
   const sourceUrl = `/api/source?p=${encodeURIComponent(doc.sourcePath)}`;
 
   return (
@@ -127,13 +121,12 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
       </div>
 
       <RelatedDocs docId={doc.id} />
-      <ThoughtMapTOC docId={`know/${doc.id}`} />
     </div>
   );
 }
 
-function RelatedDocs({ docId }: { docId: string }) {
-  const related = relatedDocs(docId, 4);
+async function RelatedDocs({ docId }: { docId: string }) {
+  const related = await relatedDocs(docId, 4);
   if (related.length === 0) return null;
   return (
     <div style={{ marginTop: '2rem' }}>

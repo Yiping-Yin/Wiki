@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { DocViewer } from '../../../components/DocViewer';
 import { TrackView } from '../../../components/TrackView';
-import { DocSummary } from '../../../components/DocSummary';
-import { DocNotes } from '../../../components/DocNotes';
+import { DocBodyProvider } from '../../../components/DocBodyProvider';
+import { LiveArtifact } from '../../../components/LiveArtifact';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,16 +37,13 @@ export default async function UploadDocPage({ params }: { params: Promise<{ name
     try { body = (await fs.readFile(fullPath, 'utf-8')).slice(0, 50000); } catch {}
   }
 
-  // pseudo-id for AI cache
-  const pseudoId = 'upload__' + decoded.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '_');
-
   return (
     <div className="prose-notion">
       <TrackView id={`upload/${decoded}`} title={titleClean} href={`/uploads/${encodeURIComponent(decoded)}`} />
 
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
         <Link href="/">Home</Link> ›{' '}
-        <Link href="/uploads">📥 Uploads</Link>
+        <Link href="/uploads">Uploads</Link>
       </div>
       <h1>{titleClean}</h1>
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
@@ -57,9 +54,10 @@ export default async function UploadDocPage({ params }: { params: Promise<{ name
         <span>uploaded {new Date(stat!.mtime).toLocaleDateString()}</span>
       </div>
 
+      <DocBodyProvider body={body} title={titleClean} />
       <DocViewer ext={ext} sourceUrl={sourceUrl} body={body} title={titleClean} />
 
-      <DocNotes id={`upload/${decoded}`} />
+      <LiveArtifact docId={`upload/${decoded}`} />
     </div>
   );
 }

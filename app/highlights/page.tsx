@@ -28,7 +28,7 @@ let _idxCache: IndexDoc[] | null = null;
 async function loadDocs(): Promise<IndexDoc[]> {
   if (_idxCache) return _idxCache;
   try {
-    const r = await fetch('/search-index.json');
+    const r = await fetch('/api/search-index');
     if (!r.ok) return [];
     const payload = await r.json();
     const stored = payload.index?.storedFields ?? {};
@@ -124,7 +124,10 @@ export default function HighlightsPage() {
       </div>
 
       {filtered.map((d) => (
-        <section key={d.docId} style={{ marginBottom: '2rem' }}>
+        // §X · Key by traceId, not docId. Two reading traces for the same
+        // doc (e.g. legacy data where a new trace got created instead of
+        // reusing the existing one) would collide on docId.
+        <section key={d.traceId} style={{ marginBottom: '2rem' }}>
           <Link href={d.href} style={{
             display: 'block',
             color: 'var(--accent)',

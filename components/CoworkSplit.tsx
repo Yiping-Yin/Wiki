@@ -1,15 +1,24 @@
 'use client';
 /**
- * ReviewMode · §37/§38 · centered Live Note review
+ * ReviewMode · §37/§38 + Capture pivot 2026-04-11
  *
- * Triggered by ⌘/. The source recedes; a centered glass Live Note becomes
- * the primary object of attention; a companion thought map sits to its
- * right, the way Source sits beside the main stage during reading.
+ * ⌘/ toggles the right-side ReviewThoughtMap between its default
+ * narrow navigation state and a wide writable state. No canvas, no
+ * ReviewSheet — the map itself is the thinking surface.
  *
- * Esc or ⌘/ again exits study mode.
+ * While wide is active, `body.loom-study-mode` stays on so existing
+ * AnchorDot dim/hide behavior keeps working; the narrow state is the
+ * default non-study reading state.
+ *
+ * History: this previously mounted <CanvasLayer> (Stage 0 thinking
+ * canvas, 2D draggable cards). That was judged wrong after user
+ * burden feedback and external research; see memory/project_canvas_pivot.md.
+ * Before canvas it mounted <ReviewSheet>. The map is now the final
+ * surface.
+ *
+ * Esc or ⌘/ again exits wide mode.
  */
 import { useEffect, useState } from 'react';
-import { ReviewSheet } from './ReviewSheet';
 import { ReviewThoughtMap } from './ReviewThoughtMap';
 
 const STUDY_CLASS = 'loom-study-mode';
@@ -19,10 +28,25 @@ export function ReviewMode() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inEditable =
+        !!target &&
+        (target.tagName === 'TEXTAREA' ||
+          target.tagName === 'INPUT' ||
+          target.isContentEditable);
+
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault();
         setActive((a) => !a);
-      } else if (e.key === 'Escape' && active) {
+        return;
+      }
+
+      if (e.key === 'Escape' && active) {
+        // Escape inside an editable field is a local action (dismiss the
+        // textarea / close the expanded card). Let the field's own
+        // onKeyDown handle it — don't also collapse the whole wide mode
+        // out from under the user.
+        if (inEditable) return;
         e.preventDefault();
         setActive(false);
       }
@@ -52,12 +76,7 @@ export function ReviewMode() {
     window.dispatchEvent(new CustomEvent('loom:study-mode', { detail: { active } }));
   }, [active]);
 
-  return (
-    <>
-      <ReviewSheet active={active} />
-      <ReviewThoughtMap active={active} />
-    </>
-  );
+  return <ReviewThoughtMap active={active} />;
 }
 
 export { ReviewMode as CoworkSplit };

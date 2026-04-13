@@ -2,27 +2,27 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { TableOfContents } from './TableOfContents';
+import { DocOutline } from './DocOutline';
 import { PrevNext } from './PrevNext';
-import { RelatedDocs } from './RelatedDocs';
-import { DocNotes } from './DocNotes';
-import { DocQuiz } from './DocQuiz';
+import { LiveArtifact } from './LiveArtifact';
+import { AnchorLayer } from './AnchorLayer';
 import { PinButton } from './PinButton';
 import { chapters } from '../lib/nav';
 
+// Apple system colors keyed by section. accent/accentSoft cascade into .prose-notion.
 const SECTION_META: Record<string, { emoji: string; accent: string; accentSoft: string }> = {
-  Start:       { emoji: '🏁', accent: '#2563eb', accentSoft: 'rgba(37,99,235,0.12)' },
-  Foundations: { emoji: '⚡', accent: '#f97316', accentSoft: 'rgba(249,115,22,0.12)' },
-  Transformer: { emoji: '🧠', accent: '#a855f7', accentSoft: 'rgba(168,85,247,0.12)' },
-  Architecture:{ emoji: '🏗', accent: '#06b6d4', accentSoft: 'rgba(6,182,212,0.12)' },
-  Training:    { emoji: '🔧', accent: '#10b981', accentSoft: 'rgba(16,185,129,0.12)' },
-  Inference:   { emoji: '⚡', accent: '#7c3aed', accentSoft: 'rgba(124,58,237,0.12)' },
-  Finetuning:  { emoji: '🎯', accent: '#ec4899', accentSoft: 'rgba(236,72,153,0.12)' },
-  Data:        { emoji: '📊', accent: '#0ea5e9', accentSoft: 'rgba(14,165,233,0.12)' },
-  Agents:      { emoji: '🤖', accent: '#f59e0b', accentSoft: 'rgba(245,158,11,0.12)' },
-  Evaluation:  { emoji: '📏', accent: '#84cc16', accentSoft: 'rgba(132,204,22,0.12)' },
-  Frontier:    { emoji: '🚀', accent: '#a78bfa', accentSoft: 'rgba(167,139,250,0.12)' },
-  Safety:      { emoji: '🛡', accent: '#dc2626', accentSoft: 'rgba(220,38,38,0.12)' },
+  Start:       { emoji: '✦', accent: 'var(--tint-blue)',   accentSoft: 'color-mix(in srgb, var(--tint-blue) 14%, transparent)'   },
+  Foundations: { emoji: '◆', accent: 'var(--tint-orange)', accentSoft: 'color-mix(in srgb, var(--tint-orange) 14%, transparent)' },
+  Transformer: { emoji: '◉', accent: 'var(--tint-purple)', accentSoft: 'color-mix(in srgb, var(--tint-purple) 14%, transparent)' },
+  Architecture:{ emoji: '◧', accent: 'var(--tint-cyan)',   accentSoft: 'color-mix(in srgb, var(--tint-cyan) 14%, transparent)'   },
+  Training:    { emoji: '◑', accent: 'var(--tint-green)',  accentSoft: 'color-mix(in srgb, var(--tint-green) 14%, transparent)'  },
+  Inference:   { emoji: '✧', accent: 'var(--tint-indigo)', accentSoft: 'color-mix(in srgb, var(--tint-indigo) 14%, transparent)' },
+  Finetuning:  { emoji: '◈', accent: 'var(--tint-pink)',   accentSoft: 'color-mix(in srgb, var(--tint-pink) 14%, transparent)'   },
+  Data:        { emoji: '▦', accent: 'var(--tint-teal)',   accentSoft: 'color-mix(in srgb, var(--tint-teal) 14%, transparent)'   },
+  Agents:      { emoji: '◊', accent: 'var(--tint-yellow)', accentSoft: 'color-mix(in srgb, var(--tint-yellow) 14%, transparent)' },
+  Evaluation:  { emoji: '◐', accent: 'var(--tint-mint)',   accentSoft: 'color-mix(in srgb, var(--tint-mint) 14%, transparent)'   },
+  Frontier:    { emoji: '✦', accent: 'var(--tint-purple)', accentSoft: 'color-mix(in srgb, var(--tint-purple) 14%, transparent)' },
+  Safety:      { emoji: '◆', accent: 'var(--tint-red)',    accentSoft: 'color-mix(in srgb, var(--tint-red) 14%, transparent)'    },
 };
 
 async function readingTime(slug: string): Promise<number> {
@@ -37,8 +37,10 @@ async function readingTime(slug: string): Promise<number> {
       .replace(/import[^;]+;/g, ' ')
       .replace(/[#*_`>\-]/g, ' ');
     const words = stripped.split(/\s+/).filter(Boolean).length;
-    return Math.max(1, Math.round(words / 220)); // ~220 wpm reading
-  } catch { return 0; }
+    return Math.max(1, Math.round(words / 220));
+  } catch {
+    return 0;
+  }
 }
 
 export async function ChapterShell({
@@ -60,50 +62,87 @@ export async function ChapterShell({
     <div
       className="with-toc chapter-themed"
       style={{
-        // Per-section accent override — cascades through .prose-notion children
         ['--accent' as any]: meta.accent,
         ['--accent-soft' as any]: meta.accentSoft,
         position: 'relative',
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }} className="prose-notion">
-        {/* Breadcrumb + meta strip */}
-        {ch && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.5rem' }}>
-            <Link href="/">Home</Link>
-            <span>›</span>
-            <span style={{ color: meta.accent, fontWeight: 600 }}>{meta.emoji} {ch.section}</span>
-            {minutes > 0 && (
-              <>
-                <span>·</span>
-                <span title="Estimated reading time">⏱ {minutes} min read</span>
-              </>
-            )}
-          </div>
-        )}
+      <DocOutline />
 
-        {/* Pin button — floats top-right of content */}
-        <div style={{ position: 'absolute', top: '4rem', right: '2rem' }}>
-          <PinButton id={`wiki/${slug}`} title={ch?.title ?? slug} href={`/wiki/${slug}`} size="md" />
+      <div className="doc-stage">
+        <div style={{ minWidth: 0, position: 'relative' }} className="prose-notion loom-source-prose">
+          {ch && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginBottom: '0.7rem',
+              }}
+            >
+              <Link
+                href="/"
+                className="t-caption"
+                style={{ color: 'var(--muted)', textDecoration: 'none', fontWeight: 600 }}
+              >
+                Home
+              </Link>
+              <span className="t-caption" style={{ color: 'var(--muted)' }}>›</span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  background: meta.accentSoft,
+                  border: `0.5px solid ${meta.accent}`,
+                }}
+              >
+                <span style={{ color: meta.accent }}>{meta.emoji}</span>
+                <span
+                  className="t-caption2"
+                  style={{
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: meta.accent,
+                    fontWeight: 700,
+                  }}
+                >
+                  {ch.section}
+                </span>
+              </span>
+              {minutes > 0 && (
+                <span
+                  className="t-caption"
+                  style={{ color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  title="Estimated reading time"
+                >
+                  <span aria-hidden>⏱</span> {minutes} min read
+                </span>
+              )}
+            </div>
+          )}
+
+          <div style={{ position: 'absolute', top: '4rem', right: '2rem' }}>
+            <PinButton id={`wiki/${slug}`} title={ch?.title ?? slug} href={`/wiki/${slug}`} size="md" />
+          </div>
+
+          {children}
+
+          {ch && (
+            <div className="tag-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '0.4rem 0 1.2rem' }}>
+              <span style={pillStyle}>{ch.section.toLowerCase()}</span>
+              {tags?.map((t) => <span key={t} style={pillStyle}>{t}</span>)}
+            </div>
+          )}
         </div>
 
-        {children}
-
-        {/* Tag pills */}
-        {ch && (
-          <div className="tag-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '0.4rem 0 1.2rem' }}>
-            <span style={pillStyle}>{ch.section.toLowerCase()}</span>
-            {tags?.map((t) => <span key={t} style={pillStyle}>{t}</span>)}
-          </div>
-        )}
-
-        <DocQuiz id={`wiki/${slug}`} />
-        <DocNotes id={`wiki/${slug}`} />
-        <RelatedDocs id={`wiki/${slug}`} />
+        <LiveArtifact docId={`wiki/${slug}`} />
+        <AnchorLayer docId={`wiki/${slug}`} />
         <PrevNext slug={slug} />
       </div>
-
-      <TableOfContents docId={`wiki/${slug}`} docTitle={ch?.title ?? slug} />
     </div>
   );
 }

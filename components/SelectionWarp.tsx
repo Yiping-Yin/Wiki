@@ -21,6 +21,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { contextFromPathname } from '../lib/doc-context';
 import { appendEventForDoc } from '../lib/trace/source-bound';
+import { captureCurrentSelection } from '../lib/capture/from-selection';
 import type { SourceAnchor } from '../lib/trace/types';
 
 const HIGHLIGHT_TINTS = [
@@ -144,7 +145,6 @@ export function SelectionWarp() {
       // Position ✦ at the end of the selection (near the cursor release point),
       // not at the right edge of the bounding rect. This way the user's
       // pointer is already close to ✦ when they release the mouse.
-      const sel = window.getSelection();
       const endRect = sel && sel.rangeCount > 0
         ? (() => {
             const r = sel.getRangeAt(0);
@@ -204,8 +204,12 @@ export function SelectionWarp() {
     const onPageShow = () => { defer(compute); };
     const onFocus = () => { defer(compute); };
 
+    // ⌘E capture handled natively in Swift (triggerLearn).
+    const onKeyDown = (_e: KeyboardEvent) => {};
+
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('selectionchange', onSelectionChange);
+    window.addEventListener('keydown', onKeyDown);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
     window.addEventListener('pageshow', onPageShow);
@@ -215,6 +219,7 @@ export function SelectionWarp() {
       timers.forEach((id) => clearTimeout(id));
       document.removeEventListener('mouseup', onMouseUp);
       document.removeEventListener('selectionchange', onSelectionChange);
+      window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       window.removeEventListener('pageshow', onPageShow);
@@ -279,7 +284,16 @@ export function SelectionWarp() {
   const trigger = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.altKey || e.button === 2) {
+    if (e.metaKey || e.ctrlKey) {
+      // ⌘-click → capture quick path: create a thought-anchor with empty
+      // content/summary (just the quote). No dialog, no AI. User elaborates
+      // later in the wide state of ReviewThoughtMap.
+      void captureCurrentSelection().then(() => {
+        window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
+      });
+      setSpot(null);
+      setHovered(false);
+    } else if (e.altKey || e.button === 2) {
       // ⌥-click or right-click → manual highlight only (no Ask)
       const text = spot.text;
       const ctx = contextFromPathname(window.location.pathname);
@@ -310,7 +324,7 @@ export function SelectionWarp() {
         highlight(e);
       }}
       aria-label="Ask AI about this selection"
-      title="Click → ask AI    ⌥-click → highlight"
+      title="Click → ask AI    ⌘-click → capture    ⌥-click → highlight    (⌘⇧A anywhere)"
       style={{
         position: 'absolute',
         top: spot.top,

@@ -15,7 +15,22 @@ final class WebDebugState: ObservableObject {
 struct ContentView: View {
     @EnvironmentObject var server: DevServer
     @StateObject private var webState = WebDebugState()
+    @StateObject private var notchState = NotchState()
+    @State private var notchController: NotchWindowController?
     @AppStorage("loom.showDebugHUD.v2") private var showDebugHUD = false
+
+    private func showNotchPanel() {
+        guard notchController == nil else { return }
+        let controller = NotchWindowController(state: notchState) { presetId in
+            NotificationCenter.default.post(
+                name: .loomNotchPresetSwitch,
+                object: nil,
+                userInfo: ["presetId": presetId]
+            )
+        }
+        controller.show()
+        notchController = controller
+    }
 
     private var windowTitle: String {
         let url = server.serverURL.absoluteString
@@ -33,9 +48,12 @@ struct ContentView: View {
         ZStack {
             switch server.status {
             case .ready:
-                LoomWebView(url: server.serverURL, debugState: webState)
+                LoomWebView(url: server.serverURL, debugState: webState, notchState: notchState)
                     .ignoresSafeArea()
                     .transition(.opacity)
+                    // NotchPanel disabled: black-on-black menu bar makes status
+                    // display invisible. Notch area reserved for future drag-drop
+                    // ingestion feature (file → notch → auto-ingest).
             case .starting, .idle:
                 StartingView(serverURL: server.serverURL)
             case .failed(let msg):
@@ -263,8 +281,9 @@ struct StartingView: View {
 struct LoomWebView: NSViewRepresentable {
     let url: URL
     let debugState: WebDebugState
+    let notchState: NotchState
 
-    func makeCoordinator() -> Coordinator { Coordinator(debugState: debugState) }
+    func makeCoordinator() -> Coordinator { Coordinator(debugState: debugState, notchState: notchState) }
 
     private func isLoopbackHost(_ host: String?) -> Bool {
         guard let host else { return false }
@@ -363,6 +382,7 @@ struct LoomWebView: NSViewRepresentable {
             WKUserScript(source: debugScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         )
         userContentController.add(context.coordinator, name: "loomDebug")
+        userContentController.add(context.coordinator, name: "loomNotch")
         config.userContentController = userContentController
         #endif
 
@@ -376,6 +396,12 @@ struct LoomWebView: NSViewRepresentable {
         context.coordinator.syncState(from: webView)
         context.coordinator.webView = webView
 
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.triggerLearn),
+            name: .loomLearn,
+            object: nil
+        )
         NotificationCenter.default.addObserver(
             context.coordinator,
             selector: #selector(Coordinator.triggerSearch),
@@ -420,6 +446,9 @@ struct LoomWebView: NSViewRepresentable {
             object: nil
         )
 
+        // Listen for notch preset switches from SwiftUI → web
+        context.coordinator.setupNotchPresetObserver()
+
         // Enable swipe back/forward gesture
         webView.allowsBackForwardNavigationGestures = true
 
@@ -448,6 +477,7 @@ struct LoomWebView: NSViewRepresentable {
         nsView.navigationDelegate = nil
         #if DEBUG
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: "loomDebug")
+        nsView.configuration.userContentController.removeScriptMessageHandler(forName: "loomNotch")
         #endif
     }
 
@@ -456,15 +486,18 @@ struct LoomWebView: NSViewRepresentable {
         var lastRequestedURL: URL?
         var fallbackURL: URL?
         let debugState: WebDebugState
+        let notchState: NotchState
         private var blankPageWorkItem: DispatchWorkItem?
         private var isInReviewMode = false
         private var fallbackCheckGeneration = 0
         private var lastChunkRecoveryAt: Date?
         private var lastProcessTerminationRecoveryAt: Date?
         private var lastRuntimeRecoveryAt: Date?
+        private var notchPresetSwitchObserver: Any?
 
-        init(debugState: WebDebugState) {
+        init(debugState: WebDebugState, notchState: NotchState) {
             self.debugState = debugState
+            self.notchState = notchState
         }
 
         private func normalizedLocalRelativeLocation(for url: URL) -> String {
@@ -692,6 +725,11 @@ struct LoomWebView: NSViewRepresentable {
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            // Handle notch messages from web layer
+            if message.name == "loomNotch" {
+                handleNotchMessage(message)
+                return
+            }
             guard message.name == "loomDebug" else { return }
             guard let body = message.body as? [String: Any] else { return }
             let kind = body["kind"] as? String ?? "message"
@@ -710,6 +748,28 @@ struct LoomWebView: NSViewRepresentable {
                     self.debugState.consoleMessage = clippedMessage
                 }
             }
+        }
+
+        /// ⌘E · Engage. Selection → capture. No selection → rehearsal.
+        @objc func triggerLearn() {
+            webView?.evaluateJavaScript("""
+                (() => {
+                    const sel = window.getSelection();
+                    const text = sel ? sel.toString().trim() : '';
+                    if (text.length > 1) {
+                        window.dispatchEvent(new CustomEvent('loom:capture-prompt', {
+                            detail: { quote: text }
+                        }));
+                    } else {
+                        window.dispatchEvent(new CustomEvent('loom:overlay:open', {
+                            detail: { id: 'rehearsal' }
+                        }));
+                        window.dispatchEvent(new CustomEvent('loom:overlay:toggle', {
+                            detail: { id: 'rehearsal' }
+                        }));
+                    }
+                })();
+            """)
         }
 
         @objc func triggerSearch() {
@@ -800,6 +860,47 @@ struct LoomWebView: NSViewRepresentable {
             webView?.evaluateJavaScript("""
                 window.dispatchEvent(new CustomEvent('loom:new-topic'));
             """)
+        }
+
+        // MARK: - Notch overlay message handling
+
+        private func handleNotchMessage(_ message: WKScriptMessage) {
+            guard let body = message.body as? [String: Any] else { return }
+            let type = body["type"] as? String ?? ""
+            DispatchQueue.main.async { [weak self] in
+                guard let state = self?.notchState else { return }
+                switch type {
+                case "preset":
+                    state.presetId = body["id"] as? String ?? ""
+                    state.presetLabel = body["label"] as? String ?? ""
+                    state.noteCount = body["noteCount"] as? Int ?? 0
+                case "ai-start":
+                    state.aiActive = true
+                case "ai-end":
+                    state.aiActive = false
+                case "save":
+                    state.flashSave()
+                case "noteCount":
+                    state.noteCount = body["count"] as? Int ?? 0
+                default:
+                    break
+                }
+            }
+        }
+
+        func setupNotchPresetObserver() {
+            notchPresetSwitchObserver = NotificationCenter.default.addObserver(
+                forName: .loomNotchPresetSwitch,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let presetId = notification.userInfo?["presetId"] as? String else { return }
+                self?.webView?.evaluateJavaScript("""
+                    window.dispatchEvent(new CustomEvent('loom:notch-preset', {
+                        detail: { presetId: '\(presetId)' }
+                    }));
+                """)
+            }
         }
 
         private func recoverFromChunkError(_ message: String) {

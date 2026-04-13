@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { useRef, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { chapters } from '../lib/nav';
-import { knowledgeCategories, knowledgeTotal } from '../lib/knowledge-nav';
 import { SearchBox } from './SearchBox';
 import chapterMeta from '../lib/chapter-meta.json';
+import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 
 type ChMeta = { hasVideo?: boolean; hasMath?: boolean; hasCode?: boolean; hasMermaid?: boolean; hasPdf?: boolean; hasWidget?: boolean; wordCount?: number };
 const META = chapterMeta as Record<string, ChMeta>;
@@ -18,6 +18,7 @@ export function Sidebar() {
   const [mode, setMode] = useState<SbMode>('hidden');
   const [llmOpen, setLlmOpen] = useState(false);
   const [knowOpen, setKnowOpen] = useState(true);
+  const { knowledgeCategories, knowledgeTotal } = useKnowledgeNav();
 
   // Restore preference + edge-hover peek (only when hidden)
   useEffect(() => {
@@ -78,15 +79,20 @@ export function Sidebar() {
     });
   };
 
-  useEffect(() => {
-    document.body.classList.toggle('sidebar-pinned', mode === 'pinned');
-    document.body.classList.remove('sidebar-mini');
-  }, [mode]);
+  const pathname = usePathname();
+  const isReadingPage = pathname.startsWith('/wiki/') || pathname.startsWith('/knowledge/');
 
-  const pinned = mode === 'pinned';
+  useEffect(() => {
+    document.body.classList.toggle('sidebar-pinned', mode === 'pinned' && !isReadingPage);
+    document.body.classList.remove('sidebar-mini');
+  }, [mode, isReadingPage]);
+  // Auto-close on reading pages so content gets full width
+  useEffect(() => {
+    if (isReadingPage) setOpen(false);
+  }, [isReadingPage, pathname]);
+  const pinned = mode === 'pinned' && !isReadingPage;
   const visible = open || pinned;
   const sections = Array.from(new Set(chapters.map((c) => c.section)));
-  const pathname = usePathname();
   const router = useRouter();
 
   const isActive = (href: string) => pathname === href;
@@ -198,6 +204,7 @@ export function Sidebar() {
           <NavLink href="/uploads" active={isActive('/uploads')}>Uploads</NavLink>
           <NavLink href="/highlights" active={isActive('/highlights')}>Highlights</NavLink>
           <NavLink href="/about" active={isActive('/about')}>About</NavLink>
+          <NavLink href="/help" active={isActive('/help')}>Help</NavLink>
         </div>
 
         {/* Personal knowledge */}
@@ -276,10 +283,10 @@ function CategoryRow({
   cat, activePath, onNav,
 }: {
   cat: { slug: string; label: string; count: number; subs: { label: string; order: number; count: number }[] };
-  activePath: string;
+  activePath?: string | null;
   onNav: () => void;
 }) {
-  const active = activePath.startsWith(`/knowledge/${cat.slug}`);
+  const active = (activePath ?? '').startsWith(`/knowledge/${cat.slug}`);
   const hasSubs = cat.subs.some((s) => s.label);
   const [expanded, setExpanded] = useState(active && hasSubs);
   return (
