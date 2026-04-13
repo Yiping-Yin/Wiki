@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { useSmallScreen } from '../lib/use-small-screen';
-import { useAppendEvent, useRemoveEvents } from '../lib/trace';
+import { useAllTraces, useAppendEvent, useBacklinksForDoc, useRemoveEvents } from '../lib/trace';
 import {
   buildThoughtMapNodes,
   collectHeadingItems,
@@ -46,6 +46,11 @@ const NoteRenderer = dynamic(
 const REVIEW_SCROLL_EVENT = 'loom:review:scroll-to-anchor';
 const REVIEW_FOCUS_THOUGHT_EVENT = 'loom:review:focus-thought';
 
+type RelatedDocPreview = {
+  docId: string;
+  title: string;
+};
+
 function deriveSummary(content: string): string {
   const firstLine = content
     .split('\n')
@@ -59,6 +64,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
   const smallScreen = useSmallScreen();
+  const { traces: allTraces } = useAllTraces();
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [nodes, setNodes] = useState<ThoughtMapNode[]>([]);
   const [activeAnchorId, setActiveAnchorId] = useState<string>('');
@@ -85,10 +91,58 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const panelCrystallized = Boolean(
     primaryReadingTrace?.events.some((event) => event.kind === 'crystallize' && !event.anchorId),
   );
+  const panelDocHref = primaryReadingTrace?.source?.href ?? null;
+  const backlinks = useBacklinksForDoc(ctx.isFree ? null : ctx.docId, panelDocHref);
   const uncrystallizePanel = useCallback(async () => {
     if (!primaryReadingTrace) return;
     await removeEvents(primaryReadingTrace.id, (event) => event.kind === 'crystallize' && !event.anchorId);
   }, [primaryReadingTrace, removeEvents]);
+  const panelRelations = useMemo(() => {
+    const incoming = new Map<string, RelatedDocPreview>();
+    for (const backlink of backlinks) {
+      if (!incoming.has(backlink.fromDocId)) {
+        incoming.set(backlink.fromDocId, {
+          docId: backlink.fromDocId,
+          title: backlink.fromDocTitle,
+        });
+      }
+    }
+
+    const candidates = allTraces
+      .filter((trace) => trace.kind === 'reading' && !trace.parentId && trace.source?.docId && trace.source?.href)
+      .map((trace) => ({
+        docId: trace.source!.docId,
+        href: trace.source!.href,
+        title: trace.source!.sourceTitle ?? trace.title,
+      }));
+
+    const outgoing = new Map<string, RelatedDocPreview>();
+    for (const thought of thoughtItems) {
+      const urls = Array.from((thought.content || '').matchAll(/\[[^\]]*\]\(([^)]+)\)/g))
+        .map((match) => match[1]?.trim().split(/\s+/)[0] ?? '')
+        .filter(Boolean);
+      for (const url of urls) {
+        const cleanUrl = url.split('#')[0].split('?')[0];
+        const target = candidates.find((candidate) => {
+          if (!cleanUrl || candidate.docId === ctx.docId) return false;
+          return cleanUrl === candidate.href
+            || cleanUrl.endsWith(candidate.href)
+            || cleanUrl.endsWith(candidate.href.replace(/^\//, ''));
+        });
+        if (target && !outgoing.has(target.docId)) {
+          outgoing.set(target.docId, {
+            docId: target.docId,
+            title: target.title,
+          });
+        }
+      }
+    }
+
+    return {
+      incoming: Array.from(incoming.values()),
+      outgoing: Array.from(outgoing.values()),
+    };
+  }, [allTraces, backlinks, ctx.docId, thoughtItems]);
 
   // Narrow thought-map presence is an intro/review affordance, not a
   // permanent right sidebar. Near the top of a document it is visible;
@@ -366,6 +420,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           onAppendVersion={handleAppendVersion}
           activeAnchorId={activeAnchorId}
           panelCrystallized={panelCrystallized}
+          panelRelations={panelRelations}
           onOpenKesi={() => router.push(ctx.docId ? `/kesi?focus=${encodeURIComponent(ctx.docId)}` : '/kesi')}
           onOpenRelations={() => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph')}
           onUncrystallize={uncrystallizePanel}
@@ -596,6 +651,7 @@ function WideThoughtList({
   onAppendVersion,
   activeAnchorId,
   panelCrystallized,
+  panelRelations,
   onOpenKesi,
   onOpenRelations,
   onUncrystallize,
@@ -606,6 +662,7 @@ function WideThoughtList({
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
   activeAnchorId: string;
   panelCrystallized: boolean;
+  panelRelations: { incoming: RelatedDocPreview[]; outgoing: RelatedDocPreview[] };
   onOpenKesi: () => void;
   onOpenRelations: () => void;
   onUncrystallize: () => Promise<void>;
@@ -667,7 +724,14 @@ function WideThoughtList({
         gap: 16,
       }}
     >
-      {focusThought && <WideThoughtHeader thought={focusThought} panelCrystallized={panelCrystallized} />}
+      {focusThought && (
+        <WideThoughtHeader
+          thought={focusThought}
+          panelCrystallized={panelCrystallized}
+          panelRelations={panelRelations}
+          onOpenRelatedDoc={(docId) => window.location.assign(`/graph?focus=${encodeURIComponent(docId)}`)}
+        />
+      )}
       {sectionGroups.map((group) => (
         <section key={group.key}>
           <div
@@ -732,9 +796,13 @@ function WideThoughtList({
 function WideThoughtHeader({
   thought,
   panelCrystallized,
+  panelRelations,
+  onOpenRelatedDoc,
 }: {
   thought: ThoughtAnchorView;
   panelCrystallized: boolean;
+  panelRelations: { incoming: RelatedDocPreview[]; outgoing: RelatedDocPreview[] };
+  onOpenRelatedDoc: (docId: string) => void;
 }) {
   const goToSource = () => {
     window.dispatchEvent(
@@ -840,6 +908,24 @@ function WideThoughtHeader({
           Source
         </button>
       </div>
+      {(panelRelations.incoming.length > 0 || panelRelations.outgoing.length > 0) && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {panelRelations.incoming.length > 0 && (
+            <RelationPreviewRow
+              label="Referenced by"
+              items={panelRelations.incoming}
+              onOpen={onOpenRelatedDoc}
+            />
+          )}
+          {panelRelations.outgoing.length > 0 && (
+            <RelationPreviewRow
+              label="Points to"
+              items={panelRelations.outgoing}
+              onOpen={onOpenRelatedDoc}
+            />
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -1151,4 +1237,51 @@ function settledActionStyle(primary: boolean) {
     letterSpacing: '0.04em',
     cursor: 'pointer',
   };
+}
+
+function RelationPreviewRow({
+  label,
+  items,
+  onOpen,
+}: {
+  label: string;
+  items: RelatedDocPreview[];
+  onOpen: (docId: string) => void;
+}) {
+  return (
+    <div
+      className="t-caption2"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
+        color: 'var(--muted)',
+        letterSpacing: '0.04em',
+      }}
+    >
+      <span>{label}</span>
+      {items.slice(0, 2).map((item, index) => (
+        <button
+          key={`${label}-${item.docId}`}
+          type="button"
+          onClick={() => onOpen(item.docId)}
+          style={{
+            appearance: 'none',
+            border: 0,
+            background: 'transparent',
+            color: 'var(--accent)',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.02em',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
+          {item.title}
+          {index < Math.min(items.length, 2) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
+        </button>
+      ))}
+    </div>
+  );
 }
