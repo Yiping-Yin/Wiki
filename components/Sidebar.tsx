@@ -17,7 +17,9 @@ export function Sidebar() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<SbMode>('hidden');
   const [llmOpen, setLlmOpen] = useState(false);
-  const [knowOpen, setKnowOpen] = useState(true);
+  const [knowOpen, setKnowOpen] = useState(false);
+  const [elsewhereOpen, setElsewhereOpen] = useState(false);
+  const [metaOpen, setMetaOpen] = useState(false);
   const { knowledgeCategories, knowledgeTotal } = useKnowledgeNav();
 
   // Restore preference + edge-hover peek (only when hidden)
@@ -89,6 +91,14 @@ export function Sidebar() {
     document.body.classList.toggle('sidebar-pinned', mode === 'pinned' && !isReadingPage);
     document.body.classList.remove('sidebar-mini');
   }, [mode, isReadingPage]);
+
+  useEffect(() => {
+    if (pathname.startsWith('/knowledge')) setKnowOpen(true);
+    if (pathname.startsWith('/wiki/')) setLlmOpen(true);
+    if (pathname === '/browse') setElsewhereOpen(true);
+    if (pathname === '/about' || pathname === '/help') setMetaOpen(true);
+  }, [pathname]);
+
   // Auto-close on reading pages so content gets full width
   useEffect(() => {
     if (isReadingPage) setOpen(false);
@@ -220,7 +230,7 @@ export function Sidebar() {
           ))}
         </Section>
 
-        <Section title="Elsewhere" open={true} onToggle={() => {}} collapsible={false}>
+        <Section title="Elsewhere" open={elsewhereOpen} onToggle={() => setElsewhereOpen((o) => !o)}>
           <SubtleLink href="/browse" active={isActive('/browse')} onNav={() => setOpen(false)}>Reference</SubtleLink>
         </Section>
 
@@ -268,7 +278,7 @@ export function Sidebar() {
           ))}
         </Section>
 
-        <Section title="Meta" open={true} onToggle={() => {}} collapsible={false}>
+        <Section title="Meta" open={metaOpen} onToggle={() => setMetaOpen((o) => !o)}>
           <SubtleLink href="/about" active={isActive('/about')} onNav={() => setOpen(false)}>About</SubtleLink>
           <SubtleLink href="/help" active={isActive('/help')} onNav={() => setOpen(false)}>Help</SubtleLink>
         </Section>
