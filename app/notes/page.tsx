@@ -175,7 +175,7 @@ export default function NotesPage() {
       {focus && (
         <section
           style={{
-            padding: '0.1rem 0 1rem',
+            padding: '0.1rem 0 0.8rem',
             marginBottom: 20,
             borderBottom: '0.5px solid var(--mat-border)',
           }}
@@ -265,16 +265,7 @@ export default function NotesPage() {
 
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
               <button type="button" onClick={() => openReview(focus)} style={notesActionStyle(true)}>
-                Review
-              </button>
-              <Link href={focus.href} style={notesActionStyle(false)}>
-                Source
-              </Link>
-              <button type="button" onClick={() => openKesi(focus)} style={notesActionStyle(false)}>
-                Kesi
-              </button>
-              <button type="button" onClick={() => openRelations(focus)} style={notesActionStyle(false)}>
-                Relations
+                Return to note
               </button>
             </div>
           </div>
