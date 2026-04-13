@@ -37,7 +37,8 @@ type PanelSection = {
 };
 
 type BasePanel = {
-  traceId: string;
+  traceIds: string[];
+  primaryTraceId: string;
   docId: string;
   href: string;
   title: string;
@@ -57,49 +58,68 @@ type Panel = BasePanel & {
 };
 
 function buildPanels(traces: Trace[]): BasePanel[] {
+  const tracesByDocId = new Map<string, Trace[]>();
+  for (const trace of traces) {
+    if (!trace.source?.docId) continue;
+    if (trace.parentId !== null) continue;
+    const existing = tracesByDocId.get(trace.source.docId) ?? [];
+    existing.push(trace);
+    tracesByDocId.set(trace.source.docId, existing);
+  }
+
   const out: BasePanel[] = [];
-  for (const t of traces) {
-    if (!t.source?.docId) continue;
-    if (t.parentId !== null) continue;
+  for (const [docId, traceSet] of tracesByDocId) {
+    const representative = [...traceSet].sort(
+      (a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt,
+    )[0];
+    if (!representative?.source?.docId) continue;
 
     let cAt = 0;
     let cSum = '';
-    for (const e of t.events) {
-      if (e.kind === 'crystallize' && e.at > cAt) {
-        cAt = e.at;
-        cSum = e.summary;
+    const latestByAnchor = new Map<string, PanelSection>();
+    let stitchCount = 0;
+
+    for (const trace of traceSet) {
+      for (const e of trace.events) {
+        if (e.kind === 'crystallize' && e.at > cAt) {
+          cAt = e.at;
+          cSum = e.summary;
+        }
+        if (e.kind !== 'thought-anchor') continue;
+        stitchCount += 1;
+        const anchorKey = [
+          e.anchorId,
+          e.anchorBlockId ?? '',
+          e.anchorBlockText ?? '',
+          String(e.anchorCharStart ?? ''),
+          String(e.anchorCharEnd ?? ''),
+        ].join('::');
+        const prev = latestByAnchor.get(anchorKey);
+        if (!prev || e.at > prev.at) {
+          latestByAnchor.set(anchorKey, {
+            anchorId: e.anchorId,
+            summary: e.summary,
+            quote: e.quote,
+            at: e.at,
+          });
+        }
       }
     }
     if (cAt === 0) continue;
-
-    const latestByAnchor = new Map<string, PanelSection>();
-    let stitchCount = 0;
-    for (const e of t.events) {
-      if (e.kind !== 'thought-anchor') continue;
-      stitchCount += 1;
-      const prev = latestByAnchor.get(e.anchorId);
-      if (!prev || e.at > prev.at) {
-        latestByAnchor.set(e.anchorId, {
-          anchorId: e.anchorId,
-          summary: e.summary,
-          quote: e.quote,
-          at: e.at,
-        });
-      }
-    }
 
     const sections = Array.from(latestByAnchor.values())
       .sort((a, b) => a.at - b.at);
 
     out.push({
-      traceId: t.id,
-      docId: t.source.docId,
-      href: t.source.href,
-      title: t.source.sourceTitle ?? t.title,
+      traceIds: traceSet.map((trace) => trace.id),
+      primaryTraceId: representative.id,
+      docId,
+      href: representative.source.href,
+      title: representative.source.sourceTitle ?? representative.title,
       summary: cSum,
       crystallizedAt: cAt,
       stitches: stitchCount,
-      tint: tintFor(t.source.docId),
+      tint: tintFor(docId),
       sections,
     });
   }
@@ -205,6 +225,17 @@ export function KesiView() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  const tracesByDocId = useMemo(() => {
+    const map = new Map<string, Trace[]>();
+    for (const trace of traces) {
+      if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
+      const existing = map.get(trace.source.docId) ?? [];
+      existing.push(trace);
+      map.set(trace.source.docId, existing);
+    }
+    return map;
+  }, [traces]);
+
   const panels = useMemo(() => {
     return buildPanels(traces).map((panel) => {
       const meta = panelSourceMeta(panel.href, knowledgeCategories);
@@ -213,12 +244,10 @@ export function KesiView() {
         family: familyLabelForHref(panel.href, knowledgeCategories),
         summary: panelSummary(panel.summary, panel.sections),
         ...meta,
-        learning: summarizeLearningSurface(
-          traces.find((trace) => trace.id === panel.traceId) ?? null,
-        ),
+        learning: summarizeLearningSurface(tracesByDocId.get(panel.docId) ?? [], 0),
       };
     });
-  }, [traces, knowledgeCategories]);
+  }, [traces, knowledgeCategories, tracesByDocId]);
 
   const visiblePanels = useMemo(() => {
     const q = query.trim();
@@ -268,11 +297,11 @@ export function KesiView() {
 
   const returnPanel = sortedPanels[0] ?? null;
   const refreshPanels = sortedPanels
-    .filter((panel) => panel.learning.nextAction === 'refresh' && panel.traceId !== returnPanel?.traceId)
+    .filter((panel) => panel.learning.nextAction === 'refresh' && panel.docId !== returnPanel?.docId)
     .slice(0, 4);
   const continuePanels = sortedPanels
     .filter((panel) => (
-      panel.traceId !== returnPanel?.traceId
+      panel.docId !== returnPanel?.docId
       && panel.learning.nextAction !== 'refresh'
       && panel.learning.nextAction !== 'capture'
     ))
@@ -489,7 +518,7 @@ export function KesiView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {refreshPanels.map((panel, index) => (
                 <div
-                  key={panel.traceId}
+                  key={panel.docId}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -576,7 +605,7 @@ export function KesiView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {continuePanels.map((panel, index) => (
                 <div
-                  key={panel.traceId}
+                  key={panel.docId}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -789,7 +818,7 @@ export function KesiView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {group.items.map((panel) => (
                   <div
-                    key={panel.traceId}
+                    key={panel.docId}
                     style={{
                       position: 'relative',
                       borderRadius: 14,
@@ -814,7 +843,11 @@ export function KesiView() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        void removeEvents(panel.traceId, (ev) => ev.kind === 'crystallize');
+                        void Promise.all(
+                          panel.traceIds.map((traceId) =>
+                            removeEvents(traceId, (ev) => ev.kind === 'crystallize'),
+                          ),
+                        );
                       }}
                       aria-label="Remove from Kesi"
                       title="Remove from Kesi"
