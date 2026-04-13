@@ -533,7 +533,7 @@ export function KesiView() {
                   fontWeight: 700,
                 }}
               >
-                Return to weave
+                {focusPanel ? 'Focused panel' : 'Return to weave'}
               </span>
               <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
               <LearningStatusInline status={returnPanel.learning} compact />
