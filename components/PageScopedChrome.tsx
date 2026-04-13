@@ -8,7 +8,6 @@ import { SelectionWarp } from './SelectionWarp';
 import { ReadingMode } from './ReadingMode';
 import { LoomCursor } from './LoomCursor';
 import { CapturePrompt } from './CapturePrompt';
-import { FirstTimeHint } from './FirstTimeHint';
 import { ScrollDirection } from './ScrollDirection';
 import { ActiveRetrieval } from './ActiveRetrieval';
 
@@ -30,7 +29,6 @@ export function PageScopedChrome() {
       <ReadingMode />
       <LoomCursor />
       <CapturePrompt />
-      <FirstTimeHint />
       <ScrollDirection />
       <ActiveRetrieval />
     </>

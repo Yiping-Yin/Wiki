@@ -108,7 +108,7 @@ export function KeyboardHelpOverlay() {
           ))}
         </div>
         <div style={{ marginTop: 16, paddingTop: 12, borderTop: '0.5px solid var(--mat-border)', textAlign: 'center', fontSize: '0.7rem', color: 'var(--muted)' }}>
-          <a href="/help" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }} onClick={() => setOpen(false)}>Full guide →</a>
+          <a href="/help" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }} onClick={() => setOpen(false)}>/help</a>
         </div>
       </div>
     </div>

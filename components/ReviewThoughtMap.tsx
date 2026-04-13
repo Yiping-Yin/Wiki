@@ -75,9 +75,61 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
     pathname.startsWith('/wiki/') || pathname.startsWith('/knowledge/')
   );
   const hasThoughts = thoughtItems.length > 0;
-  // Always render on reading pages — even empty, show a thin hint strip.
-  // This restores the unified view's "always see your notes" advantage.
-  const shouldRender = isReadingPage;
+  const [introVisibility, setIntroVisibility] = useState(1);
+
+  // Narrow thought-map presence is an intro/review affordance, not a
+  // permanent right sidebar. Near the top of a document it is visible;
+  // as the user reads deeper it fades away, then returns in full when
+  // review mode is explicitly entered.
+  useEffect(() => {
+    if (!isReadingPage || !hasThoughts) {
+      setIntroVisibility(0);
+      return;
+    }
+    if (active) {
+      setIntroVisibility(1);
+      return;
+    }
+
+    let raf = 0;
+
+    const measure = () => {
+      raf = 0;
+      const prose = document.querySelector('main .loom-source-prose') as HTMLElement | null;
+      if (!prose) {
+        setIntroVisibility(0);
+        return;
+      }
+      const proseTop = prose.getBoundingClientRect().top + window.scrollY;
+      const depth = Math.max(0, window.scrollY - proseTop);
+      const fadeStart = 96;
+      const fadeEnd = 760;
+      const next =
+        depth <= fadeStart
+          ? 1
+          : depth >= fadeEnd
+            ? 0
+            : 1 - (depth - fadeStart) / (fadeEnd - fadeStart);
+      setIntroVisibility(next);
+    };
+
+    const requestMeasure = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(measure);
+    };
+
+    requestMeasure();
+    window.addEventListener('scroll', requestMeasure, { passive: true });
+    window.addEventListener('resize', requestMeasure);
+
+    return () => {
+      window.removeEventListener('scroll', requestMeasure);
+      window.removeEventListener('resize', requestMeasure);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [active, hasThoughts, isReadingPage]);
+
+  const shouldRender = isReadingPage && (active || (hasThoughts && introVisibility > 0.02));
 
   // Hide thought map when a learning overlay is open (Rehearsal/Examiner
   // take the same right-side space). Returns when overlay closes.
@@ -204,14 +256,11 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   // Hide when a learning overlay occupies the right side
   if (overlayOpen && !active) return null;
 
-  // Empty state: thin strip (~40px). With thoughts: full narrow width.
+  // Empty state: no reading-page chrome if no captures exist yet.
   const narrowWidth = hasThoughts ? 'clamp(240px, 20vw, 320px)' : '40px';
   const wideWidth = 'min(440px, 40vw)';
 
-  // Empty: no captures on this doc. Show thin hint strip.
-  // Also hide when an overlay is open (it takes the right side).
   if (thoughtItems.length === 0 && !active) {
-    // Render nothing when there are no captures — no visual noise
     return null;
   }
 
@@ -229,9 +278,9 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
         maxHeight: 'calc(100vh - 6rem)',
         overflowY: 'auto',
         zIndex: 76,
-        pointerEvents: visible ? 'auto' : 'none',
-        // Narrow mode: visible but peripheral. Wide mode: fully present.
-        opacity: visible ? (active ? 1 : 0.46) : 0,
+        pointerEvents: visible && (active || introVisibility > 0.16) ? 'auto' : 'none',
+        // Narrow mode is an introductory rail that fades with reading depth.
+        opacity: visible ? (active ? 1 : 0.46 * introVisibility) : 0,
         transform: visible ? 'translateX(0)' : 'translateX(6px)',
         transition:
           'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), width 0.4s cubic-bezier(0.22, 1, 0.36, 1), left 0.4s cubic-bezier(0.22, 1, 0.36, 1), right 0.4s cubic-bezier(0.22, 1, 0.36, 1)',

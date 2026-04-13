@@ -1,16 +1,16 @@
 'use client';
 /**
- * Global toast system.
+ * Scoped toast system.
  *
  * Usage from anywhere (no React context required):
  *   import { toast } from './Toast';
- *   toast('✓ Saved');
- *   toast('Could not load', { kind: 'warn' });
- *   toast('Failed', { kind: 'error', durationMs: 3500 });
+ *   toast('Embedding 12 traces…');
+ *   toast('Select a trace first', { kind: 'warn' });
+ *   toast('Embedding failed', { kind: 'error', durationMs: 3500 });
  *
- * Implementation: a single ToastHost is mounted in the root layout. It listens
- * for `wiki:toast` CustomEvents on window and renders a bottom-center stack of
- * material-thick capsules with spring entry/exit.
+ * Mount ToastHost only on surfaces that deliberately opt into toast feedback.
+ * It listens for `wiki:toast` CustomEvents on window and renders a
+ * bottom-center stack of material-thick capsules with spring entry/exit.
  */
 import { useEffect, useState } from 'react';
 

@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAllTraces, useRemoveEvents, type Trace } from '../lib/trace';
+import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 
 const TINTS = [
   'var(--tint-blue)',   'var(--tint-indigo)', 'var(--tint-purple)',
@@ -35,9 +36,10 @@ type Panel = {
   docId: string;
   href: string;
   title: string;
+  family: string;
   summary: string;
   crystallizedAt: number;
-  depth: number;
+  stitches: number;
   tint: string;
   sections: PanelSection[];
 };
@@ -59,8 +61,10 @@ function buildPanels(traces: Trace[]): Panel[] {
     if (cAt === 0) continue;
 
     const latestByAnchor = new Map<string, PanelSection>();
+    let stitchCount = 0;
     for (const e of t.events) {
       if (e.kind !== 'thought-anchor') continue;
+      stitchCount += 1;
       const prev = latestByAnchor.get(e.anchorId);
       if (!prev || e.at > prev.at) {
         latestByAnchor.set(e.anchorId, {
@@ -80,9 +84,10 @@ function buildPanels(traces: Trace[]): Panel[] {
       docId: t.source.docId,
       href: t.source.href,
       title: t.source.sourceTitle ?? t.title,
+      family: '',
       summary: cSum,
       crystallizedAt: cAt,
-      depth: t.events.length,
+      stitches: stitchCount,
       tint: tintFor(t.source.docId),
       sections,
     });
@@ -92,15 +97,82 @@ function buildPanels(traces: Trace[]): Panel[] {
   return out;
 }
 
+function matchesQuery(panel: Panel, q: string) {
+  const hay = [
+    panel.title,
+    panel.summary,
+    ...panel.sections.flatMap((s) => [s.summary, s.quote ?? '']),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
+
+function formatWhen(ts: number) {
+  const diff = Date.now() - ts;
+  const day = 86_400_000;
+  if (diff < day) return 'today';
+  if (diff < day * 2) return 'yesterday';
+  if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
+  if (diff < day * 30) return `${Math.floor(diff / (day * 7))}w ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function familyLabelForHref(
+  href: string,
+  knowledgeCategories: Array<{ slug: string; label: string }>,
+) {
+  if (href.startsWith('/wiki/')) return 'LLM Reference';
+  const m = href.match(/^\/knowledge\/([^/]+)/);
+  if (m) {
+    const cat = knowledgeCategories.find((c) => c.slug === m[1]);
+    if (!cat) return 'Knowledge';
+    const top = cat.label.match(/^([^·]+?)\s*·/);
+    return top ? top[1].trim() : cat.label;
+  }
+  if (href.startsWith('/uploads/')) return 'Uploads';
+  return 'Other';
+}
+
+function panelSummary(summary: string, sections: PanelSection[]) {
+  if (summary.trim()) return summary;
+  const first = sections.find((s) => s.summary.trim());
+  if (first) return first.summary;
+  const quote = sections.find((s) => s.quote?.trim())?.quote?.trim();
+  if (quote) return quote.length > 180 ? `${quote.slice(0, 180)}…` : quote;
+  return '';
+}
+
 export function KesiView() {
   const { traces, loading } = useAllTraces();
   const removeEvents = useRemoveEvents();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [query, setQuery] = useState('');
+  const { knowledgeCategories } = useKnowledgeNav();
 
   useEffect(() => { setMounted(true); }, []);
 
-  const panels = useMemo(() => buildPanels(traces), [traces]);
+  const panels = useMemo(() => {
+    return buildPanels(traces).map((panel) => ({
+      ...panel,
+      family: familyLabelForHref(panel.href, knowledgeCategories),
+      summary: panelSummary(panel.summary, panel.sections),
+    }));
+  }, [traces, knowledgeCategories]);
+  const visiblePanels = useMemo(() => {
+    const q = query.trim();
+    if (!q) return panels;
+    return panels.filter((panel) => matchesQuery(panel, q));
+  }, [panels, query]);
+  const groupedPanels = useMemo(() => {
+    const groups = new Map<string, Panel[]>();
+    for (const panel of visiblePanels) {
+      if (!groups.has(panel.family)) groups.set(panel.family, []);
+      groups.get(panel.family)!.push(panel);
+    }
+    return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
+  }, [visiblePanels]);
 
   if (loading || !mounted) return null;
   if (panels.length === 0) return <EmptyKesiCanvas />;
@@ -130,9 +202,77 @@ export function KesiView() {
           </span>
           <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           <span className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', fontWeight: 700 }}>
-            {panels.length}
+            {visiblePanels.length}
           </span>
         </div>
+
+        <div
+          className="material-thick"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '0.5rem 0.8rem',
+            borderRadius: 999,
+            marginBottom: 18,
+            boxShadow: 'var(--shadow-1)',
+          }}
+        >
+          <span
+            aria-hidden
+            style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
+          >
+            ⌕
+          </span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a woven panel…"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              border: 0,
+              outline: 'none',
+              background: 'transparent',
+              color: 'var(--fg)',
+              fontFamily: 'var(--display)',
+              fontSize: '0.92rem',
+              letterSpacing: '-0.01em',
+            }}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              style={{
+                border: 0,
+                background: 'transparent',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                padding: 0,
+                fontSize: '0.9rem',
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {visiblePanels.length === 0 && (
+          <div
+            className="material-thick"
+            style={{
+              padding: '1rem 1.1rem',
+              borderRadius: 14,
+              color: 'var(--muted)',
+              fontStyle: 'italic',
+            }}
+          >
+            No woven panel matches “{query}”.
+          </div>
+        )}
 
         {/* Warp threads — vertical separators that run through all panels,
             like the continuous warp of a kesi fabric. */}
@@ -141,7 +281,7 @@ export function KesiView() {
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
+            gap: 18,
           }}
         >
           {/* Warp overlay */}
@@ -155,128 +295,186 @@ export function KesiView() {
               transparent calc(50% + 0.25px))`,
             opacity: 0.3,
           }} />
-          {panels.map((panel) => (
-            <div
-              key={panel.traceId}
-              style={{
-                position: 'relative',
-                borderRadius: 14,
-                padding: '1rem 1.2rem',
-                borderLeft: `3px solid ${panel.tint}`,
-                background: `linear-gradient(90deg, color-mix(in srgb, ${panel.tint} 6%, transparent), transparent 40%)`,
-                color: 'var(--fg)',
-                cursor: 'pointer',
-              }}
-              onClick={() => router.push(panel.href)}
-              onMouseEnter={(e) => {
-                const btn = e.currentTarget.querySelector('[aria-label="Remove from Kesi"]') as HTMLElement | null;
-                if (btn) btn.style.opacity = '0.5';
-              }}
-              onMouseLeave={(e) => {
-                const btn = e.currentTarget.querySelector('[aria-label="Remove from Kesi"]') as HTMLElement | null;
-                if (btn) { btn.style.opacity = '0'; btn.style.color = 'var(--muted)'; btn.style.background = 'transparent'; }
-              }}
-            >
-              {/* Delete button */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void removeEvents(panel.traceId, (ev) => ev.kind === 'crystallize');
-                }}
-                aria-label="Remove from Kesi"
-                title="Remove from Kesi"
-                style={{
-                  position: 'absolute', top: 10, right: 12, zIndex: 2,
-                  background: 'transparent', border: 0, cursor: 'pointer',
-                  color: 'var(--muted)', fontSize: '0.88rem', lineHeight: 1,
-                  padding: '4px 6px', borderRadius: 6,
-                  opacity: 0,
-                  transition: 'opacity 0.18s var(--ease), color 0.18s var(--ease), background 0.18s var(--ease)',
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget;
-                  el.style.opacity = '1';
-                  el.style.color = 'var(--tint-red)';
-                  el.style.background = 'var(--surface-2)';
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget;
-                  el.style.opacity = '0';
-                  el.style.color = 'var(--muted)';
-                  el.style.background = 'transparent';
-                }}
-              >×</button>
-
-              <div style={{
-                display: 'flex', alignItems: 'baseline', gap: 10,
-                marginBottom: 8,
-              }}>
-                <div
-                  style={{
-                    flex: 1,
-                    fontFamily: 'var(--display)',
-                    fontSize: '1.1rem',
-                    fontWeight: 650,
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {panel.title}
-                </div>
-                <span className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', flexShrink: 0 }}>
-                  {panel.sections.length}◆
+          {groupedPanels.map((group) => (
+            <section key={group.label} style={{ position: 'relative', zIndex: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.45 }} />
+                <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+                  {group.label}
+                </span>
+                <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+                <span className="t-caption2" style={{ color: 'var(--muted)', opacity: 0.7 }}>
+                  {group.items.length}
                 </span>
               </div>
 
-              <div
-                style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.88rem',
-                  lineHeight: 1.55,
-                  marginBottom: panel.sections.length > 0 ? 14 : 6,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {panel.summary}
-              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {group.items.map((panel) => (
+                  <div
+                    key={panel.traceId}
+                    style={{
+                      position: 'relative',
+                      borderRadius: 14,
+                      padding: '1rem 1.2rem',
+                      borderLeft: `3px solid ${panel.tint}`,
+                      background: `linear-gradient(90deg, color-mix(in srgb, ${panel.tint} 6%, transparent), transparent 40%)`,
+                      color: 'var(--fg)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => router.push(panel.href)}
+                    onMouseEnter={(e) => {
+                      const btn = e.currentTarget.querySelector('[aria-label="Remove from Kesi"]') as HTMLElement | null;
+                      if (btn) btn.style.opacity = '0.5';
+                    }}
+                    onMouseLeave={(e) => {
+                      const btn = e.currentTarget.querySelector('[aria-label="Remove from Kesi"]') as HTMLElement | null;
+                      if (btn) { btn.style.opacity = '0'; btn.style.color = 'var(--muted)'; btn.style.background = 'transparent'; }
+                    }}
+                  >
+                    {/* Delete button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void removeEvents(panel.traceId, (ev) => ev.kind === 'crystallize');
+                      }}
+                      aria-label="Remove from Kesi"
+                      title="Remove from Kesi"
+                      style={{
+                        position: 'absolute', top: 10, right: 12, zIndex: 2,
+                        background: 'transparent', border: 0, cursor: 'pointer',
+                        color: 'var(--muted)', fontSize: '0.88rem', lineHeight: 1,
+                        padding: '4px 6px', borderRadius: 6,
+                        opacity: 0,
+                        transition: 'opacity 0.18s var(--ease), color 0.18s var(--ease), background 0.18s var(--ease)',
+                      }}
+                      onMouseEnter={(e) => {
+                        const el = e.currentTarget;
+                        el.style.opacity = '1';
+                        el.style.color = 'var(--tint-red)';
+                        el.style.background = 'var(--surface-2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        const el = e.currentTarget;
+                        el.style.opacity = '0';
+                        el.style.color = 'var(--muted)';
+                        el.style.background = 'transparent';
+                      }}
+                    >×</button>
 
-              {panel.sections.length > 0 && (
-                <div
-                  style={{
-                    borderTop: '0.5px solid var(--mat-border)',
-                    paddingTop: 12,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 10,
-                  }}
-                >
-                  {panel.sections.slice(0, 4).map((section) => (
-                    <div key={section.anchorId}>
-                      <div className="t-caption2" style={{ color: panel.tint, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>
-                        ◆ Woven Section
-                      </div>
+                    <div style={{
+                      display: 'flex', alignItems: 'baseline', gap: 10,
+                      marginBottom: 7,
+                    }}>
                       <div
                         style={{
-                          color: 'var(--fg)',
-                          fontSize: '0.88rem',
-                          lineHeight: 1.5,
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
+                          flex: 1,
+                          fontFamily: 'var(--display)',
+                          fontSize: '1.1rem',
+                          fontWeight: 650,
+                          letterSpacing: '-0.02em',
+                          lineHeight: 1.3,
                         }}
                       >
-                        {section.summary}
+                        {panel.title}
                       </div>
+                      <span className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', flexShrink: 0 }}>
+                        {panel.sections.length}◆
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+
+                    <div
+                      className="t-caption2"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        color: 'var(--muted)',
+                        letterSpacing: '0.03em',
+                        fontWeight: 600,
+                        marginBottom: 8,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span>{panel.family}</span>
+                      <span aria-hidden>·</span>
+                      <span>{formatWhen(panel.crystallizedAt)}</span>
+                      <span aria-hidden>·</span>
+                      <span>{panel.stitches} stitches</span>
+                      {panel.summary && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>finished</span>
+                        </>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        color: 'var(--fg-secondary)',
+                        fontSize: '0.88rem',
+                        lineHeight: 1.55,
+                        marginBottom: panel.sections.length > 0 ? 14 : 6,
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                    >
+                      {panel.summary}
+                    </div>
+
+                    {panel.sections.length > 0 && (
+                      <div
+                        style={{
+                          borderTop: '0.5px solid var(--mat-border)',
+                          paddingTop: 12,
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                          gap: 10,
+                        }}
+                      >
+                        {panel.sections.slice(0, 4).map((section) => (
+                          <div key={section.anchorId}>
+                            <div
+                              style={{
+                                color: panel.tint,
+                                fontSize: '0.82rem',
+                                lineHeight: 1.45,
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                            >
+                              ◆ {section.summary}
+                            </div>
+                            {section.quote && (
+                              <div
+                                className="t-caption2"
+                                style={{
+                                  color: 'var(--muted)',
+                                  fontStyle: 'italic',
+                                  lineHeight: 1.45,
+                                  marginTop: 4,
+                                  overflow: 'hidden',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                }}
+                              >
+                                {section.quote.length > 120 ? `${section.quote.slice(0, 120)}…` : section.quote}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </div>

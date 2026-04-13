@@ -13,10 +13,7 @@ export const metadata = { title: 'About · Loom' };
 export default function AboutPage() {
   return (
     <article className="prose-notion">
-      <h1 style={{ marginBottom: '0.2rem', textAlign: 'left' }}>Loom</h1>
-      <p style={{ color: 'var(--fg-secondary)', marginTop: 0, fontSize: '1.05rem' }}>
-        Think on the Loom. Live in your <em style={{ color: 'var(--accent)', fontStyle: 'normal' }}>Kesi</em>.
-      </p>
+      <h1 style={{ marginBottom: '0.6rem', textAlign: 'left' }}>About</h1>
 
       <p>
         Loom is a thinking tool. Not a note app, not a chat app, not an AI
@@ -332,12 +329,9 @@ export default function AboutPage() {
         <DLRow word="Review · ⌘/"      def="Bring the Live Note to the center and review the woven understanding of the current document, with its companion thought map on the right. Version history is expandable per anchor." />
       </dl>
 
-      <p style={{ color: 'var(--fg-secondary)', fontStyle: 'italic', marginTop: '2.4rem' }}>
-        Think on the Loom. Live in your Kesi.
-      </p>
       <p style={{ marginTop: '1.5rem' }}>
         <Link href="/dev/principles" style={{ color: 'var(--accent)' }}>
-          Read the design constitution →
+          /dev/principles
         </Link>
       </p>
     </article>

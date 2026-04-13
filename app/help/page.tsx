@@ -8,7 +8,7 @@
  *   - /help (direct URL)
  *   - Sidebar: "Help" link
  *   - CommandPalette: search "help" or "guide"
- *   - KeyboardHelpOverlay footer: "Full guide →" link
+ *   - KeyboardHelpOverlay footer: "/help" link
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -28,7 +28,7 @@ export default function HelpPage() {
       >
         Loom is a screen that helps you learn until you truly understand.{' '}
         <Link href="/about" style={{ color: 'var(--accent)' }}>
-          About Loom
+          /about
         </Link>
       </p>
 
@@ -90,9 +90,9 @@ export default function HelpPage() {
       </StateRow>
 
       <StateRow k="⌘/" name="Thought Map">
-        Your captures for the current doc are always visible on the right side.
-        Press <Kbd>⌘/</Kbd> to expand the thought map for editing and deep
-        review. Press again to narrow it back.
+        Near the top of a document, your captures remain visible on the right
+        as a quiet reading rail. Press <Kbd>⌘/</Kbd> to bring the thought map
+        forward for editing and deep review. Press again to narrow it back.
       </StateRow>
 
       <h2>Every Note is editable and deletable</h2>
@@ -245,8 +245,7 @@ export default function HelpPage() {
           kesi metaphor
         </li>
         <li>
-          <Link href="any reading page">any reading page</Link> — unified architecture
-          main entry (or press <Kbd>⌘P</Kbd>)
+          any reading page — unified architecture main entry (or press <Kbd>⌘P</Kbd>)
         </li>
         <li>
           <Link href="/">/</Link> — Loom home
@@ -269,19 +268,6 @@ export default function HelpPage() {
         Your only job is to <strong>read, ask, and produce</strong>. Leave the
         rest to Loom.
       </p>
-
-      <div
-        style={{
-          marginTop: '3rem',
-          paddingTop: '1rem',
-          borderTop: '0.5px solid var(--mat-border)',
-          fontSize: '0.8rem',
-          color: 'var(--muted)',
-          textAlign: 'center',
-        }}
-      >
-        Loom · The weaver is the wise
-      </div>
     </article>
   );
 }

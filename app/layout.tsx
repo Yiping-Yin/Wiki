@@ -8,7 +8,6 @@ import { QuickSwitcher } from '../components/QuickSwitcher';
 import { DropZone } from '../components/DropZone';
 import { SWRegister } from '../components/SWRegister';
 import { SettingsPanel } from '../components/SettingsPanel';
-import { ToastHost } from '../components/Toast';
 import { TraceMigrator } from '../components/TraceMigrator';
 import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
@@ -72,7 +71,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <CopyButtonInjector />
         <SWRegister />
         <SettingsPanel />
-        <ToastHost />
         <TraceMigrator />
         <KeyboardShortcuts />
         <LinkPreview />
