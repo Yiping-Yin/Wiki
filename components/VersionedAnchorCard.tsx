@@ -150,12 +150,18 @@ export function VersionedAnchorCard({
     >
       {/* Header row: section label with ◆ + version count, crystallize toggle, delete-container button */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <button
-          type="button"
+        <div
           onClick={handleSectionClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleSectionClick();
+            }
+          }}
           style={{
             background: 'transparent',
-            border: 0,
             padding: 0,
             margin: 0,
             cursor: 'pointer',
@@ -238,7 +244,7 @@ export function VersionedAnchorCard({
           >
             {displaySummary}
           </div>
-        </button>
+        </div>
 
         {/* Crystallize / unlock button */}
         {item.traceId && (
