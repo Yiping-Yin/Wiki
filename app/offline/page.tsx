@@ -7,11 +7,13 @@ export default function OfflinePage() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '2rem',
     }}>
-      <div className="material-thick" style={{
-        padding: '2rem 2.4rem',
-        borderRadius: 'var(--r-3)',
+      <div style={{
+        padding: '1.2rem 0',
         textAlign: 'center',
         maxWidth: 460,
+        width: '100%',
+        borderTop: '0.5px solid var(--mat-border)',
+        borderBottom: '0.5px solid var(--mat-border)',
       }}>
         <h1 className="t-title2" style={{
           margin: 0, color: 'var(--fg)', padding: 0, border: 0,
@@ -35,8 +37,8 @@ export default function OfflinePage() {
 
 const pillStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center',
-  padding: '7px 14px', borderRadius: 999,
-  background: 'var(--accent)', color: '#fff',
+  padding: '4px 0', borderRadius: 999,
+  background: 'transparent', color: 'var(--accent)',
   textDecoration: 'none', fontWeight: 600,
-  boxShadow: 'var(--shadow-1)',
+  borderBottom: '0.5px solid var(--accent)',
 };

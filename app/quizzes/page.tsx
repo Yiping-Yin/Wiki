@@ -106,12 +106,10 @@ export default function QuizzesPage() {
 
       {focus && (
         <section
-          className="material-thick"
           style={{
-            padding: '1rem 1.05rem 1.05rem',
-            borderRadius: 'var(--r-3)',
+            padding: '0.1rem 0 1rem',
             marginBottom: 20,
-            boxShadow: 'var(--shadow-1)',
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -125,7 +123,7 @@ export default function QuizzesPage() {
                 fontWeight: 700,
               }}
             >
-              Return to verify
+              Return to this check
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           </div>
@@ -236,16 +234,16 @@ function formatWhen(ts: number) {
 function quizActionStyle(primary: boolean) {
   return {
     appearance: 'none' as const,
-    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
-    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
-    color: primary ? 'var(--accent)' : 'var(--fg)',
+    border: 0,
+    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
     borderRadius: 999,
-    padding: '0.52rem 0.82rem',
+    padding: '0.3rem 0',
     fontSize: '0.82rem',
     fontWeight: 650,
     letterSpacing: '-0.01em',
     lineHeight: 1,
     cursor: 'pointer',
-    boxShadow: primary ? 'var(--shadow-1)' : 'none',
   };
 }

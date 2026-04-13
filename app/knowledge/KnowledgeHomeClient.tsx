@@ -117,12 +117,10 @@ export function KnowledgeHomeClient({ groups }: { groups: CollectionGroupData[] 
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       {focusCollection && (
         <section
-          className="material-thick"
           style={{
-            padding: '1rem 1.05rem 1.05rem',
-            borderRadius: 'var(--r-3)',
+            padding: '0.1rem 0 1rem',
             marginBottom: 20,
-            boxShadow: 'var(--shadow-1)',
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -136,7 +134,7 @@ export function KnowledgeHomeClient({ groups }: { groups: CollectionGroupData[] 
                 fontWeight: 700,
               }}
             >
-              Continue collection
+              Keep this collection warm
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           </div>
@@ -247,15 +245,15 @@ export function KnowledgeHomeClient({ groups }: { groups: CollectionGroupData[] 
 function collectionPrimaryLabel(nextAction: LearningNextAction) {
   switch (nextAction) {
     case 'refresh':
-      return 'Refresh collection';
+      return 'Return';
     case 'examine':
-      return 'Verify collection';
+      return 'Ask';
     case 'rehearse':
-      return 'Rehearse collection';
+      return 'Write';
     case 'capture':
-      return 'Open collection';
+      return 'Open';
     default:
-      return 'Review collection';
+      return 'Review';
   }
 }
 
@@ -277,16 +275,16 @@ function collectionFocusLine(nextAction: LearningNextAction) {
 function knowledgeActionStyle(primary: boolean) {
   return {
     appearance: 'none' as const,
-    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
-    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
-    color: primary ? 'var(--accent)' : 'var(--fg)',
+    border: 0,
+    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
     borderRadius: 999,
-    padding: '0.52rem 0.82rem',
+    padding: '0.3rem 0',
     fontSize: '0.82rem',
     fontWeight: 650,
     letterSpacing: '-0.01em',
     lineHeight: 1,
     cursor: 'pointer',
-    boxShadow: primary ? 'var(--shadow-1)' : 'none',
   };
 }
