@@ -86,6 +86,8 @@ export type ThoughtMapNode = {
   top: number;
   status: 'empty' | 'woven';
   thoughtCount: number;
+  pendingCaptureCount: number;
+  hasPendingCapture: boolean;
   /** Total version count across all anchors in this section. Used for depth
    *  display: a section with 1 anchor × 5 versions has depth 5, not 1. */
   totalVersions: number;
@@ -98,6 +100,9 @@ export type ThoughtMapNode = {
   anchorBlockId?: string;
   anchorBlockText?: string;
   summary?: string;
+  pendingAnchorId?: string;
+  pendingQuote?: string;
+  latestAt?: number;
 };
 
 function filteredChildren(prose: Element) {
@@ -368,6 +373,8 @@ export function buildThoughtMapNodes(headings: HeadingItem[], thoughts: ThoughtA
       top: heading.top,
       status: 'empty',
       thoughtCount: 0,
+      pendingCaptureCount: 0,
+      hasPendingCapture: false,
       totalVersions: 0,
       maxDepth: 0,
       anyCrystallized: false,
@@ -384,13 +391,20 @@ export function buildThoughtMapNodes(headings: HeadingItem[], thoughts: ThoughtA
     if (!node) continue;
     node.status = 'woven';
     node.thoughtCount += 1;
+    if (thought.at > (node.latestAt ?? 0)) node.latestAt = thought.at;
     node.totalVersions += thought.versionCount;
     if (thought.versionCount > node.maxDepth) node.maxDepth = thought.versionCount;
     if (thought.isCrystallized) node.anyCrystallized = true;
     node.anchorId = thought.anchorId;
     node.anchorBlockId = thought.anchorBlockId ?? thought.anchorId;
     node.anchorBlockText = thought.anchorBlockText ?? thought.section;
-    if (!node.summary) node.summary = thought.summary;
+    if (thought.summary && !node.summary) node.summary = thought.summary;
+    if (!thought.content.trim() && !thought.summary.trim()) {
+      node.hasPendingCapture = true;
+      node.pendingCaptureCount += 1;
+      node.pendingAnchorId = thought.anchorId;
+      if (!node.pendingQuote && thought.quote) node.pendingQuote = thought.quote;
+    }
   }
 
   return Array.from(byHeading.values()).sort((a, b) => a.top - b.top);

@@ -11,13 +11,15 @@ const GROUPS: Group[] = [
   {
     title: 'Learning',
     items: [
-      { keys: '⌘E', label: 'Capture (with selection) or Search tools (without)' },
-      { keys: '✦ click', label: 'ChatFocus — AI conversation about selection' },
+      { keys: '✦ click', label: 'Ask AI about the selection' },
+      { keys: '⌘⇧A', label: 'Capture selection as a thought-anchor' },
+      { keys: '⌘ click', label: 'Capture directly from the warp thread' },
+      { keys: '⌥ click', label: 'Highlight the selection' },
       { keys: '⌘/', label: 'Toggle thought map wide / narrow' },
     ],
   },
   {
-    title: 'Tools (via ⌘P search)',
+    title: 'Tools (via ⌘P)',
     items: [
       { keys: 'Rehearsal', label: 'Write from memory · ⌘K transform · ⌘S save' },
       { keys: 'Examiner', label: 'AI tests your understanding · ⌘↩ submit' },

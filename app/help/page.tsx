@@ -34,7 +34,7 @@ export default function HelpPage() {
 
       <Callout>
         <strong>Quick start:</strong> Open any doc → start reading → select
-        text → press <Kbd>⌘E</Kbd> then <Kbd>E</Kbd> → write what it means.
+        text → click the warp to ask AI or press <Kbd>⌘⇧A</Kbd> to capture it.
         That's it. Everything else you can learn as you go.
       </Callout>
 
@@ -46,9 +46,9 @@ export default function HelpPage() {
         enters your brain.
       </p>
       <p>
-        All learning tools are accessed via one shortcut: <Kbd>⌘E</Kbd>.
-        Press it, then a letter to choose what to do. Your notes stay the
-        same across all tools.
+        Loom&rsquo;s primary reading loop stays local to the source: select a
+        passage, then ask, capture, or highlight it in place. Deeper tools
+        remain available through <Kbd>⌘P</Kbd>.
       </p>
 
       <h2>3-minute quick start</h2>
@@ -61,8 +61,8 @@ export default function HelpPage() {
           <strong>Select a passage</strong> you want to think about.
         </li>
         <li>
-          <strong>Press <Kbd>⌘E</Kbd> then <Kbd>E</Kbd></strong> → a prompt appears
-          asking "What does this mean?" → write your understanding → save.
+          <strong>Click the warp thread</strong> to ask AI, or press <Kbd>⌘⇧A</Kbd>
+          to capture the passage and elaborate it later in the thought map.
         </li>
       </ol>
       <p>
@@ -72,14 +72,14 @@ export default function HelpPage() {
 
       <h2>Learning tools</h2>
 
-      <StateRow k="⌘E" name="Capture">
-        Select a passage, then press <Kbd>⌘E</Kbd>. A prompt asks "What does
-        this mean?" — write your understanding. If no text is selected,
-        <Kbd>⌘E</Kbd> opens the search palette where you can find all tools.
+      <StateRow k="⌘⇧A" name="Capture">
+        Select a passage, then press <Kbd>⌘⇧A</Kbd> to capture it as a
+        thought-anchor. No dialog appears. The thought is hung in the
+        gutter first; elaboration happens later in the wide thought map.
       </StateRow>
 
       <StateRow k="⌘P" name="All tools">
-        Press <Kbd>⌘P</Kbd> and search for any tool:
+        Press <Kbd>⌘P</Kbd> and search for any deeper tool:
         <ul style={{ marginTop: 4, marginBottom: 4 }}>
           <li><strong>Rehearsal</strong> — write from memory, ⌘K AI transform, ⌘S save</li>
           <li><strong>Examiner</strong> — AI tests your understanding, ⌘↩ submit</li>
@@ -123,30 +123,23 @@ export default function HelpPage() {
 
       <h2>Keyboard shortcuts</h2>
 
-      <h3>Learning tools (⌘E)</h3>
+      <h3>Capture-first reading</h3>
       <p>
-        Press <Kbd>⌘E</Kbd> to open the learning tool menu, then press a
-        letter:
+        While reading a document, the fast path is selection-bound:
       </p>
       <Kbds>
-        <KbdRow k="⌘E → E" label="Capture — select text, write what it means" />
-        <KbdRow k="⌘E → R" label="Rehearse — write from memory, ⌘K to AI transform" />
-        <KbdRow k="⌘E → V" label="Verify — AI examiner tests your understanding" />
-        <KbdRow k="⌘E → M" label="Map — review your captures (thought map)" />
-        <KbdRow k="⌘E → I" label="Import — drag-drop .md/.txt files" />
+        <KbdRow k="✦ click" label="Ask AI about the selection" />
+        <KbdRow k="⌘ click" label="Capture directly from the warp thread" />
+        <KbdRow k="⌘⇧A" label="Capture selected text without using the mouse" />
+        <KbdRow k="⌥ click" label="Highlight the selection" />
+        <KbdRow k="⌘/" label="Expand the thought map to elaborate captures" />
       </Kbds>
 
-      <h3>All shortcuts</h3>
+      <h3>Tools and global shortcuts</h3>
       <Kbds>
-        <KbdRow k="⌘E" label="Capture (with selection) or search tools (without)" />
-        <KbdRow k="✦ click" label="ChatFocus — AI conversation" />
-        <KbdRow k="⌘/" label="Toggle thought map wide / narrow" />
         <KbdRow k="⌘P" label="Search everything" />
-        <KbdRow k="⌘K" label="AI transform (inside Rehearsal)" />
-        <KbdRow k="⌘S" label="Save (inside Rehearsal)" />
-        <KbdRow k="⌘↩" label="Submit answer (inside Examiner)" />
-        <KbdRow k="Esc" label="Close any panel" />
         <KbdRow k="?" label="This help" />
+        <KbdRow k="Esc" label="Close any panel" />
       </Kbds>
 
       <h2>Command palette · ⌘P</h2>
@@ -156,10 +149,10 @@ export default function HelpPage() {
         keyword and see all matching presets, docs, and actions.
       </p>
       <ul>
-        <li>Search "<strong>verify</strong>" → Verifying preset</li>
+        <li>Search "<strong>rehearsal</strong>" → memory writing surface</li>
+        <li>Search "<strong>examiner</strong>" → AI testing flow</li>
         <li>Search "<strong>export</strong>" → three export options</li>
         <li>Search a <strong>doc name</strong> → jump to that doc</li>
-        <li>Search "<strong>back</strong>" → return to home</li>
         <li>Search "<strong>help</strong>" → this page or keyboard help</li>
       </ul>
       <p>

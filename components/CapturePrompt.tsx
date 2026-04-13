@@ -1,214 +1,147 @@
 'use client';
 /**
- * CapturePrompt · "What does this mean?"
+ * CapturePrompt · tiny, zero-modal reassurance after capture.
  *
- * When the user presses ⌘⇧A on selected text, this overlay appears
- * asking them to articulate their understanding in one sentence. The
- * act of writing IS the learning — a silent bookmark is not.
+ * Current capture-first flow:
+ *   1. user captures a passage
+ *   2. the passage becomes a gutter thought-anchor immediately
+ *   3. elaboration happens later in wide ReviewThoughtMap
  *
- * Flow:
- *   1. ⌘⇧A with text selected → loom:capture-prompt event fires
- *   2. This component shows a floating prompt near the bottom of screen
- *   3. User types their understanding (or presses Esc to dismiss)
- *   4. ⌘↩ or button saves as a Note with quote + user's content
- *
- * The prompt is intentionally minimal: one textarea, no buttons except
- * save. The friction of writing one sentence is the point — it forces
- * the brain to process the passage.
+ * This component should therefore be a whisper, not a form.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { contextFromPathname } from '../lib/doc-context';
-import { appendNote } from '../lib/note/store';
+import { useEffect, useState } from 'react';
+
+type State = {
+  anchorId: string;
+  quote: string;
+  reviewHint: string;
+  left: number | null;
+  top: number | null;
+  bottom: number | null;
+} | null;
 
 export function CapturePrompt() {
-  const [open, setOpen] = useState(false);
-  const [quote, setQuote] = useState('');
-  const [draft, setDraft] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [selectionY, setSelectionY] = useState<number | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [state, setState] = useState<State>(null);
+  const [fading, setFading] = useState(false);
 
-  // Listen for capture-prompt events from SelectionWarp
+  useEffect(() => {
+    if (!state) return;
+    const fadeTimer = window.setTimeout(() => setFading(true), 1700);
+    const hideTimer = window.setTimeout(() => {
+      setState(null);
+      setFading(false);
+    }, 2300);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, [state]);
+
   useEffect(() => {
     const handler = (e: Event) => {
-      const q = (e as CustomEvent).detail?.quote;
-      if (!q) return;
-      setQuote(q);
-      setDraft('');
-      // Get selection position to render near it
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        const rect = sel.getRangeAt(0).getBoundingClientRect();
-        setSelectionY(rect.bottom);
-      } else {
-        setSelectionY(null);
-      }
-      setOpen(true);
-      // Focus after render
-      requestAnimationFrame(() => textareaRef.current?.focus());
-    };
-    window.addEventListener('loom:capture-prompt', handler);
-    return () => window.removeEventListener('loom:capture-prompt', handler);
-  }, []);
-
-  const close = useCallback(() => {
-    setOpen(false);
-    setQuote('');
-    setDraft('');
-    window.getSelection()?.removeAllRanges();
-  }, []);
-
-  const save = useCallback(async () => {
-    if (saving) return;
-    const ctx = contextFromPathname(window.location.pathname);
-    if (ctx.isFree || !ctx.docId) { close(); return; }
-
-    setSaving(true);
-    try {
-      await appendNote({
-        docId: ctx.docId,
-        docHref: ctx.href,
-        docTitle: ctx.sourceTitle,
-        content: draft.trim(),
-        summary: draft.trim().slice(0, 100),
-        anchor: {
-          target: ctx.docId,
-          quote,
-        },
+      const detail = (e as CustomEvent).detail ?? {};
+      const anchorId = String(detail.anchorId ?? '').trim();
+      const quote = String(detail.quote ?? '').trim();
+      if (!quote || !anchorId) return;
+      const viewport = detail.viewport ?? {};
+      const anchorX = Number.isFinite(viewport.x) ? Number(viewport.x) : null;
+      const anchorY = Number.isFinite(viewport.y) ? Number(viewport.y) : null;
+      const anchorH = Number.isFinite(viewport.height) ? Number(viewport.height) : 0;
+      const vh = typeof window === 'undefined' ? 800 : window.innerHeight;
+      const nearLowerHalf = anchorY !== null && anchorY > vh * 0.55;
+      setFading(false);
+      setState({
+        anchorId,
+        quote: quote.slice(0, 120),
+        reviewHint: String(detail.reviewHint ?? '⌘/ 打开 Thought Map 延伸'),
+        left: anchorX,
+        top: nearLowerHalf && anchorY !== null ? Math.max(20, anchorY - 58) : null,
+        bottom: !nearLowerHalf && anchorY !== null ? Math.max(20, vh - (anchorY + anchorH + 18)) : 20,
       });
-      window.dispatchEvent(new CustomEvent('loom:trace:changed'));
-      window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
-      close();
-    } catch {
-      // Silent fail — the note store handles errors
-    } finally {
-      setSaving(false);
-    }
-  }, [draft, quote, saving, close]);
+    };
+    window.addEventListener('loom:capture:done', handler);
+    return () => window.removeEventListener('loom:capture:done', handler);
+  }, []);
 
-  const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault();
-      void save();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      close();
-    }
-  }, [save, close]);
+  if (!state) return null;
 
-  if (!open) return null;
+  const continueToThought = () => {
+    window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
+    window.dispatchEvent(new CustomEvent('loom:review:focus-thought', {
+      detail: { anchorId: state.anchorId },
+    }));
+    setState(null);
+    setFading(false);
+  };
 
   return (
     <div
-      onClick={close}
       style={{
         position: 'fixed',
-        inset: 0,
-        zIndex: 950,
-        display: 'flex',
-        // Position near the selection if possible, otherwise bottom
-        alignItems: selectionY && selectionY < (typeof window !== 'undefined' ? window.innerHeight * 0.6 : 400)
-          ? 'flex-start' : 'flex-end',
-        justifyContent: 'center',
-        paddingTop: selectionY && selectionY < (typeof window !== 'undefined' ? window.innerHeight * 0.6 : 400)
-          ? Math.min(selectionY + 8, (typeof window !== 'undefined' ? window.innerHeight : 800) - 250) : 0,
-        paddingBottom: selectionY && selectionY < (typeof window !== 'undefined' ? window.innerHeight * 0.6 : 400)
-          ? 0 : 40,
-        paddingLeft: 20,
-        paddingRight: 20,
-        background: 'color-mix(in srgb, var(--bg) 40%, transparent)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        animation: 'loom-overlay-fade-in 0.15s cubic-bezier(0.22, 1, 0.36, 1)',
+        left: state.left === null ? '50%' : `clamp(20px, ${state.left}px, calc(100vw - 20px))`,
+        top: state.top ?? 'auto',
+        bottom: state.top === null ? (state.bottom ?? 20) : 'auto',
+        transform: state.left === null ? 'translateX(-50%)' : 'translateX(-18%)',
+        zIndex: 920,
+        opacity: fading ? 0 : 1,
+        transition: 'opacity 0.35s ease, top 0.2s ease, bottom 0.2s ease, left 0.2s ease',
+        maxWidth: 'min(92vw, 560px)',
       }}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
+        className="material-thick"
         style={{
-          width: '100%',
-          maxWidth: 560,
-          background: 'var(--bg-elevated)',
-          border: '0.5px solid var(--mat-border)',
-          borderRadius: 14,
-          padding: '14px 16px',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
-          animation: 'loom-overlay-fade-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0.55rem 0.8rem 0.55rem 0.9rem',
+          borderRadius: 999,
+          boxShadow: 'var(--shadow-2)',
+          maxWidth: '100%',
         }}
       >
-        {/* Quote preview */}
-        <div
+        <span
+          aria-hidden
           style={{
-            fontSize: '0.78rem',
-            color: 'var(--muted)',
-            fontStyle: 'italic',
-            lineHeight: 1.45,
-            marginBottom: 10,
-            paddingLeft: 10,
-            borderLeft: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-            maxHeight: 60,
-            overflow: 'hidden',
+            color: 'var(--accent)',
+            fontSize: '0.95rem',
+            fontWeight: 700,
+            lineHeight: 1,
           }}
         >
-          &ldquo;{quote.length > 120 ? quote.slice(0, 120) + '…' : quote}&rdquo;
-        </div>
-
-        {/* Prompt */}
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="What does this mean? (your words)"
-          style={{
-            width: '100%',
-            minHeight: 56,
-            maxHeight: 120,
-            padding: '8px 10px',
-            fontFamily: 'var(--display)',
-            fontSize: '0.88rem',
-            lineHeight: 1.5,
-            color: 'var(--fg)',
-            background: 'var(--bg)',
-            border: '0.5px solid var(--mat-border)',
-            borderRadius: 6,
-            outline: 'none',
-            resize: 'none',
-          }}
-        />
-
-        {/* Footer */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginTop: 8,
-            fontSize: '0.66rem',
-            color: 'var(--muted)',
-            fontFamily: 'var(--mono)',
-          }}
-        >
-          <span>⌘↩ save · Esc cancel</span>
-          <span style={{ flex: 1 }} />
-          {draft.trim() && (
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={saving}
-              style={{
-                padding: '4px 12px',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                color: 'var(--bg)',
-                background: 'var(--accent)',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-              }}
-            >
-              Save
-            </button>
-          )}
+          ◆
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div
+            className="t-footnote"
+            style={{
+              color: 'var(--fg)',
+              lineHeight: 1.4,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '100%',
+            }}
+          >
+            已捕获 · “{state.quote}”
+          </div>
+          <button
+            type="button"
+            onClick={continueToThought}
+            className="t-caption2"
+            style={{
+              color: 'var(--accent)',
+              letterSpacing: '0.03em',
+              fontWeight: 700,
+              marginTop: 2,
+              border: 0,
+              background: 'transparent',
+              padding: 0,
+              cursor: 'pointer',
+            }}
+          >
+            {state.reviewHint}
+          </button>
         </div>
       </div>
     </div>

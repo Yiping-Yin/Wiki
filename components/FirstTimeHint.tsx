@@ -2,7 +2,7 @@
 /**
  * FirstTimeHint · shows a subtle bottom bar on first visit to a doc page.
  *
- * "⌘E learning tools · ? help"
+ * "click warp → ask · ⌘⇧A capture · ⌘/ review"
  *
  * Appears for 4 seconds, then fades out. Only shows once per session
  * (sessionStorage flag). Zero cognitive footprint after first sight —
@@ -68,13 +68,11 @@ export function FirstTimeHint() {
         pointerEvents: 'none',
       }}
     >
-      {'select text + '}
-      <kbd style={{ padding: '1px 4px', background: 'var(--bg)', border: '0.5px solid var(--mat-border)', borderRadius: 3, fontSize: '0.68rem' }}>⌘E</kbd>
+      {'select text · click warp ask · '}
+      <kbd style={{ padding: '1px 4px', background: 'var(--bg)', border: '0.5px solid var(--mat-border)', borderRadius: 3, fontSize: '0.68rem' }}>⌘⇧A</kbd>
       {' capture · '}
-      <kbd style={{ padding: '1px 4px', background: 'var(--bg)', border: '0.5px solid var(--mat-border)', borderRadius: 3, fontSize: '0.68rem' }}>⌘P</kbd>
-      {' tools · '}
-      <kbd style={{ padding: '1px 4px', background: 'var(--bg)', border: '0.5px solid var(--mat-border)', borderRadius: 3, fontSize: '0.68rem' }}>?</kbd>
-      {' help'}
+      <kbd style={{ padding: '1px 4px', background: 'var(--bg)', border: '0.5px solid var(--mat-border)', borderRadius: 3, fontSize: '0.68rem' }}>⌘/</kbd>
+      {' review'}
     </div>
   );
 }

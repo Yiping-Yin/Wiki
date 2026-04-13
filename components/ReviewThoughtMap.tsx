@@ -43,6 +43,7 @@ const NoteRenderer = dynamic(
 );
 
 const REVIEW_SCROLL_EVENT = 'loom:review:scroll-to-anchor';
+const REVIEW_FOCUS_THOUGHT_EVENT = 'loom:review:focus-thought';
 
 function deriveSummary(content: string): string {
   const firstLine = content
@@ -59,6 +60,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const [nodes, setNodes] = useState<ThoughtMapNode[]>([]);
   const [activeAnchorId, setActiveAnchorId] = useState<string>('');
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [pendingFocusAnchorId, setPendingFocusAnchorId] = useState<string | null>(null);
   const { thoughtItems, traces } = useReadingThoughtAnchors(
     ctx.isFree ? null : ctx.docId,
   );
@@ -146,6 +148,25 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
     activeBtnRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [activeAnchorId]);
 
+  useEffect(() => {
+    const onFocusThought = (e: Event) => {
+      const anchorId = (e as CustomEvent).detail?.anchorId as string | null | undefined;
+      if (!anchorId) return;
+      setPendingFocusAnchorId(anchorId);
+    };
+    window.addEventListener(REVIEW_FOCUS_THOUGHT_EVENT, onFocusThought);
+    return () => window.removeEventListener(REVIEW_FOCUS_THOUGHT_EVENT, onFocusThought);
+  }, []);
+
+  useEffect(() => {
+    if (!active || !pendingFocusAnchorId) return;
+    const target = thoughtItems.find((item) => item.anchorId === pendingFocusAnchorId);
+    if (!target) return;
+    setExpandedKey(target.containerKey);
+    setActiveAnchorId(target.anchorId);
+    setPendingFocusAnchorId(null);
+  }, [active, pendingFocusAnchorId, thoughtItems]);
+
   // Collapse the expanded thought when leaving wide mode, so next time the
   // user goes wide they start fresh.
   useEffect(() => {
@@ -209,30 +230,32 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
         overflowY: 'auto',
         zIndex: 76,
         pointerEvents: visible ? 'auto' : 'none',
-        // Narrow mode: quiet (0.4). Wide mode: full. Hidden: 0.
-        opacity: visible ? (active ? 1 : 0.4) : 0,
+        // Narrow mode: visible but peripheral. Wide mode: fully present.
+        opacity: visible ? (active ? 1 : 0.46) : 0,
         transform: visible ? 'translateX(0)' : 'translateX(6px)',
         transition:
           'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), width 0.4s cubic-bezier(0.22, 1, 0.36, 1), left 0.4s cubic-bezier(0.22, 1, 0.36, 1), right 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
-      <div
-        className="t-caption2"
-        style={{
-          marginBottom: '0.7rem',
-          color: 'var(--muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          fontWeight: 700,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        <span style={{ fontSize: '0.62rem', opacity: 0.7 }}>{active ? 'Thoughts' : ''}</span>
-        <span aria-hidden style={{ flex: 1 }} />
-        <span style={{ color: 'var(--accent)', fontSize: '0.6rem', opacity: 0.5 }}>{thoughtItems.length}</span>
-      </div>
+      {active && (
+        <div
+          className="t-caption2"
+          style={{
+            marginBottom: '0.75rem',
+            color: 'var(--muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: '0.62rem', opacity: 0.8 }}>Thought Map</span>
+          <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+          <span style={{ color: 'var(--muted)', fontSize: '0.62rem', opacity: 0.7 }}>{thoughtItems.length}</span>
+        </div>
+      )}
 
       {active ? (
         <WideThoughtList
@@ -240,6 +263,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           expandedKey={expandedKey}
           onExpand={setExpandedKey}
           onAppendVersion={handleAppendVersion}
+          activeAnchorId={activeAnchorId}
         />
       ) : (
         <NarrowSectionTOC
@@ -268,20 +292,32 @@ function NarrowSectionTOC({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 6,
-        borderLeft: '1px solid var(--mat-border)',
-        paddingLeft: '0.8rem',
+        gap: 4,
+        borderLeft: '0.5px solid var(--mat-border)',
+        paddingLeft: '0.72rem',
       }}
     >
       {nodes.map((item) => {
         const sectionNo = String(item.sectionNumber).padStart(2, '0');
         const isActive = activeAnchorId === item.anchorId;
+        const pendingOnly = item.hasPendingCapture && !item.summary;
         return (
           <button
             ref={isActive ? activeBtnRef : undefined}
             key={item.id}
             type="button"
             onClick={() => {
+              if (item.hasPendingCapture && item.pendingAnchorId) {
+                window.dispatchEvent(
+                  new CustomEvent('loom:review:set-active', { detail: { active: true } }),
+                );
+                window.dispatchEvent(
+                  new CustomEvent('loom:review:focus-thought', {
+                    detail: { anchorId: item.pendingAnchorId },
+                  }),
+                );
+                return;
+              }
               if (item.status === 'woven') {
                 window.dispatchEvent(
                   new CustomEvent(REVIEW_SCROLL_EVENT, {
@@ -316,12 +352,12 @@ function NarrowSectionTOC({
               display: 'block',
               width: '100%',
               textAlign: 'left',
-              borderRadius: 10,
+              borderRadius: 8,
               border: 0,
               background: isActive
-                ? 'color-mix(in srgb, var(--accent) 10%, var(--bg))'
+                ? 'color-mix(in srgb, var(--accent) 7%, var(--bg))'
                 : 'transparent',
-              padding: item.level === 2 ? '0.42rem 0.5rem 0.48rem' : '0.3rem 0.5rem 0.36rem 1rem',
+              padding: item.level === 2 ? '0.38rem 0.45rem 0.42rem' : '0.26rem 0.45rem 0.32rem 0.9rem',
               color: 'var(--fg)',
               cursor: 'pointer',
               // Passive Fading: older thoughts visually recede.
@@ -344,7 +380,7 @@ function NarrowSectionTOC({
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
                 fontWeight: item.status === 'woven' ? 700 : 600,
-                marginBottom: item.status === 'woven' && item.summary ? 4 : 0,
+                marginBottom: item.status === 'woven' && item.summary ? 3 : 0,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
@@ -353,6 +389,20 @@ function NarrowSectionTOC({
               <span>
                 {item.status === 'woven' ? '◆' : '◇'} {sectionNo}
               </span>
+              {item.hasPendingCapture && (
+                <span
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: '0.66rem',
+                    color: 'var(--muted)',
+                    opacity: 0.8,
+                    fontWeight: 700,
+                  }}
+                  title={`${item.pendingCaptureCount} capture${item.pendingCaptureCount === 1 ? '' : 's'} waiting for elaboration`}
+                >
+                  +{item.pendingCaptureCount}
+                </span>
+              )}
               {item.status === 'woven' && item.totalVersions > 1 && (
                 <span
                   style={{
@@ -379,7 +429,7 @@ function NarrowSectionTOC({
             {item.status === 'woven' && item.summary && (
               <div
                 style={{
-                  fontSize: '0.8rem',
+                  fontSize: '0.78rem',
                   fontWeight: 600,
                   lineHeight: 1.45,
                   color: 'var(--fg-secondary)',
@@ -390,6 +440,36 @@ function NarrowSectionTOC({
                 }}
               >
                 {item.summary}
+              </div>
+            )}
+            {pendingOnly && item.pendingQuote && (
+              <div
+                style={{
+                  fontSize: '0.74rem',
+                  color: 'var(--muted)',
+                  fontStyle: 'italic',
+                  lineHeight: 1.45,
+                  marginTop: 2,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {item.pendingQuote.length > 120 ? `${item.pendingQuote.slice(0, 120)}…` : item.pendingQuote}
+              </div>
+            )}
+            {!pendingOnly && item.hasPendingCapture && item.summary && (
+              <div
+                className="t-caption2"
+                style={{
+                  marginTop: 3,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.03em',
+                  fontWeight: 700,
+                }}
+              >
+                ↳ +{item.pendingCaptureCount} pending
               </div>
             )}
           </button>
@@ -406,30 +486,119 @@ function WideThoughtList({
   expandedKey,
   onExpand,
   onAppendVersion,
+  activeAnchorId,
 }: {
   thoughts: ThoughtAnchorView[];
   expandedKey: string | null;
   onExpand: (key: string | null) => void;
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
+  activeAnchorId: string;
 }) {
+  const sectionGroups = useMemo(() => {
+    const groups = new Map<string, {
+      key: string;
+      section: string;
+      sectionNo?: number;
+      thoughts: ThoughtAnchorView[];
+    }>();
+
+    for (const thought of thoughts) {
+      const key = `${thought.sectionNumber ?? 9999}::${thought.section}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          section: thought.section,
+          sectionNo: thought.sectionNumber,
+          thoughts: [],
+        });
+      }
+      groups.get(key)!.thoughts.push(thought);
+    }
+
+    const sortedGroups = Array.from(groups.values()).sort((a, b) => {
+      const ao = a.sectionNo ?? 9999;
+      const bo = b.sectionNo ?? 9999;
+      if (ao !== bo) return ao - bo;
+      return a.section.localeCompare(b.section);
+    });
+
+    for (const group of sortedGroups) {
+      group.thoughts.sort((a, b) => {
+        const aActive = a.anchorId === activeAnchorId ? 1 : 0;
+        const bActive = b.anchorId === activeAnchorId ? 1 : 0;
+        if (aActive !== bActive) return bActive - aActive;
+
+        const aEmpty = a.content.trim() || a.summary.trim() ? 0 : 1;
+        const bEmpty = b.content.trim() || b.summary.trim() ? 0 : 1;
+        if (aEmpty !== bEmpty) return bEmpty - aEmpty;
+
+        return a.top - b.top || b.at - a.at;
+      });
+    }
+
+    return sortedGroups;
+  }, [thoughts, activeAnchorId]);
+
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
+        gap: 16,
       }}
     >
-      {thoughts.map((t) => (
-        <WideThoughtCard
-          key={t.containerKey}
-          thought={t}
-          expanded={expandedKey === t.containerKey}
-          onToggle={() =>
-            onExpand(expandedKey === t.containerKey ? null : t.containerKey)
-          }
-          onAppendVersion={onAppendVersion}
-        />
+      {sectionGroups.map((group) => (
+        <section key={group.key}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 7,
+            }}
+          >
+            <span
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {group.sectionNo ? `${String(group.sectionNo).padStart(2, '0')} · ` : ''}{group.section}
+            </span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+            <span
+              className="t-caption2"
+              style={{ color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap', opacity: 0.7 }}
+            >
+              {group.thoughts.length}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}
+          >
+            {group.thoughts.map((t) => (
+              <WideThoughtCard
+                key={t.containerKey}
+                thought={t}
+                expanded={expandedKey === t.containerKey}
+                emphasized={activeAnchorId === t.anchorId}
+                onToggle={() =>
+                  onExpand(expandedKey === t.containerKey ? null : t.containerKey)
+                }
+                onAppendVersion={onAppendVersion}
+              />
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   );
@@ -438,17 +607,20 @@ function WideThoughtList({
 function WideThoughtCard({
   thought,
   expanded,
+  emphasized,
   onToggle,
   onAppendVersion,
 }: {
   thought: ThoughtAnchorView;
   expanded: boolean;
+  emphasized: boolean;
   onToggle: () => void;
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
 }) {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (expanded) {
@@ -459,6 +631,11 @@ function WideThoughtCard({
       return () => window.clearTimeout(t);
     }
   }, [expanded]);
+
+  useEffect(() => {
+    if (!emphasized) return;
+    cardRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [emphasized]);
 
   const save = useCallback(async () => {
     const text = draft.trim();
@@ -473,23 +650,27 @@ function WideThoughtCard({
   }, [draft, saving, thought, onAppendVersion]);
 
   const hasContent = Boolean(thought.content.trim() || thought.summary.trim());
-  const sectionNo = thought.sectionNumber
-    ? String(thought.sectionNumber).padStart(2, '0')
-    : null;
 
   return (
     <div
+      ref={cardRef}
       style={{
         borderRadius: 12,
         border: '0.5px solid var(--mat-border)',
-        background: 'var(--bg-elevated)',
-        padding: '10px 14px 12px',
+        background: emphasized
+          ? 'color-mix(in srgb, var(--accent) 4%, var(--bg-elevated))'
+          : 'var(--bg-elevated)',
+        padding: '10px 13px 11px',
         transition:
           'border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
-        borderColor: expanded
-          ? 'color-mix(in srgb, var(--accent) 30%, var(--mat-border))'
+        borderColor: emphasized
+          ? 'color-mix(in srgb, var(--accent) 26%, var(--mat-border))'
+          : expanded
+          ? 'color-mix(in srgb, var(--accent) 18%, var(--mat-border))'
           : 'var(--mat-border)',
-        boxShadow: expanded ? '0 4px 14px rgba(0,0,0,0.06)' : 'none',
+        boxShadow: emphasized
+          ? '0 6px 18px color-mix(in srgb, var(--accent) 8%, rgba(0,0,0,0.07))'
+          : expanded ? '0 3px 10px rgba(0,0,0,0.05)' : 'none',
       }}
     >
       {/* Header: section label + version count */}
@@ -512,13 +693,13 @@ function WideThoughtCard({
         <span
           className="t-caption2"
           style={{
-            color: 'var(--accent)',
+            color: hasContent ? 'var(--accent)' : 'var(--muted)',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
             fontWeight: 700,
           }}
         >
-          ◆ {sectionNo ? `${sectionNo} · ` : ''}{thought.section}
+          ◆ {hasContent ? 'woven' : 'captured'}
         </span>
         {thought.versionCount > 1 && (
           <span
@@ -555,7 +736,7 @@ function WideThoughtCard({
             lineHeight: 1.5,
             marginBottom: 8,
             paddingLeft: 10,
-            borderLeft: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+            borderLeft: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)',
             userSelect: 'text',
             WebkitUserSelect: 'text',
             cursor: 'text',
@@ -592,10 +773,10 @@ function WideThoughtCard({
             fontSize: '0.78rem',
             color: 'var(--muted)',
             fontStyle: 'italic',
-            opacity: 0.7,
+            opacity: 0.66,
           }}
         >
-          尚未延伸 — {expanded ? '写点什么…' : '点击展开'}
+          这一纬还没织完 — {expanded ? '写下你的第一版理解…' : '展开继续'}
         </div>
       )}
 
@@ -618,7 +799,7 @@ function WideThoughtCard({
             }}
             placeholder={
               thought.versionCount === 0 || !hasContent
-                ? '第一次想这个…'
+                ? '写下这一段在你心里的意思…'
                 : `追加第 v${thought.versionCount + 1} 版…`
             }
             style={{

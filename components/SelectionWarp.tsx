@@ -40,9 +40,27 @@ type Spot = {
   anchor: SourceAnchor;
 };
 
+type Intent = 'ask' | 'capture' | 'highlight';
+
 // Lower minimum for math / code selections where text might be short
 // but still meaningful (e.g. "σ(z)" = 4 chars after normalization).
 const MIN_LEN = 2;
+
+function intentFromInput({
+  metaKey,
+  ctrlKey,
+  altKey,
+  button,
+}: {
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  button?: number;
+}): Intent {
+  if (altKey || button === 2) return 'highlight';
+  if (metaKey || ctrlKey) return 'capture';
+  return 'ask';
+}
 
 function filteredChildren(prose: Element) {
   return Array.from(prose.children).filter((c) => {
@@ -91,6 +109,7 @@ export function SelectionWarp() {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [hovered, setHovered] = useState(false);
   const [tint, setTint] = useState<string>(HIGHLIGHT_TINTS[0]);
+  const [intent, setIntent] = useState<Intent>('ask');
   // Ref to the warp's outer DOM element so the document-level mouseup
   // handler can detect "this click is on me, don't recompute".
   const warpRef = useRef<HTMLDivElement>(null);
@@ -204,26 +223,32 @@ export function SelectionWarp() {
     const onPageShow = () => { defer(compute); };
     const onFocus = () => { defer(compute); };
 
-    // ⌘E capture handled natively in Swift (triggerLearn).
-    const onKeyDown = (_e: KeyboardEvent) => {};
+    const onKeyChange = (e: KeyboardEvent) => {
+      setIntent(intentFromInput(e));
+    };
+    const onWindowBlur = () => setIntent('ask');
 
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('selectionchange', onSelectionChange);
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyChange);
+    window.addEventListener('keyup', onKeyChange);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
     window.addEventListener('pageshow', onPageShow);
     window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onWindowBlur);
 
     return () => {
       timers.forEach((id) => clearTimeout(id));
       document.removeEventListener('mouseup', onMouseUp);
       document.removeEventListener('selectionchange', onSelectionChange);
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyChange);
+      window.removeEventListener('keyup', onKeyChange);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       window.removeEventListener('pageshow', onPageShow);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onWindowBlur);
     };
   }, []);
 
@@ -284,16 +309,31 @@ export function SelectionWarp() {
   const trigger = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.metaKey || e.ctrlKey) {
+    const nextIntent = intentFromInput(e);
+    if (nextIntent === 'capture') {
       // ⌘-click → capture quick path: create a thought-anchor with empty
       // content/summary (just the quote). No dialog, no AI. User elaborates
       // later in the wide state of ReviewThoughtMap.
-      void captureCurrentSelection().then(() => {
+      void captureCurrentSelection().then((captured) => {
+        if (!captured) return;
         window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
+        window.dispatchEvent(new CustomEvent('loom:capture:done', {
+          detail: {
+            anchorId: captured.anchorId,
+            quote: captured.quote,
+            reviewHint: '⌘/ 打开 Thought Map 延伸',
+            viewport: {
+              x: spot.left,
+              y: spot.top,
+              height: spot.height,
+            },
+          },
+        }));
       });
       setSpot(null);
       setHovered(false);
-    } else if (e.altKey || e.button === 2) {
+      setIntent('ask');
+    } else if (nextIntent === 'highlight') {
       // ⌥-click or right-click → manual highlight only (no Ask)
       const text = spot.text;
       const ctx = contextFromPathname(window.location.pathname);
@@ -306,16 +346,38 @@ export function SelectionWarp() {
       window.getSelection()?.removeAllRanges();
       setSpot(null);
       setHovered(false);
+      setIntent('ask');
     } else {
       ask(e as unknown as React.MouseEvent);
+      setIntent('ask');
     }
   };
+
+  const actionLabel = intent === 'capture'
+    ? 'capture'
+    : intent === 'highlight'
+      ? 'highlight'
+      : 'ask';
+  const actionHint = intent === 'capture'
+    ? '⌘ click'
+    : intent === 'highlight'
+      ? '⌥ click'
+      : 'click';
+  const threadColor = intent === 'capture'
+    ? 'var(--tint-indigo)'
+    : intent === 'highlight'
+      ? tint
+      : 'var(--accent)';
+  const showLabel = hovered || intent !== 'ask';
 
   return (
     <div
       ref={warpRef}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => {
+        setHovered(false);
+        if (intent === 'ask') return;
+      }}
       onPointerDown={trigger}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -323,8 +385,8 @@ export function SelectionWarp() {
         cycleTint(e);
         highlight(e);
       }}
-      aria-label="Ask AI about this selection"
-      title="Click → ask AI    ⌘-click → capture    ⌥-click → highlight    (⌘⇧A anywhere)"
+      aria-label={`${actionLabel} this selection`}
+      title="click → ask AI · ⌘ click → capture · ⌥ click → highlight · ⌘⇧A anywhere"
       style={{
         position: 'absolute',
         top: spot.top,
@@ -345,16 +407,39 @@ export function SelectionWarp() {
         background: 'transparent',
       }}
     >
+      {showLabel && (
+        <div
+          className="material-thick t-caption2"
+          style={{
+            position: 'absolute',
+            left: 24,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            padding: '3px 8px',
+            borderRadius: 999,
+            color: threadColor,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            boxShadow: 'var(--shadow-1)',
+          }}
+        >
+          {actionLabel} · {actionHint}
+        </div>
+      )}
       <span
         aria-hidden
         style={{
           display: 'block',
-          width: hovered ? 3 : 1.5,
+          width: hovered || intent !== 'ask' ? 3 : 1.5,
           height: '100%',
-          background: hovered ? 'var(--accent)' : tint,
-          opacity: hovered ? 1 : 0.6,
+          background: threadColor,
+          opacity: hovered || intent !== 'ask' ? 1 : 0.6,
           borderRadius: 2,
-          boxShadow: hovered ? `0 0 12px color-mix(in srgb, var(--accent) 35%, transparent)` : 'none',
+          boxShadow: hovered || intent !== 'ask'
+            ? `0 0 12px color-mix(in srgb, ${threadColor} 35%, transparent)`
+            : 'none',
           transition: 'opacity 0.12s var(--ease), box-shadow 0.12s var(--ease), background 0.12s var(--ease), width 0.12s var(--ease)',
           flexShrink: 0,
         }}

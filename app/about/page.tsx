@@ -213,10 +213,10 @@ export default function AboutPage() {
 
       <h3>How Loom supports each transition</h3>
       <dl style={{ margin: '1rem 0' }}>
-        <DLRow word="Micro → Meso"    def="⌘E capture: write what a passage means. Your thought appears in the thought map beside the document." />
+        <DLRow word="Micro → Meso"    def="Capture a passage with ⌘⇧A or ⌘-click on the warp. A thought-anchor appears beside the source without interrupting reading." />
         <DLRow word="Meso → Macro"    def="⌘/ expands the thought map: see all your captures for the entire document. Identify gaps — sections with no captures." />
         <DLRow word="Macro → Micro"   def="Click any capture in the thought map → the document scrolls to the source passage and highlights it. Zoom back in." />
-        <DLRow word="Micro → Rehearsal" def="⌘E with no selection: the document disappears behind frosted glass. Write from memory. The friction of not seeing the source IS the learning." />
+        <DLRow word="Micro → Rehearsal" def="Open Rehearsal from ⌘P when you want to write from memory. The source falls away; the friction of recall IS the learning." />
         <DLRow word="Micro ↔ Meta"    def="Active Retrieval: while reading document B, a blue dot appears when a passage is semantically similar to a note you made on document A. Cross-document connections surface automatically." />
       </dl>
 
@@ -239,7 +239,7 @@ export default function AboutPage() {
         <li>
           <strong>You are the author, always</strong> — every piece of
           content in Loom is yours to edit. AI summaries, exam answers,
-          rehearsal transforms, capture prompts — all are drafts until you
+          rehearsal transforms, capture whispers — all are drafts until you
           say otherwise. AI is the second weaver, never the first. You can
           rewrite, override, or discard anything the AI produces. The edit
           is append-only: your version supersedes the AI&rsquo;s, but the

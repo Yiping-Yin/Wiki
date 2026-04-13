@@ -146,15 +146,16 @@ export function buildAnchorFromCurrentSelection():
 
 /**
  * Fire-and-forget: capture the current selection as a thought-anchor,
- * append to the doc's reading trace, clear the selection. Returns true on
- * success, false on no-op.
+ * append to the doc's reading trace, clear the selection.
+ *
+ * Returns the captured anchor metadata on success, null on no-op.
  */
-export async function captureCurrentSelection(): Promise<boolean> {
+export async function captureCurrentSelection(): Promise<{ anchorId: string; quote: string } | null> {
   const result = buildAnchorFromCurrentSelection();
-  if (!result) return false;
+  if (!result) return null;
 
   const ctx = contextFromPathname(window.location.pathname);
-  if (ctx.isFree || !ctx.docId) return false;
+  if (ctx.isFree || !ctx.docId) return null;
 
   await appendEventForDoc(
     { docId: ctx.docId, href: ctx.href, sourceTitle: ctx.sourceTitle },
@@ -166,5 +167,5 @@ export async function captureCurrentSelection(): Promise<boolean> {
   // appear in the margin at the passage's y.
   window.getSelection()?.removeAllRanges();
 
-  return true;
+  return { anchorId: result.event.anchorId, quote: result.text };
 }

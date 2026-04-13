@@ -4,31 +4,22 @@ import { Sidebar } from '../components/Sidebar';
 import { CopyButtonInjector } from '../components/CopyButton';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
-import { ReadingMode } from '../components/ReadingMode';
 import { QuickSwitcher } from '../components/QuickSwitcher';
 import { DropZone } from '../components/DropZone';
-import { HighlightOverlay } from '../components/HighlightOverlay';
 import { SWRegister } from '../components/SWRegister';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { ToastHost } from '../components/Toast';
 import { TraceMigrator } from '../components/TraceMigrator';
-import { ChatFocus } from '../components/ChatFocus';
-import { ReviewMode } from '../components/CoworkSplit';
-import { LoomCursor } from '../components/LoomCursor';
-import { SelectionWarp } from '../components/SelectionWarp';
 import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
 import { RehearsalOverlay } from '../components/RehearsalOverlay';
 import { ExaminerOverlay } from '../components/ExaminerOverlay';
-import { CapturePrompt } from '../components/CapturePrompt';
 import { IngestionOverlay } from '../components/IngestionOverlay';
 import { RecursingOverlay } from '../components/RecursingOverlay';
 import { KeyboardHelpOverlay } from '../components/unified/KeyboardHelpOverlay';
 import { ExportAction } from '../components/ExportAction';
-import { FirstTimeHint } from '../components/FirstTimeHint';
-import { ScrollDirection } from '../components/ScrollDirection';
 import { CrystallizeListener } from '../components/CrystallizeListener';
-import { ActiveRetrieval } from '../components/ActiveRetrieval';
+import { PageScopedChrome } from '../components/PageScopedChrome';
 
 
 export const metadata = {
@@ -79,31 +70,22 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
         <CopyButtonInjector />
-        <HighlightOverlay />
         <SWRegister />
         <SettingsPanel />
         <ToastHost />
         <TraceMigrator />
-        <ChatFocus />
-        <ReviewMode />
-        <LoomCursor />
-        <SelectionWarp />
         <KeyboardShortcuts />
         <LinkPreview />
-        <ReadingMode />
         <QuickSwitcher />
         <DropZone />
-        <CapturePrompt />
+        <PageScopedChrome />
         <RehearsalOverlay />
         <ExaminerOverlay />
         <IngestionOverlay />
         <RecursingOverlay />
         <KeyboardHelpOverlay />
         <ExportAction />
-        <FirstTimeHint />
-        <ScrollDirection />
         <CrystallizeListener />
-        <ActiveRetrieval />
       </body>
     </html>
   );
