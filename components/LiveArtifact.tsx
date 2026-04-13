@@ -277,7 +277,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                   cursor: 'pointer',
                 }}
               >
-                Open Kesi
+                Open this panel in Kesi
               </button>
               <button
                 type="button"
