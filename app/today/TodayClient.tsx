@@ -222,6 +222,9 @@ export function TodayClient({
   if (!mounted) return null;
   if (surfaces.length === 0) return null;
 
+  const focusSurface = surfaces[0] ?? null;
+  const focusId = focusSurface?.id ?? null;
+
   const openNext = (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => {
     if (next === 'source') {
       router.push(surface.href);
@@ -250,39 +253,143 @@ export function TodayClient({
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
-      {captureNext.length > 0 && (
+      {focusSurface && (
+        <section
+          className="material-thick"
+          style={{
+            padding: '1rem 1.05rem 1.05rem',
+            borderRadius: 'var(--r-3)',
+            marginBottom: 20,
+            boxShadow: 'var(--shadow-1)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
+            <span
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+              }}
+            >
+              Keep moving
+            </span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+            <LearningStatusInline status={focusSurface.learning} compact />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div
+                style={{
+                  fontFamily: 'var(--display)',
+                  fontSize: '1.18rem',
+                  fontWeight: 650,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.25,
+                  marginBottom: 6,
+                }}
+              >
+                {focusSurface.title}
+              </div>
+
+              <div
+                className="t-caption2"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  color: 'var(--muted)',
+                  letterSpacing: '0.04em',
+                  marginBottom: 8,
+                }}
+              >
+                <span>{kindLabel(focusSurface.kind)}</span>
+                <span aria-hidden>·</span>
+                <span>{timeOfDay(focusSurface.touchedAt)}</span>
+                <span aria-hidden>·</span>
+                <span>{focusSurface.learning.anchorCount} stitches</span>
+                <span aria-hidden>·</span>
+                <span>{todayPrimaryActionLabel(focusSurface.learning.nextAction)}</span>
+              </div>
+
+              <div
+                style={{
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.55,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {focusSurface.latestSummary || focusSurface.latestQuote || focusSurface.preview || 'Pick up the weave you left warmest.'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (focusSurface.learning.nextAction === 'refresh') openRefresh(focusSurface);
+                  else if (focusSurface.learning.nextAction === 'rehearse') openNext(focusSurface, 'rehearsal');
+                  else if (focusSurface.learning.nextAction === 'examine') openNext(focusSurface, 'examiner');
+                  else if (focusSurface.learning.nextAction === 'capture') openNext(focusSurface, 'source');
+                  else openNext(focusSurface, 'review');
+                }}
+                style={todayActionStyle(true)}
+              >
+                {todayPrimaryActionLabel(focusSurface.learning.nextAction)}
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(focusSurface.href)}
+                style={todayActionStyle(false)}
+              >
+                Source
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {captureNext.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Open">
-          <ScheduleList items={captureNext} next="source" cta="Open source" onOpen={openNext} />
+          <ScheduleList items={captureNext.filter((surface) => surface.id !== focusId)} next="source" cta="Open source" onOpen={openNext} />
         </Block>
       )}
 
-      {rehearseNext.length > 0 && (
+      {rehearseNext.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Rehearsal">
-          <ScheduleList items={rehearseNext} next="rehearsal" cta="Open rehearsal" onOpen={openNext} />
+          <ScheduleList items={rehearseNext.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Open rehearsal" onOpen={openNext} />
         </Block>
       )}
 
-      {weakSpots.length > 0 && (
+      {weakSpots.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Again">
-          <ScheduleList items={weakSpots} next="rehearsal" cta="Rehearse again" onOpen={openNext} />
+          <ScheduleList items={weakSpots.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Rehearse again" onOpen={openNext} />
         </Block>
       )}
 
-      {examineNext.length > 0 && (
+      {examineNext.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Verify">
-          <ScheduleList items={examineNext} next="examiner" cta="Open examiner" onOpen={openNext} />
+          <ScheduleList items={examineNext.filter((surface) => surface.id !== focusId)} next="examiner" cta="Open examiner" onOpen={openNext} />
         </Block>
       )}
 
-      {refreshNext.length > 0 && (
+      {refreshNext.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Refresh">
-          <ScheduleList items={refreshNext} next="review" cta="Refresh in review" onOpen={() => {}} onPrimary={openRefresh} />
+          <ScheduleList items={refreshNext.filter((surface) => surface.id !== focusId)} next="review" cta="Refresh in review" onOpen={() => {}} onPrimary={openRefresh} />
         </Block>
       )}
 
-      {revisit.length > 0 && (
+      {revisit.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Return">
-          <ScheduleList items={revisit} next="review" cta="Open review" onOpen={openNext} />
+          <ScheduleList items={revisit.filter((surface) => surface.id !== focusId)} next="review" cta="Open review" onOpen={openNext} />
         </Block>
       )}
 
@@ -443,6 +550,38 @@ function timeOfDay(ts: number): string {
   const h = d.getHours();
   const m = d.getMinutes();
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
+function todayActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
+    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
+    color: primary ? 'var(--accent)' : 'var(--fg)',
+    borderRadius: 999,
+    padding: '0.52rem 0.82rem',
+    fontSize: '0.82rem',
+    fontWeight: 650,
+    letterSpacing: '-0.01em',
+    lineHeight: 1,
+    cursor: 'pointer',
+    boxShadow: primary ? 'var(--shadow-1)' : 'none',
+  };
+}
+
+function todayPrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  switch (nextAction) {
+    case 'refresh':
+      return 'Refresh';
+    case 'rehearse':
+      return 'Rehearsal';
+    case 'examine':
+      return 'Examiner';
+    case 'capture':
+      return 'Open';
+    default:
+      return 'Review';
+  }
 }
 
 /**
