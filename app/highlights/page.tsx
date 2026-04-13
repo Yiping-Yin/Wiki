@@ -115,8 +115,6 @@ export default function HighlightsPage() {
   if (filtered.length === 0) return null;
 
   const focus = filtered[0] ?? null;
-  const focusKesiHref = focus ? `/kesi?focus=${encodeURIComponent(focus.docId)}` : '/kesi';
-  const focusRelationsHref = focus ? `/graph?focus=${encodeURIComponent(focus.docId)}` : '/graph';
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
@@ -141,7 +139,7 @@ export default function HighlightsPage() {
       {focus && (
         <section
           style={{
-            padding: '0.1rem 0 1rem',
+            padding: '0.1rem 0 0.8rem',
             marginBottom: 20,
             borderBottom: '0.5px solid var(--mat-border)',
           }}
@@ -211,13 +209,7 @@ export default function HighlightsPage() {
 
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
               <Link href={focus.href} style={highlightActionStyle()}>
-                Source
-              </Link>
-              <Link href={focusKesiHref} style={highlightActionStyle()}>
-                Kesi
-              </Link>
-              <Link href={focusRelationsHref} style={highlightActionStyle()}>
-                Relations
+                Return to source
               </Link>
             </div>
           </div>
