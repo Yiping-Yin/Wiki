@@ -1,7 +1,4 @@
-import Link from 'next/link';
-import { getAllDocs, getKnowledgeCategories } from '../../lib/knowledge-store';
-import { KesiSwatch } from '../../components/KesiSwatch';
-import { KnowledgeHomeClient } from './KnowledgeHomeClient';
+import { getKnowledgeCategories } from '../../lib/knowledge-store';
 import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
 
 export const metadata = { title: 'Your Kesi · Loom' };
@@ -37,13 +34,10 @@ function groupTop(cats: Awaited<ReturnType<typeof getKnowledgeCategories>>) {
 }
 
 export default async function KnowledgeHome() {
-  const [knowledgeCategories, allDocs] = await Promise.all([
-    getKnowledgeCategories(),
-    getAllDocs(),
-  ]);
+  const knowledgeCategories = await getKnowledgeCategories();
   const groups = groupTop(knowledgeCategories);
 
-  const clientGroups = groups.map((group) => ({
+  const staticGroups = groups.map((group) => ({
     label: group.label,
     count: group.count,
     items: group.items.map((category) => ({
@@ -51,11 +45,8 @@ export default async function KnowledgeHome() {
       label: category.label.replace(/^[^·]+·\s*/, ''),
       count: category.count,
       weeks: category.subs.filter((s) => s.label).length,
-      docIds: allDocs
-        .filter((doc) => doc.categorySlug === category.slug)
-        .map((doc) => `know/${doc.id}`),
     })),
   }));
 
-  return <KnowledgeHomeClient groups={clientGroups} />;
+  return <KnowledgeHomeStatic groups={staticGroups} />;
 }

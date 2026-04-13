@@ -12,7 +12,6 @@ export function KnowledgeHomeStatic({
       label: string;
       count: number;
       weeks: number;
-      detail?: string | null;
     }>;
   }>;
 }) {
@@ -49,7 +48,6 @@ export function KnowledgeHomeStatic({
                 label={c.label}
                 count={c.count}
                 weeks={c.weeks}
-                detail={c.detail}
               />
             ))}
           </div>
@@ -60,9 +58,9 @@ export function KnowledgeHomeStatic({
 }
 
 function CollectionCard({
-  slug, label, count, weeks, detail,
+  slug, label, count, weeks,
 }: {
-  slug: string; label: string; count: number; weeks: number; detail?: string | null;
+  slug: string; label: string; count: number; weeks: number;
 }) {
   return (
     <Link
@@ -92,19 +90,6 @@ function CollectionCard({
           {count} {count === 1 ? 'doc' : 'docs'}
           {weeks > 0 && ` · ${weeks} weeks`}
         </div>
-        {detail ? (
-          <div
-            className="t-caption2"
-            style={{
-              color: 'var(--muted)',
-              marginTop: 4,
-              lineHeight: 1.5,
-              letterSpacing: '0.04em',
-            }}
-          >
-            {detail}
-          </div>
-        ) : null}
       </div>
     </Link>
   );

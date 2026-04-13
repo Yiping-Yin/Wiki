@@ -384,11 +384,20 @@ export default function GraphPage() {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => router.push(focusPanel.href)} style={focusActionStyle(true)}>
+              <div
+                className="t-caption2"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  marginTop: 2,
+                }}
+              >
+                <button type="button" onClick={() => router.push(focusPanel.href)} style={focusLinkStyle}>
                   Open source
                 </button>
-                <button type="button" onClick={() => router.push('/kesi')} style={focusActionStyle(false)}>
+                <button type="button" onClick={() => router.push('/kesi')} style={focusLinkStyle}>
                   Back to Kesi
                 </button>
               </div>
@@ -433,20 +442,3 @@ const focusLinkStyle = {
   padding: 0,
   cursor: 'pointer',
 };
-
-function focusActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
-    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
-    color: primary ? 'var(--accent)' : 'var(--fg)',
-    borderRadius: 999,
-    padding: '0.48rem 0.78rem',
-    fontSize: '0.78rem',
-    fontWeight: 650,
-    letterSpacing: '-0.01em',
-    lineHeight: 1,
-    cursor: 'pointer',
-    boxShadow: primary ? 'var(--shadow-1)' : 'none',
-  };
-}

@@ -13,9 +13,6 @@
  */
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { useHistory } from '../../lib/use-history';
-import { useAllTraces, type Trace } from '../../lib/trace';
-import { summarizeLearningSurface } from '../../lib/learning-status';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -24,10 +21,6 @@ type DocCard = {
 };
 type Category = { slug: string; label: string; count: number; docs: DocCard[] };
 type LLMSection = { section: string; chapters: { slug: string; title: string }[] };
-
-function docIdForCategoryDoc(id: string) {
-  return `know/${id}`;
-}
 
 function groupTop(cats: Category[]) {
   const groups = new Map<string, Category[]>();
@@ -44,10 +37,6 @@ function groupTop(cats: Category[]) {
       items: items.sort((a, b) => a.label.localeCompare(b.label)),
     }))
     .sort((a, b) => b.count - a.count);
-}
-
-function displayLabel(label: string) {
-  return label.replace(/^[^·]+·\s*/, '');
 }
 
 function categoryPreview(category: Category) {
@@ -89,56 +78,13 @@ export function BrowseClient({
   totalDocs: number;
 }) {
   const [query, setQuery] = useState('');
-  const [history] = useHistory();
-  const { traces } = useAllTraces();
   const normalizedQuery = query.trim().toLowerCase();
-
-  const viewedByDocId = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const entry of history) {
-      map.set(entry.id, Math.max(map.get(entry.id) ?? 0, entry.viewedAt));
-    }
-    return map;
-  }, [history]);
-
-  const tracesByDocId = useMemo(() => {
-    const map = new Map<string, Trace[]>();
-    for (const trace of traces) {
-      if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
-      const existing = map.get(trace.source.docId) ?? [];
-      existing.push(trace);
-      map.set(trace.source.docId, existing);
-    }
-    return map;
-  }, [traces]);
 
   const filteredCategories = useMemo(() => {
     const base = categories.filter((category) => category.docs.length > 0);
     if (!normalizedQuery) return base;
     return base.filter((category) => matchesCategory(category, normalizedQuery));
   }, [categories, normalizedQuery]);
-
-  const categoryProgress = useMemo(() => {
-    const map = new Map<string, { touched: number; crystallized: number; examined: number; stale: number }>();
-    for (const category of categories) {
-      let touched = 0;
-      let crystallized = 0;
-      let examined = 0;
-      let stale = 0;
-      for (const doc of category.docs) {
-        const docId = docIdForCategoryDoc(doc.id);
-        const viewedAt = viewedByDocId.get(docId) ?? 0;
-        const traceSet = tracesByDocId.get(docId) ?? [];
-        const learning = summarizeLearningSurface(traceSet, viewedAt);
-        if (learning.opened) touched += 1;
-        if (learning.crystallized) crystallized += 1;
-        if (learning.examinerCount > 0) examined += 1;
-        if (learning.opened && learning.recency === 'stale') stale += 1;
-      }
-      map.set(category.slug, { touched, crystallized, examined, stale });
-    }
-    return map;
-  }, [categories, tracesByDocId, viewedByDocId]);
 
   const filteredSections = useMemo(() => {
     if (!normalizedQuery) return llmSections;
