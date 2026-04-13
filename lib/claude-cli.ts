@@ -123,7 +123,7 @@ export async function runCli(prompt: string, opts: {
           return;
         }
         const detail = (err || out).slice(0, 500);
-        if ((opts.allowFallback ?? true) && isAuthFailure(detail)) {
+        if ((opts.allowFallback ?? true) && shouldFallback(cli, detail)) {
           const fallbackCli = otherCli(cli);
           try {
             const fallback = await runCli(prompt, { ...opts, cli: fallbackCli, allowFallback: false });
@@ -171,7 +171,21 @@ export function isAuthFailure(text: string): boolean {
     || lower.includes('invalid authentication credentials')
     || lower.includes('invalid_token')
     || lower.includes('missing or invalid access token')
+    || lower.includes('missing bearer or basic authentication')
+    || lower.includes('unauthorized')
     || lower.includes('authrequired');
+}
+
+export function shouldFallback(cli: CliKind, detail: string): boolean {
+  if (isAuthFailure(detail)) return true;
+  const lower = detail.toLowerCase();
+  if (cli === 'codex') {
+    return lower.includes('failed to connect to websocket')
+      || lower.includes('internal server error')
+      || lower.includes('reading additional input from stdin')
+      || lower.includes('unexpected status 401');
+  }
+  return false;
 }
 
 export function explainCliFailure(cli: CliKind, detail: string, fallbackCli?: CliKind, fallbackDetail?: string): string {
