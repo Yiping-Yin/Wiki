@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
@@ -29,6 +32,13 @@ type RelatedPanel = {
 type DirectedRelatedPanel = RelatedPanel & {
   direction: 'incoming' | 'outgoing';
 };
+
+function primaryActionLabel(nextAction: ReturnType<typeof summarizeLearningSurface>['nextAction']) {
+  if (nextAction === 'refresh') return 'Refresh';
+  if (nextAction === 'rehearse') return 'Rehearsal';
+  if (nextAction === 'examine') return 'Examiner';
+  return 'Review';
+}
 
 function extractMarkdownLinkUrls(content: string): string[] {
   if (!content) return [];
@@ -410,6 +420,56 @@ export default function GraphPage() {
     window.setTimeout(() => setCopied(false), 1200);
   };
 
+  const openReview = (panel: PanelNode) => {
+    const payload: ReviewResumePayload = {
+      href: panel.href,
+      anchorId: null,
+    };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openRefresh = (panel: PanelNode) => {
+    const reviewPayload: ReviewResumePayload = {
+      href: panel.href,
+      anchorId: null,
+    };
+    const refreshPayload: RefreshResumePayload = {
+      href: panel.href,
+      source: 'graph',
+    };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openOverlay = (panel: PanelNode, overlay: OverlayResumePayload['overlay']) => {
+    const payload: OverlayResumePayload = {
+      href: panel.href,
+      overlay,
+    };
+    try {
+      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openPrimaryAction = (panel: PanelNode) => {
+    if (panel.learning.nextAction === 'refresh') {
+      openRefresh(panel);
+    } else if (panel.learning.nextAction === 'rehearse') {
+      openOverlay(panel, 'rehearsal');
+    } else if (panel.learning.nextAction === 'examine') {
+      openOverlay(panel, 'examiner');
+    } else {
+      openReview(panel);
+    }
+  };
+
   if (panelCount === 0) return null;
 
   return (
@@ -655,6 +715,9 @@ export default function GraphPage() {
               >
                 <button type="button" onClick={() => router.push(focusPanel.href)} style={focusLinkStyle}>
                   Open this source
+                </button>
+                <button type="button" onClick={() => openPrimaryAction(focusPanel)} style={focusLinkStyle}>
+                  {primaryActionLabel(focusPanel.learning.nextAction)}
                 </button>
                 <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(focusPanel.docId)}`)} style={focusLinkStyle}>
                   Open this panel in Kesi
