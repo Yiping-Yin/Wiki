@@ -592,7 +592,6 @@ export function KesiView() {
                 {focusPanel ? 'Focused panel' : 'Return to weave'}
               </span>
               <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-              <LearningStatusInline status={returnPanel.learning} compact />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
@@ -619,14 +618,12 @@ export function KesiView() {
                     flexWrap: 'wrap',
                     color: 'var(--muted)',
                     letterSpacing: '0.04em',
-                    marginBottom: 8,
-                  }}
-                >
-                  <span>{returnPanel.family}</span>
-                  <span aria-hidden>·</span>
-                  <span>{formatWhen(returnPanel.crystallizedAt)}</span>
-                  <span aria-hidden>·</span>
-                  <span>{returnPanel.stitches} stitches</span>
+                  marginBottom: 8,
+                }}
+              >
+                <span>{returnPanel.family}</span>
+                <span aria-hidden>·</span>
+                <span>{formatWhen(returnPanel.crystallizedAt)}</span>
                   {(() => {
                     const relation = relationCounts.get(returnPanel.docId);
                     if (!relation || relation.incoming + relation.outgoing === 0) return null;
@@ -767,8 +764,6 @@ export function KesiView() {
                       <span>{panel.family}</span>
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.crystallizedAt)}</span>
-                      <span aria-hidden>·</span>
-                      <span>touched {Math.max(1, Math.round(panel.learning.daysSinceTouch))}d ago</span>
                       {(() => {
                         const relation = relationCounts.get(panel.docId);
                         if (!relation || relation.incoming + relation.outgoing === 0) return null;
@@ -1155,16 +1150,6 @@ export function KesiView() {
                           <span>{panel.collectionLabel}</span>
                         </>
                       )}
-                      {panel.summary && (
-                        <>
-                          <span aria-hidden>·</span>
-                          <span>finished</span>
-                        </>
-                      )}
-                    </div>
-
-                    <div style={{ marginBottom: 8 }}>
-                      <LearningStatusInline status={panel.learning} compact />
                     </div>
 
                     <div
