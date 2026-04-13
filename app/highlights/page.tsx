@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useAllTraces, useRemoveEvents } from '../../lib/trace';
+import { useAllTraces } from '../../lib/trace';
 
 type Hl = { text: string; tint: string; at: number };
 type DocHls = {
@@ -60,7 +60,6 @@ export default function HighlightsPage() {
   const [mounted, setMounted] = useState(false);
   const [indexDocs, setIndexDocs] = useState<IndexDoc[]>([]);
   const { traces } = useAllTraces();
-  const removeEvents = useRemoveEvents();
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -71,21 +70,37 @@ export default function HighlightsPage() {
   const filtered = useMemo(() => {
     const byId = new Map<string, IndexDoc>();
     for (const d of indexDocs) byId.set(d.id, d);
-    const out: (DocHls & { traceId: string })[] = [];
-    for (const t of traces) {
-      if (t.kind !== 'reading' || t.parentId || !t.source?.docId) continue;
-      const highlights = t.events
+    const byDoc = new Map<string, DocHls>();
+    for (const trace of traces) {
+      if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
+      const highlights = trace.events
         .filter((e): e is Extract<typeof e, { kind: 'highlight' }> => e.kind === 'highlight')
-        .map((e) => ({ text: e.text, tint: e.tint, at: e.at }))
-        .sort((a, b) => b.at - a.at);
+        .map((e) => ({ text: e.text, tint: e.tint, at: e.at }));
       if (highlights.length === 0) continue;
-      const meta = byId.get(t.source.docId);
-      out.push({
-        traceId: t.id,
-        docId: t.source.docId,
-        href: meta?.href ?? inferHrefFromId(t.source.docId),
-        title: meta?.title ?? t.source.sourceTitle ?? t.source.docId,
-        highlights,
+      const meta = byId.get(trace.source.docId);
+      const existing = byDoc.get(trace.source.docId);
+      if (existing) {
+        existing.highlights.push(...highlights);
+        continue;
+      }
+      byDoc.set(trace.source.docId, {
+        docId: trace.source.docId,
+        href: meta?.href ?? inferHrefFromId(trace.source.docId),
+        title: meta?.title ?? trace.source.sourceTitle ?? trace.source.docId,
+        highlights: [...highlights],
+      });
+    }
+    const out = Array.from(byDoc.values()).map((doc) => ({
+      ...doc,
+      highlights: doc.highlights.sort((a, b) => b.at - a.at),
+    }));
+    for (const doc of out) {
+      const seen = new Set<string>();
+      doc.highlights = doc.highlights.filter((highlight) => {
+        const key = `${highlight.text}::${highlight.at}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
       });
     }
     out.sort((a, b) => {
@@ -96,12 +111,10 @@ export default function HighlightsPage() {
     return out;
   }, [indexDocs, traces]);
 
-  const removeOne = (traceId: string, at: number) => {
-    void removeEvents(traceId, (e) => e.kind === 'highlight' && e.at === at);
-  };
-
   if (!mounted) return null;
   if (filtered.length === 0) return null;
+
+  const focus = filtered[0] ?? null;
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
@@ -123,11 +136,90 @@ export default function HighlightsPage() {
         }} />
       </div>
 
+      {focus && (
+        <section
+          className="material-thick"
+          style={{
+            padding: '1rem 1.05rem 1.05rem',
+            borderRadius: 'var(--r-3)',
+            marginBottom: 20,
+            boxShadow: 'var(--shadow-1)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
+            <span
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+              }}
+            >
+              Return to source
+            </span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div
+                style={{
+                  fontFamily: 'var(--display)',
+                  fontSize: '1.18rem',
+                  fontWeight: 650,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.25,
+                  marginBottom: 6,
+                }}
+              >
+                {focus.title}
+              </div>
+
+              <div
+                className="t-caption2"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  color: 'var(--muted)',
+                  letterSpacing: '0.04em',
+                  marginBottom: 8,
+                }}
+              >
+                <span>{focus.highlights.length} highlights</span>
+                <span aria-hidden>·</span>
+                <span>{formatWhen(focus.highlights[0]?.at ?? 0)}</span>
+              </div>
+
+              <div
+                style={{
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.55,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {focus.highlights[0]?.text}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
+              <Link href={focus.href} style={highlightActionStyle()}>
+                Source
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {filtered.map((d) => (
-        // §X · Key by traceId, not docId. Two reading traces for the same
-        // doc (e.g. legacy data where a new trace got created instead of
-        // reusing the existing one) would collide on docId.
-        <section key={d.traceId} style={{ marginBottom: '2rem' }}>
+        <section key={d.docId} style={{ marginBottom: '2rem' }}>
           <Link href={d.href} style={{
             display: 'block',
             color: 'var(--accent)',
@@ -159,27 +251,6 @@ export default function HighlightsPage() {
                   fontSize: '0.94rem',
                   lineHeight: 1.6,
                 }}>{h.text}</Link>
-                <button
-                  onClick={() => removeOne(d.traceId, h.at)}
-                  aria-label="Remove highlight"
-                  style={{
-                    background: 'transparent', border: 0, cursor: 'pointer',
-                    color: 'var(--muted)', fontSize: '0.9rem', padding: '0 4px',
-                    flexShrink: 0, alignSelf: 'flex-start',
-                    opacity: 0.4,
-                    transition: 'opacity 0.14s, color 0.14s',
-                  }}
-                  onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.opacity = '1';
-                    el.style.color = 'var(--tint-red)';
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.opacity = '0.4';
-                    el.style.color = 'var(--muted)';
-                  }}
-                >×</button>
               </li>
             ))}
           </ul>
@@ -187,4 +258,33 @@ export default function HighlightsPage() {
       ))}
     </div>
   );
+}
+
+function highlightActionStyle() {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textDecoration: 'none',
+    border: '0.5px solid color-mix(in srgb, var(--accent) 38%, var(--mat-border))',
+    background: 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))',
+    color: 'var(--accent)',
+    borderRadius: 999,
+    padding: '0.52rem 0.82rem',
+    fontSize: '0.82rem',
+    fontWeight: 650,
+    letterSpacing: '-0.01em',
+    lineHeight: 1,
+    boxShadow: 'var(--shadow-1)',
+  } as const;
+}
+
+function formatWhen(ts: number) {
+  const diff = Date.now() - ts;
+  const day = 86_400_000;
+  if (diff < day) return 'today';
+  if (diff < day * 2) return 'yesterday';
+  if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
+  if (diff < day * 30) return `${Math.floor(diff / (day * 7))}w ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
