@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { CategoryHero } from '../../../components/CategoryHero';
+import { QuietGuideCard } from '../../../components/QuietGuideCard';
 import { LearningStatusInline } from '../../../components/LearningStatusInline';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
@@ -218,90 +219,36 @@ export function CategoryLandingClient({
       />
       <h1 style={{ display: 'none' }}>{category.label}</h1>
 
-      <section style={{ marginBottom: '1.35rem' }}>
-        <div
-          className="t-caption2"
-          style={{
-            color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 700,
-            marginBottom: 8,
-          }}
-        >
-          Collection thread
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 260 }}>
-            <div
-              style={{
-                fontFamily: 'var(--display)',
-                fontSize: '1.18rem',
-                fontWeight: 650,
-                letterSpacing: '-0.02em',
-                lineHeight: 1.25,
-                marginBottom: 6,
-              }}
-            >
-              {category.label}
-            </div>
-
-            <div
-              className="t-caption2"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                flexWrap: 'wrap',
-                color: 'var(--muted)',
-                letterSpacing: '0.04em',
-                marginBottom: 8,
-              }}
-            >
-              <span>{docs.length} docs</span>
-              {category.subs.length > 0 && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{category.subs.length} weeks</span>
-                </>
-              )}
-              {continueDoc?.touchedAt ? (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{formatWhen(continueDoc.touchedAt)}</span>
-                </>
-              ) : null}
-            </div>
-
-            <div
-              style={{
-                color: 'var(--fg-secondary)',
-                fontSize: '0.9rem',
-                lineHeight: 1.55,
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-              }}
-            >
-                {continueDoc ? docSummary(continueDoc) : startDoc?.preview?.slice(0, 220) || 'Open the collection and begin weaving.'}
-              </div>
-            </div>
-
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => continueDoc ? openPrimaryAction(continueDoc) : startDoc ? router.push(startDoc.href) : null}
-              style={categoryActionStyle(true)}
-            >
-              Continue collection
-            </button>
-            <Link href={`/knowledge/${category.slug}`} style={{ ...categoryActionStyle(false), textDecoration: 'none' }}>
-              All material
-            </Link>
-          </div>
-        </div>
-      </section>
+      <QuietGuideCard
+        eyebrow="Continue collection"
+        title={category.label}
+        meta={
+          <>
+            <span>{docs.length} docs</span>
+            {category.subs.length > 0 ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{category.subs.length} weeks</span>
+              </>
+            ) : null}
+            {continueDoc?.touchedAt ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{formatWhen(continueDoc.touchedAt)}</span>
+              </>
+            ) : null}
+          </>
+        }
+        summary={continueDoc ? docSummary(continueDoc) : startDoc?.preview?.slice(0, 220) || 'Open the collection and begin weaving.'}
+        actions={[
+          {
+            label: 'Continue collection',
+            onClick: () => continueDoc ? openPrimaryAction(continueDoc) : startDoc ? router.push(startDoc.href) : null,
+            primary: true,
+          },
+          { label: 'All material', href: `/knowledge/${category.slug}` },
+        ]}
+      />
 
       {continueDocs.length > 0 && (
         <Block label="Continue">
@@ -479,19 +426,6 @@ export function CategoryLandingClient({
   );
 }
 
-function categoryActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
-    padding: 0,
-    cursor: 'pointer',
-  };
-}
 
 function Block({
   label,

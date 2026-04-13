@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { QuietGuideCard } from '../../../../components/QuietGuideCard';
 import { useHistory } from '../../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../../lib/trace';
 import type { KnowledgeCategory } from '../../../../lib/knowledge-types';
@@ -213,87 +214,33 @@ export function CollectionContextClient({
   };
 
   return (
-    <section
-      style={{
-        marginTop: '0.35rem',
-        marginBottom: '0.8rem',
-        paddingBottom: '0.7rem',
-        borderBottom: '0.5px solid var(--mat-border)',
-      }}
-    >
-      <div
-        className="t-caption2"
-        style={{
-          color: 'var(--muted)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          flexWrap: 'wrap',
-          letterSpacing: '0.04em',
-        }}
-      >
-        <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-          Collection
-        </span>
-        <span aria-hidden>·</span>
-        <Link href={`/knowledge/${category.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-          {category.label}
-        </Link>
-        <span aria-hidden>·</span>
-        <Link href={mapHref} style={{ color: 'inherit', textDecoration: 'none' }}>
-          {currentGroup?.label || 'All material'}
-        </Link>
-        <span aria-hidden>·</span>
-        <span>
-          {currentIndex + 1} / {docs.length}
-        </span>
-        {currentSurface?.touchedAt && currentSurface.state !== 'new' ? (
-          <>
-            <span aria-hidden>·</span>
-            <span>{formatWhen(currentSurface.touchedAt)}</span>
-          </>
-        ) : null}
-      </div>
-
-      <div
-        style={{
-          color: 'var(--fg-secondary)',
-          fontSize: '0.86rem',
-          lineHeight: 1.55,
-          marginTop: 6,
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-        }}
-      >
-        {continueDoc ? docSummary(continueDoc) : currentSurface ? docSummary(currentSurface) : ''}
-      </div>
-
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-        <button type="button" onClick={() => openPrimaryAction(actionDoc)} style={collectionActionStyle(true)}>
-          {continueDoc ? 'Continue collection' : 'All material'}
-        </button>
-        {continueDoc && (
-          <Link href={mapHref} style={{ ...collectionActionStyle(false), textDecoration: 'none' }}>
-            All material
+    <QuietGuideCard
+      eyebrow="Collection"
+      title={currentGroup?.label || category.label}
+      meta={
+        <>
+          <Link href={`/knowledge/${category.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+            {category.label}
           </Link>
-        )}
-      </div>
-    </section>
+          <span aria-hidden>·</span>
+          <span>{currentIndex + 1} / {docs.length}</span>
+          {currentSurface?.touchedAt && currentSurface.state !== 'new' ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{formatWhen(currentSurface.touchedAt)}</span>
+            </>
+          ) : null}
+        </>
+      }
+      summary={continueDoc ? docSummary(continueDoc) : currentSurface ? docSummary(currentSurface) : ''}
+      actions={[
+        {
+          label: continueDoc ? 'Continue collection' : 'All material',
+          onClick: () => openPrimaryAction(actionDoc),
+          primary: true,
+        },
+        ...(continueDoc ? [{ label: 'All material', href: mapHref }] : []),
+      ]}
+    />
   );
-}
-
-function collectionActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
-    padding: 0,
-    cursor: 'pointer',
-  };
 }

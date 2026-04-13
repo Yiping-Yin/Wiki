@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
@@ -204,16 +205,6 @@ export function KnowledgeHomeClient({
     router.push(activeDoc.href);
   };
 
-  const openKesi = (collection: CollectionSurface) => {
-    const docId = collection.activeDoc ? docIdFor(collection.activeDoc) : null;
-    router.push(docId ? `/kesi?focus=${encodeURIComponent(docId)}` : '/kesi');
-  };
-
-  const openRelations = (collection: CollectionSurface) => {
-    const docId = collection.activeDoc ? docIdFor(collection.activeDoc) : null;
-    router.push(docId ? `/graph?focus=${encodeURIComponent(docId)}` : '/graph');
-  };
-
   const previewText = (collection: CollectionSurface) => {
     const activeDoc = collection.activeDoc;
     if (!activeDoc) return 'Open the collection and begin weaving.';
@@ -223,113 +214,35 @@ export function KnowledgeHomeClient({
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       {focusCollection && (
-        <section
-          style={{
-            padding: '0.1rem 0 0.8rem',
-            marginBottom: 20,
-            borderBottom: '0.5px solid var(--mat-border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-            <span
-              className="t-caption2"
-              style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-              fontWeight: 700,
-              }}
-            >
-              Continue collection
-            </span>
-            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <div
-                style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: '1.18rem',
-                  fontWeight: 650,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.25,
-                  marginBottom: 6,
-                }}
-              >
-                {focusCollection.label}
-              </div>
-
-              <div
-                className="t-caption2"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  flexWrap: 'wrap',
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  marginBottom: 8,
-                }}
-              >
-                <span>{focusCollection.count} docs</span>
-                {focusCollection.weeks > 0 && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{focusCollection.weeks} weeks</span>
-                  </>
-                )}
-                {focusCollection.touchedAt > 0 && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{formatWhen(focusCollection.touchedAt)}</span>
-                  </>
-                )}
-              </div>
-
-              <div
-                style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.55,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {previewText(focusCollection)}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => openPrimaryAction(focusCollection)} style={knowledgeActionStyle(true)}>
-                Continue collection
-              </button>
-              <Link href={focusCollection.href} style={{ ...knowledgeActionStyle(false), textDecoration: 'none' }}>
-                All material
-              </Link>
-            </div>
-          </div>
-        </section>
+        <QuietGuideCard
+          eyebrow="Continue collection"
+          title={focusCollection.label}
+          meta={
+            <>
+              <span>{focusCollection.count} docs</span>
+              {focusCollection.weeks > 0 ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{focusCollection.weeks} weeks</span>
+                </>
+              ) : null}
+              {focusCollection.touchedAt > 0 ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatWhen(focusCollection.touchedAt)}</span>
+                </>
+              ) : null}
+            </>
+          }
+          summary={previewText(focusCollection)}
+          actions={[
+            { label: 'Continue collection', onClick: () => openPrimaryAction(focusCollection), primary: true },
+            { label: 'All material', href: focusCollection.href },
+          ]}
+        />
       )}
 
       <KnowledgeHomeStatic groups={groups} />
     </div>
   );
-}
-
-function knowledgeActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
-    padding: 0,
-    cursor: 'pointer',
-  };
 }
