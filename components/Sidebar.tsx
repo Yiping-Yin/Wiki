@@ -200,27 +200,16 @@ export function Sidebar() {
         </div>
         <SearchBox />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0' }}>
-          <NavLink href="/kesi" active={isActive('/kesi')}>Kesi</NavLink>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0 0.4rem' }}>
           <NavLink href="/today" active={isActive('/today')}>Today</NavLink>
-          <NavLink href="/browse" active={isActive('/browse')}>Browse</NavLink>
-          <NavLink href="/uploads" active={isActive('/uploads')}>Uploads</NavLink>
-          <NavLink href="/highlights" active={isActive('/highlights')}>Highlights</NavLink>
-          <NavLink href="/about" active={isActive('/about')}>About</NavLink>
-          <NavLink href="/help" active={isActive('/help')}>Help</NavLink>
+          <NavLink href="/knowledge" active={isActive('/knowledge')}>Knowledge</NavLink>
+          <NavLink href="/kesi" active={isActive('/kesi')}>Kesi</NavLink>
         </div>
 
         {/* Personal knowledge */}
-        <Section title={`Your Kesi · ${knowledgeTotal}`} open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
+        <Section title={`Collections · ${knowledgeTotal}`} open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
           trailing={<NewTopicButton onCreated={(href) => { setOpen(false); router.push(href); }} />}
         >
-          <Link
-            href="/knowledge"
-            onClick={() => setOpen(false)}
-            style={{ display: 'block', padding: '0.25rem 0.4rem', borderRadius: 4, fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600 }}
-          >
-            All categories
-          </Link>
           {knowledgeCategories.map((c) => (
             <CategoryRow
               key={c.slug}
@@ -229,6 +218,12 @@ export function Sidebar() {
               onNav={() => setOpen(false)}
             />
           ))}
+        </Section>
+
+        <Section title="Elsewhere" open={true} onToggle={() => {}} collapsible={false}>
+          <SubtleLink href="/browse" active={isActive('/browse')} onNav={() => setOpen(false)}>Browse</SubtleLink>
+          <SubtleLink href="/uploads" active={isActive('/uploads')} onNav={() => setOpen(false)}>Uploads</SubtleLink>
+          <SubtleLink href="/highlights" active={isActive('/highlights')} onNav={() => setOpen(false)}>Highlights</SubtleLink>
         </Section>
 
         {/* LLM reference wiki */}
@@ -273,6 +268,11 @@ export function Sidebar() {
               })}
             </div>
           ))}
+        </Section>
+
+        <Section title="Meta" open={true} onToggle={() => {}} collapsible={false}>
+          <SubtleLink href="/about" active={isActive('/about')} onNav={() => setOpen(false)}>About</SubtleLink>
+          <SubtleLink href="/help" active={isActive('/help')} onNav={() => setOpen(false)}>Help</SubtleLink>
         </Section>
 
         {/* §11, §31 — no footer chrome. The sidebar's job is navigation,
@@ -382,25 +382,83 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
   );
 }
 
-function Section({ title, open, onToggle, trailing, children }: { title: string; open: boolean; onToggle: () => void; trailing?: React.ReactNode; children: React.ReactNode }) {
+function SubtleLink({
+  href,
+  active,
+  onNav,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  onNav: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNav}
+      style={{
+        display: 'block',
+        padding: '0.18rem 0.2rem',
+        fontSize: '0.8rem',
+        color: active ? 'var(--accent)' : 'var(--muted)',
+        textDecoration: 'none',
+        fontWeight: active ? 600 : 500,
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function Section({
+  title,
+  open,
+  onToggle,
+  trailing,
+  children,
+  collapsible = true,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  trailing?: React.ReactNode;
+  children: React.ReactNode;
+  collapsible?: boolean;
+}) {
   return (
     <div style={{ marginTop: '1.2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <button
-          onClick={onToggle}
-          style={{
-            flex: 1, textAlign: 'left', background: 'transparent', border: 0,
-            color: 'var(--muted)',
-            cursor: 'pointer', padding: '0.3rem 0',
-            fontSize: '0.7rem',
-            fontWeight: 600,
-            letterSpacing: 0,
-            textTransform: 'none',
-            fontFamily: 'var(--display)',
-          }}
-        >
-          {title}
-        </button>
+        {collapsible ? (
+          <button
+            onClick={onToggle}
+            style={{
+              flex: 1, textAlign: 'left', background: 'transparent', border: 0,
+              color: 'var(--muted)',
+              cursor: 'pointer', padding: '0.3rem 0',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              letterSpacing: 0,
+              textTransform: 'none',
+              fontFamily: 'var(--display)',
+            }}
+          >
+            {title}
+          </button>
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              color: 'var(--muted)',
+              padding: '0.3rem 0',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              fontFamily: 'var(--display)',
+            }}
+          >
+            {title}
+          </div>
+        )}
         {trailing}
       </div>
       {open && <div style={{ display: 'flex', flexDirection: 'column', marginTop: 4 }}>{children}</div>}

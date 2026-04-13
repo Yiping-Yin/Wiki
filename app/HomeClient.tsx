@@ -717,7 +717,7 @@ function HomeLoom({ kesiCount }: { kesiCount: number }) {
           </Link>
         )}
         <Link
-          href="/browse"
+          href="/knowledge"
           style={{
             textDecoration: 'none',
             color: 'var(--fg-secondary)',
@@ -729,7 +729,7 @@ function HomeLoom({ kesiCount }: { kesiCount: number }) {
           }}
         >
           <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
-            Browse
+            Knowledge
           </span>
         </Link>
       </div>
