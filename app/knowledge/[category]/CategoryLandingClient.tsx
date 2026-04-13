@@ -228,57 +228,6 @@ export function CategoryLandingClient({
         </Block>
       )}
 
-      {groups.length > 1 && (
-        <Block label="Course map">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {groups.map((group, index) => (
-              <a
-                key={group.label || '_root'}
-                href={group.label ? `#${encodeURIComponent(group.label)}` : '#materials'}
-                style={{
-                  display: 'block',
-                  textDecoration: 'none',
-                  color: 'var(--fg)',
-                  padding: '0.78rem 0',
-                  borderBottom: index < groups.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                  <span
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      fontFamily: 'var(--display)',
-                      fontSize: '1rem',
-                      fontWeight: 550,
-                      letterSpacing: '-0.012em',
-                    }}
-                  >
-                    {group.label || 'Core material'}
-                  </span>
-                  <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                    {group.docs.length}
-                  </span>
-                </div>
-                <div
-                  className="t-caption2"
-                  style={{
-                    marginTop: 6,
-                    color: 'var(--muted)',
-                    lineHeight: 1.5,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {group.docs.slice(0, 3).map((doc) => doc.title).join(' · ')}
-                </div>
-              </a>
-            ))}
-          </div>
-        </Block>
-      )}
-
       <Block label="All material" id="materials">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
           {groups.map((group) => (
