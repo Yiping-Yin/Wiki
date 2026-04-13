@@ -164,7 +164,6 @@ export function CategoryLandingClient({
   }, [docs, tracesByDocId, viewedByDocId]);
 
   const continueDocs = surfaces.filter((surface) => surface.state === 'woven' || surface.state === 'opened').slice(0, 4);
-  const finishedDocs = surfaces.filter((surface) => surface.state === 'finished').slice(0, 3);
   const startDoc = docs[0] ?? null;
   const continueDoc = continueDocs[0] ?? null;
 
@@ -277,12 +276,6 @@ export function CategoryLandingClient({
               </a>
             ))}
           </div>
-        </Block>
-      )}
-
-      {finishedDocs.length > 0 && (
-        <Block label="Finished here">
-          <SurfaceList items={finishedDocs} />
         </Block>
       )}
 
