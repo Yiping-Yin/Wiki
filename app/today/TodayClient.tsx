@@ -18,6 +18,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { useHistory } from '../../lib/use-history';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
@@ -263,100 +264,32 @@ export function TodayClient({
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
       {focusSurface && (
-        <section
-          style={{
-            padding: '0.1rem 0 1rem',
-            marginBottom: 20,
-            borderBottom: '0.5px solid var(--mat-border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-            <span
-              className="t-caption2"
-              style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
-              }}
-            >
-              Keep the thread warm
-            </span>
-            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <div
-                style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: '1.18rem',
-                  fontWeight: 650,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.25,
-                  marginBottom: 6,
-                }}
-              >
-                {focusSurface.title}
-              </div>
-
-              <div
-                className="t-caption2"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  marginBottom: 8,
-                }}
-                >
-                  <span>{kindLabel(focusSurface.kind)}</span>
-                  <span aria-hidden>·</span>
-                  <span>{timeOfDay(focusSurface.touchedAt)}</span>
-              </div>
-
-              <div
-                style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.55,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {focusSurface.latestSummary || focusSurface.latestQuote || focusSurface.preview || 'Pick up the weave you left warmest.'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (focusSurface.learning.nextAction === 'refresh') openRefresh(focusSurface);
-                  else if (focusSurface.learning.nextAction === 'rehearse') openNext(focusSurface, 'rehearsal');
-                  else if (focusSurface.learning.nextAction === 'examine') openNext(focusSurface, 'examiner');
-                  else if (focusSurface.learning.nextAction === 'capture') openNext(focusSurface, 'source');
-                  else openNext(focusSurface, 'review');
-                }}
-                style={todayActionStyle(true)}
-              >
-                {todayPrimaryActionLabel(focusSurface.learning.nextAction)}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push(focusSurface.href)}
-                style={todayActionStyle(false)}
-              >
-                Open source
-              </button>
-            </div>
-          </div>
-        </section>
+        <QuietGuideCard
+          eyebrow="Keep the thread warm"
+          title={focusSurface.title}
+          meta={
+            <>
+              <span>{kindLabel(focusSurface.kind)}</span>
+              <span aria-hidden>·</span>
+              <span>{timeOfDay(focusSurface.touchedAt)}</span>
+            </>
+          }
+          summary={focusSurface.latestSummary || focusSurface.latestQuote || focusSurface.preview || 'Pick up the weave you left warmest.'}
+          actions={[
+            {
+              label: todayPrimaryActionLabel(focusSurface.learning.nextAction),
+              onClick: () => {
+                if (focusSurface.learning.nextAction === 'refresh') openRefresh(focusSurface);
+                else if (focusSurface.learning.nextAction === 'rehearse') openNext(focusSurface, 'rehearsal');
+                else if (focusSurface.learning.nextAction === 'examine') openNext(focusSurface, 'examiner');
+                else if (focusSurface.learning.nextAction === 'capture') openNext(focusSurface, 'source');
+                else openNext(focusSurface, 'review');
+              },
+              primary: true,
+            },
+            { label: 'Open source', onClick: () => router.push(focusSurface.href) },
+          ]}
+        />
       )}
 
       {captureNext.filter((surface) => surface.id !== focusId).length > 0 && (
@@ -551,23 +484,6 @@ function timeOfDay(ts: number): string {
   const h = d.getHours();
   const m = d.getMinutes();
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-}
-
-function todayActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
-    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
-    color: primary ? 'var(--accent)' : 'var(--fg)',
-    borderRadius: 999,
-    padding: '0.52rem 0.82rem',
-    fontSize: '0.82rem',
-    fontWeight: 650,
-    letterSpacing: '-0.01em',
-    lineHeight: 1,
-    cursor: 'pointer',
-    boxShadow: primary ? 'var(--shadow-1)' : 'none',
-  };
 }
 
 function todayPrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {

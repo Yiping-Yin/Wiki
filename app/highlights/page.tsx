@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { useAllTraces } from '../../lib/trace';
 
 type Hl = { text: string; tint: string; at: number };
@@ -137,81 +138,15 @@ export default function HighlightsPage() {
       </div>
 
       {focus && (
-        <section
-          style={{
-            padding: '0.1rem 0 0.8rem',
-            marginBottom: 20,
-            borderBottom: '0.5px solid var(--mat-border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-            <span
-              className="t-caption2"
-              style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
-              }}
-            >
-              Return to this passage
-            </span>
-            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <div
-                style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: '1.18rem',
-                  fontWeight: 650,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.25,
-                  marginBottom: 6,
-                }}
-              >
-                {focus.title}
-              </div>
-
-              <div
-                className="t-caption2"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  flexWrap: 'wrap',
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  marginBottom: 8,
-                }}
-              >
-                <span>{formatWhen(focus.highlights[0]?.at ?? 0)}</span>
-              </div>
-
-              <div
-                style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.55,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {focus.highlights[0]?.text}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
-              <Link href={focus.href} style={highlightActionStyle()}>
-                Return to source
-              </Link>
-            </div>
-          </div>
-        </section>
+        <QuietGuideCard
+          eyebrow="Return to this passage"
+          title={focus.title}
+          meta={<span>{formatWhen(focus.highlights[0]?.at ?? 0)}</span>}
+          summary={focus.highlights[0]?.text}
+          actions={[
+            { label: 'Return to source', href: focus.href, primary: true },
+          ]}
+        />
       )}
 
       {filtered.map((d) => (
@@ -254,25 +189,6 @@ export default function HighlightsPage() {
       ))}
     </div>
   );
-}
-
-function highlightActionStyle() {
-  return {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textDecoration: 'none',
-    border: 0,
-    borderBottom: '0.5px solid var(--accent)',
-    background: 'transparent',
-    color: 'var(--accent)',
-    borderRadius: 999,
-    padding: '0.3rem 0',
-    fontSize: '0.82rem',
-    fontWeight: 650,
-    letterSpacing: '-0.01em',
-    lineHeight: 1,
-  } as const;
 }
 
 function formatWhen(ts: number) {

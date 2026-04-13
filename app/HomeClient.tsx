@@ -15,6 +15,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { QuietGuideCard } from '../components/QuietGuideCard';
 import { LearningStatusInline } from '../components/LearningStatusInline';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
@@ -178,84 +179,16 @@ export function HomeClient(_props: unknown) {
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       {current && (
-        <section
-          style={{
-            padding: '0.1rem 0 1rem',
-            marginBottom: 18,
-            borderBottom: '0.5px solid var(--mat-border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-            <span
-              className="t-caption2"
-              style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
-              }}
-            >
-              Keep this thread warm
-            </span>
-            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <div
-                style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: '1.18rem',
-                  fontWeight: 650,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.25,
-                  marginBottom: 6,
-                }}
-              >
-                {current.title}
-              </div>
-
-              <div
-                className="t-caption2"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  marginBottom: 8,
-                }}
-                >
-                  <span>{relativeTime(current.viewedAt)}</span>
-              </div>
-
-              <div
-                style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.55,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {current.latestSummary || 'Return to the document you were shaping most recently.'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
-              <button onClick={() => openPrimaryAction(current)} style={homeActionStyle(true)}>
-                {homePrimaryActionLabel(current.learning.nextAction)}
-              </button>
-              <button onClick={() => router.push(current.href)} style={homeActionStyle(false)}>
-                Open source
-              </button>
-            </div>
-          </div>
-        </section>
+        <QuietGuideCard
+          eyebrow="Keep this thread warm"
+          title={current.title}
+          meta={<span>{relativeTime(current.viewedAt)}</span>}
+          summary={current.latestSummary || 'Return to the document you were shaping most recently.'}
+          actions={[
+            { label: homePrimaryActionLabel(current.learning.nextAction), onClick: () => openPrimaryAction(current), primary: true },
+            { label: 'Open source', onClick: () => router.push(current.href) },
+          ]}
+        />
       )}
 
       <div style={{
@@ -323,23 +256,6 @@ export function HomeClient(_props: unknown) {
       </ul>
     </div>
   );
-}
-
-function homeActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    borderRadius: 999,
-    padding: '0.3rem 0',
-    fontSize: '0.82rem',
-    fontWeight: 650,
-    letterSpacing: '-0.01em',
-    lineHeight: 1,
-    cursor: 'pointer',
-  };
 }
 
 function homePrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {

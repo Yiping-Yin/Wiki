@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { isWeak, useQuizResults } from '../../lib/use-quiz';
 
 type IndexDoc = { id: string; title: string; href: string; category: string };
@@ -84,13 +85,6 @@ export default function QuizzesPage() {
   if (items.length === 0) return null;
 
   const focus = items.find((item) => item.weak) ?? items[0];
-  const openKesi = () => {
-    router.push(`/kesi?focus=${encodeURIComponent(focus.docId)}`);
-  };
-  const openRelations = () => {
-    router.push(`/graph?focus=${encodeURIComponent(focus.docId)}`);
-  };
-
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       <div style={{
@@ -112,85 +106,25 @@ export default function QuizzesPage() {
       </div>
 
       {focus && (
-        <section
-          style={{
-            padding: '0.1rem 0 1rem',
-            marginBottom: 20,
-            borderBottom: '0.5px solid var(--mat-border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-            <span
-              className="t-caption2"
-              style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
-              }}
-            >
-              Return to this check
-            </span>
-            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <div
-                style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: '1.18rem',
-                  fontWeight: 650,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.25,
-                  marginBottom: 6,
-                }}
-              >
-                {focus.title}
-              </div>
-
-              <div
-                className="t-caption2"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  marginBottom: 8,
-                }}
-              >
-                <span>{focus.score}/{focus.total}</span>
-                <span aria-hidden>·</span>
-                <span>{formatWhen(focus.attemptedAt)}</span>
-              </div>
-
-              <div
-                style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.55,
-                }}
-              >
-                {focus.weak
-                  ? 'The last verification attempt did not settle cleanly. Return to the source and tighten the weave before testing again.'
-                  : 'You have already tested this material once. Return to the source if you want to verify that the understanding still holds.'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
-              <button
-                type="button"
-                onClick={() => router.push(focus.href)}
-                style={quizActionStyle(true)}
-              >
-                Return to source
-              </button>
-            </div>
-          </div>
-        </section>
+        <QuietGuideCard
+          eyebrow="Return to this check"
+          title={focus.title}
+          meta={
+            <>
+              <span>{focus.score}/{focus.total}</span>
+              <span aria-hidden>·</span>
+              <span>{formatWhen(focus.attemptedAt)}</span>
+            </>
+          }
+          summary={
+            focus.weak
+              ? 'The last verification attempt did not settle cleanly. Return to the source and tighten the weave before testing again.'
+              : 'You have already tested this material once. Return to the source if you want to verify that the understanding still holds.'
+          }
+          actions={[
+            { label: 'Return to source', onClick: () => router.push(focus.href), primary: true },
+          ]}
+        />
       )}
 
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -234,21 +168,4 @@ function formatWhen(ts: number) {
   if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
   if (diff < day * 30) return `${Math.floor(diff / (day * 7))}w ago`;
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function quizActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    borderRadius: 999,
-    padding: '0.3rem 0',
-    fontSize: '0.82rem',
-    fontWeight: 650,
-    letterSpacing: '-0.01em',
-    lineHeight: 1,
-    cursor: 'pointer',
-  };
 }
