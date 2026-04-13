@@ -58,8 +58,14 @@ export function RehearsalOverlay() {
 
   useEffect(() => { setActive(false); }, [pathname]);
 
-  const onSaved = useCallback(() => {
+  const onSaved = useCallback((next: 'stay' | 'examine' = 'stay') => {
     window.dispatchEvent(new CustomEvent('loom:trace:changed'));
+    if (next === 'examine') {
+      window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: 'examiner' } }));
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'examiner' } }));
+      });
+    }
   }, []);
 
   if (!mounted) return null;

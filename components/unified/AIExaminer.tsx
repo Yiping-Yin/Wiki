@@ -19,8 +19,9 @@
  *      generates a new question or marks the session complete
  *   7. User can skip ("next question") or give up ("stop")
  *
- * This is a minimal MVP — no multi-round grading, no scoring, no
- * crystallize-on-pass yet. Those come next session.
+ * This is a pragmatic loop surface — question generation, grading,
+ * crystallize-on-pass, and handoff back to review / rehearsal are all
+ * wired, but scoring/rubrics still remain intentionally light.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Note, SourceDocId } from '../../lib/note/types';
@@ -155,7 +156,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
             docId,
             docHref: docHrefFromDocId(docId),
             docTitle: docTitleFromDocId(docId),
-            content: `**Q**: ${phase.question}\n\n**A**: ${answer}\n\n**Verdict**: ${parsed.verdict === 'pass' ? '✓ Pass' : '○ Retry'}\n\n${parsed.feedback}`,
+            content: `**Q**: ${phase.question}\n\n**A**: ${answer}\n\n**Verdict**: ${parsed.verdict === 'pass' ? 'Pass' : 'Retry'}\n\n${parsed.feedback}`,
             summary: `❓ ${phase.question.slice(0, 80)}`,
             anchor: {
               target: docId,
@@ -185,6 +186,18 @@ export function AIExaminer({ docId, contextNotes }: Props) {
     setDraft('');
     void generateQuestion();
   }, [generateQuestion]);
+
+  const reviewNotes = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
+    window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
+  }, []);
+
+  const returnToRehearsal = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: 'rehearsal' } }));
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'rehearsal' } }));
+    });
+  }, []);
 
   const stop = useCallback(() => {
     setPhase({ kind: 'idle' });
@@ -400,6 +413,15 @@ export function AIExaminer({ docId, contextNotes }: Props) {
             <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
               Stop
             </button>
+            {phase.verdict === 'pass' ? (
+              <button type="button" onClick={reviewNotes} style={buttonStyle(true, 'muted')}>
+                Review notes
+              </button>
+            ) : (
+              <button type="button" onClick={returnToRehearsal} style={buttonStyle(true, 'muted')}>
+                Back to rehearsal
+              </button>
+            )}
             <button type="button" onClick={next} style={buttonStyle(true)}>
               Next question
             </button>

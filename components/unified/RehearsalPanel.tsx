@@ -9,6 +9,7 @@
  *   - ⌘K inline AI transform: select text, press ⌘K, AI converts to formal
  *     form (LaTeX / Mermaid / structured list / etc) and replaces the selection
  *   - ⌘S to save the current rehearsal as a Note (anchored to current doc)
+ *   - Save & examine: move directly into the Examiner loop on the same doc
  *   - Esc to clear the local draft without saving
  *
  * The Producing preset (lib/view/presets.ts) places this panel in the center.
@@ -31,8 +32,8 @@ const MarkdownPreview = dynamic(
 
 type Props = {
   docId: SourceDocId | null;
-  /** Called after a successful save so parent can refresh Notes list. */
-  onSaved?: () => void;
+  /** Called after a successful save so parent can refresh Notes list / continue the loop. */
+  onSaved?: (next?: 'stay' | 'examine') => void;
 };
 
 export function RehearsalPanel({ docId, onSaved }: Props) {
@@ -43,10 +44,10 @@ export function RehearsalPanel({ docId, onSaved }: Props) {
   const [bounce, setBounce] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const save = useCallback(async () => {
+  const persistDraft = useCallback(async (next: 'stay' | 'examine') => {
     if (!docId || !draft.trim() || saving) return;
     setSaving(true);
-    setStatus('Saving…');
+    setStatus(next === 'examine' ? 'Saving + opening examiner…' : 'Saving…');
     try {
       await appendRehearsal({
         docId,
@@ -55,7 +56,7 @@ export function RehearsalPanel({ docId, onSaved }: Props) {
         content: draft,
       });
       setDraft('');
-      onSaved?.();
+      onSaved?.(next);
       // Micro-bounce: the panel physically pulses to confirm save
       setBounce(true);
       setStatus(null);
@@ -66,6 +67,14 @@ export function RehearsalPanel({ docId, onSaved }: Props) {
       setSaving(false);
     }
   }, [docId, draft, saving, onSaved]);
+
+  const save = useCallback(() => {
+    void persistDraft('stay');
+  }, [persistDraft]);
+
+  const saveAndExamine = useCallback(() => {
+    void persistDraft('examine');
+  }, [persistDraft]);
 
   /**
    * ⌘K · transform the currently-selected text via AI.
@@ -207,7 +216,7 @@ export function RehearsalPanel({ docId, onSaved }: Props) {
           <strong style={{ color: 'var(--accent)' }}>Rehearsal</strong>
           {' · '}
           <span style={{ fontFamily: 'var(--mono)' }}>
-            ⌘K transform · ⌘S save · Esc clear
+            ⌘K transform · ⌘S save · Save & examine → Examiner
           </span>
         </span>
         {status && (
@@ -286,6 +295,25 @@ export function RehearsalPanel({ docId, onSaved }: Props) {
           <MarkdownPreview source={draft} />
         </div>
       )}
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={save}
+          disabled={!draft.trim() || saving || transforming}
+          style={buttonStyle(Boolean(draft.trim()) && !saving && !transforming, 'muted')}
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={saveAndExamine}
+          disabled={!draft.trim() || saving || transforming}
+          style={buttonStyle(Boolean(draft.trim()) && !saving && !transforming)}
+        >
+          Save & examine
+        </button>
+      </div>
     </div>
   );
 }
@@ -373,4 +401,24 @@ function docTitleFromDocId(docId: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function buttonStyle(enabled: boolean, variant: 'accent' | 'muted' = 'accent'): React.CSSProperties {
+  return {
+    padding: '6px 14px',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    background:
+      enabled && variant === 'accent' ? 'var(--accent)' : 'transparent',
+    color:
+      enabled && variant === 'accent'
+        ? 'var(--bg)'
+        : enabled
+          ? 'var(--fg)'
+          : 'var(--muted)',
+    border: '0.5px solid ' + (enabled && variant === 'accent' ? 'var(--accent)' : 'var(--mat-border)'),
+    borderRadius: 6,
+    cursor: enabled ? 'pointer' : 'default',
+    opacity: enabled ? 1 : 0.5,
+  };
 }
