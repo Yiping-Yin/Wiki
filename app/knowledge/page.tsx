@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { getKnowledgeCategories } from '../../lib/knowledge-store';
+import { getAllDocs, getKnowledgeCategories } from '../../lib/knowledge-store';
 import { KesiSwatch } from '../../components/KesiSwatch';
+import { KnowledgeHomeClient } from './KnowledgeHomeClient';
+import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
 
 export const metadata = { title: 'Your Kesi · Loom' };
 
@@ -35,86 +37,25 @@ function groupTop(cats: Awaited<ReturnType<typeof getKnowledgeCategories>>) {
 }
 
 export default async function KnowledgeHome() {
-  const knowledgeCategories = await getKnowledgeCategories();
+  const [knowledgeCategories, allDocs] = await Promise.all([
+    getKnowledgeCategories(),
+    getAllDocs(),
+  ]);
   const groups = groupTop(knowledgeCategories);
 
-  return (
-    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      {groups.map((g) => (
-        <section key={g.label} style={{ marginBottom: '2.6rem' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            marginBottom: 16,
-          }}>
-            <span aria-hidden style={{
-              width: 18, height: 1,
-              background: 'var(--accent)', opacity: 0.55,
-            }} />
-            <span className="t-caption2" style={{
-              color: 'var(--muted)',
-              textTransform: 'uppercase', letterSpacing: '0.10em',
-              fontWeight: 700,
-            }}>{g.label}</span>
-            <span aria-hidden style={{
-              flex: 1, height: 1, background: 'var(--mat-border)',
-            }} />
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: '0.85rem',
-          }}>
-            {g.items.map((c) => (
-              <CollectionCard
-                key={c.slug}
-                slug={c.slug}
-                label={c.label.replace(/^[^·]+·\s*/, '')}
-                count={c.count}
-                weeks={c.subs.filter((s) => s.label).length}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
+  const clientGroups = groups.map((group) => ({
+    label: group.label,
+    count: group.count,
+    items: group.items.map((category) => ({
+      slug: category.slug,
+      label: category.label.replace(/^[^·]+·\s*/, ''),
+      count: category.count,
+      weeks: category.subs.filter((s) => s.label).length,
+      docIds: allDocs
+        .filter((doc) => doc.categorySlug === category.slug)
+        .map((doc) => `know/${doc.id}`),
+    })),
+  }));
 
-function CollectionCard({
-  slug, label, count, weeks,
-}: {
-  slug: string; label: string; count: number; weeks: number;
-}) {
-  return (
-    <Link
-      href={`/knowledge/${slug}`}
-      className="loom-collection-card"
-      style={{
-        display: 'block',
-        padding: '0.7rem 0',
-        textDecoration: 'none',
-        color: 'var(--fg)',
-      }}
-    >
-      {/* The actual woven swatch — this IS the card */}
-      <KesiSwatch categorySlug={slug} height={28} />
-      <div style={{ marginTop: 10 }}>
-        <div style={{
-          color: 'var(--fg)',
-          fontFamily: 'var(--display)',
-          fontSize: '0.94rem',
-          fontWeight: 500,
-          letterSpacing: '-0.012em',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{label}</div>
-        <div className="t-caption" style={{
-          color: 'var(--muted)', marginTop: 2,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {count} {count === 1 ? 'doc' : 'docs'}
-          {weeks > 0 && ` · ${weeks} weeks`}
-        </div>
-      </div>
-    </Link>
-  );
+  return <KnowledgeHomeClient groups={clientGroups} />;
 }
