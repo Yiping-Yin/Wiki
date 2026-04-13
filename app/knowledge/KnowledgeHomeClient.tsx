@@ -266,7 +266,7 @@ export function KnowledgeHomeClient({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 6,
                   flexWrap: 'wrap',
                   color: 'var(--muted)',
                   letterSpacing: '0.04em',
@@ -274,12 +274,6 @@ export function KnowledgeHomeClient({
                 }}
               >
                 <span>{focusCollection.count} docs</span>
-                {focusCollection.activeCount > 0 && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{focusCollection.activeCount} touched</span>
-                  </>
-                )}
                 {focusCollection.weeks > 0 && (
                   <>
                     <span aria-hidden>·</span>

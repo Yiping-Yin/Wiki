@@ -251,7 +251,7 @@ export function CategoryLandingClient({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 6,
                 flexWrap: 'wrap',
                 color: 'var(--muted)',
                 letterSpacing: '0.04em',
