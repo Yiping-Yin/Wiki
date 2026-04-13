@@ -202,7 +202,7 @@ export function BrowseClient({
       return;
     }
     if (activeDoc.learning.nextAction === 'refresh') {
-      const reviewPayload: ReviewResumePayload = { href: activeDoc.href, anchorId: null };
+      const reviewPayload: ReviewResumePayload = { href: activeDoc.href, anchorId: activeDoc.learning.latestAnchorId };
       const refreshPayload: RefreshResumePayload = { href: activeDoc.href, source: 'browse' };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
@@ -223,7 +223,7 @@ export function BrowseClient({
       return;
     }
     if (activeDoc.learning.nextAction === 'revisit') {
-      const payload: ReviewResumePayload = { href: activeDoc.href, anchorId: null };
+      const payload: ReviewResumePayload = { href: activeDoc.href, anchorId: activeDoc.learning.latestAnchorId };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
       } catch {}

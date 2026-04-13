@@ -128,7 +128,7 @@ export function HomeClient(_props: unknown) {
   const current = resume[0] ?? null;
 
   const openReview = (item: ResumeItem, anchorId: string | null = null) => {
-    const payload: ReviewResumePayload = { href: item.href, anchorId };
+    const payload: ReviewResumePayload = { href: item.href, anchorId: anchorId ?? item.learning.latestAnchorId };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
     } catch {}
@@ -136,7 +136,7 @@ export function HomeClient(_props: unknown) {
   };
 
   const openRefresh = (item: ResumeItem) => {
-    const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: null };
+    const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: item.learning.latestAnchorId };
     const refreshPayload: RefreshResumePayload = { href: item.href, source: 'kesi' };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));

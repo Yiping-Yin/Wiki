@@ -196,7 +196,7 @@ export function CollectionContextClient({
   const openPrimaryAction = (surface: CollectionSurface | null) => {
     if (!surface) return;
     if (surface.learning.nextAction === 'refresh') {
-      const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
       const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'knowledge' };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
@@ -217,7 +217,7 @@ export function CollectionContextClient({
       return;
     }
     if (surface.learning.nextAction === 'revisit') {
-      const payload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      const payload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
       } catch {}

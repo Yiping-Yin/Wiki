@@ -34,6 +34,7 @@ export type LearningSurfaceSummary = LearningStatusSummary & {
   touchedAt: number;
   latestSummary: string;
   latestQuote?: string;
+  latestAnchorId: string | null;
   anchorCount: number;
   finished: boolean;
 };
@@ -167,6 +168,7 @@ export function summarizeLearningSurface(
 ): LearningSurfaceSummary {
   let latestSummary = '';
   let latestQuote = '';
+  let latestAnchorId: string | null = null;
   let latestAnchorAt = 0;
   let anchorCount = 0;
   let finished = false;
@@ -181,6 +183,7 @@ export function summarizeLearningSurface(
           latestAnchorAt = event.at;
           latestSummary = event.summary;
           latestQuote = event.quote ?? '';
+          latestAnchorId = event.anchorId;
         }
       } else if (event.kind === 'crystallize' && !event.anchorId) {
         finished = true;
@@ -193,6 +196,7 @@ export function summarizeLearningSurface(
     touchedAt,
     latestSummary,
     latestQuote: latestQuote || undefined,
+    latestAnchorId,
     anchorCount,
     finished,
   };

@@ -173,7 +173,7 @@ export function CategoryLandingClient({
 
   const openPrimaryAction = (surface: CategorySurface) => {
     if (surface.learning.nextAction === 'refresh') {
-      const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
       const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'knowledge' };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
@@ -194,7 +194,7 @@ export function CategoryLandingClient({
       return;
     }
     if (surface.learning.nextAction === 'revisit') {
-      const payload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      const payload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
       } catch {}

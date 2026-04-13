@@ -268,7 +268,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
 
   const openPrimaryAction = (item: UploadSurface) => {
     if (item.learning.nextAction === 'refresh') {
-      const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: null };
+      const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: item.learning.latestAnchorId };
       const refreshPayload: RefreshResumePayload = { href: item.href, source: 'upload' };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
@@ -289,7 +289,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       return;
     }
     if (item.learning.nextAction === 'revisit') {
-      const payload: ReviewResumePayload = { href: item.href, anchorId: null };
+      const payload: ReviewResumePayload = { href: item.href, anchorId: item.learning.latestAnchorId };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
       } catch {}
