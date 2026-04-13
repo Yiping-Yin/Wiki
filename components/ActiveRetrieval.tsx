@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { findSimilarNotes, type SimilarNote } from '../lib/note/similarity';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
 
 type Match = {
   paragraphEl: HTMLElement;
@@ -20,9 +21,55 @@ type Match = {
   top: number; // page Y position for rendering
 };
 
+type IndexDoc = { id: string; title: string; href: string };
+
 const DEBOUNCE_MS = 2000;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const THRESHOLD = 0.78;
+
+let _idxCache: IndexDoc[] | null = null;
+async function loadDocs(): Promise<IndexDoc[]> {
+  if (_idxCache) return _idxCache;
+  try {
+    const r = await fetch('/api/search-index');
+    if (!r.ok) return [];
+    const payload = await r.json();
+    const stored = payload.index?.storedFields ?? {};
+    const docIds = payload.index?.documentIds ?? {};
+    const out: IndexDoc[] = [];
+    for (const [internal, fields] of Object.entries<any>(stored)) {
+      if (!fields?.title || !fields?.href) continue;
+      out.push({
+        id: String(docIds[internal] ?? internal),
+        title: fields.title,
+        href: fields.href,
+      });
+    }
+    _idxCache = out;
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+function inferHrefFromDocId(id: string): string {
+  const w = id.match(/^wiki\/(.+)$/);
+  if (w) return `/wiki/${w[1]}`;
+  const k = id.match(/^know\/([^_]+(?:_[^_]+)*)__(.+)$/);
+  if (k) return `/knowledge/${k[1]}/${k[2]}`;
+  const u = id.match(/^upload\/(.+)$/);
+  if (u) return `/uploads/${encodeURIComponent(u[1])}`;
+  return '#';
+}
+
+function prettifyDocId(id: string): string {
+  return id
+    .replace(/^wiki\//, '')
+    .replace(/^know\//, '')
+    .replace(/^upload\//, '')
+    .replace(/__/g, ' · ')
+    .replace(/[-_]+/g, ' ');
+}
 
 export function ActiveRetrieval() {
   const pathname = usePathname();
@@ -32,8 +79,17 @@ export function ActiveRetrieval() {
     pathname.startsWith('/knowledge/') ||
     pathname.startsWith('/uploads/');
   const [matches, setMatches] = useState<Match[]>([]);
+  const [docsById, setDocsById] = useState<Map<string, IndexDoc>>(new Map());
   const cacheRef = useRef<Map<string, { results: SimilarNote[]; expiry: number }>>(new Map());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    loadDocs().then((docs) => {
+      const next = new Map<string, IndexDoc>();
+      for (const doc of docs) next.set(doc.id, doc);
+      setDocsById(next);
+    });
+  }, []);
 
   const queryParagraph = useCallback(async (el: HTMLElement) => {
     const text = (el.textContent ?? '').trim().slice(0, 500);
@@ -131,13 +187,19 @@ export function ActiveRetrieval() {
   return (
     <>
       {matches.map((m, i) => (
-        <RetrievalDot key={i} match={m} />
+        <RetrievalDot key={i} match={m} docsById={docsById} />
       ))}
     </>
   );
 }
 
-function RetrievalDot({ match }: { match: Match }) {
+function RetrievalDot({
+  match,
+  docsById,
+}: {
+  match: Match;
+  docsById: Map<string, IndexDoc>;
+}) {
   const [hovered, setHovered] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
@@ -155,6 +217,16 @@ function RetrievalDot({ match }: { match: Match }) {
       window.removeEventListener('resize', update);
     };
   }, [match.paragraphEl]);
+
+  const openReview = (result: SimilarNote) => {
+    const doc = docsById.get(result.docId);
+    const href = doc?.href ?? inferHrefFromDocId(result.docId);
+    const payload: ReviewResumePayload = { href, anchorId: null };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    window.location.href = href;
+  };
 
   return (
     <div
@@ -198,9 +270,9 @@ function RetrievalDot({ match }: { match: Match }) {
             color: 'var(--fg)',
             zIndex: 100,
           }}
-        >
+          >
           <div style={{ fontSize: '0.62rem', color: 'var(--tint-blue, #0a84ff)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 6 }}>
-            Nearby note{match.results.length > 1 ? 's' : ''}
+            Nearby panel{match.results.length > 1 ? 's' : ''}
           </div>
           {match.results.map((r, i) => (
             <div
@@ -211,11 +283,30 @@ function RetrievalDot({ match }: { match: Match }) {
               }}
             >
               <div style={{ fontSize: '0.68rem', color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
-                {r.docId.replace(/^(wiki|know)\//, '').replace(/__/g, ' · ')}
+                {(docsById.get(r.docId)?.title ?? prettifyDocId(r.docId))}
                 <span style={{ marginLeft: 6, opacity: 0.5 }}>{Math.round(r.score * 100)}%</span>
               </div>
               <div style={{ marginTop: 2, color: 'var(--fg-secondary)' }}>
                 {r.text.slice(0, 120)}{r.text.length > 120 ? '…' : ''}
+              </div>
+              <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => openReview(r)}
+                  style={{
+                    appearance: 'none',
+                    border: 0,
+                    background: 'transparent',
+                    color: 'var(--tint-blue, #0a84ff)',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    padding: 0,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Review
+                </button>
               </div>
             </div>
           ))}
