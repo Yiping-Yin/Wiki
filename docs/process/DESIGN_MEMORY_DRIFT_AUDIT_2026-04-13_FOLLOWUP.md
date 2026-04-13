@@ -182,6 +182,25 @@ Design effect:
 - new service-worker versions are picked up on the next full navigation /
   reload rather than interrupting the current session
 
+### 10. Examiner CTA and loading states quieted
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/unified/AIExaminer.tsx` no longer uses arrow-style CTA labels
+- generating / grading states now use `WeftShuttle` without explicit loading
+  copy
+- verdict labels now use plain `Pass` / `Retry`
+
+Design effect:
+
+- the examiner surface reads more like a Loom-native tool and less like a
+  generic assistant workflow
+- transient AI work is signaled more by motion than by narrated state text
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -225,5 +244,6 @@ Residual note:
 - utility-surface decorative markers reduced further
 - toast labels aligned with quieter utility grammar
 - service-worker update chrome removed from the product shell
+- examiner CTA and loading states quieted
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level

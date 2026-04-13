@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Note, SourceDocId } from '../../lib/note/types';
 import { appendNote } from '../../lib/note/store';
+import { WeftShuttle } from '../DocViewer';
 
 type Props = {
   docId: SourceDocId | null;
@@ -256,7 +257,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           >
             {contextNotes.length === 0
               ? 'Capture notes first'
-              : 'Start examiner →'}
+              : 'Start examiner'}
           </button>
         </div>
       )}
@@ -270,13 +271,9 @@ export function AIExaminer({ docId, contextNotes }: Props) {
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--muted)',
-            fontSize: '0.8rem',
-            fontStyle: 'italic',
           }}
         >
-          <span style={{ animation: 'loom-pulse 1.2s ease-in-out infinite' }}>
-            ◌ Generating a question…
-          </span>
+          <WeftShuttle width={72} />
         </div>
       )}
 
@@ -335,13 +332,9 @@ export function AIExaminer({ docId, contextNotes }: Props) {
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--muted)',
-            fontSize: '0.8rem',
-            fontStyle: 'italic',
           }}
         >
-          <span style={{ animation: 'loom-pulse 1.2s ease-in-out infinite' }}>
-            ◌ Grading your answer…
-          </span>
+          <WeftShuttle width={72} />
         </div>
       )}
 
@@ -399,7 +392,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                 marginBottom: 6,
               }}
             >
-              {phase.verdict === 'pass' ? '✓ Pass' : '○ Retry'}
+              {phase.verdict === 'pass' ? 'Pass' : 'Retry'}
             </div>
             {phase.feedback}
           </div>
@@ -408,7 +401,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
               Stop
             </button>
             <button type="button" onClick={next} style={buttonStyle(true)}>
-              Next question →
+              Next question
             </button>
           </div>
         </>
