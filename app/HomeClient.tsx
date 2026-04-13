@@ -700,16 +700,14 @@ function HomeLoom({ kesiCount }: { kesiCount: number }) {
         {kesiCount > 0 && (
           <Link
             href="/kesi"
-            className="material-thick"
             style={{
               textDecoration: 'none',
-              color: 'var(--fg)',
-              borderRadius: 999,
-              padding: '0.58rem 0.9rem',
+              color: 'var(--fg-secondary)',
+              padding: '0.34rem 0',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: 'var(--shadow-1)',
+              borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
             <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
@@ -720,16 +718,14 @@ function HomeLoom({ kesiCount }: { kesiCount: number }) {
         )}
         <Link
           href="/browse"
-          className="material-thick"
           style={{
             textDecoration: 'none',
-            color: 'var(--fg)',
-            borderRadius: 999,
-            padding: '0.58rem 0.9rem',
+            color: 'var(--fg-secondary)',
+            padding: '0.34rem 0',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            boxShadow: 'var(--shadow-1)',
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>

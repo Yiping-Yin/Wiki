@@ -302,12 +302,11 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
 
       {items.length === 0 && (
         <div
-          className="material-thick"
           style={{
-            padding: '1rem 1.1rem',
-            borderRadius: 14,
+            padding: '0.8rem 0',
             color: 'var(--muted)',
             fontStyle: 'italic',
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           Nothing has landed here yet. Add a file, then come back to continue weaving against it.
@@ -316,13 +315,12 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
 
       {items.length > 0 && surfaces.length === 0 && (
         <div
-          className="material-thick"
           style={{
-            padding: '1rem 1.1rem',
-            borderRadius: 14,
+            padding: '0.8rem 0',
             color: 'var(--muted)',
             fontStyle: 'italic',
             marginBottom: 24,
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           Nothing in uploads matches “{query}”.

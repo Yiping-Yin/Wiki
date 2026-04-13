@@ -94,19 +94,19 @@ export function RefreshCoach() {
 
   return (
     <div
-      className="material-thick"
       style={{
         position: 'fixed',
         left: 20,
         bottom: 18,
         zIndex: 820,
-        borderRadius: 18,
-        padding: '0.8rem 0.9rem',
+        padding: '0.65rem 0.8rem',
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
         maxWidth: 360,
-        boxShadow: 'var(--shadow-3)',
+        borderTop: '0.5px solid var(--mat-border)',
+        borderBottom: '0.5px solid var(--mat-border)',
+        background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

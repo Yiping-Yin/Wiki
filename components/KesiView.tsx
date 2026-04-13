@@ -1204,12 +1204,10 @@ function LoadingKesiShell() {
       </div>
 
       <div
-        className="material-thick"
         style={{
-          padding: '1rem 1.05rem 1.05rem',
-          borderRadius: 'var(--r-3)',
+          padding: '0.1rem 0 1rem',
           marginBottom: 18,
-          boxShadow: 'var(--shadow-1)',
+          borderBottom: '0.5px solid var(--mat-border)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -1227,16 +1225,14 @@ function LoadingKesiShell() {
       </div>
 
       <div
-        className="material-thick"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          padding: '0.5rem 0.8rem',
-          borderRadius: 999,
+          padding: '0.25rem 0 0.65rem',
           marginBottom: 18,
-          boxShadow: 'var(--shadow-1)',
           color: 'var(--muted)',
+          borderBottom: '0.5px solid var(--mat-border)',
         }}
       >
         <span aria-hidden style={{ fontSize: '0.8rem', lineHeight: 1 }}>⌕</span>

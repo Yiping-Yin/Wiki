@@ -239,15 +239,13 @@ export function LiveArtifact({ docId }: { docId: string }) {
 
         {isCrystallized && (
           <div
-            className="material-thick"
             style={{
-              padding: '0.8rem 0.95rem',
-              borderRadius: 14,
-              boxShadow: settledPulse ? '0 0 0 1px color-mix(in srgb, var(--accent) 28%, var(--mat-border)), var(--shadow-2)' : 'var(--shadow-1)',
+              padding: '0.8rem 0',
+              borderTop: '0.5px solid var(--accent)',
+              borderBottom: '0.5px solid var(--mat-border)',
+              boxShadow: settledPulse ? '0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
               marginBottom: 16,
-              background: settledPulse
-                ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-elevated))'
-                : 'var(--bg-elevated)',
+              background: 'transparent',
               transition: 'background 0.28s var(--ease), box-shadow 0.28s var(--ease)',
             }}
           >
