@@ -254,13 +254,7 @@ export function HomeClient(_props: unknown) {
                 {homePrimaryActionLabel(current.learning.nextAction)}
               </button>
               <button onClick={() => router.push(current.href)} style={homeActionStyle(false)}>
-                Source
-              </button>
-              <button onClick={() => openKesi(current)} style={homeActionStyle(false)}>
-                Kesi
-              </button>
-              <button onClick={() => openRelations(current)} style={homeActionStyle(false)}>
-                Relations
+                Open source
               </button>
             </div>
           </div>
