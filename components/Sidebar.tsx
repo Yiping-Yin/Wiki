@@ -80,7 +80,10 @@ export function Sidebar() {
   };
 
   const pathname = usePathname();
-  const isReadingPage = pathname.startsWith('/wiki/') || pathname.startsWith('/knowledge/');
+  const isReadingPage =
+    pathname.startsWith('/wiki/') ||
+    pathname.startsWith('/knowledge/') ||
+    pathname.startsWith('/uploads/');
 
   useEffect(() => {
     document.body.classList.toggle('sidebar-pinned', mode === 'pinned' && !isReadingPage);

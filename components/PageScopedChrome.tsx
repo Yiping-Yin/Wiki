@@ -12,7 +12,11 @@ import { ScrollDirection } from './ScrollDirection';
 import { ActiveRetrieval } from './ActiveRetrieval';
 
 function isReadingPath(pathname: string) {
-  return pathname.startsWith('/wiki/') || pathname.startsWith('/knowledge/');
+  return (
+    pathname.startsWith('/wiki/') ||
+    pathname.startsWith('/knowledge/') ||
+    pathname.startsWith('/uploads/')
+  );
 }
 
 export function PageScopedChrome() {

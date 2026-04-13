@@ -72,7 +72,9 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   // doc. The narrow state is persistent peripheral UI; `active` toggles
   // to wide.
   const isReadingPage = !ctx.isFree && (
-    pathname.startsWith('/wiki/') || pathname.startsWith('/knowledge/')
+    pathname.startsWith('/wiki/') ||
+    pathname.startsWith('/knowledge/') ||
+    pathname.startsWith('/uploads/')
   );
   const hasThoughts = thoughtItems.length > 0;
   const [introVisibility, setIntroVisibility] = useState(1);

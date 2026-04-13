@@ -6,7 +6,7 @@
  * for semantically similar notes from OTHER documents. Shows a small
  * blue dot in the margin when a match is found.
  *
- * Only active on wiki/* and knowledge/* pages. Debounces scroll to
+ * Only active on reading pages (wiki/*, knowledge/*, uploads/*). Debounces scroll to
  * avoid excessive API calls. Caches results per paragraph.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -27,7 +27,10 @@ const THRESHOLD = 0.78;
 export function ActiveRetrieval() {
   const pathname = usePathname();
   const ctx = contextFromPathname(pathname);
-  const isReading = pathname.startsWith('/wiki/') || pathname.startsWith('/knowledge/');
+  const isReading =
+    pathname.startsWith('/wiki/') ||
+    pathname.startsWith('/knowledge/') ||
+    pathname.startsWith('/uploads/');
   const [matches, setMatches] = useState<Match[]>([]);
   const cacheRef = useRef<Map<string, { results: SimilarNote[]; expiry: number }>>(new Map());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

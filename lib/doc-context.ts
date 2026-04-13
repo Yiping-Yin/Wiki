@@ -9,6 +9,7 @@
  * Three doc-context shapes:
  *   - wiki/<slug>           a wiki chapter
  *   - know/<cat>__<file>    a knowledge-base document
+ *   - upload/<name>         an uploaded source document
  *   - free/<YYYY-MM-DD>     non-doc surfaces (today, kesi, home, …)
  */
 
@@ -38,6 +39,16 @@ export function contextFromPathname(pathname: string): DocContext {
       docId: `know/${cat}__${file}`,
       href: `/knowledge/${cat}/${file}`,
       sourceTitle: prettifySlug(file),
+      isFree: false,
+    };
+  }
+  const upload = pathname.match(/^\/uploads\/([^/?#]+)/);
+  if (upload) {
+    const name = decodeURIComponent(upload[1]);
+    return {
+      docId: `upload/${name}`,
+      href: `/uploads/${encodeURIComponent(name)}`,
+      sourceTitle: prettifySlug(name.replace(/\.[^.]+$/, '')),
       isFree: false,
     };
   }

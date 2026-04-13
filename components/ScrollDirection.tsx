@@ -13,7 +13,10 @@ export function ScrollDirection() {
   const ticking = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
-  const isReading = pathname.startsWith('/wiki/') || pathname.startsWith('/knowledge/');
+  const isReading =
+    pathname.startsWith('/wiki/') ||
+    pathname.startsWith('/knowledge/') ||
+    pathname.startsWith('/uploads/');
 
   // Restore scroll position on mount
   useEffect(() => {
