@@ -180,15 +180,13 @@ export default function HighlightsPage() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 6,
                   flexWrap: 'wrap',
                   color: 'var(--muted)',
                   letterSpacing: '0.04em',
                   marginBottom: 8,
                 }}
               >
-                <span>{focus.highlights.length} highlights</span>
-                <span aria-hidden>·</span>
                 <span>{formatWhen(focus.highlights[0]?.at ?? 0)}</span>
               </div>
 

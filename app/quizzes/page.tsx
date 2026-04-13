@@ -164,8 +164,6 @@ export default function QuizzesPage() {
               >
                 <span>{focus.score}/{focus.total}</span>
                 <span aria-hidden>·</span>
-                <span>{focus.weak ? 'needs another pass' : 'ready to revisit'}</span>
-                <span aria-hidden>·</span>
                 <span>{formatWhen(focus.attemptedAt)}</span>
               </div>
 

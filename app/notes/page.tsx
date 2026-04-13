@@ -216,7 +216,7 @@ export default function NotesPage() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 6,
                   flexWrap: 'wrap',
                   color: 'var(--muted)',
                   letterSpacing: '0.04em',
@@ -224,8 +224,6 @@ export default function NotesPage() {
                 }}
               >
                 <span>{formatWhen(focus.at)}</span>
-                <span aria-hidden>·</span>
-                <span>{focus.section ? 'anchored to section' : 'anchored note'}</span>
               </div>
 
               <div
