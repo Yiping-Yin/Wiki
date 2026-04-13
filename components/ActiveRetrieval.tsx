@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
+import { traceStore } from '../lib/trace';
 import { findSimilarNotes, type SimilarNote } from '../lib/note/similarity';
 import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
 
@@ -75,6 +76,31 @@ function relationStrength(score: number) {
   if (score >= 0.9) return 'near';
   if (score >= 0.84) return 'close';
   return 'echo';
+}
+
+function anchorMatchScore(resultText: string, event: {
+  content: string;
+  summary: string;
+  quote?: string;
+}) {
+  const haystack = [event.summary, event.quote ?? '', event.content]
+    .join('\n')
+    .toLowerCase();
+  if (!haystack.trim()) return 0;
+
+  let score = 0;
+  const normalized = resultText.toLowerCase();
+  if (normalized.includes(haystack) || haystack.includes(normalized)) score += 8;
+  if (event.quote && normalized.includes(event.quote.toLowerCase())) score += 5;
+  if (event.summary && normalized.includes(event.summary.toLowerCase())) score += 4;
+
+  const tokens = normalized.split(/\s+/).filter((token) => token.length > 3);
+  let overlap = 0;
+  for (const token of tokens) {
+    if (haystack.includes(token)) overlap += 1;
+  }
+  score += Math.min(6, overlap);
+  return score;
 }
 
 export function ActiveRetrieval() {
@@ -224,10 +250,28 @@ function RetrievalDot({
     };
   }, [match.paragraphEl]);
 
-  const openReview = (result: SimilarNote) => {
+  const openReview = async (result: SimilarNote) => {
     const doc = docsById.get(result.docId);
     const href = result.href ?? doc?.href ?? inferHrefFromDocId(result.docId);
-    const payload: ReviewResumePayload = { href, anchorId: result.anchorId ?? null };
+    let anchorId = result.anchorId ?? null;
+
+    if (!anchorId) {
+      const traces = await traceStore.getByDoc(result.docId);
+      let best: { anchorId: string; score: number; at: number } | null = null;
+      for (const trace of traces) {
+        if (trace.kind !== 'reading' || trace.parentId) continue;
+        for (const event of trace.events) {
+          if (event.kind !== 'thought-anchor') continue;
+          const score = anchorMatchScore(result.text, event);
+          if (!best || score > best.score || (score === best.score && event.at > best.at)) {
+            best = { anchorId: event.anchorId, score, at: event.at };
+          }
+        }
+      }
+      if (best && best.score > 0) anchorId = best.anchorId;
+    }
+
+    const payload: ReviewResumePayload = { href, anchorId };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
     } catch {}
@@ -310,7 +354,7 @@ function RetrievalDot({
               <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => openReview(r)}
+                  onClick={() => void openReview(r)}
                   style={{
                     appearance: 'none',
                     border: 0,
