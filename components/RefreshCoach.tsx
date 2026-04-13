@@ -1,17 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../lib/refresh-resume';
-import { summarizeLearningSurface } from '../lib/learning-status';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
 import { useHistory } from '../lib/use-history';
 import { useTracesForDoc, type Trace } from '../lib/trace';
 
 export function RefreshCoach() {
+  const router = useRouter();
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
   const [payload, setPayload] = useState<RefreshResumePayload | null>(null);
+  const [completion, setCompletion] = useState<'settled' | 'verified' | null>(null);
   const [history] = useHistory();
   const { traces } = useTracesForDoc(ctx.isFree ? null : ctx.docId);
   const prevRef = useRef<ReturnType<typeof summarizeLearningSurface> | null>(null);
@@ -34,11 +36,13 @@ export function RefreshCoach() {
       const raw = sessionStorage.getItem(REFRESH_RESUME_KEY);
       if (!raw) {
         setPayload(null);
+        setCompletion(null);
         return;
       }
       const parsed = JSON.parse(raw) as RefreshResumePayload;
       if (!parsed?.href || parsed.href !== pathname) {
         setPayload(null);
+        setCompletion(null);
         return;
       }
       setPayload(parsed);
@@ -59,12 +63,14 @@ export function RefreshCoach() {
     }
 
     if (learning.crystallized && !prev.crystallized) {
+      setCompletion('settled');
       const id = window.setTimeout(() => dismiss(), 1800);
       prevRef.current = learning;
       return () => window.clearTimeout(id);
     }
 
     if (learning.examinerCount > prev.examinerCount) {
+      setCompletion('verified');
       const id = window.setTimeout(() => dismiss(), 1800);
       prevRef.current = learning;
       return () => window.clearTimeout(id);
@@ -76,6 +82,7 @@ export function RefreshCoach() {
   const dismiss = () => {
     try { sessionStorage.removeItem(REFRESH_RESUME_KEY); } catch {}
     setPayload(null);
+    setCompletion(null);
     prevRef.current = null;
   };
 
@@ -91,6 +98,12 @@ export function RefreshCoach() {
       window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id } }));
     });
   };
+
+  const openKesi = () => router.push('/kesi');
+  const openRelations = () => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph');
+
+  const primaryAction = refreshPrimaryAction(learning.nextAction);
+  const bodyText = refreshBodyText(learning, payload?.source);
 
   return (
     <div
@@ -119,33 +132,99 @@ export function RefreshCoach() {
             fontWeight: 700,
           }}
         >
-          Return to this thread
+          {completion === 'settled'
+            ? 'Settled again'
+            : completion === 'verified'
+              ? 'Held up'
+              : 'Keep this weave warm'}
         </span>
         <span className="t-caption2" style={{ color: 'var(--muted)' }}>
-          one more pass
+          {completion === 'settled'
+            ? 'back in kesi'
+            : completion === 'verified'
+              ? 'verification complete'
+              : payload?.source === 'kesi'
+                ? 'return from kesi'
+                : payload?.source === 'today'
+                  ? 'return from today'
+                  : 'one more pass'}
         </span>
       </div>
 
       <div className="t-footnote" style={{ color: 'var(--fg-secondary)', lineHeight: 1.5 }}>
-        Read a little, write once, ask once.
+        {completion === 'settled'
+          ? 'This panel is no longer cooling. It has settled back into your kesi.'
+          : completion === 'verified'
+            ? 'Your latest examiner pass held. Keep going only if you want to deepen the weave.'
+            : bodyText}
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" onClick={openReview} style={actionStyle(true)}>
-          Review
-        </button>
-        <button type="button" onClick={() => openOverlay('rehearsal')} style={actionStyle(false)}>
-          Write
-        </button>
-        <button type="button" onClick={() => openOverlay('examiner')} style={actionStyle(false)}>
-          Ask
-        </button>
+        {completion === 'settled' ? (
+          <>
+            <button type="button" onClick={openKesi} style={actionStyle(true)}>
+              Kesi
+            </button>
+            <button type="button" onClick={openRelations} style={actionStyle(false)}>
+              Relations
+            </button>
+          </>
+        ) : completion === 'verified' ? (
+          <>
+            <button type="button" onClick={openReview} style={actionStyle(true)}>
+              Review
+            </button>
+            <button type="button" onClick={openKesi} style={actionStyle(false)}>
+              Kesi
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                if (primaryAction === 'review') openReview();
+                else if (primaryAction === 'rehearsal') openOverlay('rehearsal');
+                else if (primaryAction === 'examiner') openOverlay('examiner');
+              }}
+              style={actionStyle(true)}
+            >
+              {primaryAction === 'review' ? 'Review' : primaryAction === 'rehearsal' ? 'Rehearse' : 'Examine'}
+            </button>
+            <button type="button" onClick={openKesi} style={actionStyle(false)}>
+              Kesi
+            </button>
+            <button type="button" onClick={openRelations} style={actionStyle(false)}>
+              Relations
+            </button>
+          </>
+        )}
         <button type="button" onClick={dismiss} style={actionStyle(false)}>
           Close
         </button>
       </div>
     </div>
   );
+}
+
+function refreshPrimaryAction(nextAction: LearningSurfaceSummary['nextAction']) {
+  if (nextAction === 'rehearse') return 'rehearsal' as const;
+  if (nextAction === 'examine') return 'examiner' as const;
+  return 'review' as const;
+}
+
+function refreshBodyText(learning: LearningSurfaceSummary, source?: RefreshResumePayload['source']) {
+  const from = source === 'kesi' ? 'from kesi' : source === 'today' ? 'from today' : 'from this thread';
+  if (learning.nextAction === 'refresh') {
+    return `You came back ${from}. Re-enter review and warm the panel back up.`;
+  }
+  if (learning.nextAction === 'rehearse') {
+    return `You came back ${from}. The panel needs another written pass before it will hold.`;
+  }
+  if (learning.nextAction === 'examine') {
+    return `You came back ${from}. The panel is ready to verify while the weave is still warm.`;
+  }
+  return `You came back ${from}. Review the current shape and decide whether to deepen or settle it.`;
 }
 
 function actionStyle(primary: boolean) {
