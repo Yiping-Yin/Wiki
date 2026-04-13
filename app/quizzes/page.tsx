@@ -188,13 +188,7 @@ export default function QuizzesPage() {
                 onClick={() => router.push(focus.href)}
                 style={quizActionStyle(true)}
               >
-                Source
-              </button>
-              <button type="button" onClick={openKesi} style={quizActionStyle(false)}>
-                Kesi
-              </button>
-              <button type="button" onClick={openRelations} style={quizActionStyle(false)}>
-                Relations
+                Return to source
               </button>
             </div>
           </div>
