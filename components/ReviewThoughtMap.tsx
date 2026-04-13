@@ -26,7 +26,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
-import { useAppendEvent } from '../lib/trace';
+import { useAppendEvent, useRemoveEvents } from '../lib/trace';
 import {
   buildThoughtMapNodes,
   collectHeadingItems,
@@ -66,6 +66,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
     ctx.isFree ? null : ctx.docId,
   );
   const append = useAppendEvent();
+  const removeEvents = useRemoveEvents();
 
   const activeBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -82,6 +83,10 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const panelCrystallized = Boolean(
     primaryReadingTrace?.events.some((event) => event.kind === 'crystallize' && !event.anchorId),
   );
+  const uncrystallizePanel = useCallback(async () => {
+    if (!primaryReadingTrace) return;
+    await removeEvents(primaryReadingTrace.id, (event) => event.kind === 'crystallize' && !event.anchorId);
+  }, [primaryReadingTrace, removeEvents]);
 
   // Narrow thought-map presence is an intro/review affordance, not a
   // permanent right sidebar. Near the top of a document it is visible;
@@ -322,6 +327,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           panelCrystallized={panelCrystallized}
           onOpenKesi={() => router.push(ctx.docId ? `/kesi?focus=${encodeURIComponent(ctx.docId)}` : '/kesi')}
           onOpenRelations={() => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph')}
+          onUncrystallize={uncrystallizePanel}
         />
       ) : (
         <NarrowSectionTOC
@@ -548,6 +554,7 @@ function WideThoughtList({
   panelCrystallized,
   onOpenKesi,
   onOpenRelations,
+  onUncrystallize,
 }: {
   thoughts: ThoughtAnchorView[];
   expandedKey: string | null;
@@ -557,6 +564,7 @@ function WideThoughtList({
   panelCrystallized: boolean;
   onOpenKesi: () => void;
   onOpenRelations: () => void;
+  onUncrystallize: () => Promise<void>;
 }) {
   const sectionGroups = useMemo(() => {
     const groups = new Map<string, {
@@ -663,6 +671,7 @@ function WideThoughtList({
                 panelCrystallized={panelCrystallized}
                 onOpenKesi={onOpenKesi}
                 onOpenRelations={onOpenRelations}
+                onUncrystallize={onUncrystallize}
                 onToggle={() =>
                   onExpand(expandedKey === t.containerKey ? null : t.containerKey)
                 }
@@ -798,6 +807,7 @@ function WideThoughtCard({
   panelCrystallized,
   onOpenKesi,
   onOpenRelations,
+  onUncrystallize,
   onToggle,
   onAppendVersion,
 }: {
@@ -807,6 +817,7 @@ function WideThoughtCard({
   panelCrystallized: boolean;
   onOpenKesi: () => void;
   onOpenRelations: () => void;
+  onUncrystallize: () => Promise<void>;
   onToggle: () => void;
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
 }) {
@@ -993,7 +1004,7 @@ function WideThoughtCard({
               marginBottom: 8,
             }}
           >
-            This panel is no longer provisional. Use the center live note to uncrystallize before weaving a new version.
+            This panel is no longer provisional. If you want to keep weaving here, uncrystallize it first.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" onClick={onOpenKesi} style={settledActionStyle(true)}>
@@ -1001,6 +1012,9 @@ function WideThoughtCard({
             </button>
             <button type="button" onClick={onOpenRelations} style={settledActionStyle(false)}>
               Relations
+            </button>
+            <button type="button" onClick={() => void onUncrystallize()} style={settledActionStyle(false)}>
+              Uncrystallize
             </button>
           </div>
         </div>
