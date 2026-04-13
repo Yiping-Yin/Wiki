@@ -29,6 +29,7 @@ import { readAiCliPreference } from '../lib/ai-cli';
 import { contextFromPathname } from '../lib/doc-context';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
 import { getCurrentDocBody } from './DocBodyProvider';
+import { WeftShuttle } from './DocViewer';
 import { rootReadingTraces } from './thought-anchor-model';
 
 const NoteRenderer = dynamic(() => import('./NoteRenderer').then((m) => m.NoteRenderer), { ssr: false });
@@ -158,6 +159,7 @@ export function ChatFocus() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [streamBuf, setStreamBuf] = useState('');
+  const [showWaitingIndicator, setShowWaitingIndicator] = useState(false);
   const [committing, setCommitting] = useState(false);
   /** Inline error state for AI-unreachable / streaming failure. Shown as a
    *  quiet hint in the input area (tier-3 actionable, but non-modal and
@@ -473,6 +475,18 @@ export function ChatFocus() {
     if (!anchor || !focusedEl) return;
     if (!document.contains(focusedEl)) close();
   }, [anchor, focusedEl, close]);
+
+  // §21 · silence-first latency mask. Stay visually quiet for a short
+  // beat, then show a tiny shuttle only if the first token is still not
+  // here. This keeps "ask" from looking broken on slow local CLI runs.
+  useEffect(() => {
+    if (!streaming || committing || streamBuf) {
+      setShowWaitingIndicator(false);
+      return;
+    }
+    const id = window.setTimeout(() => setShowWaitingIndicator(true), 600);
+    return () => window.clearTimeout(id);
+  }, [streaming, committing, streamBuf]);
 
   // Stream chat
   const streamChat = useCallback(async (
@@ -807,7 +821,16 @@ export function ChatFocus() {
             ...(streaming ? { animation: 'loomPulse 2s ease-in-out infinite' } : {}),
           }}>✦</span>
           {streaming && !committing ? (
-            <span style={{ flex: 1, minHeight: 22 }} />
+            <div
+              style={{
+                flex: 1,
+                minHeight: 22,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {showWaitingIndicator ? <WeftShuttle width={56} height={12} /> : null}
+            </div>
           ) : (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <textarea
