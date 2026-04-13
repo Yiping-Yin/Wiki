@@ -181,11 +181,9 @@ export function LiveArtifact({ docId }: { docId: string }) {
 
         {focusThought && (
           <div
-            className="material-thick"
             style={{
-              padding: '0.95rem 1rem 1rem',
-              borderRadius: 14,
-              boxShadow: 'var(--shadow-1)',
+              padding: '0.1rem 0 1rem',
+              borderBottom: '0.5px solid var(--mat-border)',
               marginBottom: 16,
             }}
           >

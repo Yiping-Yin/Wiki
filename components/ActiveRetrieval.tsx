@@ -189,11 +189,10 @@ function RetrievalDot({ match }: { match: Match }) {
             top: -8,
             left: 16,
             width: 280,
-            padding: '10px 12px',
-            background: 'var(--bg-elevated)',
-            border: '0.5px solid var(--mat-border)',
-            borderRadius: 8,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            padding: '10px 0 8px 10px',
+            background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+            borderTop: '0.5px solid var(--mat-border)',
+            borderBottom: '0.5px solid var(--mat-border)',
             fontSize: '0.76rem',
             lineHeight: 1.5,
             color: 'var(--fg)',
@@ -201,7 +200,7 @@ function RetrievalDot({ match }: { match: Match }) {
           }}
         >
           <div style={{ fontSize: '0.62rem', color: 'var(--tint-blue, #0a84ff)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 6 }}>
-            Related note{match.results.length > 1 ? 's' : ''}
+            Nearby note{match.results.length > 1 ? 's' : ''}
           </div>
           {match.results.map((r, i) => (
             <div

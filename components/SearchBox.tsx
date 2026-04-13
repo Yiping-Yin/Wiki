@@ -76,10 +76,10 @@ export function SearchBox() {
         onClick={() => setOpen(true)}
         aria-label="Search documents"
         style={{
-          width: '100%', textAlign: 'left', background: 'var(--surface-2)',
-          border: 'var(--hairline)', borderRadius: 'var(--r-1)', padding: '0.5rem 0.75rem',
+          width: '100%', textAlign: 'left', background: 'transparent',
+          border: 0, borderBottom: '0.5px solid var(--mat-border)', padding: '0.45rem 0',
           color: 'var(--muted)', fontSize: '0.82rem', cursor: 'pointer',
-          transition: 'background 0.2s var(--ease)',
+          transition: 'color 0.2s var(--ease)',
         }}
       >
         Search… <span style={{ float: 'right', fontSize: '0.7rem' }}>⌘K</span>
@@ -89,13 +89,13 @@ export function SearchBox() {
         <div
           onClick={(e) => e.target === e.currentTarget && setOpen(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100,
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.28)', zIndex: 100,
             display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '14vh',
-            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
             animation: 'lpFade 0.18s var(--ease)',
           }}
         >
-          <div className="glass" style={{ width: 'min(640px, 92vw)', borderRadius: 'var(--r-3)', overflow: 'hidden', boxShadow: 'var(--shadow-3)' }}>
+          <div style={{ width: 'min(640px, 92vw)', background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))', borderTop: '0.5px solid var(--mat-border)', borderBottom: '0.5px solid var(--mat-border)', overflow: 'hidden' }}>
             <input
               ref={inputRef}
               value={q}
@@ -135,7 +135,7 @@ export function SearchBox() {
               ))}
               {!q && (
                 <div style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.78rem' }}>
-                  Type to search · ↑↓ navigate · ↵ open · Esc close
+                  Type to search · ↑↓ move · ↵ open · Esc close
                 </div>
               )}
             </div>
