@@ -147,6 +147,22 @@ Design effect:
 - utility and fallback surfaces rely more on tone, typography, and motion than
   on decorative symbolic markers
 
+### 8. Toast labels aligned with quieter utility grammar
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/Toast.tsx` now uses text labels (`OK`, `Info`, `Warn`,
+  `Error`) instead of symbolic markers
+
+Design effect:
+
+- the remaining dev/debug toast surface is visually closer to Loom's quieter
+  text grammar and less dependent on icon signaling
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -188,5 +204,6 @@ Residual note:
 - decorative product-surface symbols reduced further
 - callout styling brought closer to Loom's quieter text grammar
 - utility-surface decorative markers reduced further
+- toast labels aligned with quieter utility grammar
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level

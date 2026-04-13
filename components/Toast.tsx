@@ -27,11 +27,11 @@ export function toast(text: string, opts: { kind?: ToastKind; durationMs?: numbe
   }));
 }
 
-const KIND_META: Record<ToastKind, { color: string; icon: string }> = {
-  ok:    { color: 'var(--tint-green)',  icon: '✓' },
-  info:  { color: 'var(--tint-blue)',   icon: 'ℹ' },
-  warn:  { color: 'var(--tint-orange)', icon: '⚠' },
-  error: { color: 'var(--tint-red)',    icon: '✕' },
+const KIND_META: Record<ToastKind, { color: string; label: string }> = {
+  ok:    { color: 'var(--tint-green)',  label: 'OK' },
+  info:  { color: 'var(--tint-blue)',   label: 'Info' },
+  warn:  { color: 'var(--tint-orange)', label: 'Warn' },
+  error: { color: 'var(--tint-red)',    label: 'Error' },
 };
 
 export function ToastHost() {
@@ -93,10 +93,12 @@ export function ToastHost() {
           >
             <span style={{
               color: meta.color,
-              fontSize: '0.95rem',
+              fontSize: '0.66rem',
               flexShrink: 0,
               fontWeight: 700,
-            }}>{meta.icon}</span>
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>{meta.label}</span>
             <span style={{
               overflow: 'hidden',
               textOverflow: 'ellipsis',
