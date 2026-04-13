@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { CategoryHero } from '../../../components/CategoryHero';
 import { KesiSwatch } from '../../../components/KesiSwatch';
 import { LearningStatusInline } from '../../../components/LearningStatusInline';
@@ -9,6 +10,9 @@ import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
 import type { KnowledgeCategory } from '../../../lib/knowledge-types';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../../lib/learning-status';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../../lib/review-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../../lib/refresh-resume';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../../lib/overlay-resume';
 
 export type CategoryDocCard = {
   id: string;
@@ -88,6 +92,14 @@ function stateRank(surface: CategorySurface) {
   }
 }
 
+function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  if (nextAction === 'refresh') return 'Refresh';
+  if (nextAction === 'rehearse') return 'Rehearsal';
+  if (nextAction === 'examine') return 'Examiner';
+  if (nextAction === 'capture') return 'Open';
+  return 'Review';
+}
+
 export function CategoryLandingClient({
   category,
   docs,
@@ -97,6 +109,7 @@ export function CategoryLandingClient({
   docs: CategoryDocCard[];
   groups: CategoryGroupCard[];
 }) {
+  const router = useRouter();
   const [history] = useHistory();
   const { traces } = useAllTraces();
 
@@ -158,6 +171,39 @@ export function CategoryLandingClient({
   const startDoc = docs[0] ?? null;
   const continueDoc = continueDocs[0] ?? null;
 
+  const openPrimaryAction = (surface: CategorySurface) => {
+    if (surface.learning.nextAction === 'refresh') {
+      const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'knowledge' };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+        sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+      } catch {}
+      router.push(surface.href);
+      return;
+    }
+    if (surface.learning.nextAction === 'rehearse' || surface.learning.nextAction === 'examine') {
+      const payload: OverlayResumePayload = {
+        href: surface.href,
+        overlay: surface.learning.nextAction === 'rehearse' ? 'rehearsal' : 'examiner',
+      };
+      try {
+        sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(surface.href);
+      return;
+    }
+    if (surface.learning.nextAction === 'review') {
+      const payload: ReviewResumePayload = { href: surface.href, anchorId: null };
+      try {
+        sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+      } catch {}
+      router.push(surface.href);
+      return;
+    }
+    router.push(surface.href);
+  };
+
   return (
     <div className="prose-notion">
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.8rem' }}>
@@ -186,47 +232,96 @@ export function CategoryLandingClient({
         >
           Collection thread
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          {continueDoc && (
-            <Link
-              href={continueDoc.href}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <div
               style={{
-                display: 'inline-flex',
-                alignItems: 'baseline',
-                gap: 8,
-                textDecoration: 'none',
-                color: 'var(--fg)',
+                fontFamily: 'var(--display)',
+                fontSize: '1.18rem',
+                fontWeight: 650,
+                letterSpacing: '-0.02em',
+                lineHeight: 1.25,
+                marginBottom: 6,
               }}
             >
-              <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                Continue
-              </span>
-              <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
-                {continueDoc.title}
-              </span>
-            </Link>
-          )}
-          {startDoc && (
-            <Link
-              href={startDoc.href}
+              {category.label}
+            </div>
+
+            <div
+              className="t-caption2"
               style={{
-                display: 'inline-flex',
-                alignItems: 'baseline',
+                display: 'flex',
+                alignItems: 'center',
                 gap: 8,
-                textDecoration: 'none',
-                color: 'var(--fg)',
+                flexWrap: 'wrap',
+                color: 'var(--muted)',
+                letterSpacing: '0.04em',
+                marginBottom: 8,
               }}
             >
-              <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                Start
-              </span>
-              <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
-                {startDoc.title}
-              </span>
-            </Link>
-          )}
-          <div style={{ width: 'min(220px, 100%)', marginLeft: 'auto' }}>
+              <span>{docs.length} docs</span>
+              {category.subs.length > 0 && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{category.subs.length} weeks</span>
+                </>
+              )}
+              {continueDoc?.touchedAt ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatWhen(continueDoc.touchedAt)}</span>
+                </>
+              ) : null}
+            </div>
+
+            <div
+              style={{
+                color: 'var(--fg-secondary)',
+                fontSize: '0.9rem',
+                lineHeight: 1.55,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {continueDoc ? docSummary(continueDoc) : startDoc?.preview?.slice(0, 220) || 'Open the collection and begin weaving.'}
+            </div>
+          </div>
+
+          <div style={{ width: 'min(220px, 100%)', marginLeft: 'auto', alignSelf: 'center' }}>
             <KesiSwatch categorySlug={category.slug} height={28} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => continueDoc ? openPrimaryAction(continueDoc) : startDoc ? router.push(startDoc.href) : null}
+              style={categoryActionStyle(true)}
+            >
+              {continueDoc ? primaryActionLabel(continueDoc.learning.nextAction) : 'Open'}
+            </button>
+            <button type="button" onClick={() => router.push(`/knowledge/${category.slug}`)} style={categoryActionStyle(false)}>
+              Collection
+            </button>
+            {continueDoc && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/kesi?focus=${encodeURIComponent(docIdFor(continueDoc))}`)}
+                  style={categoryActionStyle(false)}
+                >
+                  Kesi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/graph?focus=${encodeURIComponent(docIdFor(continueDoc))}`)}
+                  style={categoryActionStyle(false)}
+                >
+                  Relations
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -405,6 +500,20 @@ export function CategoryLandingClient({
       </Block>
     </div>
   );
+}
+
+function categoryActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    padding: 0,
+    cursor: 'pointer',
+  };
 }
 
 function Block({
