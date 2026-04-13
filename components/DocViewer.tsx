@@ -53,54 +53,52 @@ function BinaryEmbed({
   const hasExtracted = body && body.length > 30 && !body.startsWith('[Binary');
   return (
     <figure style={{ margin: '1.4rem 0' }}>
-      <div className="material-thick" style={{
-        borderRadius: 'var(--r-3)',
-        padding: '1.6rem 1.6rem 1.4rem',
-        display: 'flex', gap: '1.2rem', alignItems: 'flex-start',
+      <div style={{
+        padding: '0.25rem 0 1rem',
+        display: 'flex',
+        gap: '0.95rem',
+        alignItems: 'flex-start',
+        borderBottom: '0.5px solid var(--mat-border)',
       }}>
         <div style={{
-          width: 64, height: 80, flexShrink: 0,
-          borderRadius: 'var(--r-2)',
-          background: `linear-gradient(160deg, ${meta.tint}, ${meta.tint}aa)`,
-          color: '#fff', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          fontSize: '1.7rem', fontWeight: 700,
-          boxShadow: 'var(--shadow-2), inset 0 0.5px 0 rgba(255,255,255,0.5)',
+          width: 34,
+          flexShrink: 0,
+          color: meta.tint,
+          fontSize: '1rem',
+          lineHeight: 1.2,
+          paddingTop: 2,
+          textAlign: 'center',
         }}>
           {meta.icon}
-          <span style={{ fontSize: '0.55rem', letterSpacing: '0.06em', marginTop: 2, opacity: 0.95 }}>
-            {ext.slice(1).toUpperCase()}
-          </span>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="t-caption" style={{
+          <div className="t-caption2" style={{
             color: 'var(--muted)', textTransform: 'uppercase',
             letterSpacing: '0.08em', fontWeight: 700,
-          }}>{meta.label}</div>
+            marginBottom: 6,
+          }}>{meta.label} · {ext.slice(1).toUpperCase()}</div>
           <div className="t-title3" style={{
-            marginTop: 4, color: 'var(--fg)',
+            color: 'var(--fg)',
             overflow: 'hidden', textOverflow: 'ellipsis',
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           }}>{title}</div>
           <div className="t-footnote" style={{ marginTop: 8, color: 'var(--muted)' }}>
             {hasExtracted
-              ? 'Original preserved · text extracted below for search & review'
-              : 'Original preserved · open in the native app to view'}
+              ? 'Original stays intact. Extracted text sits below for selection and review.'
+              : 'Original stays intact. Open it in the native app when you need the full surface.'}
           </div>
-          <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href={sourceUrl} target="_blank" rel="noreferrer" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'var(--accent)', color: '#fff',
-              padding: '0.5rem 1rem', borderRadius: 999,
-              textDecoration: 'none', fontSize: '0.82rem', fontWeight: 600,
-              boxShadow: 'var(--shadow-1)',
+              color: 'var(--accent)',
+              textDecoration: 'none',
+              fontSize: '0.82rem',
+              fontWeight: 600,
             }}>Open original</a>
             <a href={sourceUrl} download style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'var(--surface-2)', color: 'var(--fg)',
-              padding: '0.5rem 1rem', borderRadius: 999,
-              textDecoration: 'none', fontSize: '0.82rem', fontWeight: 600,
-              border: '0.5px solid var(--mat-border)',
+              color: 'var(--fg-secondary)',
+              textDecoration: 'none',
+              fontSize: '0.82rem',
+              fontWeight: 600,
             }}>Download</a>
           </div>
         </div>
@@ -370,10 +368,10 @@ function ViewerFrame({
   return (
     <figure className="loom-viewer-frame" style={{
       margin: '1.4rem 0',
-      borderRadius: 'var(--r-3)',
       overflow: 'hidden',
-      background: 'var(--bg-elevated)',
-      border: '0.5px solid var(--mat-border)',
+      background: 'transparent',
+      borderTop: '0.5px solid var(--mat-border)',
+      borderBottom: '0.5px solid var(--mat-border)',
       position: 'relative',
     }}>
       {/* Floating controls — absolute, fade in on hover */}
@@ -436,11 +434,9 @@ function ViewerFrame({
 function LoadingPane({ label }: { label: string }) {
   return (
     <div style={{
-      margin: '1.4rem 0', padding: '1.2rem 1.4rem',
-      borderRadius: 'var(--r-3)',
-      border: '0.5px solid var(--mat-border)',
-      background: 'var(--bg-elevated)',
-      boxShadow: 'var(--shadow-1)',
+      margin: '1.4rem 0', padding: '0.9rem 0',
+      borderTop: '0.5px solid var(--mat-border)',
+      borderBottom: '0.5px solid var(--mat-border)',
       color: 'var(--muted)',
       display: 'flex', alignItems: 'center', gap: 12,
     }} className="t-footnote">
@@ -507,11 +503,9 @@ function ErrorPane({ what, how, raw, openHref }: {
   const [showRaw, setShowRaw] = useState(false);
   return (
     <div style={{
-      margin: '1.4rem 0', padding: '1rem 1.2rem',
-      borderRadius: 'var(--r-2)',
-      border: '0.5px solid var(--mat-border)',
-      background: 'var(--bg-elevated)',
-      boxShadow: 'var(--shadow-1)',
+      margin: '1.4rem 0', padding: '0.85rem 0',
+      borderTop: '0.5px solid var(--mat-border)',
+      borderBottom: '0.5px solid var(--mat-border)',
     }} className="t-footnote">
       <div style={{ color: 'var(--tint-red)', fontWeight: 600, marginBottom: how ? 6 : 0 }}>
         ⚠ {what}

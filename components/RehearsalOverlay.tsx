@@ -102,9 +102,9 @@ export function RehearsalOverlay() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'color-mix(in srgb, var(--bg) 92%, transparent)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: 'color-mix(in srgb, var(--bg) 88%, transparent)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         animation: visible
           ? 'loom-overlay-fade-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both'
           : 'loom-modal-exit 0.2s cubic-bezier(0.22, 1, 0.36, 1) both',
@@ -113,14 +113,15 @@ export function RehearsalOverlay() {
       <div
         style={{
           width: '100%',
-          maxWidth: 680,
-          height: '80vh',
+          maxWidth: 720,
+          height: '82vh',
           display: 'flex',
           flexDirection: 'column',
-          background: 'var(--bg-elevated)',
-          border: '0.5px solid var(--mat-border)',
-          borderRadius: 16,
-          boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
+          background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
+          borderRadius: 0,
+          boxShadow: '0 16px 36px rgba(0,0,0,0.08)',
           overflow: 'hidden',
           animation: visible
             ? 'loom-overlay-fade-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both'

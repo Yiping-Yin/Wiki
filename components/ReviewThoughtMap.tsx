@@ -344,8 +344,8 @@ function NarrowSectionTOC({
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
-        borderLeft: '0.5px solid var(--mat-border)',
-        paddingLeft: '0.72rem',
+        borderLeft: '0.5px solid color-mix(in srgb, var(--mat-border) 78%, transparent)',
+        paddingLeft: '0.62rem',
       }}
     >
       {nodes.map((item) => {
@@ -674,11 +674,9 @@ function WideThoughtHeader({ thought }: { thought: ThoughtAnchorView }) {
 
   return (
     <section
-      className="material-thick"
       style={{
-        padding: '0.95rem 1rem 1rem',
-        borderRadius: 14,
-        boxShadow: 'var(--shadow-1)',
+        padding: '0.1rem 0 0.95rem',
+        borderBottom: '0.5px solid var(--mat-border)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -822,22 +820,13 @@ function WideThoughtCard({
     <div
       ref={cardRef}
       style={{
-        borderRadius: 12,
-        border: '0.5px solid var(--mat-border)',
-        background: emphasized
-          ? 'color-mix(in srgb, var(--accent) 4%, var(--bg-elevated))'
-          : 'var(--bg-elevated)',
-        padding: '10px 13px 11px',
+        borderRadius: 0,
+        borderBottom: '0.5px solid var(--mat-border)',
+        background: 'transparent',
+        padding: '10px 0 11px',
         transition:
           'border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
-        borderColor: emphasized
-          ? 'color-mix(in srgb, var(--accent) 26%, var(--mat-border))'
-          : expanded
-          ? 'color-mix(in srgb, var(--accent) 18%, var(--mat-border))'
-          : 'var(--mat-border)',
-        boxShadow: emphasized
-          ? '0 6px 18px color-mix(in srgb, var(--accent) 8%, rgba(0,0,0,0.07))'
-          : expanded ? '0 3px 10px rgba(0,0,0,0.05)' : 'none',
+        boxShadow: 'none',
       }}
     >
       {/* Header: section label + version count */}
@@ -860,7 +849,7 @@ function WideThoughtCard({
         <span
           className="t-caption2"
           style={{
-            color: hasContent ? 'var(--accent)' : 'var(--muted)',
+            color: emphasized ? 'var(--accent)' : hasContent ? 'var(--fg-secondary)' : 'var(--muted)',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
             fontWeight: 700,
@@ -979,8 +968,9 @@ function WideThoughtCard({
               lineHeight: 1.55,
               color: 'var(--fg)',
               background: 'var(--bg)',
-              border: '0.5px solid var(--mat-border)',
-              borderRadius: 8,
+              border: 0,
+              borderBottom: '0.5px solid var(--mat-border)',
+              borderRadius: 0,
               outline: 'none',
               resize: 'none',
               // @ts-ignore — modern CSS, unknown to TS types
