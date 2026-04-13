@@ -82,7 +82,7 @@ export function SearchBox() {
           transition: 'background 0.2s var(--ease)',
         }}
       >
-        🔍 Search… <span style={{ float: 'right', fontSize: '0.7rem' }}>⌘K</span>
+        Search… <span style={{ float: 'right', fontSize: '0.7rem' }}>⌘K</span>
       </button>
 
       {open && (

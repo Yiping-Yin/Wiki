@@ -13,7 +13,6 @@ export default function OfflinePage() {
         textAlign: 'center',
         maxWidth: 460,
       }}>
-        <div style={{ fontSize: '2.2rem', marginBottom: 6 }}>✦</div>
         <h1 className="t-title2" style={{
           margin: 0, color: 'var(--fg)', padding: 0, border: 0,
         }}>You&rsquo;re offline</h1>

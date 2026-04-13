@@ -92,6 +92,41 @@ Design effect:
 - Pyodide execution now keeps the action label stable and uses a quieter
   in-header shuttle instead of generic loading copy
 
+### 5. Decorative product-surface symbols reduced further
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/SearchBox.tsx` no longer prefixes the primary search button with
+  a decorative magnifier emoji
+- `app/offline/page.tsx` no longer opens the offline empty state with a
+  decorative `✦`
+
+Design effect:
+
+- primary navigation/search chrome is less ornamental
+- the offline state now relies on copy and material treatment rather than a
+  symbolic flourish
+
+### 6. Callout styling no longer depends on decorative emoji
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/Callout.tsx` now uses quiet uppercase labels (`Info`,
+  `Warning`, `Note`) instead of emoji markers
+
+Design effect:
+
+- user-facing knowledge pages keep the informational hierarchy of callouts
+  without importing decorative emoji into the reading surface
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -130,5 +165,7 @@ Residual note:
 - root-shell toast drift removed
 - `/about` and `/help` copy brought closer to current canon
 - user-facing generic loading copy reduced further
+- decorative product-surface symbols reduced further
+- callout styling brought closer to Loom's quieter text grammar
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level
