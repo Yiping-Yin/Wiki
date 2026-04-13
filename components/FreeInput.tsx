@@ -16,12 +16,14 @@ import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { recompileSystemPrompt } from '../lib/ai/system-prompt';
 import { readAiCliPreference } from '../lib/ai-cli';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { useTracesForDoc, useAppendEvent } from '../lib/trace';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
 
 export function FreeInput() {
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
+  const smallScreen = useSmallScreen();
   const [value, setValue] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -147,7 +149,9 @@ export function FreeInput() {
         left: 0,
         right: 0,
         zIndex: 50,
-        padding: '0 max(1rem, calc((100vw - 760px) / 2)) 0.8rem',
+        padding: smallScreen
+          ? '0 12px max(10px, env(safe-area-inset-bottom, 0px) + 4px)'
+          : '0 max(1rem, calc((100vw - 760px) / 2)) 0.8rem',
       }}>
         <div
           onClick={activate}
@@ -179,7 +183,9 @@ export function FreeInput() {
       left: 0,
       right: 0,
       zIndex: 50,
-      padding: '0 max(1rem, calc((100vw - 760px) / 2)) 1.2rem',
+      padding: smallScreen
+        ? '0 12px max(12px, env(safe-area-inset-bottom, 0px) + 6px)'
+        : '0 max(1rem, calc((100vw - 760px) / 2)) 1.2rem',
       pointerEvents: 'none',
     }}>
       <div style={{
@@ -192,7 +198,9 @@ export function FreeInput() {
         WebkitBackdropFilter: 'saturate(150%) blur(12px)',
         borderTop: '0.5px solid var(--mat-border)',
         borderBottom: '0.5px solid var(--mat-border)',
-        padding: '0.6rem 0.8rem',
+        borderRadius: smallScreen ? 14 : 0,
+        boxShadow: smallScreen ? 'var(--shadow-1)' : 'none',
+        padding: smallScreen ? '0.65rem 0.75rem' : '0.6rem 0.8rem',
         animation: 'lpFade 0.18s var(--ease)',
       }}>
         <span style={{

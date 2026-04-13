@@ -69,7 +69,7 @@ function actionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
   if (nextAction === 'rehearse') return 'Rehearsal';
   if (nextAction === 'examine') return 'Examiner';
   if (nextAction === 'capture') return 'Open';
-  return 'Review';
+  return 'Return';
 }
 
 function docSort(a: CollectionDocSurface, b: CollectionDocSurface) {
@@ -193,7 +193,7 @@ export function KnowledgeHomeClient({
       router.push(activeDoc.href);
       return;
     }
-    if (activeDoc.learning.nextAction === 'review') {
+    if (activeDoc.learning.nextAction === 'revisit') {
       const payload: ReviewResumePayload = { href: activeDoc.href, anchorId: null };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
@@ -335,7 +335,7 @@ export function KnowledgeHomeClient({
 
 function knowledgeActionStyle(primary: boolean) {
   return {
-    appearance: 'none',
+    appearance: 'none' as const,
     border: 0,
     background: 'transparent',
     color: primary ? 'var(--accent)' : 'var(--fg-secondary)',

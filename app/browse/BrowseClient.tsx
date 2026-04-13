@@ -101,7 +101,7 @@ function actionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
   if (nextAction === 'rehearse') return 'Rehearsal';
   if (nextAction === 'examine') return 'Examiner';
   if (nextAction === 'capture') return 'Open';
-  return 'Review';
+  return 'Return';
 }
 
 function formatWhen(ts: number) {
@@ -222,7 +222,7 @@ export function BrowseClient({
       router.push(activeDoc.href);
       return;
     }
-    if (activeDoc.learning.nextAction === 'review') {
+    if (activeDoc.learning.nextAction === 'revisit') {
       const payload: ReviewResumePayload = { href: activeDoc.href, anchorId: null };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));

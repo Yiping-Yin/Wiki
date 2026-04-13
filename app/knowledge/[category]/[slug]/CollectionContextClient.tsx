@@ -216,7 +216,7 @@ export function CollectionContextClient({
       router.push(surface.href);
       return;
     }
-    if (surface.learning.nextAction === 'review') {
+    if (surface.learning.nextAction === 'revisit') {
       const payload: ReviewResumePayload = { href: surface.href, anchorId: null };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));

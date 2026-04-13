@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../lib/refresh-resume';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { useHistory } from '../lib/use-history';
 import { useTracesForDoc, type Trace } from '../lib/trace';
 
@@ -12,6 +13,7 @@ export function RefreshCoach() {
   const router = useRouter();
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
+  const smallScreen = useSmallScreen();
   const [payload, setPayload] = useState<RefreshResumePayload | null>(null);
   const [completion, setCompletion] = useState<'settled' | 'verified' | null>(null);
   const [history] = useHistory();
@@ -109,17 +111,20 @@ export function RefreshCoach() {
     <div
       style={{
         position: 'fixed',
-        left: 20,
-        bottom: 18,
+        left: smallScreen ? 12 : 20,
+        right: smallScreen ? 12 : 'auto',
+        bottom: smallScreen ? 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)' : 18,
         zIndex: 820,
         padding: '0.65rem 0.8rem',
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        maxWidth: 360,
+        maxWidth: smallScreen ? 'none' : 360,
         borderTop: '0.5px solid var(--mat-border)',
         borderBottom: '0.5px solid var(--mat-border)',
         background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+        borderRadius: smallScreen ? 14 : 0,
+        boxShadow: smallScreen ? 'var(--shadow-1)' : 'none',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

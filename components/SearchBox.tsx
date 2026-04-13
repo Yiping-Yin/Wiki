@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 type Result = { id: string; title: string; href: string; category: string; score: number };
 
@@ -24,6 +25,7 @@ async function loadIndex() {
 }
 
 export function SearchBox() {
+  const smallScreen = useSmallScreen();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<Result[]>([]);
@@ -82,7 +84,7 @@ export function SearchBox() {
           transition: 'color 0.2s var(--ease)',
         }}
       >
-        Search… <span style={{ float: 'right', fontSize: '0.7rem' }}>⌘K</span>
+        Search… {!smallScreen && <span style={{ float: 'right', fontSize: '0.7rem' }}>⌘K</span>}
       </button>
 
       {open && (
@@ -90,12 +92,28 @@ export function SearchBox() {
           onClick={(e) => e.target === e.currentTarget && setOpen(false)}
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.28)', zIndex: 100,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '14vh',
+            display: 'flex',
+            alignItems: smallScreen ? 'stretch' : 'flex-start',
+            justifyContent: 'center',
+            paddingTop: smallScreen ? 0 : '14vh',
             backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
             animation: 'lpFade 0.18s var(--ease)',
           }}
         >
-          <div style={{ width: 'min(640px, 92vw)', background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))', borderTop: '0.5px solid var(--mat-border)', borderBottom: '0.5px solid var(--mat-border)', overflow: 'hidden' }}>
+          <div
+            style={{
+              width: smallScreen ? '100vw' : 'min(640px, 92vw)',
+              minHeight: smallScreen ? '100vh' : 'auto',
+              background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+              borderTop: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+              borderBottom: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              paddingTop: smallScreen ? 'max(8px, env(safe-area-inset-top, 0px))' : 0,
+              paddingBottom: smallScreen ? 'max(8px, env(safe-area-inset-bottom, 0px))' : 0,
+            }}
+          >
             <input
               ref={inputRef}
               value={q}
@@ -107,13 +125,16 @@ export function SearchBox() {
               }}
               placeholder="Search 501 docs…"
               style={{
-                width: '100%', padding: '1.1rem 1.3rem', border: 0, background: 'transparent',
+                width: '100%',
+                padding: smallScreen ? '1rem 1rem 0.95rem' : '1.1rem 1.3rem',
+                border: 0,
+                background: 'transparent',
                 color: 'var(--fg)', fontSize: '1.05rem', outline: 'none',
                 borderBottom: 'var(--hairline)', fontFamily: 'var(--display)',
                 fontWeight: 500, letterSpacing: '-0.005em',
               }}
             />
-            <div style={{ maxHeight: '54vh', overflowY: 'auto' }}>
+            <div style={{ maxHeight: smallScreen ? 'none' : '54vh', flex: smallScreen ? 1 : 'none', overflowY: 'auto' }}>
               {/* §21 silence-first — no "searching…" label */}
               {!loading && q && results.length === 0 && (
                 <div style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.85rem' }}>No results.</div>

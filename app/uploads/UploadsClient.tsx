@@ -288,7 +288,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       router.push(item.href);
       return;
     }
-    if (item.learning.nextAction === 'review') {
+    if (item.learning.nextAction === 'revisit') {
       const payload: ReviewResumePayload = { href: item.href, anchorId: null };
       try {
         sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
