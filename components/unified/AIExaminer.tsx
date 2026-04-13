@@ -266,7 +266,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           fontFamily: 'var(--mono)',
         }}
       >
-        Examiner · {contextNotes.length} notes · {examinerHistory.quality}
+        Examiner · {contextNotes.length} notes
       </div>
 
       {/* Idle: show "start" button */}
@@ -283,7 +283,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           }}
         >
           <div style={{ fontSize: '0.82rem', textAlign: 'center', maxWidth: 320 }}>
-            {idlePromptForQuality(examinerHistory)}
+            Return to the weak edge of this doc.
           </div>
           <button
             type="button"
@@ -664,19 +664,6 @@ function buildExaminerHistoryPrompt(history: ExaminerHistory) {
     lines.push('The learner has been solid recently. Ask a slightly more transfer-oriented question.');
   }
   return lines.join('\n');
-}
-
-function idlePromptForQuality(history: ExaminerHistory) {
-  switch (history.quality) {
-    case 'fragile':
-      return 'This topic has failed before. Probe the weak edge again, not the easy summary.';
-    case 'developing':
-      return 'This topic is improving. One sharper question should tell you whether it is stable yet.';
-    case 'solid':
-      return 'This topic has held up so far. Push it once with a transfer question.';
-    default:
-      return 'Probe for gaps in your understanding of this doc.';
-  }
 }
 
 function buildRehearsalSeed(question: string, feedback: string) {

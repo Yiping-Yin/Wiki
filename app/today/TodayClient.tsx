@@ -251,37 +251,37 @@ export function TodayClient({
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
       {captureNext.length > 0 && (
-        <Block label="Capture next">
+        <Block label="Open">
           <ScheduleList items={captureNext} next="source" cta="Open source" onOpen={openNext} />
         </Block>
       )}
 
       {rehearseNext.length > 0 && (
-        <Block label="Rehearse next">
+        <Block label="Rehearsal">
           <ScheduleList items={rehearseNext} next="rehearsal" cta="Open rehearsal" onOpen={openNext} />
         </Block>
       )}
 
       {weakSpots.length > 0 && (
-        <Block label="Still failing">
+        <Block label="Again">
           <ScheduleList items={weakSpots} next="rehearsal" cta="Rehearse again" onOpen={openNext} />
         </Block>
       )}
 
       {examineNext.length > 0 && (
-        <Block label="Examine next">
+        <Block label="Verify">
           <ScheduleList items={examineNext} next="examiner" cta="Open examiner" onOpen={openNext} />
         </Block>
       )}
 
       {refreshNext.length > 0 && (
-        <Block label="Refresh stale">
+        <Block label="Refresh">
           <ScheduleList items={refreshNext} next="review" cta="Refresh in review" onOpen={() => {}} onPrimary={openRefresh} />
         </Block>
       )}
 
       {revisit.length > 0 && (
-        <Block label="Revisit">
+        <Block label="Return">
           <ScheduleList items={revisit} next="review" cta="Open review" onOpen={openNext} />
         </Block>
       )}

@@ -18,20 +18,6 @@ export function LearningStatusInline({
 }) {
   const activeColor = 'var(--accent)';
   const mutedColor = 'var(--muted)';
-  const recencyColor =
-    status.recency === 'fresh'
-      ? 'var(--tint-green)'
-      : status.recency === 'stale'
-        ? 'var(--tint-orange)'
-        : 'var(--muted)';
-  const qualityColor =
-    status.quality === 'solid'
-      ? 'var(--tint-green)'
-      : status.quality === 'fragile'
-        ? 'var(--tint-red)'
-        : status.quality === 'developing'
-          ? 'var(--tint-orange)'
-          : 'var(--muted)';
 
   if (compact) {
     const label = compactStageLabel(status);
@@ -53,26 +39,6 @@ export function LearningStatusInline({
         }}
       >
         <span>{label}</span>
-        {status.quality !== 'untested' && (
-          <span
-            style={{
-            color: qualityColor,
-            opacity: status.quality === 'developing' ? 0.86 : 1,
-          }}
-          >
-            {status.quality}
-          </span>
-        )}
-        {status.opened && (
-          <span
-            style={{
-              color: recencyColor,
-              opacity: status.recency === 'cooling' ? 0.82 : 1,
-            }}
-          >
-            {status.recency}
-          </span>
-        )}
       </div>
     );
   }
@@ -127,30 +93,6 @@ export function LearningStatusInline({
           {labelForStep(step.key, step.label, status)}
         </span>
       ))}
-      {status.quality !== 'untested' && (
-        <span
-          style={{
-            color: qualityColor,
-            textTransform: 'uppercase',
-            fontWeight: 700,
-            opacity: status.quality === 'developing' ? 0.86 : 1,
-          }}
-        >
-          {status.quality}
-        </span>
-      )}
-      {status.opened && (
-        <span
-          style={{
-            color: recencyColor,
-            textTransform: 'uppercase',
-            fontWeight: 700,
-            opacity: status.recency === 'cooling' ? 0.82 : 1,
-          }}
-        >
-          {status.recency}
-        </span>
-      )}
     </div>
   );
 }

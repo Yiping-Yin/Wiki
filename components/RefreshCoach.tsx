@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../lib/refresh-resume';
-import { LearningStatusInline } from './LearningStatusInline';
 import { summarizeLearningSurface } from '../lib/learning-status';
 import { useHistory } from '../lib/use-history';
 import { useTracesForDoc, type Trace } from '../lib/trace';
@@ -15,7 +14,6 @@ export function RefreshCoach() {
   const [payload, setPayload] = useState<RefreshResumePayload | null>(null);
   const [history] = useHistory();
   const { traces } = useTracesForDoc(ctx.isFree ? null : ctx.docId);
-  const [feedback, setFeedback] = useState<{ tone: 'progress' | 'success'; text: string } | null>(null);
   const prevRef = useRef<ReturnType<typeof summarizeLearningSurface> | null>(null);
 
   const readingTraces = useMemo(
@@ -52,7 +50,6 @@ export function RefreshCoach() {
   useEffect(() => {
     if (!payload) {
       prevRef.current = null;
-      setFeedback(null);
       return;
     }
     const prev = prevRef.current;
@@ -62,25 +59,15 @@ export function RefreshCoach() {
     }
 
     if (learning.crystallized && !prev.crystallized) {
-      setFeedback({ tone: 'success', text: 'Crystallized · refresh complete' });
       const id = window.setTimeout(() => dismiss(), 1800);
       prevRef.current = learning;
       return () => window.clearTimeout(id);
     }
 
     if (learning.examinerCount > prev.examinerCount) {
-      setFeedback({ tone: 'success', text: `Examiner passed · now ${learning.recency}` });
       const id = window.setTimeout(() => dismiss(), 1800);
       prevRef.current = learning;
       return () => window.clearTimeout(id);
-    }
-
-    if (learning.rehearsalCount > prev.rehearsalCount) {
-      setFeedback({ tone: 'progress', text: 'Rehearsal saved · next examiner' });
-    } else if (learning.captureCount > prev.captureCount) {
-      setFeedback({ tone: 'progress', text: 'Captured more context' });
-    } else if (learning.recency !== prev.recency) {
-      setFeedback({ tone: 'progress', text: `Now ${learning.recency}` });
     }
 
     prevRef.current = learning;
@@ -89,7 +76,6 @@ export function RefreshCoach() {
   const dismiss = () => {
     try { sessionStorage.removeItem(REFRESH_RESUME_KEY); } catch {}
     setPayload(null);
-    setFeedback(null);
     prevRef.current = null;
   };
 
@@ -141,24 +127,7 @@ export function RefreshCoach() {
       </div>
 
       <div className="t-footnote" style={{ color: 'var(--fg-secondary)', lineHeight: 1.5 }}>
-        This doc has gone stale. Reopen the pattern, test recall, then verify it once before you leave.
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <LearningStatusInline status={learning} />
-        {feedback && (
-          <div
-            className="t-caption2"
-            style={{
-              color: feedback.tone === 'success' ? 'var(--tint-green)' : 'var(--accent)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              fontWeight: 700,
-            }}
-          >
-            {feedback.text}
-          </div>
-        )}
+        Review, rehearse, verify.
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
