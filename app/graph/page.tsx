@@ -19,6 +19,7 @@ type PanelNode = {
   title: string;
   family: string;
   summary: string;
+  latestAnchorId: string | null;
   crystallizedAt: number;
   learning: ReturnType<typeof summarizeLearningSurface>;
 };
@@ -71,6 +72,7 @@ function familyForHref(href: string): string {
 
 function latestPanelSummary(traces: Trace[]) {
   let latestSummary = '';
+  let latestAnchorId: string | null = null;
   let latestAt = 0;
   for (const trace of traces) {
     for (const event of trace.events) {
@@ -78,10 +80,11 @@ function latestPanelSummary(traces: Trace[]) {
       if (event.at >= latestAt) {
         latestAt = event.at;
         latestSummary = event.summary || event.content;
+        latestAnchorId = event.anchorId;
       }
     }
   }
-  return latestSummary;
+  return { latestSummary, latestAnchorId };
 }
 
 function relationSnippet(summary: string, content: string) {
@@ -117,12 +120,14 @@ function buildPanels(traces: Trace[]) {
     }
     if (!crystallizedAt) continue;
 
+    const { latestSummary, latestAnchorId } = latestPanelSummary(traceSet);
     panels.push({
       docId,
       href: representative.source.href,
       title: representative.source.sourceTitle ?? representative.title,
       family: familyForHref(representative.source.href),
-      summary: latestPanelSummary(traceSet),
+      summary: latestSummary,
+      latestAnchorId,
       crystallizedAt,
       learning: summarizeLearningSurface(traceSet, 0),
     });
@@ -423,7 +428,7 @@ export default function GraphPage() {
   const openReview = (panel: PanelNode) => {
     const payload: ReviewResumePayload = {
       href: panel.href,
-      anchorId: null,
+      anchorId: panel.latestAnchorId,
     };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
@@ -434,7 +439,7 @@ export default function GraphPage() {
   const openRefresh = (panel: PanelNode) => {
     const reviewPayload: ReviewResumePayload = {
       href: panel.href,
-      anchorId: null,
+      anchorId: panel.latestAnchorId,
     };
     const refreshPayload: RefreshResumePayload = {
       href: panel.href,
