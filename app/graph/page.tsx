@@ -572,7 +572,7 @@ export default function GraphPage() {
                 <button type="button" onClick={() => router.push(focusPanel.href)} style={focusLinkStyle}>
                   Open source
                 </button>
-                <button type="button" onClick={() => router.push('/kesi')} style={focusLinkStyle}>
+                <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(focusPanel.docId)}`)} style={focusLinkStyle}>
                   Open Kesi
                 </button>
               </div>
