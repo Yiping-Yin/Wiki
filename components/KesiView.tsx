@@ -270,6 +270,13 @@ export function KesiView() {
   const refreshPanels = sortedPanels
     .filter((panel) => panel.learning.nextAction === 'refresh' && panel.traceId !== returnPanel?.traceId)
     .slice(0, 4);
+  const continuePanels = sortedPanels
+    .filter((panel) => (
+      panel.traceId !== returnPanel?.traceId
+      && panel.learning.nextAction !== 'refresh'
+      && panel.learning.nextAction !== 'capture'
+    ))
+    .slice(0, 4);
 
   const openReview = (panel: Panel, anchorId: string | null = null) => {
     const payload: ReviewResumePayload = {
@@ -530,6 +537,93 @@ export function KesiView() {
                     style={actionStyle(true)}
                   >
                     Refresh
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {continuePanels.length > 0 && (
+          <section
+            className="material-thick"
+            style={{
+              padding: '0.95rem 1.05rem',
+              borderRadius: 'var(--r-3)',
+              marginBottom: 18,
+              boxShadow: 'var(--shadow-1)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
+              <span
+                className="t-caption2"
+                style={{
+                  color: 'var(--muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 700,
+                }}
+              >
+                Keep weaving
+              </span>
+              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+              <span className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', fontWeight: 700 }}>
+                {continuePanels.length}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {continuePanels.map((panel, index) => (
+                <div
+                  key={panel.traceId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '0.78rem 0',
+                    borderBottom: index < continuePanels.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: 'var(--display)',
+                        fontSize: '0.98rem',
+                        fontWeight: 600,
+                        letterSpacing: '-0.012em',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {panel.title}
+                    </div>
+                    <div
+                      className="t-caption2"
+                      style={{
+                        marginTop: 5,
+                        color: 'var(--muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span>{panel.family}</span>
+                      <span aria-hidden>·</span>
+                      <span>{formatWhen(panel.crystallizedAt)}</span>
+                      <span aria-hidden>·</span>
+                      <span>{primaryActionLabel(panel.learning.nextAction)}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openPrimaryAction(panel)}
+                    style={actionStyle(true)}
+                  >
+                    {primaryActionLabel(panel.learning.nextAction)}
                   </button>
                 </div>
               ))}
