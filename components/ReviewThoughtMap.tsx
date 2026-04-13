@@ -24,7 +24,7 @@
  */
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { useAppendEvent } from '../lib/trace';
 import {
@@ -54,6 +54,7 @@ function deriveSummary(content: string): string {
 }
 
 export function ReviewThoughtMap({ active }: { active: boolean }) {
+  const router = useRouter();
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
@@ -319,6 +320,8 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           onAppendVersion={handleAppendVersion}
           activeAnchorId={activeAnchorId}
           panelCrystallized={panelCrystallized}
+          onOpenKesi={() => router.push('/kesi')}
+          onOpenRelations={() => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph')}
         />
       ) : (
         <NarrowSectionTOC
@@ -543,6 +546,8 @@ function WideThoughtList({
   onAppendVersion,
   activeAnchorId,
   panelCrystallized,
+  onOpenKesi,
+  onOpenRelations,
 }: {
   thoughts: ThoughtAnchorView[];
   expandedKey: string | null;
@@ -550,6 +555,8 @@ function WideThoughtList({
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
   activeAnchorId: string;
   panelCrystallized: boolean;
+  onOpenKesi: () => void;
+  onOpenRelations: () => void;
 }) {
   const sectionGroups = useMemo(() => {
     const groups = new Map<string, {
@@ -654,6 +661,8 @@ function WideThoughtList({
                 expanded={expandedKey === t.containerKey}
                 emphasized={activeAnchorId === t.anchorId}
                 panelCrystallized={panelCrystallized}
+                onOpenKesi={onOpenKesi}
+                onOpenRelations={onOpenRelations}
                 onToggle={() =>
                   onExpand(expandedKey === t.containerKey ? null : t.containerKey)
                 }
@@ -787,6 +796,8 @@ function WideThoughtCard({
   expanded,
   emphasized,
   panelCrystallized,
+  onOpenKesi,
+  onOpenRelations,
   onToggle,
   onAppendVersion,
 }: {
@@ -794,6 +805,8 @@ function WideThoughtCard({
   expanded: boolean;
   emphasized: boolean;
   panelCrystallized: boolean;
+  onOpenKesi: () => void;
+  onOpenRelations: () => void;
   onToggle: () => void;
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
 }) {
@@ -977,9 +990,18 @@ function WideThoughtCard({
               color: 'var(--fg-secondary)',
               fontSize: '0.8rem',
               lineHeight: 1.5,
+              marginBottom: 8,
             }}
           >
             This panel is no longer provisional. Use the center live note to uncrystallize before weaving a new version.
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={onOpenKesi} style={settledActionStyle(true)}>
+              Kesi
+            </button>
+            <button type="button" onClick={onOpenRelations} style={settledActionStyle(false)}>
+              Relations
+            </button>
           </div>
         </div>
       ) : expanded ? (
@@ -1056,4 +1078,19 @@ function WideThoughtCard({
       ) : null}
     </div>
   );
+}
+
+function settledActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
+    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    borderRadius: 999,
+    padding: '0.42rem 0.72rem',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    cursor: 'pointer',
+  };
 }
