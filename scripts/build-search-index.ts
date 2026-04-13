@@ -5,13 +5,16 @@
  *   npx tsx scripts/build-search-index.ts
  *
  * Output:
- *   public/search-index.json   — serialized MiniSearch instance + doc store
+ *   knowledge/.cache/indexes/search-index.json
  *
  * The SearchBox client component lazy-loads this and runs queries fully in-browser.
  */
 import MiniSearch from 'minisearch';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { readKnowledgeDocBody } from '../lib/knowledge-doc-cache';
+import { derivedIndexRoot, searchIndexPath } from '../lib/derived-index-cache';
+import { getAllDocs } from '../lib/knowledge-store';
 
 const ROOT = process.cwd();
 
@@ -51,13 +54,10 @@ async function loadCorpus(): Promise<Item[]> {
 
   // 2. Personal knowledge
   try {
-    const manifest = JSON.parse(
-      await fs.readFile(path.join(ROOT, 'lib', 'knowledge-manifest.json'), 'utf-8'),
-    ) as Array<{ id: string; title: string; category: string; categorySlug: string; fileSlug: string; preview: string }>;
+    const manifest = await getAllDocs();
     for (const m of manifest) {
       try {
-        const bodyFile = path.join(ROOT, 'public', 'knowledge', 'docs', `${m.id}.json`);
-        const body = (JSON.parse(await fs.readFile(bodyFile, 'utf-8')).body ?? '').slice(0, 6000);
+        const body = ((await readKnowledgeDocBody(m.id))?.body ?? '').slice(0, 6000);
         items.push({
           id: `know/${m.id}`,
           title: m.title,
@@ -96,7 +96,8 @@ async function main() {
     count: items.length,
     index: ms.toJSON(),
   };
-  const outPath = path.join(ROOT, 'public', 'search-index.json');
+  await fs.mkdir(derivedIndexRoot(), { recursive: true });
+  const outPath = searchIndexPath();
   await fs.writeFile(outPath, JSON.stringify(out));
   const sizeMB = (JSON.stringify(out).length / 1024 / 1024).toFixed(1);
   console.log(`✅ wrote ${outPath}  (${items.length} docs · ${sizeMB} MB)`);

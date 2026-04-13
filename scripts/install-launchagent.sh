@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install a macOS LaunchAgent that:
-#   1. Starts the Wiki on login (next start on port 3737)
+#   1. Starts the Wiki on login (next start on port 3000)
 #   2. Logs to ~/Library/Logs/llm-wiki.{out,err}.log
 #
 # After install, you can:
@@ -14,7 +14,7 @@ set -euo pipefail
 WIKI_DIR="/Users/yinyiping/Desktop/Wiki"
 NODE_BIN="$(which node)"
 NPM_BIN="$(which npm)"
-PORT=3737
+PORT=3000
 
 if [ ! -d "$WIKI_DIR" ]; then
   echo "❌ $WIKI_DIR not found"; exit 1
@@ -40,6 +40,8 @@ cat > "$PLIST" <<EOF
     <string>start</string>
     <string>-p</string>
     <string>$PORT</string>
+    <string>-H</string>
+    <string>0.0.0.0</string>
   </array>
   <key>WorkingDirectory</key><string>$WIKI_DIR</string>
   <key>RunAtLoad</key><true/>

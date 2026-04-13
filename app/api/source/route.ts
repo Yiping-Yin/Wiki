@@ -1,16 +1,21 @@
 /**
  * Read-only proxy for the user's source knowledge directory.
- * Allows the browser to load PDFs/text from /Users/yinyiping/Desktop/Knowledge system
+ * Allows the browser to load PDFs/text from the configured knowledge root
  * without ever modifying the originals.
  *
  * Path traversal is prevented: requests must resolve to a path under SRC.
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { KNOWLEDGE_ROOT, resolveKnowledgePath } from '../../../lib/server-config';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const SRC = '/Users/yinyiping/Desktop/Knowledge system';
+function isWithinDir(root: string, target: string) {
+  const rel = path.relative(root, target);
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
 
 const MIME: Record<string, string> = {
   // Documents
@@ -68,8 +73,8 @@ export async function GET(req: Request) {
   const p = searchParams.get('p');
   if (!p) return new Response('missing p', { status: 400 });
 
-  const abs = path.resolve(p);
-  if (!abs.startsWith(SRC)) return new Response('forbidden', { status: 403 });
+  const abs = resolveKnowledgePath(p);
+  if (!isWithinDir(KNOWLEDGE_ROOT, abs)) return new Response('forbidden', { status: 403 });
 
   try {
     const data = await fs.readFile(abs);

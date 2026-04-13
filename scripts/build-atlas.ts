@@ -8,7 +8,7 @@
  *   - knowledge/**\/*.{md,mdx,txt}       (optional, recursive)
  *
  * Output:
- *   - public/atlas.json   { docs: [{id, slug, title, x, y, cluster, source}], clusters: [{id, label, x, y, size}] }
+ *   - knowledge/.cache/indexes/atlas.json
  *
  * Pipeline:
  *   1. Walk corpora, extract title + body (~2k chars)
@@ -22,6 +22,9 @@ import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { readKnowledgeDocBody } from '../lib/knowledge-doc-cache';
+import { atlasIndexPath, derivedIndexRoot } from '../lib/derived-index-cache';
+import { getAllDocs } from '../lib/knowledge-store';
 
 // ---------- 1. Walk corpus ----------
 
@@ -78,15 +81,10 @@ async function loadDocs(): Promise<Doc[]> {
 
   // 2. Personal knowledge — read from manifest + per-doc body files
   try {
-    const manifestPath = path.join(root, 'lib', 'knowledge-manifest.json');
-    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf-8')) as Array<{
-      id: string; title: string; categorySlug: string; fileSlug: string; preview: string;
-    }>;
+    const manifest = await getAllDocs();
     for (const m of manifest) {
       try {
-        const bodyFile = path.join(root, 'public', 'knowledge', 'docs', `${m.id}.json`);
-        const bodyJson = JSON.parse(await fs.readFile(bodyFile, 'utf-8'));
-        const body = (bodyJson.body ?? m.preview ?? '').slice(0, 4000);
+        const body = ((await readKnowledgeDocBody(m.id))?.body ?? m.preview ?? '').slice(0, 4000);
         docs.push({
           id: `know/${m.id}`,
           slug: `${m.categorySlug}/${m.fileSlug}`,
@@ -234,7 +232,7 @@ async function labelClusters(docs: Doc[], coords: [number, number][], labels: nu
 // ---------- main ----------
 
 async function main() {
-  const useClaude = !process.argv.includes('--no-labels');
+  const useClaude = process.argv.includes('--labels');
   const docs = await loadDocs();
   console.log(`📚 found ${docs.length} docs`);
   if (docs.length < 4) {
@@ -265,8 +263,8 @@ async function main() {
     })),
     clusters: normClusters,
   };
-  const outPath = path.join(process.cwd(), 'public', 'atlas.json');
-  await fs.mkdir(path.dirname(outPath), { recursive: true });
+  const outPath = atlasIndexPath();
+  await fs.mkdir(derivedIndexRoot(), { recursive: true });
   await fs.writeFile(outPath, JSON.stringify(out));
   console.log(`✅ wrote ${outPath}  (${docs.length} docs, ${clusters.length} clusters)`);
 }

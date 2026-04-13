@@ -1,5 +1,7 @@
 node_modules/
 .next/
+.next-build/
+.next-app-dev/
 out/
 build/
 dist/
@@ -14,3 +16,19 @@ public/pagefind/
 .vercel
 next-env.d.ts
 knowledge/.cache
+knowledge/.cache/generated/
+knowledge/.cache/indexes/
+knowledge/.cache/manifest/
+.npm/
+Library/
+tsconfig.tsbuildinfo
+public/atlas.json
+public/search-index.json
+public/rag-index.json
+public/related.json
+public/knowledge/docs/
+public/knowledge/docs/* 2.json
+public/knowledge/quizzes/
+public/knowledge/structures/
+public/knowledge/summaries/
+macos-app/Loom/Loom *.xcodeproj/

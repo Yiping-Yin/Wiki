@@ -9,7 +9,7 @@ async function ensureLoaded() {
   if (_loadPromise) return _loadPromise;
   _loadPromise = (async () => {
     try {
-      const r = await fetch('/search-index.json');
+      const r = await fetch('/api/search-index');
       if (!r.ok) return;
       const payload = await r.json();
       const stored = payload.index?.storedFields ?? {};

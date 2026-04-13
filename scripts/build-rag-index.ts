@@ -5,14 +5,17 @@
  *   npx tsx scripts/build-rag-index.ts
  *
  * Output:
- *   public/rag-index.json   { dim, docs: [{id, title, href, vector: number[]}] }
+ *   knowledge/.cache/indexes/rag-index.json
+ *   knowledge/.cache/indexes/related.json
  *
  * The /api/ask route loads this once on cold start, embeds incoming queries
  * with the same model, and ranks by cosine similarity. Pure local — no API.
  */
 import { promises as fs } from 'node:fs';
-import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { readKnowledgeDocBody } from '../lib/knowledge-doc-cache';
+import { derivedIndexRoot, ragIndexPath, relatedIndexPath } from '../lib/derived-index-cache';
+import { getAllDocs } from '../lib/knowledge-store';
 
 const ROOT = process.cwd();
 
@@ -46,13 +49,10 @@ async function loadCorpus(): Promise<Item[]> {
 
   // 2. Personal knowledge — manifest + bodies
   try {
-    const manifest = JSON.parse(
-      await fs.readFile(path.join(ROOT, 'lib', 'knowledge-manifest.json'), 'utf-8'),
-    ) as Array<{ id: string; title: string; category: string; categorySlug: string; fileSlug: string; preview: string }>;
+    const manifest = await getAllDocs();
     for (const m of manifest) {
       try {
-        const bodyFile = path.join(ROOT, 'public', 'knowledge', 'docs', `${m.id}.json`);
-        const body = JSON.parse(await fs.readFile(bodyFile, 'utf-8')).body ?? '';
+        const body = (await readKnowledgeDocBody(m.id))?.body ?? '';
         const text = (m.title + '. ' + body).slice(0, 4000);
         items.push({
           id: `know/${m.id}`,
@@ -91,7 +91,8 @@ async function main() {
   console.log();
 
   const out = { dim, generatedAt: new Date().toISOString(), docs };
-  const outPath = path.join(ROOT, 'public', 'rag-index.json');
+  await fs.mkdir(derivedIndexRoot(), { recursive: true });
+  const outPath = ragIndexPath();
   await fs.writeFile(outPath, JSON.stringify(out));
   const sizeMB = (JSON.stringify(out).length / 1024 / 1024).toFixed(1);
   console.log(`✅ wrote ${outPath}  (${docs.length} docs · dim ${dim} · ${sizeMB} MB)`);
@@ -118,7 +119,7 @@ async function main() {
       score: Math.round(s * 1000) / 1000,
     }));
   }
-  const relatedPath = path.join(ROOT, 'public', 'related.json');
+  const relatedPath = relatedIndexPath();
   await fs.writeFile(relatedPath, JSON.stringify(related));
   const relMB = (JSON.stringify(related).length / 1024 / 1024).toFixed(2);
   console.log(`✅ wrote ${relatedPath}  (${Object.keys(related).length} entries · ${relMB} MB)`);

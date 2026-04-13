@@ -8,10 +8,9 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { KNOWLEDGE_ROOT } from '../../../../lib/server-config';
 
 export const runtime = 'nodejs';
-
-const KNOWLEDGE_ROOT = '/Users/yinyiping/Desktop/Knowledge system';
 
 function slugify(s: string): string {
   return s

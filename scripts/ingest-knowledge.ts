@@ -1,14 +1,14 @@
 /**
- * Ingest the user's READ-ONLY personal knowledge base from
- *   /Users/yinyiping/Desktop/Knowledge system
+ * Ingest the user's READ-ONLY personal knowledge base from the configured
+ * knowledge root (`LOOM_KNOWLEDGE_ROOT`, or a sensible local default)
  * into a SCALABLE manifest + per-doc JSON files served by dynamic routes.
  *
  * Source files are NEVER modified. We only READ them.
  *
- * Outputs (all inside the Wiki project):
- *   - lib/knowledge-nav.ts                   — categories list (small, statically imported)
- *   - lib/knowledge-manifest.json            — full doc metadata (id, title, category, sourcePath, ext)
- *   - public/knowledge/docs/<id>.json        — per-doc body (lazy-loaded via fetch)
+ * Outputs (all inside the runtime cache):
+ *   - knowledge/.cache/manifest/knowledge-nav.json
+ *   - knowledge/.cache/manifest/knowledge-manifest.json
+ *   - knowledge/.cache/docs/<id>.json
  *
  * Architecture:
  *   - Skip claude-code-source-main, node_modules, hidden, temp files
@@ -21,12 +21,13 @@
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { KNOWLEDGE_ROOT, toKnowledgeRelativePath } from '../lib/server-config';
+import { knowledgeDocRuntimeDir, knowledgeDocRuntimePath } from '../lib/knowledge-doc-cache';
+import { knowledgeManifestPath, knowledgeManifestRoot, knowledgeNavPath } from '../lib/knowledge-store';
+import type { KnowledgeCategory } from '../lib/knowledge-types';
 
-const SRC = '/Users/yinyiping/Desktop/Knowledge system';
-const ROOT = process.cwd();
-const NAV_FILE = path.join(ROOT, 'lib', 'knowledge-nav.ts');
-const MANIFEST_FILE = path.join(ROOT, 'lib', 'knowledge-manifest.json');
-const DOCS_DIR = path.join(ROOT, 'public', 'knowledge', 'docs');
+const SRC = KNOWLEDGE_ROOT;
+const DOCS_DIR = knowledgeDocRuntimeDir();
 
 const SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.cache']);
 const SKIP_PREFIXES = ['~$', '.DS', '._'];
@@ -42,7 +43,7 @@ type DocMeta = {
   /** Numeric sort key derived from subcategory (week number, lecture #, …) */
   subOrder: number;
   fileSlug: string;
-  sourcePath: string;    // absolute, READ-ONLY
+  sourcePath: string;    // relative to KNOWLEDGE_ROOT, READ-ONLY
   ext: string;
   size: number;
   hasText: boolean;
@@ -80,6 +81,9 @@ async function walk(dir: string, out: string[] = []): Promise<string[]> {
   return out;
 }
 
+/** UNSW course code pattern, e.g. "FINS 3646", "INFS2822", "MATH 1141". */
+const COURSE_CODE_RE = /^[A-Z]{2,4}\s*\d{3,4}$/i;
+
 function categorizePath(absPath: string): {
   category: string; categorySlug: string;
   subcategory: string;
@@ -91,9 +95,18 @@ function categorizePath(absPath: string): {
   if (dirParts.length === 0) return { category: 'Misc', categorySlug: 'misc', subcategory: '' };
 
   // UNSW/<course>/<sub...>/<file>
+  //
+  // Some documents are misfiled under the wrong course, e.g.
+  //   UNSW/FINS 3646/INFS 2822/w2 infs2822.pdf
+  // The deepest directory that matches a course-code pattern is the real owner,
+  // so we walk dirParts and pick the LAST course-code-shaped segment.
   if (dirParts[0] === 'UNSW' && dirParts.length >= 2) {
-    const course = dirParts[1];
-    const sub = dirParts.slice(2).join(' / ');
+    let courseIdx = 1;
+    for (let i = dirParts.length - 1; i >= 1; i--) {
+      if (COURSE_CODE_RE.test(dirParts[i].trim())) { courseIdx = i; break; }
+    }
+    const course = dirParts[courseIdx];
+    const sub = dirParts.slice(courseIdx + 1).join(' / ');
     return {
       category: `UNSW · ${course}`,
       categorySlug: slugify(`unsw-${course}`),
@@ -169,12 +182,46 @@ function cleanText(raw: string): string {
   // 6. Fix hyphenated word breaks
   s = lines.join('\n').replace(/(\w)-\n\s*(\w)/g, '$1$2');
 
-  // 7. Re-flow: single newline → space
-  s = s.replace(/([^\n])\n([^\n])/g, '$1 $2');
+  // 6a. Preserve columnar layouts.
+  //     Layout-aware PDF extraction (e.g. `pdftotext -layout`) represents
+  //     multi-column slides by padding with many spaces between columns:
+  //
+  //       Week 1                Week 2                Week 3
+  //       Python                Python                Python
+  //
+  //     If we blindly re-flow in step 7 and collapse whitespace in step 8,
+  //     adjacent columns get concatenated into nonsense like
+  //     "Week 1 Week 2 Week 3 Python Python Python".
+  //
+  //     Strategy: detect lines that contain 2+ runs of 4+ whitespace (column
+  //     gaps). Replace each gap with " · " so the columns stay visibly split,
+  //     AND wrap such lines in sentinel markers so steps 7–8 leave them alone.
+  const COL_SENTINEL_OPEN = '\u0001';
+  const COL_SENTINEL_CLOSE = '\u0002';
+  s = s.split('\n').map((ln) => {
+    if (ln.trim() === '') return ln;
+    // Count runs of 4+ horizontal whitespace inside (not leading/trailing)
+    const gaps = ln.trim().match(/ {4,}/g);
+    if (gaps && gaps.length >= 2) {
+      const cells = ln.trim().split(/ {4,}/).map((c) => c.trim()).filter(Boolean);
+      if (cells.length >= 3) {
+        return COL_SENTINEL_OPEN + cells.join(' · ') + COL_SENTINEL_CLOSE;
+      }
+    }
+    return ln;
+  }).join('\n');
 
-  // 8. Collapse blank lines + whitespace
+  // 7. Re-flow: single newline → space (but never cross a columnar row)
+  s = s.replace(/([^\n\u0001\u0002])\n([^\n\u0001\u0002])/g, '$1 $2');
+
+  // 8. Collapse blank lines + whitespace (but don't touch columnar rows)
   s = s.replace(/\n{3,}/g, '\n\n');
-  s = s.split('\n').map((ln) => ln.replace(/[ \t]{2,}/g, ' ').trim()).join('\n');
+  s = s.split('\n').map((ln) => {
+    if (ln.startsWith(COL_SENTINEL_OPEN)) {
+      return ln.replace(/[\u0001\u0002]/g, '');
+    }
+    return ln.replace(/[ \t]{2,}/g, ' ').trim();
+  }).join('\n');
 
   // 9. Final cleanup: stray dots from leader removal
   s = s.replace(/ \. \. \./g, '');
@@ -248,7 +295,7 @@ async function main() {
       id, title, category, categorySlug,
       subcategory, subOrder: subOrder(subcategory),
       fileSlug,
-      sourcePath: p, ext: ext || '.txt',
+      sourcePath: toKnowledgeRelativePath(p), ext: ext || '.txt',
       size: stat?.size ?? 0,
       hasText: !!textPath,
       preview,
@@ -259,9 +306,9 @@ async function main() {
   console.log(`📦 ${docs.length} unique docs across ${new Set(docs.map((d) => d.categorySlug)).size} categories`);
 
   // Write manifest
-  await fs.mkdir(path.dirname(MANIFEST_FILE), { recursive: true });
-  await fs.writeFile(MANIFEST_FILE, JSON.stringify(docs, null, 0));
-  console.log(`✅ wrote ${MANIFEST_FILE}`);
+  await fs.mkdir(knowledgeManifestRoot(), { recursive: true });
+  await fs.writeFile(knowledgeManifestPath(), JSON.stringify(docs, null, 0));
+  console.log(`✅ wrote ${knowledgeManifestPath()}`);
 
   // Write per-doc body files
   if (existsSync(DOCS_DIR)) await fs.rm(DOCS_DIR, { recursive: true, force: true });
@@ -270,7 +317,7 @@ async function main() {
   for (const d of docs) {
     const body = docBodies.get(d.id) ?? '';
     await fs.writeFile(
-      path.join(DOCS_DIR, `${d.id}.json`),
+      knowledgeDocRuntimePath(d.id),
       JSON.stringify({ id: d.id, title: d.title, body }),
     );
     n++;
@@ -280,7 +327,7 @@ async function main() {
 
   // Build category list with sub-tree
   type Sub = { label: string; order: number; count: number };
-  type Cat = { slug: string; label: string; count: number; subs: Sub[] };
+  type Cat = KnowledgeCategory;
   const catMap = new Map<string, Cat>();
   for (const d of docs) {
     let c = catMap.get(d.categorySlug);
@@ -301,14 +348,12 @@ async function main() {
     c.subs.sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label));
   }
   const cats = Array.from(catMap.values()).sort((a, b) => a.label.localeCompare(b.label));
-  const navContent = `// AUTO-GENERATED by scripts/ingest-knowledge.ts
-export type KnowledgeSub = { label: string; order: number; count: number };
-export type KnowledgeCategory = { slug: string; label: string; count: number; subs: KnowledgeSub[] };
-export const knowledgeCategories: KnowledgeCategory[] = ${JSON.stringify(cats, null, 2)};
-export const knowledgeTotal = ${docs.length};
-`;
-  await fs.writeFile(NAV_FILE, navContent, 'utf-8');
-  console.log(`✅ wrote ${NAV_FILE} (${cats.length} categories, ${docs.length} docs)`);
+  await fs.writeFile(
+    knowledgeNavPath(),
+    JSON.stringify({ knowledgeCategories: cats, knowledgeTotal: docs.length }, null, 2),
+    'utf-8',
+  );
+  console.log(`✅ wrote ${knowledgeNavPath()} (${cats.length} categories, ${docs.length} docs)`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

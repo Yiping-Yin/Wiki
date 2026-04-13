@@ -1,25 +1,24 @@
 /**
  * POST /api/structure  { id: string }
  *
- * Takes the OCR'd text of a knowledge doc and asks the LOCAL claude CLI
- * (`claude -p`) to produce a structured Markdown rewrite — headings, key
+ * Takes the OCR'd text of a knowledge doc and asks the selected local CLI
+ * to produce a structured Markdown rewrite — headings, key
  * formulas as $$..$$, code blocks, callouts, lists. Result cached to disk.
  *
- * No API key required — uses the user's local Claude Code login.
+ * No API key required — uses the user's local CLI login.
  *
  * Cache: public/knowledge/structures/<id>.json
  *   { id, title, markdown, generatedAt }
  */
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { runCli, pickCli } from '../../../lib/claude-cli';
+import { legacyPublicCachePath, runtimeCacheDir, runtimeCachePath } from '../../../lib/generated-cache';
+import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
-
-const STRUCT_DIR = path.join(process.cwd(), 'public', 'knowledge', 'structures');
-const BODY_DIR = path.join(process.cwd(), 'public', 'knowledge', 'docs');
 
 function safeId(id: string): string | null {
   if (!/^[a-z0-9_\-\u4e00-\u9fa5]+$/.test(id)) return null;
@@ -35,23 +34,22 @@ export async function POST(req: Request) {
   if (!safe) return Response.json({ error: 'invalid id' }, { status: 400 });
   const cli = pickCli(body);
 
-  const cachePath = path.join(STRUCT_DIR, `${safe}.json`);
-  if (existsSync(cachePath)) {
+  const cachePaths = [runtimeCachePath('structures', safe), legacyPublicCachePath('structures', safe)];
+  for (const cachePath of cachePaths) {
+    if (!existsSync(cachePath)) continue;
     try {
       return Response.json({ ...JSON.parse(await fs.readFile(cachePath, 'utf-8')), cached: true });
     } catch {}
   }
 
-  const bodyPath = path.join(BODY_DIR, `${safe}.json`);
   let docBody = '';
   let title = safe;
-  try {
-    const j = JSON.parse(await fs.readFile(bodyPath, 'utf-8'));
-    docBody = j.body ?? '';
-    title = j.title ?? safe;
-  } catch {
+  const j = await readKnowledgeDocBody(safe);
+  if (!j) {
     return Response.json({ error: 'doc not found' }, { status: 404 });
   }
+  docBody = j.body ?? '';
+  title = j.title ?? safe;
 
   if (docBody.trim().length < 100) {
     return Response.json({ error: 'doc has no extractable text' }, { status: 422 });
@@ -101,7 +99,8 @@ ${docBody.slice(0, 18000)}
       markdown: cleaned,
       generatedAt: new Date().toISOString(),
     };
-    await fs.mkdir(STRUCT_DIR, { recursive: true });
+    const cachePath = runtimeCachePath('structures', safe);
+    await fs.mkdir(runtimeCacheDir('structures'), { recursive: true });
     await fs.writeFile(cachePath, JSON.stringify(result, null, 2));
     return Response.json({ ...result, cached: false });
   } catch (e: any) {

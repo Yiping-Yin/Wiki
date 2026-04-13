@@ -3,11 +3,14 @@
  * Loads the local MiniLM model once and caches it for the process lifetime.
  */
 let extractorPromise: Promise<any> | null = null;
+const runtimeImport = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<any>;
 
 export async function getExtractor() {
   if (!extractorPromise) {
     extractorPromise = (async () => {
-      const { pipeline } = await import('@huggingface/transformers');
+      // Use a runtime-native import so Next does not split this into a
+      // separate server chunk that route handlers later fail to resolve.
+      const { pipeline } = await runtimeImport('@huggingface/transformers');
       return pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { dtype: 'fp32' });
     })();
   }

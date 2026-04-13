@@ -2,8 +2,11 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { embedQuery, cosine } from '../../../lib/embed';
 import { runCli, pickCli } from '../../../lib/claude-cli';
+import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
+import { ragIndexPath } from '../../../lib/derived-index-cache';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 type IndexedDoc = { id: string; title: string; href: string; vector: number[] };
@@ -15,7 +18,7 @@ let _bodyCache: Map<string, string> | null = null;
 async function loadIndex(): Promise<Index | null> {
   if (_indexCache) return _indexCache;
   try {
-    const raw = await fs.readFile(path.join(process.cwd(), 'public', 'rag-index.json'), 'utf-8');
+    const raw = await fs.readFile(ragIndexPath(), 'utf-8');
     _indexCache = JSON.parse(raw) as Index;
     return _indexCache;
   } catch {
@@ -34,8 +37,7 @@ async function loadBody(id: string): Promise<string> {
       body = await fs.readFile(p, 'utf-8');
     } else if (id.startsWith('know/')) {
       const docId = id.slice('know/'.length);
-      const p = path.join(process.cwd(), 'public', 'knowledge', 'docs', `${docId}.json`);
-      body = JSON.parse(await fs.readFile(p, 'utf-8')).body ?? '';
+      body = (await readKnowledgeDocBody(docId))?.body ?? '';
     }
   } catch {}
   _bodyCache.set(id, body);
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
   const idx = await loadIndex();
   if (!idx) {
     return Response.json({
-      error: 'rag-index.json missing — run `npx tsx scripts/build-rag-index.ts` first',
+      error: 'rag index missing — run `npm run rag` first',
     }, { status: 503 });
   }
 
@@ -98,6 +100,6 @@ Question: ${q}`;
       sources: sources.map(({ id, title, href, score }) => ({ id, title, href, score })),
     });
   } catch (e: any) {
-    return Response.json({ error: 'claude CLI failed: ' + e.message }, { status: 500 });
+    return Response.json({ error: `${cli} CLI failed: ` + e.message }, { status: 500 });
   }
 }

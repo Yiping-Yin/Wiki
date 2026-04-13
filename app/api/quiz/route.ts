@@ -1,27 +1,26 @@
 /**
  * POST /api/quiz  { id: string }
  *
- * Generates 3 multiple-choice questions via the LOCAL `claude` CLI, cached.
+ * Generates 3 multiple-choice questions via the selected local CLI, cached.
  * No API key required.
  */
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { runCli, pickCli } from '../../../lib/claude-cli';
+import { legacyPublicCachePath, runtimeCacheDir, runtimeCachePath } from '../../../lib/generated-cache';
+import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const QUIZ_DIR = path.join(process.cwd(), 'public', 'knowledge', 'quizzes');
-const KNOWLEDGE_DIR = path.join(process.cwd(), 'public', 'knowledge', 'docs');
 const WIKI_DIR = path.join(process.cwd(), 'app', 'wiki');
 
 function safeId(id: string): string | null {
   if (!/^[a-z0-9_\-\u4e00-\u9fa5/]+$/.test(id)) return null;
   return id;
 }
-function cacheKey(id: string): string { return id.replace(/\//g, '__'); }
-
 async function loadBody(id: string): Promise<{ body: string; title: string } | null> {
   if (id.startsWith('wiki/')) {
     const slug = id.slice('wiki/'.length);
@@ -32,9 +31,7 @@ async function loadBody(id: string): Promise<{ body: string; title: string } | n
     } catch { return null; }
   }
   try {
-    const raw = await fs.readFile(path.join(KNOWLEDGE_DIR, `${id}.json`), 'utf-8');
-    const j = JSON.parse(raw);
-    return { body: j.body ?? '', title: j.title ?? id };
+    return await readKnowledgeDocBody(id);
   } catch { return null; }
 }
 
@@ -47,8 +44,9 @@ export async function POST(req: Request) {
   if (!safe) return Response.json({ error: 'invalid id' }, { status: 400 });
   const cli = pickCli(body);
 
-  const cacheFile = path.join(QUIZ_DIR, `${cacheKey(safe)}.json`);
-  if (existsSync(cacheFile)) {
+  const cachePaths = [runtimeCachePath('quizzes', safe), legacyPublicCachePath('quizzes', safe)];
+  for (const cacheFile of cachePaths) {
+    if (!existsSync(cacheFile)) continue;
     try {
       return Response.json({ ...JSON.parse(await fs.readFile(cacheFile, 'utf-8')), cached: true });
     } catch {}
@@ -109,7 +107,8 @@ ${doc.body.slice(0, 12000)}
     if (result.questions.length === 0) {
       return Response.json({ error: 'model returned no usable questions' }, { status: 500 });
     }
-    await fs.mkdir(QUIZ_DIR, { recursive: true });
+    const cacheFile = runtimeCachePath('quizzes', safe);
+    await fs.mkdir(runtimeCacheDir('quizzes'), { recursive: true });
     await fs.writeFile(cacheFile, JSON.stringify(result, null, 2));
     return Response.json({ ...result, cached: false });
   } catch (e: any) {

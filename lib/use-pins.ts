@@ -1,19 +1,17 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useAllTraces } from './trace';
+import { ensureReadingTrace } from './trace/source-bound';
+import { traceStore } from './trace/store';
 
-const KEY = 'wiki:pins:v1';
+const CHANGE_EVENT = 'loom:trace:changed';
 
 export type PinnedDoc = { id: string; title: string; href: string; pinnedAt: number };
 
-function read(): PinnedDoc[] {
-  if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(KEY) ?? '[]'); } catch { return []; }
-}
-function write(p: PinnedDoc[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(KEY, JSON.stringify(p));
-  // notify same-tab listeners
-  window.dispatchEvent(new CustomEvent('wiki:pins:changed'));
+function emitChange() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+  }
 }
 
 export function usePins(): {
@@ -22,35 +20,38 @@ export function usePins(): {
   toggle: (entry: Omit<PinnedDoc, 'pinnedAt'>) => void;
   unpin: (id: string) => void;
 } {
-  const [pins, setPins] = useState<PinnedDoc[]>([]);
+  const { traces } = useAllTraces();
 
-  useEffect(() => {
-    setPins(read());
-    const onChange = () => setPins(read());
-    window.addEventListener('wiki:pins:changed', onChange);
-    window.addEventListener('storage', onChange);
-    return () => {
-      window.removeEventListener('wiki:pins:changed', onChange);
-      window.removeEventListener('storage', onChange);
-    };
-  }, []);
+  const pins = useMemo(() => {
+    return traces
+      .filter((t) => t.kind === 'reading' && !t.parentId && !!t.source?.docId && !!t.pinnedAt)
+      .map((t) => ({
+        id: t.source!.docId,
+        title: t.source!.sourceTitle ?? t.title,
+        href: t.source!.href,
+        pinnedAt: t.pinnedAt!,
+      }))
+      .sort((a, b) => b.pinnedAt - a.pinnedAt);
+  }, [traces]);
 
   const isPinned = useCallback((id: string) => pins.some((p) => p.id === id), [pins]);
 
-  const toggle = useCallback((entry: Omit<PinnedDoc, 'pinnedAt'>) => {
-    const cur = read();
-    const exists = cur.some((p) => p.id === entry.id);
-    const next = exists
-      ? cur.filter((p) => p.id !== entry.id)
-      : [{ ...entry, pinnedAt: Date.now() }, ...cur].slice(0, 50);
-    write(next);
-    setPins(next);
+  const toggle = useCallback(async (entry: Omit<PinnedDoc, 'pinnedAt'>) => {
+    const trace = await ensureReadingTrace({
+      docId: entry.id,
+      href: entry.href,
+      sourceTitle: entry.title,
+    });
+    await traceStore.update(trace.id, { pinnedAt: trace.pinnedAt ? undefined : Date.now() });
+    emitChange();
   }, []);
 
-  const unpin = useCallback((id: string) => {
-    const next = read().filter((p) => p.id !== id);
-    write(next);
-    setPins(next);
+  const unpin = useCallback(async (id: string) => {
+    const traces = await traceStore.getByDoc(id);
+    const trace = traces.find((t) => t.kind === 'reading' && !t.parentId);
+    if (!trace) return;
+    await traceStore.update(trace.id, { pinnedAt: undefined });
+    emitChange();
   }, []);
 
   return { pins, isPinned, toggle, unpin };

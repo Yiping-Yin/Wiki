@@ -3,19 +3,25 @@
  *
  * Returns { id, title, body } for any doc id.
  *   - "wiki/<slug>"  → reads app/wiki/<slug>/page.mdx (stripped of MDX boilerplate)
- *   - "know/<id>"    → reads public/knowledge/docs/<id>.json
+ *   - "know/<id>"    → reads the runtime knowledge doc cache
  *   - "upload/<name>"→ reads knowledge/uploads/<name> (text only)
  *
  * Used by ChatPanel @-mentions to inject doc context.
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const KNOW_DIR = path.join(process.cwd(), 'public', 'knowledge', 'docs');
 const WIKI_DIR = path.join(process.cwd(), 'app', 'wiki');
 const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
+
+function isWithinDir(root: string, target: string) {
+  const rel = path.relative(root, target);
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
 
 function stripMDX(s: string): string {
   return s
@@ -43,14 +49,15 @@ export async function GET(req: Request) {
     }
     if (id.startsWith('know/')) {
       const docId = id.slice('know/'.length).replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '');
-      const j = JSON.parse(await fs.readFile(path.join(KNOW_DIR, `${docId}.json`), 'utf-8'));
+      const j = await readKnowledgeDocBody(docId);
+      if (!j) throw new Error('not found');
       return Response.json({ id, title: j.title, body: (j.body ?? '').slice(0, 6000) });
     }
     if (id.startsWith('upload/')) {
       const name = decodeURIComponent(id.slice('upload/'.length));
       if (name.includes('/') || name.includes('..')) return Response.json({ error: 'forbidden' }, { status: 403 });
       const abs = path.resolve(UPLOAD_DIR, name);
-      if (!abs.startsWith(UPLOAD_DIR)) return Response.json({ error: 'forbidden' }, { status: 403 });
+      if (!isWithinDir(UPLOAD_DIR, abs)) return Response.json({ error: 'forbidden' }, { status: 403 });
       const ext = path.extname(name).toLowerCase();
       if (['.txt', '.md', '.csv', '.tsv', '.json', '.ipynb'].includes(ext)) {
         const body = (await fs.readFile(abs, 'utf-8')).slice(0, 6000);

@@ -8,11 +8,12 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { KNOWLEDGE_ROOT } from '../../../lib/server-config';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
-const KNOWLEDGE_ROOT = '/Users/yinyiping/Desktop/Knowledge system';
 const ALLOWED = new Set(['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.csv', '.tsv', '.json', '.ipynb', '.xlsx', '.xls']);
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 

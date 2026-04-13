@@ -8,8 +8,14 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
+
+function isWithinDir(root: string, target: string) {
+  const rel = path.relative(root, target);
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
 
 const MIME: Record<string, string> = {
   '.pdf': 'application/pdf',
@@ -28,9 +34,12 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const name = searchParams.get('name');
   if (!name) return new Response('missing name', { status: 400 });
+  if (name.includes('/') || name.includes('\\') || /^\.+/.test(name)) {
+    return new Response('forbidden', { status: 403 });
+  }
   const safeName = name.replace(/[/\\]/g, '_').replace(/^\.+/, '');
   const abs = path.resolve(UPLOAD_DIR, safeName);
-  if (!abs.startsWith(UPLOAD_DIR)) return new Response('forbidden', { status: 403 });
+  if (!isWithinDir(UPLOAD_DIR, abs)) return new Response('forbidden', { status: 403 });
 
   try {
     const data = await fs.readFile(abs);

@@ -117,6 +117,35 @@ function priorNotesBlock(notes: { summary: string; quote?: string }[]): string {
 }
 
 /**
+ * §X · Prior iterations on the EXACT passage the user is currently asking
+ * about. Each iteration is a committed version of the user's thinking on
+ * this specific passage, oldest first. The AI must treat these as the
+ * continuous trajectory of the user's understanding and build on the latest
+ * iteration, not restart from scratch.
+ */
+function priorVersionsBlock(versions: { summary: string; at: number }[]): string {
+  if (versions.length === 0) return '';
+  const fmt = (at: number) => {
+    const diff = Date.now() - at;
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (d < 1) return 'today';
+    if (d < 7) return `${d}d ago`;
+    if (d < 30) return `${Math.floor(d / 7)}w ago`;
+    return `${Math.floor(d / 30)}mo ago`;
+  };
+  const items = versions.map((v, i) => `  v${i + 1} (${fmt(v.at)}): ${v.summary}`).join('\n');
+  return [
+    ``,
+    `━━━ PRIOR ITERATIONS ON THIS EXACT PASSAGE ━━━`,
+    `The user has thought about this specific passage before. Previous versions (oldest first):`,
+    items,
+    ``,
+    `Their CURRENT understanding is v${versions.length}. They are now asking you about this passage again — which means they want to refine, extend, or deepen that latest understanding. Do NOT repeat what's already in v${versions.length}. Start from where they left off. If the new question contradicts a prior version, acknowledge the shift and explain what's changing. Treat this as one continuous trajectory of thinking, not a new question.`,
+    ``,
+  ].join('\n');
+}
+
+/**
  * Build the system prompt for passage-bound discussion WITH awareness
  * of existing anchored notes. Used by ChatFocus.send().
  */
@@ -125,10 +154,14 @@ export function discussionSystemPrompt(ctx: {
   href: string;
   sourceBody?: string;
   existingNotes?: { summary: string; quote?: string }[];
+  /** Prior iterations on the EXACT passage being discussed right now,
+   *  oldest first. See priorVersionsBlock for how these are surfaced to the AI. */
+  priorVersionsOnThisPassage?: { summary: string; at: number }[];
 }): string {
   return [
     `You are inside Loom, a personal learning tool. The user is on: "${ctx.sourceTitle}" (${ctx.href}).`,
     `They have selected a passage and are asking you about it.`,
+    priorVersionsBlock(ctx.priorVersionsOnThisPassage ?? []),
     priorNotesBlock(ctx.existingNotes ?? []),
     bodyBlock(ctx.sourceBody),
     LOOM_AI_RULES,

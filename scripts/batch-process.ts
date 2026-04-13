@@ -20,14 +20,17 @@
  *   --skip-existing                         (default true; pass --force to override)
  *
  * Cache locations are unchanged so the web UI picks them up automatically:
- *   public/knowledge/summaries/<id>.json
- *   public/knowledge/structures/<id>.json
- *   public/knowledge/quizzes/<id>.json
+ *   knowledge/.cache/generated/summaries/<id>.json
+ *   knowledge/.cache/generated/structures/<id>.json
+ *   knowledge/.cache/generated/quizzes/<id>.json
  */
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { runClaude } from '../lib/claude-cli';
+import { runtimeCacheDir, runtimeCachePath } from '../lib/generated-cache';
+import { readKnowledgeDocBody } from '../lib/knowledge-doc-cache';
+import { getAllDocs } from '../lib/knowledge-store';
 
 const ROOT = process.cwd();
 
@@ -66,15 +69,11 @@ type DocMeta = {
 };
 
 async function loadManifest(): Promise<DocMeta[]> {
-  const raw = await fs.readFile(path.join(ROOT, 'lib', 'knowledge-manifest.json'), 'utf-8');
-  return JSON.parse(raw);
+  return getAllDocs();
 }
 
 async function loadBody(id: string): Promise<{ title: string; body: string } | null> {
-  try {
-    const j = JSON.parse(await fs.readFile(path.join(ROOT, 'public', 'knowledge', 'docs', `${id}.json`), 'utf-8'));
-    return { title: j.title ?? id, body: j.body ?? '' };
-  } catch { return null; }
+  return readKnowledgeDocBody(id);
 }
 
 // ---------- task definitions ----------
@@ -87,8 +86,8 @@ type TaskSpec = {
 };
 
 const SUMMARIZE: TaskSpec = {
-  cacheDir: path.join(ROOT, 'public', 'knowledge', 'summaries'),
-  cachePathFor: (id) => path.join(ROOT, 'public', 'knowledge', 'summaries', `${id}.json`),
+  cacheDir: runtimeCacheDir('summaries'),
+  cachePathFor: (id) => runtimeCachePath('summaries', id),
   minBodyChars: 50,
   prompt: (title, body) => `Summarize this document. Output STRICT JSON only, no preamble, no code fences:
 
@@ -124,8 +123,8 @@ ${body.slice(0, 12000)}
 };
 
 const STRUCTURE: TaskSpec = {
-  cacheDir: path.join(ROOT, 'public', 'knowledge', 'structures'),
-  cachePathFor: (id) => path.join(ROOT, 'public', 'knowledge', 'structures', `${id}.json`),
+  cacheDir: runtimeCacheDir('structures'),
+  cachePathFor: (id) => runtimeCachePath('structures', id),
   minBodyChars: 100,
   prompt: (title, body) => `You are restructuring a document for a personal knowledge wiki. The text below comes from a PDF extraction and may contain OCR artefacts.
 
@@ -161,8 +160,8 @@ Begin Markdown output now:
 };
 
 const QUIZ: TaskSpec = {
-  cacheDir: path.join(ROOT, 'public', 'knowledge', 'quizzes'),
-  cachePathFor: (id) => path.join(ROOT, 'public', 'knowledge', 'quizzes', `${id}.json`),
+  cacheDir: runtimeCacheDir('quizzes'),
+  cachePathFor: (id) => runtimeCachePath('quizzes', id),
   minBodyChars: 100,
   prompt: (title, body) => `Create 3 multiple-choice questions to test understanding of this document. Output STRICT JSON, no preamble or fences:
 

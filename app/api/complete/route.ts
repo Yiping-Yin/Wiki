@@ -1,7 +1,7 @@
 /**
  * POST /api/complete  { context: string, doc?: { title, body } }
  *
- * Returns a single short next-sentence completion via the local claude CLI.
+ * Returns a single short next-sentence completion via the selected local CLI.
  * Used by NoteEditor for inline ghost-text suggestions.
  *
  * Output: { suggestion: string }
@@ -12,6 +12,7 @@
 import { runCli, pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {

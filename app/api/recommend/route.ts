@@ -3,7 +3,7 @@
  *
  * Body: { recent: [{title}], weak: [{title, score, total}], noted: [{title}] }
  *
- * Asks the local claude CLI to generate 3 personalised "today's focus" cards.
+ * Asks the selected local CLI to generate 3 personalised "today's focus" cards.
  * Output is strict JSON: { items: [{ title, why, action }] }
  *
  * Client caches the result for the day (localStorage key includes the date).
@@ -11,6 +11,7 @@
 import { runCli, pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 90;
 
 type Item = { title?: string };
