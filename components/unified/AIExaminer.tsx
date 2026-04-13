@@ -110,7 +110,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
         answer: '',
         verdict: 'retry',
         feedback:
-          'No notes on this doc yet. Capture at least one thought first, then come back to Verifying.',
+          'Nothing is marked here yet. Capture one edge, then come back.',
       });
       return;
     }
@@ -211,7 +211,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
       href: docHrefFromDocId(docId ?? ''),
       overlay: 'rehearsal',
       seedDraft,
-      seedLabel: 'From examiner · work the missing edge',
+      seedLabel: 'Pick up the missing edge',
     };
     try {
       sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
@@ -266,7 +266,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           fontFamily: 'var(--mono)',
         }}
       >
-        Examiner · {contextNotes.length} notes
+        From {contextNotes.length} note{contextNotes.length === 1 ? '' : 's'}
       </div>
 
       {/* Idle: show "start" button */}
@@ -283,7 +283,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           }}
         >
           <div style={{ fontSize: '0.82rem', textAlign: 'center', maxWidth: 320 }}>
-            Return to the weak edge of this doc.
+            Stay with the unfinished edge of this doc.
           </div>
           <button
             type="button"
@@ -292,8 +292,8 @@ export function AIExaminer({ docId, contextNotes }: Props) {
             style={buttonStyle(contextNotes.length > 0)}
           >
             {contextNotes.length === 0
-              ? 'Capture notes first'
-              : 'Start examiner'}
+              ? 'Capture first'
+              : 'Ask one'}
           </button>
         </div>
       )}
@@ -327,7 +327,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                 void submitAnswer();
               }
             }}
-            placeholder="Your answer… (⌘↩ to submit)"
+            placeholder="Your answer… (⌘↩ to send)"
             style={{
               flex: 1,
               minHeight: 0,
@@ -345,7 +345,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
-              Stop
+              Close
             </button>
             <button
               type="button"
@@ -353,7 +353,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
               disabled={!draft.trim()}
               style={buttonStyle(Boolean(draft.trim()))}
             >
-              Submit answer
+              Answer
             </button>
           </div>
         </>
@@ -398,7 +398,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                   marginBottom: 4,
                 }}
               >
-                Your answer
+                Your words
               </div>
               {phase.answer}
             </div>
@@ -427,26 +427,26 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                 color: phase.verdict === 'pass' ? 'var(--tint-green)' : 'var(--tint-orange)',
                 marginBottom: 6,
               }}
-            >
-              {phase.verdict === 'pass' ? 'Pass' : 'Retry'}
+              >
+              {phase.verdict === 'pass' ? 'Held' : 'Not yet'}
             </div>
             {phase.feedback}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
-              Stop
+              Close
             </button>
             {phase.verdict === 'pass' ? (
               <button type="button" onClick={reviewNotes} style={buttonStyle(true, 'muted')}>
-                Review notes
+                Return to notes
               </button>
             ) : (
               <button type="button" onClick={returnToRehearsal} style={buttonStyle(true, 'muted')}>
-                Back to rehearsal
+                Write again
               </button>
             )}
             <button type="button" onClick={next} style={buttonStyle(true)}>
-              Next question
+              Ask another
             </button>
           </div>
         </>
@@ -481,7 +481,7 @@ function QuestionCard({ question }: { question: string }) {
           marginBottom: 6,
         }}
       >
-        Question
+        Ask
       </div>
       {question}
     </div>

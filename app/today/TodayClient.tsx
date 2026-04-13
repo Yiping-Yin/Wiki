@@ -274,7 +274,7 @@ export function TodayClient({
                 fontWeight: 700,
               }}
             >
-              Keep moving
+              Keep the thread warm
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
             <LearningStatusInline status={focusSurface.learning} compact />
@@ -312,8 +312,6 @@ export function TodayClient({
                 <span>{timeOfDay(focusSurface.touchedAt)}</span>
                 <span aria-hidden>·</span>
                 <span>{focusSurface.learning.anchorCount} stitches</span>
-                <span aria-hidden>·</span>
-                <span>{todayPrimaryActionLabel(focusSurface.learning.nextAction)}</span>
               </div>
 
               <div
@@ -359,37 +357,37 @@ export function TodayClient({
 
       {captureNext.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Open">
-          <ScheduleList items={captureNext.filter((surface) => surface.id !== focusId)} next="source" cta="Open source" onOpen={openNext} />
+          <ScheduleList items={captureNext.filter((surface) => surface.id !== focusId)} next="source" cta="Open" onOpen={openNext} />
         </Block>
       )}
 
       {rehearseNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Rehearsal">
-          <ScheduleList items={rehearseNext.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Open rehearsal" onOpen={openNext} />
+        <Block label="Write">
+          <ScheduleList items={rehearseNext.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Write" onOpen={openNext} />
         </Block>
       )}
 
       {weakSpots.filter((surface) => surface.id !== focusId).length > 0 && (
         <Block label="Again">
-          <ScheduleList items={weakSpots.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Rehearse again" onOpen={openNext} />
+          <ScheduleList items={weakSpots.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Write again" onOpen={openNext} />
         </Block>
       )}
 
       {examineNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Verify">
-          <ScheduleList items={examineNext.filter((surface) => surface.id !== focusId)} next="examiner" cta="Open examiner" onOpen={openNext} />
+        <Block label="Ask">
+          <ScheduleList items={examineNext.filter((surface) => surface.id !== focusId)} next="examiner" cta="Ask" onOpen={openNext} />
         </Block>
       )}
 
       {refreshNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Refresh">
-          <ScheduleList items={refreshNext.filter((surface) => surface.id !== focusId)} next="review" cta="Refresh in review" onOpen={() => {}} onPrimary={openRefresh} />
+        <Block label="Return">
+          <ScheduleList items={refreshNext.filter((surface) => surface.id !== focusId)} next="review" cta="Return" onOpen={() => {}} onPrimary={openRefresh} />
         </Block>
       )}
 
       {revisit.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Return">
-          <ScheduleList items={revisit.filter((surface) => surface.id !== focusId)} next="review" cta="Open review" onOpen={openNext} />
+        <Block label="Keep close">
+          <ScheduleList items={revisit.filter((surface) => surface.id !== focusId)} next="review" cta="Review" onOpen={openNext} />
         </Block>
       )}
 
@@ -572,11 +570,11 @@ function todayActionStyle(primary: boolean) {
 function todayPrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
   switch (nextAction) {
     case 'refresh':
-      return 'Refresh';
+      return 'Return';
     case 'rehearse':
-      return 'Rehearsal';
+      return 'Write';
     case 'examine':
-      return 'Examiner';
+      return 'Ask';
     case 'capture':
       return 'Open';
     default:

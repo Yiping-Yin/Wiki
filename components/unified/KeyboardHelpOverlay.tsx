@@ -21,8 +21,8 @@ const GROUPS: Group[] = [
   {
     title: 'Tools (via ⌘P)',
     items: [
-      { keys: 'Rehearsal', label: 'Write from memory · ⌘K transform · ⌘S save' },
-      { keys: 'Examiner', label: 'AI tests your understanding · ⌘↩ submit' },
+      { keys: 'Write', label: 'Write from memory · ⌘K shape · ⌘S save' },
+      { keys: 'Ask', label: 'Let the doc ask back · ⌘↩ submit' },
       { keys: 'Import', label: 'Drag-drop .md/.txt files' },
       { keys: 'Export', label: 'Download notes as JSON or Markdown' },
     ],

@@ -226,8 +226,6 @@ export function HomeClient(_props: unknown) {
                 <span>{relativeTime(current.viewedAt)}</span>
                 <span aria-hidden>·</span>
                 <span>{current.learning.anchorCount} stitches</span>
-                <span aria-hidden>·</span>
-                <span>{current.learning.quality}</span>
               </div>
 
               <div
@@ -344,15 +342,15 @@ function homeActionStyle(primary: boolean) {
 function homePrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
   switch (nextAction) {
     case 'refresh':
-      return 'Refresh';
+      return 'Return';
     case 'rehearse':
-      return 'Rehearsal';
+      return 'Write';
     case 'examine':
-      return 'Examiner';
+      return 'Ask';
     case 'capture':
       return 'Open';
     default:
-      return 'Continue';
+      return 'Return';
   }
 }
 

@@ -507,7 +507,7 @@ export function KesiView() {
                   fontWeight: 700,
                 }}
               >
-                Needs refresh
+                Return soon
               </span>
               <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
               <span className="t-caption2" style={{ color: 'var(--tint-orange)', letterSpacing: '0.08em', fontWeight: 700 }}>
@@ -556,7 +556,7 @@ export function KesiView() {
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.crystallizedAt)}</span>
                       <span aria-hidden>·</span>
-                      <span>{Math.max(1, Math.round(panel.learning.daysSinceTouch))}d cold</span>
+                      <span>touched {Math.max(1, Math.round(panel.learning.daysSinceTouch))}d ago</span>
                     </div>
                   </div>
 
@@ -565,7 +565,7 @@ export function KesiView() {
                     onClick={() => openRefresh(panel)}
                     style={actionStyle(true)}
                   >
-                    Refresh
+                    Return
                   </button>
                 </div>
               ))}
@@ -753,17 +753,17 @@ export function KesiView() {
           <ToolbarChip
             active={recencyFilter === 'fresh'}
             onClick={() => setRecencyFilter('fresh')}
-            label={`Fresh · ${filterCounts.fresh}`}
+            label={`Near · ${filterCounts.fresh}`}
           />
           <ToolbarChip
             active={recencyFilter === 'cooling'}
             onClick={() => setRecencyFilter('cooling')}
-            label={`Cooling · ${filterCounts.cooling}`}
+            label={`Holding · ${filterCounts.cooling}`}
           />
           <ToolbarChip
             active={recencyFilter === 'stale'}
             onClick={() => setRecencyFilter('stale')}
-            label={`Stale · ${filterCounts.stale}`}
+            label={`Far · ${filterCounts.stale}`}
           />
         </div>
 
@@ -1194,13 +1194,13 @@ function actionStyle(primary: boolean) {
 function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
   switch (nextAction) {
     case 'refresh':
-      return 'Refresh';
+      return 'Return';
     case 'rehearse':
-      return 'Rehearsal';
+      return 'Write';
     case 'examine':
-      return 'Examiner';
+      return 'Ask';
     case 'capture':
-      return 'Source';
+      return 'Open';
     case 'revisit':
     default:
       return 'Review';

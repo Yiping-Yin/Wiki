@@ -54,7 +54,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
   const persistDraft = useCallback(async (next: 'stay' | 'examine') => {
     if (!docId || !draft.trim() || saving) return;
     setSaving(true);
-    setStatus(next === 'examine' ? 'Saving + opening examiner…' : 'Saving…');
+    setStatus(next === 'examine' ? 'Saving + opening the next pass…' : 'Saving…');
     try {
       await appendRehearsal({
         docId,
@@ -99,7 +99,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     if (start === end) {
-      setStatus('⌘K: select some text first');
+      setStatus('Select some text first');
       window.setTimeout(() => setStatus(null), 2000);
       return;
     }
@@ -107,7 +107,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
     if (!selected.trim()) return;
 
     setTransforming(true);
-    setStatus('⌘K transforming…');
+    setStatus('⌘K shaping…');
     // Signal notch: AI is working
     window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-start' } }));
     try {
@@ -190,7 +190,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
           fontSize: '0.85rem',
         }}
       >
-        Pick a doc from the toolbar above to start a rehearsal.
+        Pick a doc above and start writing from memory.
       </div>
     );
   }
@@ -220,10 +220,10 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
         }}
       >
         <span style={{ flex: 1 }}>
-          <strong style={{ color: 'var(--accent)' }}>Rehearsal</strong>
+          <strong style={{ color: 'var(--accent)' }}>Write from memory</strong>
           {' · '}
           <span style={{ fontFamily: 'var(--mono)' }}>
-            ⌘K transform · ⌘S save · Save & examine → Examiner
+            ⌘K shape · ⌘S save · Save & ask
           </span>
         </span>
         {status && (
@@ -261,9 +261,9 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={
-          'Write your understanding from memory.\n\n' +
-          '⌘K on a selection → AI transforms to formal form.\n' +
-          '⌘S to save as a Note on the current doc.'
+          'Write what still holds in memory.\n\n' +
+          '⌘K on a selection shapes it into a cleaner form.\n' +
+          '⌘S saves it back to this doc.'
         }
         disabled={transforming}
         style={{
@@ -331,7 +331,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
           disabled={!draft.trim() || saving || transforming}
           style={buttonStyle(Boolean(draft.trim()) && !saving && !transforming)}
         >
-          Save & examine
+          Save & ask
         </button>
       </div>
     </div>

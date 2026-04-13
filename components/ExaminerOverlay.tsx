@@ -81,7 +81,7 @@ export function ExaminerOverlay() {
       }}
     >
       <div style={{ padding: '10px 16px', borderBottom: '0.5px solid var(--mat-border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem' }}>
-        <strong style={{ color: 'var(--accent)', flex: 1 }}>Examiner</strong>
+        <strong style={{ color: 'var(--accent)', flex: 1 }}>Ask back</strong>
         <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => setActive(false)}>Esc ×</span>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>

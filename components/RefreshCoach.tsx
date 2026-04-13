@@ -119,15 +119,15 @@ export function RefreshCoach() {
             fontWeight: 700,
           }}
         >
-          Refresh
+          Return to this thread
         </span>
         <span className="t-caption2" style={{ color: 'var(--muted)' }}>
-          review → rehearsal → examiner
+          one more pass
         </span>
       </div>
 
       <div className="t-footnote" style={{ color: 'var(--fg-secondary)', lineHeight: 1.5 }}>
-        Review, rehearse, verify.
+        Read a little, write once, ask once.
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -135,13 +135,13 @@ export function RefreshCoach() {
           Review
         </button>
         <button type="button" onClick={() => openOverlay('rehearsal')} style={actionStyle(false)}>
-          Rehearsal
+          Write
         </button>
         <button type="button" onClick={() => openOverlay('examiner')} style={actionStyle(false)}>
-          Examiner
+          Ask
         </button>
         <button type="button" onClick={dismiss} style={actionStyle(false)}>
-          Done
+          Close
         </button>
       </div>
     </div>
