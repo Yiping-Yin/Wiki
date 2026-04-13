@@ -61,7 +61,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const [activeAnchorId, setActiveAnchorId] = useState<string>('');
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [pendingFocusAnchorId, setPendingFocusAnchorId] = useState<string | null>(null);
-  const { thoughtItems, traces } = useReadingThoughtAnchors(
+  const { thoughtItems, traces, primaryReadingTrace } = useReadingThoughtAnchors(
     ctx.isFree ? null : ctx.docId,
   );
   const append = useAppendEvent();
@@ -78,6 +78,9 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   );
   const hasThoughts = thoughtItems.length > 0;
   const [introVisibility, setIntroVisibility] = useState(1);
+  const panelCrystallized = Boolean(
+    primaryReadingTrace?.events.some((event) => event.kind === 'crystallize' && !event.anchorId),
+  );
 
   // Narrow thought-map presence is an intro/review affordance, not a
   // permanent right sidebar. Near the top of a document it is visible;
@@ -315,6 +318,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           onExpand={setExpandedKey}
           onAppendVersion={handleAppendVersion}
           activeAnchorId={activeAnchorId}
+          panelCrystallized={panelCrystallized}
         />
       ) : (
         <NarrowSectionTOC
@@ -538,12 +542,14 @@ function WideThoughtList({
   onExpand,
   onAppendVersion,
   activeAnchorId,
+  panelCrystallized,
 }: {
   thoughts: ThoughtAnchorView[];
   expandedKey: string | null;
   onExpand: (key: string | null) => void;
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
   activeAnchorId: string;
+  panelCrystallized: boolean;
 }) {
   const sectionGroups = useMemo(() => {
     const groups = new Map<string, {
@@ -602,7 +608,7 @@ function WideThoughtList({
         gap: 16,
       }}
     >
-      {focusThought && <WideThoughtHeader thought={focusThought} />}
+      {focusThought && <WideThoughtHeader thought={focusThought} panelCrystallized={panelCrystallized} />}
       {sectionGroups.map((group) => (
         <section key={group.key}>
           <div
@@ -647,6 +653,7 @@ function WideThoughtList({
                 thought={t}
                 expanded={expandedKey === t.containerKey}
                 emphasized={activeAnchorId === t.anchorId}
+                panelCrystallized={panelCrystallized}
                 onToggle={() =>
                   onExpand(expandedKey === t.containerKey ? null : t.containerKey)
                 }
@@ -660,7 +667,13 @@ function WideThoughtList({
   );
 }
 
-function WideThoughtHeader({ thought }: { thought: ThoughtAnchorView }) {
+function WideThoughtHeader({
+  thought,
+  panelCrystallized,
+}: {
+  thought: ThoughtAnchorView;
+  panelCrystallized: boolean;
+}) {
   const goToSource = () => {
     window.dispatchEvent(
       new CustomEvent(REVIEW_SCROLL_EVENT, {
@@ -745,7 +758,7 @@ function WideThoughtHeader({ thought }: { thought: ThoughtAnchorView }) {
       >
         <span>{thought.versionCount > 1 ? `${thought.versionCount} versions` : 'first weave'}</span>
         <span aria-hidden>·</span>
-        <span>{thought.isCrystallized ? 'crystallized' : 'open'}</span>
+        <span>{panelCrystallized ? 'settled panel' : thought.isCrystallized ? 'crystallized' : 'open'}</span>
         <span aria-hidden>·</span>
         <button
           type="button"
@@ -773,12 +786,14 @@ function WideThoughtCard({
   thought,
   expanded,
   emphasized,
+  panelCrystallized,
   onToggle,
   onAppendVersion,
 }: {
   thought: ThoughtAnchorView;
   expanded: boolean;
   emphasized: boolean;
+  panelCrystallized: boolean;
   onToggle: () => void;
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
 }) {
@@ -937,7 +952,37 @@ function WideThoughtCard({
       )}
 
       {/* Inline elaboration textarea — only when expanded */}
-      {expanded && (
+      {expanded && panelCrystallized ? (
+        <div
+          style={{
+            marginTop: 10,
+            padding: '10px 0 0',
+            borderTop: '0.5px solid var(--mat-border)',
+          }}
+        >
+          <div
+            className="t-caption2"
+            style={{
+              color: 'var(--accent)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontWeight: 700,
+              marginBottom: 6,
+            }}
+          >
+            Settled into Kesi
+          </div>
+          <div
+            style={{
+              color: 'var(--fg-secondary)',
+              fontSize: '0.8rem',
+              lineHeight: 1.5,
+            }}
+          >
+            This panel is no longer provisional. Use the center live note to uncrystallize before weaving a new version.
+          </div>
+        </div>
+      ) : expanded ? (
         <div style={{ marginTop: 10 }}>
           <textarea
             ref={textareaRef}
@@ -1008,7 +1053,7 @@ function WideThoughtCard({
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
