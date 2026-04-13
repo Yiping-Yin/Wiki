@@ -1,6 +1,6 @@
-# Capture Spec · supersedes CANVAS_SPEC.md
+# Capture Spec · supersedes docs/design/CANVAS_SPEC.md
 
-Status: working spec for the canvas pivot landed 2026-04-11. CANVAS_SPEC.md
+Status: working spec for the canvas pivot landed 2026-04-11. `docs/design/CANVAS_SPEC.md`
 is now historical — do not implement from it.
 
 ## The principle
@@ -94,7 +94,7 @@ anchors both are empty. Behavior:
 - `components/CanvasCard.tsx`
 - `components/canvas-model.ts`
 - `lib/trace/canvas.ts`
-- `CANVAS_SPEC.md` (mark superseded, keep file for history)
+- `docs/design/CANVAS_SPEC.md` (mark superseded, keep file for history)
 - `canvas-item` kind in `lib/trace/types.ts`
 - Canvas CSS block in `app/globals.css` (`.loom-canvas-layer`, `.loom-canvas-card*`)
 

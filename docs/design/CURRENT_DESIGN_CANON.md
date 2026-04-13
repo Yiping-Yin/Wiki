@@ -10,9 +10,9 @@ This file is the shortest reliable answer to:
 - Which older design directions are historical only
 
 Use this file for day-to-day product decisions.  
-Use `DESIGN_MEMORY.md` for the long constitution and rationale.  
-Use `CAPTURE_SPEC.md` for the capture/review pivot details.  
-Treat `CANVAS_SPEC.md` as historical only.
+Use `docs/design/DESIGN_MEMORY.md` for the long constitution and rationale.  
+Use `docs/design/CAPTURE_SPEC.md` for the capture/review pivot details.  
+Treat `docs/design/CANVAS_SPEC.md` as historical only.
 
 ## 1. Product Identity
 
@@ -99,7 +99,7 @@ These should not be reintroduced casually:
 - Gamified or dashboard-like knowledge surfaces
 - Loud "AI is thinking", "saved", "indexed", or "synced" UI
 
-`CANVAS_SPEC.md` documents a rejected direction, not a pending one.
+`docs/design/CANVAS_SPEC.md` documents a rejected direction, not a pending one.
 
 ## 6. Visual Language
 
@@ -174,8 +174,8 @@ Open design work:
 
 When documents disagree, use this precedence:
 
-1. `CURRENT_DESIGN_CANON.md`
-2. `CAPTURE_SPEC.md`
-3. `DESIGN_MEMORY.md`
+1. `docs/design/CURRENT_DESIGN_CANON.md`
+2. `docs/design/CAPTURE_SPEC.md`
+3. `docs/design/DESIGN_MEMORY.md`
 4. implementation
-5. historical specs (`CANVAS_SPEC.md`)
+5. historical specs (`docs/design/CANVAS_SPEC.md`)

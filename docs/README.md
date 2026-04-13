@@ -1,0 +1,15 @@
+# Docs
+
+## Design
+
+- [Design Onboarding](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_ONBOARDING.md)
+- [Current Design Canon](/Users/yinyiping/Desktop/Wiki/docs/design/CURRENT_DESIGN_CANON.md)
+- [Design Memory](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_MEMORY.md)
+- [Capture Spec](/Users/yinyiping/Desktop/Wiki/docs/design/CAPTURE_SPEC.md)
+- [Canvas Spec (Historical)](/Users/yinyiping/Desktop/Wiki/docs/design/CANVAS_SPEC.md)
+- [Logo Brief](/Users/yinyiping/Desktop/Wiki/docs/design/LOGO_BRIEF.md)
+
+## Process
+
+- [Commit Plan](/Users/yinyiping/Desktop/Wiki/docs/process/COMMIT_PLAN.md)
+- [Commit Messages](/Users/yinyiping/Desktop/Wiki/docs/process/COMMIT_MESSAGES.md)

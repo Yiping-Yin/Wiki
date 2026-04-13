@@ -16,8 +16,9 @@ In the AI era, two things matter that no chat tool gives you at the same time: *
 - `npm run verify` runs typecheck, production build, and smoke checks in the correct order.
 - GitHub Actions runs `build -> typecheck -> smoke` and intentionally skips the chat-specific smoke path.
 - Generated knowledge bodies, manifests, and derived indexes now live in `knowledge/.cache/` rather than tracked `public/` or `lib/` files.
-- `DESIGN_ONBOARDING.md` is the fastest collaborator-facing intro to the current product/design model.
-- `CURRENT_DESIGN_CANON.md` is the shortest current product/design source of truth; use it before historical specs.
+- [docs/README.md](/Users/yinyiping/Desktop/Wiki/docs/README.md) indexes current design and process docs.
+- [DESIGN_ONBOARDING.md](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_ONBOARDING.md) is the fastest collaborator-facing intro to the current product/design model.
+- [CURRENT_DESIGN_CANON.md](/Users/yinyiping/Desktop/Wiki/docs/design/CURRENT_DESIGN_CANON.md) is the shortest current product/design source of truth; use it before historical specs.
 
 ---
 

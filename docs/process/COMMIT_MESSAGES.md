@@ -1,6 +1,6 @@
 # Commit Message Drafts
 
-These drafts match the buckets in [COMMIT_PLAN.md](/Users/yinyiping/Desktop/Wiki/COMMIT_PLAN.md:1).
+These drafts match the buckets in [COMMIT_PLAN.md](/Users/yinyiping/Desktop/Wiki/docs/process/COMMIT_PLAN.md:1).
 
 ## 1. Generated Public Removals
 

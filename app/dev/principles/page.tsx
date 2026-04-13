@@ -16,7 +16,7 @@ export const metadata = { title: 'Principles · Loom' };
 
 export default async function PrinciplesPage() {
   const raw = await fs.readFile(
-    path.join(process.cwd(), 'DESIGN_MEMORY.md'),
+    path.join(process.cwd(), 'docs', 'design', 'DESIGN_MEMORY.md'),
     'utf-8'
   );
   return <PrinciplesView source={raw} />;

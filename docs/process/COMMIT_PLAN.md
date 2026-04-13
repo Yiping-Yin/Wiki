@@ -94,10 +94,10 @@ Why sixth:
 ### 7. `docs-specs`
 
 Scope:
-- `CANVAS_SPEC.md`
-- `CAPTURE_SPEC.md`
-- `DESIGN_MEMORY.md`
-- `LOGO_BRIEF.md`
+- `docs/design/CANVAS_SPEC.md`
+- `docs/design/CAPTURE_SPEC.md`
+- `docs/design/DESIGN_MEMORY.md`
+- `docs/design/LOGO_BRIEF.md`
 
 Why last:
 - Optional to keep separate as project memory / design documentation
