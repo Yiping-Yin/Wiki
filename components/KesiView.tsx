@@ -308,6 +308,44 @@ export function KesiView() {
     return counts;
   }, [panels, tracesByDocId]);
 
+  const relationPreview = useMemo(() => {
+    const previews = new Map<string, Panel[]>();
+    const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
+    const seen = new Set<string>();
+
+    for (const panel of panels) {
+      previews.set(panel.docId, []);
+    }
+
+    for (const panel of panels) {
+      const traceSet = tracesByDocId.get(panel.docId) ?? [];
+      const latestByAnchor = new Map<string, { content: string; at: number }>();
+      for (const trace of traceSet) {
+        for (const event of trace.events) {
+          if (event.kind !== 'thought-anchor') continue;
+          const prev = latestByAnchor.get(event.anchorId);
+          if (!prev || event.at > prev.at) {
+            latestByAnchor.set(event.anchorId, { content: event.content, at: event.at });
+          }
+        }
+      }
+
+      for (const { content } of latestByAnchor.values()) {
+        for (const url of extractMarkdownLinkUrls(content)) {
+          const target = Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
+          if (!target || target.docId === panel.docId) continue;
+          const key = `${panel.docId}=>${target.docId}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          previews.set(panel.docId, [...(previews.get(panel.docId) ?? []), target]);
+          previews.set(target.docId, [...(previews.get(target.docId) ?? []), panel]);
+        }
+      }
+    }
+
+    return previews;
+  }, [panels, tracesByDocId]);
+
   const visiblePanels = useMemo(() => {
     const q = query.trim();
     return panels.filter((panel) => {
@@ -540,6 +578,47 @@ export function KesiView() {
                 >
                   {returnPanel.summary}
                 </div>
+                {(() => {
+                  const related = relationPreview.get(returnPanel.docId) ?? [];
+                  if (related.length === 0) return null;
+                  return (
+                    <div
+                      className="t-caption2"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        color: 'var(--muted)',
+                        letterSpacing: '0.04em',
+                        marginTop: 10,
+                      }}
+                    >
+                      <span>Threaded with</span>
+                      {related.slice(0, 3).map((panel, index) => (
+                        <button
+                          key={panel.docId}
+                          type="button"
+                          onClick={() => openPrimaryAction(panel)}
+                          style={{
+                            appearance: 'none',
+                            border: 0,
+                            background: 'transparent',
+                            color: 'var(--accent)',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.02em',
+                            padding: 0,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {panel.title}
+                          {index < Math.min(related.length, 3) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1052,6 +1131,50 @@ export function KesiView() {
                     >
                       {panel.summary}
                     </div>
+                    {(() => {
+                      const related = relationPreview.get(panel.docId) ?? [];
+                      if (related.length === 0) return null;
+                      return (
+                        <div
+                          className="t-caption2"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            color: 'var(--muted)',
+                            letterSpacing: '0.04em',
+                            marginBottom: panel.sections.length > 0 ? 12 : 8,
+                          }}
+                        >
+                          <span>Threaded with</span>
+                          {related.slice(0, 2).map((relatedPanel, index) => (
+                            <button
+                              key={relatedPanel.docId}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPrimaryAction(relatedPanel);
+                              }}
+                              style={{
+                                appearance: 'none',
+                                border: 0,
+                                background: 'transparent',
+                                color: 'var(--accent)',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                letterSpacing: '0.02em',
+                                padding: 0,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {relatedPanel.title}
+                              {index < Math.min(related.length, 2) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: panel.sections.length > 0 ? 12 : 0 }}>
                       <button
