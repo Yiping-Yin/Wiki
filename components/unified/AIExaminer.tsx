@@ -24,6 +24,7 @@
  * wired, but scoring/rubrics still remain intentionally light.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Note, SourceDocId } from '../../lib/note/types';
 import { appendNote } from '../../lib/note/store';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
@@ -77,6 +78,7 @@ function saveSession(docId: string | null, phase: Phase, draft: string) {
 }
 
 export function AIExaminer({ docId, contextNotes }: Props) {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>(() => loadSession(docId).phase);
   const [draft, setDraft] = useState(() => loadSession(docId).draft);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -201,6 +203,16 @@ export function AIExaminer({ docId, contextNotes }: Props) {
     window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
     window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
   }, []);
+
+  const openKesi = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
+    router.push('/kesi');
+  }, [router]);
+
+  const openRelations = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
+    router.push(docId ? `/graph?focus=${encodeURIComponent(docId)}` : '/graph');
+  }, [docId, router]);
 
   const returnToRehearsal = useCallback(() => {
     const seedDraft = buildRehearsalSeed(
@@ -437,9 +449,17 @@ export function AIExaminer({ docId, contextNotes }: Props) {
               Close
             </button>
             {phase.verdict === 'pass' ? (
-              <button type="button" onClick={reviewNotes} style={buttonStyle(true, 'muted')}>
-                Return to notes
-              </button>
+              <>
+                <button type="button" onClick={reviewNotes} style={buttonStyle(true, 'muted')}>
+                  Review
+                </button>
+                <button type="button" onClick={openKesi} style={buttonStyle(true, 'muted')}>
+                  Kesi
+                </button>
+                <button type="button" onClick={openRelations} style={buttonStyle(true, 'muted')}>
+                  Relations
+                </button>
+              </>
             ) : (
               <button type="button" onClick={returnToRehearsal} style={buttonStyle(true, 'muted')}>
                 Write again
