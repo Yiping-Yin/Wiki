@@ -48,7 +48,7 @@ export async function appendNote(input: {
   content: string;
   summary?: string;
   anchor: NoteAnchor;
-}): Promise<string> {
+}): Promise<{ noteId: string; anchorId: string }> {
   const at = Date.now();
 
   // Derive a deterministic-ish anchorId for the new event. If the Note's
@@ -107,7 +107,7 @@ export async function appendNote(input: {
     }).catch(() => {});
   }
 
-  return noteId;
+  return { noteId, anchorId };
 }
 
 /**
@@ -120,7 +120,7 @@ export async function appendRehearsal(input: {
   docHref: string;
   docTitle: string;
   content: string;
-}): Promise<string> {
+}): Promise<{ noteId: string; anchorId: string }> {
   return appendNote({
     docId: input.docId,
     docHref: input.docHref,
@@ -153,7 +153,7 @@ export async function supersedeNote(input: {
   docTitle: string;
   originalAnchor: NoteAnchor;
   newContent: string;
-}): Promise<string> {
+}): Promise<{ noteId: string; anchorId: string }> {
   return appendNote({
     docId: input.docId,
     docHref: input.docHref,
@@ -185,7 +185,7 @@ export async function deleteNote(input: {
   docTitle: string;
   anchor: NoteAnchor;
   reason?: string;
-}): Promise<string> {
+}): Promise<{ noteId: string; anchorId: string }> {
   return appendNote({
     docId: input.docId,
     docHref: input.docHref,

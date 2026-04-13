@@ -92,6 +92,15 @@ export function RefreshCoach() {
 
   const openReview = () => {
     window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
+    if (learning.latestAnchorId) {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(
+          new CustomEvent('loom:review:focus-thought', {
+            detail: { anchorId: learning.latestAnchorId },
+          }),
+        );
+      });
+    }
   };
 
   const openOverlay = (id: 'rehearsal' | 'examiner') => {

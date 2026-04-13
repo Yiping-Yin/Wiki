@@ -47,7 +47,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
   const [transforming, setTransforming] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [bounce, setBounce] = useState(false);
-  const [savedState, setSavedState] = useState<{ mode: 'stay' | 'examine'; at: number } | null>(null);
+  const [savedState, setSavedState] = useState<{ mode: 'stay' | 'examine'; at: number; anchorId: string | null } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
     setSaving(true);
     setStatus(next === 'examine' ? 'Saving + opening the next pass…' : 'Saving…');
     try {
-      await appendRehearsal({
+      const saved = await appendRehearsal({
         docId,
         docHref: docHrefFromDocId(docId),
         docTitle: docTitleFromDocId(docId),
@@ -68,7 +68,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
       });
       setDraft('');
       onSaved?.(next);
-      setSavedState({ mode: next, at: Date.now() });
+      setSavedState({ mode: next, at: Date.now(), anchorId: saved.anchorId ?? null });
       // Micro-bounce: the panel physically pulses to confirm save
       setBounce(true);
       setStatus(null);
@@ -90,12 +90,15 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
 
   const openReview = useCallback(() => {
     if (!docId) return;
-    const payload: ReviewResumePayload = { href: docHrefFromDocId(docId), anchorId: null };
+    const payload: ReviewResumePayload = {
+      href: docHrefFromDocId(docId),
+      anchorId: savedState?.anchorId ?? null,
+    };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
     } catch {}
     router.push(docHrefFromDocId(docId));
-  }, [docId, router]);
+  }, [docId, router, savedState?.anchorId]);
 
   const openKesi = useCallback(() => {
     router.push(docId ? `/kesi?focus=${encodeURIComponent(docId)}` : '/kesi');
