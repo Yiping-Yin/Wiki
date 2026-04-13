@@ -40,9 +40,7 @@ export default function OfflinePage() {
         <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* eslint-disable @next/next/no-html-link-for-pages */}
           <a href="/" className="t-footnote" style={pillStyle}>Continue weaving</a>
-          <a href="/today" className="t-footnote" style={pillStyle}>Keep moving</a>
-          <a href="/kesi" className="t-footnote" style={pillStyle}>Open Kesi</a>
-          <a href="/knowledge" className="t-footnote" style={pillStyle}>Open Knowledge</a>
+          <a href="/today" className="t-footnote" style={pillStyle}>Open today</a>
           {/* Plain anchors are intentional — this page must work without the JS router. */}
         </div>
       </div>
