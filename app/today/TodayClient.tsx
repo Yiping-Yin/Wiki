@@ -22,6 +22,7 @@ import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { useHistory } from '../../lib/use-history';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { usePins } from '../../lib/use-pins';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
 import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
@@ -211,6 +212,16 @@ export function TodayClient({
     router.push(surface.href);
   };
 
+  const openRefresh = (surface: StudySurface) => {
+    const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: null };
+    const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'today' };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+    } catch {}
+    router.push(surface.href);
+  };
+
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
       {captureNext.length > 0 && (
@@ -233,7 +244,7 @@ export function TodayClient({
 
       {refreshNext.length > 0 && (
         <Block label="Refresh stale">
-          <ScheduleList items={refreshNext} next="review" cta="Refresh in review" onOpen={openNext} />
+          <ScheduleList items={refreshNext} next="review" cta="Refresh in review" onOpen={() => {}} onPrimary={openRefresh} />
         </Block>
       )}
 
@@ -278,11 +289,13 @@ function ScheduleList({
   next,
   cta,
   onOpen,
+  onPrimary,
 }: {
   items: StudySurface[];
   next: 'source' | 'rehearsal' | 'examiner' | 'review';
   cta: string;
   onOpen?: (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => void;
+  onPrimary?: (surface: StudySurface) => void;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -357,7 +370,7 @@ function ScheduleList({
           <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"
-              onClick={() => onOpen?.(item, next)}
+              onClick={() => (onPrimary ? onPrimary(item) : onOpen?.(item, next))}
               style={{
                 padding: '0.42rem 0.72rem',
                 borderRadius: 999,

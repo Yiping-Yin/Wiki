@@ -10,6 +10,7 @@ import { LoomCursor } from './LoomCursor';
 import { CapturePrompt } from './CapturePrompt';
 import { ScrollDirection } from './ScrollDirection';
 import { ActiveRetrieval } from './ActiveRetrieval';
+import { RefreshCoach } from './RefreshCoach';
 
 function isReadingPath(pathname: string) {
   return (
@@ -35,6 +36,7 @@ export function PageScopedChrome() {
       <CapturePrompt />
       <ScrollDirection />
       <ActiveRetrieval />
+      <RefreshCoach />
     </>
   );
 }
