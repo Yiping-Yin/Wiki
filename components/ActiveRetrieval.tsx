@@ -71,6 +71,12 @@ function prettifyDocId(id: string): string {
     .replace(/[-_]+/g, ' ');
 }
 
+function relationStrength(score: number) {
+  if (score >= 0.9) return 'near';
+  if (score >= 0.84) return 'close';
+  return 'echo';
+}
+
 export function ActiveRetrieval() {
   const pathname = usePathname();
   const ctx = contextFromPathname(pathname);
@@ -285,6 +291,18 @@ function RetrievalDot({
               <div style={{ fontSize: '0.68rem', color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
                 {(docsById.get(r.docId)?.title ?? prettifyDocId(r.docId))}
                 <span style={{ marginLeft: 6, opacity: 0.5 }}>{Math.round(r.score * 100)}%</span>
+              </div>
+              <div
+                className="t-caption2"
+                style={{
+                  marginTop: 2,
+                  color: 'var(--tint-blue, #0a84ff)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  fontWeight: 700,
+                }}
+              >
+                {relationStrength(r.score)}
               </div>
               <div style={{ marginTop: 2, color: 'var(--fg-secondary)' }}>
                 {r.text.slice(0, 120)}{r.text.length > 120 ? '…' : ''}
