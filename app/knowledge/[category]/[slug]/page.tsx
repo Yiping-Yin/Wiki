@@ -104,7 +104,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
               href={`/knowledge/${categorySlug}/${prev.fileSlug}`}
               style={{ flex: 1, padding: '0.8rem 1rem', border: '1px solid var(--border)', borderRadius: 8 }}
             >
-              <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>← Previous</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Previous</div>
               <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{prev.title}</div>
             </Link>
           ) : <div style={{ flex: 1 }} />}
@@ -113,7 +113,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
               href={`/knowledge/${categorySlug}/${next.fileSlug}`}
               style={{ flex: 1, padding: '0.8rem 1rem', border: '1px solid var(--border)', borderRadius: 8, textAlign: 'right' }}
             >
-              <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Next →</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Next</div>
               <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{next.title}</div>
             </Link>
           ) : <div style={{ flex: 1 }} />}

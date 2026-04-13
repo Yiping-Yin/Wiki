@@ -201,6 +201,27 @@ Design effect:
   generic assistant workflow
 - transient AI work is signaled more by motion than by narrated state text
 
+### 11. Arrow-style CTA labels reduced across user-facing navigation surfaces
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/LinkPreview.tsx` no longer uses `Open →`
+- `components/PrevNext.tsx` no longer uses `← Previous` / `Next →`
+- `app/knowledge/[category]/[slug]/page.tsx` no longer uses arrow-style
+  previous/next labels
+- `app/today/TodayClient.tsx` no longer appends an arrow to doc-title links
+- `components/PDFNotes.tsx` and `components/DocViewer.tsx` no longer append
+  arrow glyphs to open/open-original links
+
+Design effect:
+
+- user-visible navigation and utility links now rely more on spacing,
+  position, and label hierarchy than on CTA-style arrow decoration
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -245,5 +266,6 @@ Residual note:
 - toast labels aligned with quieter utility grammar
 - service-worker update chrome removed from the product shell
 - examiner CTA and loading states quieted
+- arrow-style CTA labels reduced across user-facing surfaces
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level

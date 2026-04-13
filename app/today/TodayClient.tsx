@@ -475,7 +475,7 @@ function ReviewCards({ traces, docsById }: { traces: Trace[]; docsById: Map<stri
                     textDecoration: 'none',
                   }}
                 >
-                  {card.docTitle} →
+                  {card.docTitle}
                 </Link>
               </div>
             )}

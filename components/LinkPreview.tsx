@@ -163,7 +163,7 @@ export function LinkPreview() {
             borderRadius: 5, padding: '3px 10px', fontSize: '0.75rem',
             textDecoration: 'none', fontWeight: 600,
           }}
-        >Open →</a>
+        >Open</a>
       </div>
     </div>
   );

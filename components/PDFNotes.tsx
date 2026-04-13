@@ -73,7 +73,7 @@ export function PDFNotes({ src, title, height = 720 }: { src: string; title?: st
               fontSize: '0.74rem',
               flexShrink: 0,
             }}
-          >open ↗</a>
+          >Open</a>
         </div>
       )}
 

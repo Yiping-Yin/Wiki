@@ -94,7 +94,7 @@ function BinaryEmbed({
               padding: '0.5rem 1rem', borderRadius: 999,
               textDecoration: 'none', fontSize: '0.82rem', fontWeight: 600,
               boxShadow: 'var(--shadow-1)',
-            }}>Open original <span aria-hidden>↗</span></a>
+            }}>Open original</a>
             <a href={sourceUrl} download style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               background: 'var(--surface-2)', color: 'var(--fg)',
@@ -275,7 +275,7 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
         <a href={src} target="_blank" rel="noreferrer" className="t-caption2" style={{
           color: 'var(--accent)', textDecoration: 'none', fontWeight: 700,
           padding: '2px 6px',
-        }}>Open ↗</a>
+        }}>Open</a>
       </div>
 
       {/* Floating title — absolute top-left, also fade in */}
@@ -393,7 +393,7 @@ function ViewerFrame({
           <a href={openHref} target="_blank" rel="noreferrer" className="t-caption2" style={{
             color: 'var(--accent)', textDecoration: 'none', fontWeight: 700,
             padding: '2px 6px',
-          }}>Open ↗</a>
+          }}>Open</a>
         )}
       </div>
 
@@ -523,7 +523,7 @@ function ErrorPane({ what, how, raw, openHref }: {
             <>
               {' '}
               <a href={openHref} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                Open original ↗
+                Open original
               </a>
             </>
           )}
