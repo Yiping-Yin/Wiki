@@ -23,7 +23,7 @@ import { useHistory } from '../../lib/use-history';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { usePins } from '../../lib/use-pins';
 import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { openPanelReview, setRefreshResume } from '../../lib/panel-resume';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
@@ -232,9 +232,7 @@ export function TodayClient({
       return;
     }
     if (next === 'review') {
-      const payload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
-      try { sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload)); } catch {}
-      router.push(surface.href);
+      openPanelReview(router, { href: surface.href, anchorId: surface.learning.latestAnchorId });
       return;
     }
     const payload: OverlayResumePayload = { href: surface.href, overlay: next };
@@ -243,11 +241,12 @@ export function TodayClient({
   };
 
   const openRefresh = (surface: StudySurface) => {
-    const reviewPayload: ReviewResumePayload = { href: surface.href, anchorId: surface.learning.latestAnchorId };
     const refreshPayload: RefreshResumePayload = { href: surface.href, source: 'today' };
     try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
-      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+      setRefreshResume(
+        { href: surface.href, anchorId: surface.learning.latestAnchorId },
+        refreshPayload,
+      );
     } catch {}
     router.push(surface.href);
   };
@@ -617,8 +616,7 @@ function ReviewCards({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const payload: ReviewResumePayload = { href: card.href, anchorId: card.anchorId };
-                      try { sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload)); } catch {}
+                      openPanelReview(router, { href: card.href, anchorId: card.anchorId });
                       onOpenReview(card.surface, 'review');
                     }}
                     style={{

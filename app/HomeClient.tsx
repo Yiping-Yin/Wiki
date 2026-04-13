@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../components/QuietGuideCard';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
-import { setReviewResume, continuePanelLifecycle } from '../lib/panel-resume';
+import { openPanelReview, continuePanelLifecycle } from '../lib/panel-resume';
 import { useHistory } from '../lib/use-history';
 import { useAllTraces, type Trace } from '../lib/trace';
 
@@ -125,14 +125,9 @@ export function HomeClient(_props: unknown) {
 
   const current = resume[0] ?? null;
 
-  const openReview = (item: ResumeItem, anchorId: string | null = null) => {
-    setReviewResume({ href: item.href, anchorId: anchorId ?? item.learning.latestAnchorId });
-    router.push(item.href);
-  };
-
   const openPrimaryAction = (item: ResumeItem) => {
     if (item.learning.nextAction === 'revisit') {
-      openReview(item);
+      openPanelReview(router, { href: item.href, anchorId: item.learning.latestAnchorId });
       return;
     }
     continuePanelLifecycle(router, {
