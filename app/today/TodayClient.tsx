@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useHistory } from '../../lib/use-history';
 import { usePins } from '../../lib/use-pins';
-import { useAllTraces } from '../../lib/trace';
+import { useAllTraces, type Trace } from '../../lib/trace';
 
 type DocLite = {
   id: string;
@@ -33,6 +33,18 @@ type DocLite = {
 };
 
 const DAY_MS = 86400000;
+
+type ReadingFocus = {
+  traceId: string;
+  docId: string;
+  title: string;
+  href: string;
+  lastTouched: number;
+  stitchedToday: number;
+  latestSummary: string;
+  latestQuote?: string;
+  crystallizedToday: boolean;
+};
 
 export function TodayClient({
   totalDocs: _totalDocs,
@@ -77,57 +89,83 @@ export function TodayClient({
     return out;
   }, [history, docsById, today0]);
 
-  // Today's thought-anchors — what you understood today
-  const todayAnchors = useMemo(() => {
-    const out: { docTitle: string; href: string; summary: string; at: number }[] = [];
-    for (const t of traces) {
-      if (t.kind !== 'reading' || t.parentId || !t.source?.docId) continue;
-      for (const e of t.events) {
-        if (e.kind !== 'thought-anchor' || e.at < today0) continue;
-        const meta = docsById.get(t.source.docId);
-        out.push({
-          docTitle: meta?.title ?? t.source.sourceTitle ?? t.source.docId,
-          href: meta?.href ?? t.source.href,
-          summary: e.summary,
-          at: e.at,
-        });
+  const readingFocus = useMemo(() => {
+    const out: ReadingFocus[] = [];
+    for (const trace of traces) {
+      if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
+      const meta = docsById.get(trace.source.docId);
+      let stitchedToday = 0;
+      let latestSummary = '';
+      let latestQuote = '';
+      let latestAnchorAt = 0;
+      let crystallizedToday = false;
+
+      for (const event of trace.events) {
+        if (event.kind === 'thought-anchor' && event.at >= today0) {
+          stitchedToday += 1;
+          if (event.at >= latestAnchorAt) {
+            latestAnchorAt = event.at;
+            latestSummary = event.summary;
+            latestQuote = event.quote ?? '';
+          }
+        }
+        if (event.kind === 'crystallize' && event.at >= today0 && !event.anchorId) {
+          crystallizedToday = true;
+        }
       }
+
+      const touchedToday = trace.updatedAt >= today0 || stitchedToday > 0 || crystallizedToday;
+      if (!touchedToday) continue;
+
+      out.push({
+        traceId: trace.id,
+        docId: trace.source.docId,
+        title: meta?.title ?? trace.source.sourceTitle ?? trace.title,
+        href: meta?.href ?? trace.source.href,
+        lastTouched: Math.max(trace.updatedAt, latestAnchorAt, trace.crystallizedAt ?? 0),
+        stitchedToday,
+        latestSummary,
+        latestQuote: latestQuote || undefined,
+        crystallizedToday,
+      });
     }
-    return out.sort((a, b) => b.at - a.at);
+    return out.sort((a, b) => b.lastTouched - a.lastTouched);
   }, [traces, today0, docsById]);
 
+  const continueWeaving = useMemo(() => {
+    return readingFocus.filter((item) => !item.crystallizedToday);
+  }, [readingFocus]);
+
+  const wovenToday = useMemo(() => {
+    return readingFocus.filter((item) => item.crystallizedToday);
+  }, [readingFocus]);
+
   if (!mounted) return null;
-  if (readToday.length === 0 && pins.length === 0 && todayAnchors.length === 0) return null;
+  if (
+    readToday.length === 0 &&
+    pins.length === 0 &&
+    continueWeaving.length === 0 &&
+    wovenToday.length === 0
+  ) return null;
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
-      {todayAnchors.length > 0 && (
+      {continueWeaving.length > 0 && (
+        <Block label="Continue weaving">
+          <FocusList
+            items={continueWeaving}
+            emptyTone="No unfinished threads today."
+          />
+        </Block>
+      )}
+
+      {wovenToday.length > 0 && (
         <Block label="Woven today">
-          {todayAnchors.map((a, i) => (
-            <Link key={i} href={a.href} style={{
-              display: 'block',
-              padding: '0.55rem 0',
-              borderBottom: i < todayAnchors.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-              textDecoration: 'none', color: 'var(--fg)',
-            }}>
-              <div style={{
-                display: 'flex', alignItems: 'baseline', gap: 8,
-              }}>
-                <span style={{ color: 'var(--accent)', fontSize: '0.7rem', flexShrink: 0 }}>◆</span>
-                <span style={{
-                  flex: 1, minWidth: 0,
-                  fontFamily: 'var(--display)', fontSize: '0.94rem', fontWeight: 500,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{a.summary}</span>
-                <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0 }}>
-                  {timeOfDay(a.at)}
-                </span>
-              </div>
-              <div className="t-caption" style={{ color: 'var(--muted)', marginLeft: 20, marginTop: 2 }}>
-                {a.docTitle}
-              </div>
-            </Link>
-          ))}
+          <FocusList
+            items={wovenToday}
+            emptyTone=""
+            mode="woven"
+          />
         </Block>
       )}
 
@@ -215,6 +253,130 @@ function DocList({
   );
 }
 
+function FocusList({
+  items,
+  emptyTone,
+  mode = 'open',
+}: {
+  items: ReadingFocus[];
+  emptyTone: string;
+  mode?: 'open' | 'woven';
+}) {
+  if (items.length === 0 && emptyTone) {
+    return (
+      <div className="t-footnote" style={{ color: 'var(--muted)', fontStyle: 'italic' }}>
+        {emptyTone}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {items.map((item, index) => (
+        <Link
+          key={item.traceId}
+          href={item.href}
+          style={{
+            display: 'block',
+            textDecoration: 'none',
+            color: 'var(--fg)',
+            padding: '0.8rem 0',
+            borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span
+              className="t-caption2"
+              style={{
+                color: mode === 'woven' ? 'var(--accent)' : 'var(--muted)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {mode === 'woven' ? 'Finished' : 'Open'}
+            </span>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: 'var(--display)',
+                fontSize: '1rem',
+                fontWeight: 550,
+                letterSpacing: '-0.012em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {item.title}
+            </span>
+            <span
+              suppressHydrationWarning
+              className="t-caption"
+              style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {timeOfDay(item.lastTouched)}
+            </span>
+          </div>
+
+          {(item.latestSummary || item.latestQuote) && (
+            <div
+              style={{
+                marginTop: 6,
+                marginLeft: 2,
+                color: 'var(--fg-secondary)',
+                fontSize: '0.9rem',
+                lineHeight: 1.55,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {item.latestSummary || item.latestQuote}
+            </div>
+          )}
+
+          <div
+            className="t-caption2"
+            style={{
+              marginTop: 7,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              color: 'var(--muted)',
+              letterSpacing: '0.04em',
+              flexWrap: 'wrap',
+            }}
+          >
+            {item.stitchedToday > 0 && (
+              <span>
+                {item.stitchedToday} stitch{item.stitchedToday > 1 ? 'es' : ''} today
+              </span>
+            )}
+            {item.stitchedToday > 0 && item.latestQuote && <span aria-hidden>·</span>}
+            {item.latestQuote && (
+              <span
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '100%',
+                  fontStyle: 'italic',
+                }}
+              >
+                {item.latestQuote.length > 90 ? `${item.latestQuote.slice(0, 90)}…` : item.latestQuote}
+              </span>
+            )}
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function timeOfDay(ts: number): string {
   const d = new Date(ts);
   const h = d.getHours();
@@ -232,7 +394,7 @@ function timeOfDay(ts: number): string {
  * §④: faster than flipping through a notebook.
  * No separate quiz page needed — review happens on /today.
  */
-function ReviewCards({ traces, docsById }: { traces: any[]; docsById: Map<string, DocLite> }) {
+function ReviewCards({ traces, docsById }: { traces: Trace[]; docsById: Map<string, DocLite> }) {
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const threeDaysAgo = Date.now() - 3 * 86400000;
 
