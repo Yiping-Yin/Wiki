@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Note, SourceDocId } from '../../lib/note/types';
 import { appendNote } from '../../lib/note/store';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
+import { setOverlayResume } from '../../lib/panel-resume';
 import { WeftShuttle } from '../DocViewer';
 
 type Props = {
@@ -219,18 +219,15 @@ export function AIExaminer({ docId, contextNotes }: Props) {
       phase.kind === 'verdict' ? phase.question : examinerHistory.lastFailedQuestion ?? '',
       phase.kind === 'verdict' ? phase.feedback : examinerHistory.lastFailedFeedback ?? '',
     );
-    const payload: OverlayResumePayload = {
+    setOverlayResume({
       href: docHrefFromDocId(docId ?? ''),
       overlay: 'rehearsal',
       seedDraft,
       seedLabel: 'Pick up the missing edge',
-    };
-    try {
-      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
+    });
     window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: 'rehearsal' } }));
     requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'rehearsal', seedDraft, seedLabel: payload.seedLabel } }));
+      window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'rehearsal', seedDraft, seedLabel: 'Pick up the missing edge' } }));
     });
   }, [docId, examinerHistory.lastFailedFeedback, examinerHistory.lastFailedQuestion, phase]);
 

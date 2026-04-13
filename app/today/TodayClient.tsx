@@ -20,10 +20,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { useHistory } from '../../lib/use-history';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import { usePins } from '../../lib/use-pins';
 import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
-import { openPanelReview, setRefreshResume } from '../../lib/panel-resume';
+import { openPanelReview, setOverlayResume, setRefreshResume } from '../../lib/panel-resume';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
@@ -235,8 +234,7 @@ export function TodayClient({
       openPanelReview(router, { href: surface.href, anchorId: surface.learning.latestAnchorId });
       return;
     }
-    const payload: OverlayResumePayload = { href: surface.href, overlay: next };
-    try { sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload)); } catch {}
+    setOverlayResume({ href: surface.href, overlay: next });
     router.push(surface.href);
   };
 
