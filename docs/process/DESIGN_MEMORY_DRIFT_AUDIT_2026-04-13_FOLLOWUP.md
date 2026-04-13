@@ -127,6 +127,26 @@ Design effect:
 - user-facing knowledge pages keep the informational hierarchy of callouts
   without importing decorative emoji into the reading surface
 
+### 7. Remaining decorative symbols reduced on utility surfaces
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/DropZone.tsx` no longer uses emoji state markers for drop /
+  uploading / error
+- `components/Mermaid.tsx` no longer prefixes render-failure copy with a
+  warning emoji
+- `components/PyodideRunner.tsx` no longer prefixes the runner title with a
+  snake emoji
+
+Design effect:
+
+- utility and fallback surfaces rely more on tone, typography, and motion than
+  on decorative symbolic markers
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -167,5 +187,6 @@ Residual note:
 - user-facing generic loading copy reduced further
 - decorative product-surface symbols reduced further
 - callout styling brought closer to Loom's quieter text grammar
+- utility-surface decorative markers reduced further
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level

@@ -39,7 +39,7 @@ export function PyodideRunner({ code: initial }: { code: string }) {
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, margin: '1.2rem 0', overflow: 'hidden' }}>
       <div style={{ background: 'var(--code-bg)', padding: '0.4rem 0.8rem', fontSize: '0.78rem', color: 'var(--muted)', display: 'flex', justifyContent: 'space-between' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-          🐍 Python (Pyodide, in-browser)
+          Python (Pyodide, in-browser)
           {busy && <WeftShuttle width={48} height={12} />}
         </span>
         <button onClick={run} disabled={busy}

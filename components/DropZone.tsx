@@ -121,8 +121,15 @@ export function DropZone() {
         maxWidth: 480,
         boxShadow: 'var(--shadow-3)',
       }}>
-        <div style={{ fontSize: '3.5rem', marginBottom: '0.6rem' }}>
-          {error ? '⚠️' : busy ? '⏳' : '📥'}
+        <div style={{
+          fontSize: '0.68rem',
+          marginBottom: '0.75rem',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          fontWeight: 700,
+          color: error ? 'var(--tint-red)' : busy ? 'var(--accent)' : 'var(--muted)',
+        }}>
+          {error ? 'Upload error' : busy ? 'Uploading' : 'Drop files'}
         </div>
         <div style={{
           fontSize: '1.3rem', fontWeight: 700, fontFamily: 'var(--display)',

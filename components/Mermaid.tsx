@@ -44,7 +44,7 @@ export function Mermaid({ chart }: { chart: string }) {
           fontFamily: 'var(--display)',
           marginBottom: 8,
         }}>
-          ⚠ Diagram source couldn&rsquo;t render. Showing raw code below.
+          Diagram source couldn&rsquo;t render. Showing raw code below.
         </div>
         <pre style={{
           margin: 0,
