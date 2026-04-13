@@ -32,16 +32,9 @@ export function CategoryHero({
   return (
     <div style={{
       position: 'relative',
-      padding: '2.2rem 2.2rem 1.6rem',
-      borderRadius: 'var(--r-3)',
-      marginBottom: '1.5rem',
-      overflow: 'hidden',
-      border: '0.5px solid var(--mat-border)',
-      background: 'var(--bg-elevated)',
-      boxShadow: 'var(--shadow-1)',
-      isolation: 'isolate',
+      padding: '0.2rem 0 0',
+      marginBottom: '1.35rem',
     }}>
-      <div className="hero-aurora" aria-hidden style={{ inset: '-30% -10%' }} />
       <div style={{ position: 'relative' }}>
         <div className="t-caption" style={{
           textTransform: 'uppercase', letterSpacing: '0.10em',
@@ -52,30 +45,47 @@ export function CategoryHero({
         <h1 className="t-title" style={{ margin: 0, color: 'var(--fg)', border: 0, padding: 0 }}>
           {label}
         </h1>
-        <div style={{ marginTop: '0.85rem', display: 'flex', gap: '1.4rem', flexWrap: 'wrap' }}>
-          <Stat value={count} label="documents" />
-          <Stat value={withText} label="with text" />
-          {viewed > 0 && <Stat value={viewed} label="viewed" />}
+        <div
+          className="t-footnote"
+          style={{
+            marginTop: '0.75rem',
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            color: 'var(--muted)',
+            alignItems: 'center',
+          }}
+        >
+          <span>{count} {count === 1 ? 'document' : 'documents'}</span>
+          <span aria-hidden>·</span>
+          <span>{withText} with text</span>
+          {viewed > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{viewed} viewed</span>
+            </>
+          )}
         </div>
 
         {visibleSubs.length > 0 && (
           <div style={{
-            marginTop: '1.1rem',
-            display: 'flex', gap: 6, flexWrap: 'wrap',
+            marginTop: '0.9rem',
+            display: 'flex',
+            gap: 10,
+            flexWrap: 'wrap',
           }}>
             {visibleSubs.map((s) => (
               <a
                 key={s.label}
                 href={`#${encodeURIComponent(s.label)}`}
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '5px 11px', borderRadius: 999,
-                  background: 'var(--mat-thin-bg)',
-                  border: '0.5px solid var(--mat-border)',
-                  fontSize: '0.74rem', fontWeight: 600,
-                  color: 'var(--fg)', textDecoration: 'none',
-                  backdropFilter: 'var(--mat-blur)',
-                  WebkitBackdropFilter: 'var(--mat-blur)',
+                  display: 'inline-flex',
+                  alignItems: 'baseline',
+                  gap: 6,
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: 'var(--fg)',
+                  textDecoration: 'none',
                 }}
               >
                 <span>{s.label}</span>
@@ -88,15 +98,6 @@ export function CategoryHero({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Stat({ value, label }: { value: number | string; label: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-      <span className="t-title3" style={{ color: 'var(--fg)', fontWeight: 700 }}>{value}</span>
-      <span className="t-footnote" style={{ color: 'var(--muted)' }}>{label}</span>
     </div>
   );
 }

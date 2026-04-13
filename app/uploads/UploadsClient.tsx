@@ -264,22 +264,20 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       </div>
 
       <div
-        className="material-thick"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          padding: '0.55rem 0.82rem',
-          borderRadius: 999,
-          marginBottom: 24,
-          boxShadow: 'var(--shadow-1)',
+          padding: '0.25rem 0 0.65rem',
+          marginBottom: 22,
+          borderBottom: '0.5px solid var(--mat-border)',
         }}
       >
         <span
           aria-hidden
           style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
         >
-          Uploads
+          ⌕
         </span>
         <input
           value={query}
@@ -333,7 +331,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
 
       <UploadBlock label="Continue" items={openItems} />
       <UploadBlock label="Finished" items={finishedItems} />
-      <UploadBlock label="Recent uploads" items={newItems} />
+      <UploadBlock label="Recently landed" items={newItems} />
     </div>
   );
 }

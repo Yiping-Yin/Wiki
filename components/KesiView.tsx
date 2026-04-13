@@ -376,12 +376,10 @@ export function KesiView() {
 
         {returnPanel && (
           <section
-            className="material-thick"
             style={{
-              padding: '1rem 1.05rem 1.05rem',
-              borderRadius: 'var(--r-3)',
+              padding: '0.1rem 0 1rem',
               marginBottom: 18,
-              boxShadow: 'var(--shadow-1)',
+              borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -488,12 +486,10 @@ export function KesiView() {
 
         {refreshPanels.length > 0 && (
           <section
-            className="material-thick"
             style={{
-              padding: '0.95rem 1.05rem',
-              borderRadius: 'var(--r-3)',
+              padding: '0.1rem 0 0.2rem',
               marginBottom: 18,
-              boxShadow: 'var(--shadow-1)',
+              borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -575,12 +571,10 @@ export function KesiView() {
 
         {continuePanels.length > 0 && (
           <section
-            className="material-thick"
             style={{
-              padding: '0.95rem 1.05rem',
-              borderRadius: 'var(--r-3)',
+              padding: '0.1rem 0 0.2rem',
               marginBottom: 18,
-              boxShadow: 'var(--shadow-1)',
+              borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -661,15 +655,13 @@ export function KesiView() {
         )}
 
         <div
-          className="material-thick"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            padding: '0.5rem 0.8rem',
-            borderRadius: 999,
-            marginBottom: 18,
-            boxShadow: 'var(--shadow-1)',
+            padding: '0.25rem 0 0.65rem',
+            marginBottom: 16,
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           <span
@@ -769,12 +761,11 @@ export function KesiView() {
 
         {sortedPanels.length === 0 && (
           <div
-            className="material-thick"
             style={{
-              padding: '1rem 1.1rem',
-              borderRadius: 14,
+              padding: '0.8rem 0',
               color: 'var(--muted)',
               fontStyle: 'italic',
+              borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
             No woven panel matches “{query}”.
@@ -1161,13 +1152,14 @@ function ToolbarChip({
       type="button"
       onClick={onClick}
       style={{
-        padding: '0.42rem 0.72rem',
+        padding: '0.3rem 0.1rem',
         borderRadius: 999,
-        border: `0.5px solid ${active ? 'var(--accent)' : 'var(--mat-border)'}`,
-        background: active ? 'var(--accent-soft)' : 'var(--bg-translucent)',
+        border: 0,
+        borderBottom: `1px solid ${active ? 'var(--accent)' : 'transparent'}`,
+        background: 'transparent',
         color: active ? 'var(--fg)' : 'var(--muted)',
-        fontSize: '0.76rem',
-        fontWeight: 700,
+        fontSize: '0.78rem',
+        fontWeight: active ? 650 : 500,
         letterSpacing: '0.04em',
         cursor: 'pointer',
       }}

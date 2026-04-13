@@ -173,80 +173,60 @@ export function CategoryLandingClient({
       />
       <h1 style={{ display: 'none' }}>{category.label}</h1>
 
-      <section
-        className="material-thick"
-        style={{
-          padding: '1rem 1.1rem',
-          borderRadius: 'var(--r-3)',
-          marginBottom: '1.5rem',
-          boxShadow: 'var(--shadow-1)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div
-              className="t-caption2"
+      <section style={{ marginBottom: '1.35rem' }}>
+        <div
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            fontWeight: 700,
+            marginBottom: 8,
+          }}
+        >
+          Collection thread
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {continueDoc && (
+            <Link
+              href={continueDoc.href}
               style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
-                marginBottom: 8,
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 8,
+                textDecoration: 'none',
+                color: 'var(--fg)',
               }}
             >
-              Collection state
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {continueDoc && (
-                <Link
-                  href={continueDoc.href}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '0.55rem 0.8rem',
-                    borderRadius: 999,
-                    border: '0.5px solid var(--mat-border)',
-                    textDecoration: 'none',
-                    color: 'var(--fg)',
-                    boxShadow: 'var(--shadow-1)',
-                  }}
-                >
-                  <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                    Continue
-                  </span>
-                  <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
-                    {continueDoc.title}
-                  </span>
-                </Link>
-              )}
-              {startDoc && (
-                <Link
-                  href={startDoc.href}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '0.55rem 0.8rem',
-                    borderRadius: 999,
-                    border: '0.5px solid var(--mat-border)',
-                    textDecoration: 'none',
-                    color: 'var(--fg)',
-                  }}
-                >
-                  <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                    Start
-                  </span>
-                  <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
-                    {startDoc.title}
-                  </span>
-                </Link>
-              )}
-            </div>
-          </div>
-
-          <div style={{ width: 'min(260px, 100%)', marginLeft: 'auto' }}>
-            <KesiSwatch categorySlug={category.slug} height={40} />
+              <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+                Continue
+              </span>
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
+                {continueDoc.title}
+              </span>
+            </Link>
+          )}
+          {startDoc && (
+            <Link
+              href={startDoc.href}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 8,
+                textDecoration: 'none',
+                color: 'var(--fg)',
+              }}
+            >
+              <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+                Start
+              </span>
+              <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>
+                {startDoc.title}
+              </span>
+            </Link>
+          )}
+          <div style={{ width: 'min(220px, 100%)', marginLeft: 'auto' }}>
+            <KesiSwatch categorySlug={category.slug} height={28} />
           </div>
         </div>
       </section>
@@ -322,19 +302,13 @@ export function CategoryLandingClient({
               id={group.label ? encodeURIComponent(group.label) : undefined}
               style={{
                 scrollMarginTop: '2rem',
-                borderRadius: 'var(--r-3)',
-                border: '0.5px solid var(--mat-border)',
-                background: 'var(--bg-elevated)',
-                boxShadow: 'var(--shadow-1)',
-                overflow: 'hidden',
+                paddingTop: group.label ? '0.15rem' : 0,
               }}
             >
               {group.label && (
                 <header
                   style={{
-                    padding: '0.85rem 1.2rem',
-                    borderBottom: '0.5px solid var(--mat-border)',
-                    background: 'linear-gradient(180deg, var(--surface-2), transparent)',
+                    padding: '0 0 0.7rem',
                     display: 'flex',
                     alignItems: 'baseline',
                     justifyContent: 'space-between',
@@ -370,7 +344,7 @@ export function CategoryLandingClient({
                         href={doc.href}
                         style={{
                           display: 'block',
-                          padding: '0.85rem 1.2rem',
+                          padding: '0.85rem 0',
                           textDecoration: 'none',
                           color: 'var(--fg)',
                         }}

@@ -255,12 +255,10 @@ export function TodayClient({
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
       {focusSurface && (
         <section
-          className="material-thick"
           style={{
-            padding: '1rem 1.05rem 1.05rem',
-            borderRadius: 'var(--r-3)',
+            padding: '0.1rem 0 1rem',
             marginBottom: 20,
-            boxShadow: 'var(--shadow-1)',
+            borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -512,13 +510,12 @@ function ScheduleList({
                 padding: '0.42rem 0.72rem',
                 borderRadius: 999,
                 border: '0.5px solid var(--mat-border)',
-                background: 'var(--bg-translucent)',
+                background: 'transparent',
                 color: 'var(--fg)',
                 fontSize: '0.76rem',
                 fontWeight: 700,
                 letterSpacing: '0.04em',
                 cursor: 'pointer',
-                boxShadow: 'var(--shadow-1)',
               }}
             >
               {cta}
