@@ -153,6 +153,14 @@ export function HomeClient(_props: unknown) {
     router.push(item.href);
   };
 
+  const openKesi = (item: ResumeItem) => {
+    router.push(`/kesi?focus=${encodeURIComponent(item.id)}`);
+  };
+
+  const openRelations = (item: ResumeItem) => {
+    router.push(`/graph?focus=${encodeURIComponent(item.id)}`);
+  };
+
   const openPrimaryAction = (item: ResumeItem) => {
     if (item.learning.nextAction === 'refresh') {
       openRefresh(item);
@@ -247,6 +255,12 @@ export function HomeClient(_props: unknown) {
               </button>
               <button onClick={() => router.push(current.href)} style={homeActionStyle(false)}>
                 Source
+              </button>
+              <button onClick={() => openKesi(current)} style={homeActionStyle(false)}>
+                Kesi
+              </button>
+              <button onClick={() => openRelations(current)} style={homeActionStyle(false)}>
+                Relations
               </button>
             </div>
           </div>
