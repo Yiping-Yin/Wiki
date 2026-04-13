@@ -111,8 +111,6 @@ export function RefreshCoach() {
   };
 
   const openKesi = () => router.push(ctx.docId ? `/kesi?focus=${encodeURIComponent(ctx.docId)}` : '/kesi');
-  const openRelations = () => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph');
-
   const primaryAction = refreshPrimaryAction(learning.nextAction);
   const bodyText = refreshBodyText(learning, payload?.source);
 
@@ -179,19 +177,13 @@ export function RefreshCoach() {
         {completion === 'settled' ? (
           <>
             <button type="button" onClick={openKesi} style={actionStyle(true)}>
-              Kesi
-            </button>
-            <button type="button" onClick={openRelations} style={actionStyle(false)}>
-              Relations
+              Open panel in Kesi
             </button>
           </>
         ) : completion === 'verified' ? (
           <>
             <button type="button" onClick={openReview} style={actionStyle(true)}>
               Review
-            </button>
-            <button type="button" onClick={openKesi} style={actionStyle(false)}>
-              Kesi
             </button>
           </>
         ) : (
@@ -206,12 +198,6 @@ export function RefreshCoach() {
               style={actionStyle(true)}
             >
               {primaryAction === 'review' ? 'Review' : primaryAction === 'rehearsal' ? 'Rehearse' : 'Examine'}
-            </button>
-            <button type="button" onClick={openKesi} style={actionStyle(false)}>
-              Kesi
-            </button>
-            <button type="button" onClick={openRelations} style={actionStyle(false)}>
-              Relations
             </button>
           </>
         )}
