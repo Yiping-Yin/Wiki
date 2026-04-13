@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
-  return { title: `${decodeURIComponent(name)} · Uploads` };
+  return { title: `${decodeURIComponent(name)} · Intake` };
 }
 
 export default async function UploadDocPage({ params }: { params: Promise<{ name: string }> }) {
@@ -43,7 +43,7 @@ export default async function UploadDocPage({ params }: { params: Promise<{ name
 
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
         <Link href="/">Home</Link> ›{' '}
-        <Link href="/uploads">Uploads</Link>
+        <Link href="/uploads">Intake</Link>
       </div>
       <h1>{titleClean}</h1>
       <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>

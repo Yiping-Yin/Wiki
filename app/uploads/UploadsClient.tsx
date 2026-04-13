@@ -257,7 +257,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
         <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
         <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 700 }}>
-          Uploads
+          Intake
         </span>
         <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
         <UploadButton variant="button" />
@@ -282,7 +282,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find a source to continue…"
+          placeholder="Find a source that has already landed…"
           style={{
             flex: 1,
             minWidth: 0,
@@ -323,7 +323,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
             borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
-          Nothing in uploads matches “{query}”.
+          Nothing in intake matches “{query}”.
         </div>
       )}
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { UploadsClient, type UploadListItem } from './UploadsClient';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Uploads · Loom' };
+export const metadata = { title: 'Intake · Loom' };
 
 const TEXT_PREVIEW_EXTS = new Set(['.txt', '.md', '.json', '.csv', '.tsv']);
 

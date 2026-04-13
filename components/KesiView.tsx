@@ -161,7 +161,7 @@ function familyLabelForHref(
     const top = cat.label.match(/^([^·]+?)\s*·/);
     return top ? top[1].trim() : cat.label;
   }
-  if (href.startsWith('/uploads/')) return 'Uploads';
+  if (href.startsWith('/uploads/')) return 'Intake';
   return 'Other';
 }
 
@@ -188,7 +188,7 @@ function panelSourceMeta(
   if (href.startsWith('/uploads/')) {
     return {
       sourceType: 'upload' as const,
-      collectionLabel: 'Uploads',
+      collectionLabel: 'Intake',
       collectionHref: '/uploads',
     };
   }
@@ -921,7 +921,7 @@ export function KesiView() {
           <ToolbarChip
             active={sourceFilter === 'upload'}
             onClick={() => setSourceFilter('upload')}
-            label={`Uploads · ${filterCounts.upload}`}
+            label={`Intake · ${filterCounts.upload}`}
           />
           <ToolbarChip
             active={recencyFilter === 'all'}

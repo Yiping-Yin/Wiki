@@ -2,8 +2,8 @@
 import { useRef, useState } from 'react';
 
 /**
- * Minimal upload trigger — a "+" that opens the native file picker.
- * Sits in the Uploads header hairline. No modal, no dialog, no copy.
+ * Minimal intake trigger — a "+" that opens the native file picker.
+ * Sits in the Intake header hairline. No modal, no dialog, no copy.
  * §1: the file picker IS the interface. §16: 3 steps max (click → pick → done).
  */
 export function UploadButton({
@@ -85,7 +85,7 @@ export function UploadButton({
         {variant === 'button' ? (
           <>
             <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-              Uploads
+              Intake
             </span>
             <span>{label}</span>
           </>
