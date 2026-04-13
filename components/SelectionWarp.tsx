@@ -433,20 +433,20 @@ export function SelectionWarp() {
     >
       {showLabel && (
         <div
-          className="material-thick t-caption2"
+          className="t-caption2"
           style={{
             position: 'absolute',
             left: 24,
             top: '50%',
             transform: 'translateY(-50%)',
-            padding: '3px 8px',
-            borderRadius: 999,
+            padding: '3px 0',
+            borderBottom: `0.5px solid color-mix(in srgb, ${threadColor} 40%, transparent)`,
+            background: 'color-mix(in srgb, var(--bg) 90%, transparent)',
             color: threadColor,
             fontWeight: 700,
             letterSpacing: '0.04em',
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
-            boxShadow: 'var(--shadow-1)',
           }}
         >
           {actionLabel} · {actionHint}
