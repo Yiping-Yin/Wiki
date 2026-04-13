@@ -106,7 +106,7 @@ export function KeyboardShortcuts() {
 
 const SHORTCUTS: [string, string][] = [
   ['⌘ K', 'Search'],
-  ['⌘ /', 'Review current document'],
+  ['⌘ /', 'Settle the current weave'],
   ['j', 'Next chapter (LLM wiki)'],
   ['k', 'Previous chapter'],
   ['g g', 'Back to top'],

@@ -132,12 +132,13 @@ export default function HelpPage() {
         <KbdRow k="⌘ click" label="Capture directly from the warp thread" />
         <KbdRow k="⌘⇧A" label="Capture selected text without using the mouse" />
         <KbdRow k="⌥ click" label="Highlight the selection" />
-        <KbdRow k="⌘/" label="Expand the thought map to elaborate captures" />
+        <KbdRow k="⌘/" label="Settle the current weave in the thought map" />
       </Kbds>
 
       <h3>Tools and global shortcuts</h3>
       <Kbds>
         <KbdRow k="⌘P" label="Search everything" />
+        <KbdRow k="Relations" label="Open the active panel’s relation layer from settled surfaces" />
         <KbdRow k="?" label="This help" />
         <KbdRow k="Esc" label="Close any panel" />
       </Kbds>
@@ -149,8 +150,9 @@ export default function HelpPage() {
         keyword and see all matching presets, docs, and actions.
       </p>
       <ul>
-        <li>Search "<strong>rehearsal</strong>" → memory writing surface</li>
-        <li>Search "<strong>examiner</strong>" → AI testing flow</li>
+        <li>Search "<strong>rehearsal</strong>" → deepen a panel from memory</li>
+        <li>Search "<strong>examiner</strong>" → verify a woven understanding</li>
+        <li>Search "<strong>thought map</strong>" → settle the current weave</li>
         <li>Search "<strong>export</strong>" → three export options</li>
         <li>Search a <strong>doc name</strong> → jump to that doc</li>
         <li>Search "<strong>help</strong>" → this page or keyboard help</li>

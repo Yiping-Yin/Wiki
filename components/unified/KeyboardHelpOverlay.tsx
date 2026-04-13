@@ -15,14 +15,14 @@ const GROUPS: Group[] = [
       { keys: '⌘⇧A', label: 'Capture selection as a thought-anchor' },
       { keys: '⌘ click', label: 'Capture directly from the warp thread' },
       { keys: '⌥ click', label: 'Highlight the selection' },
-      { keys: '⌘/', label: 'Toggle thought map wide / narrow' },
+      { keys: '⌘/', label: 'Settle the current weave in the thought map' },
     ],
   },
   {
     title: 'Tools (via ⌘P)',
     items: [
-      { keys: 'Write', label: 'Write from memory · ⌘K shape · ⌘S save' },
-      { keys: 'Ask', label: 'Let the doc ask back · ⌘↩ submit' },
+      { keys: 'Write', label: 'Deepen a panel from memory · ⌘K shape · ⌘S save' },
+      { keys: 'Ask', label: 'Verify a woven understanding · ⌘↩ submit' },
       { keys: 'Import', label: 'Drag-drop .md/.txt files' },
       { keys: 'Export', label: 'Download notes as JSON or Markdown' },
     ],
@@ -32,6 +32,7 @@ const GROUPS: Group[] = [
     items: [
       { keys: '⌘P', label: 'Search everything (docs, tools, export)' },
       { keys: '⌘K', label: 'Search docs' },
+      { keys: 'Relations', label: 'Open the active panel’s relation layer from settled surfaces' },
       { keys: 'Esc', label: 'Close any open panel' },
       { keys: '?', label: 'Toggle this help' },
     ],
