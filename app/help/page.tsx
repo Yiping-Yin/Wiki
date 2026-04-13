@@ -55,7 +55,7 @@ export default function HelpPage() {
       <ol>
         <li>
           <strong>Open a doc</strong> from the sidebar or press <Kbd>⌘P</Kbd> to search.
-          Loom auto-resumes your last-read doc when you open the app.
+          Loom keeps your current weave close at hand when you open the app.
         </li>
         <li>
           <strong>Select a passage</strong> you want to think about.

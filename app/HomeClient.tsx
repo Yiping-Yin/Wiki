@@ -15,11 +15,23 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { LearningStatusInline } from '../components/LearningStatusInline';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../lib/refresh-resume';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
 import { useHistory } from '../lib/use-history';
-import { useAllTraces } from '../lib/trace';
+import { useAllTraces, type Trace } from '../lib/trace';
 
 type IndexDoc = { id: string; title: string; href: string; category: string };
-type ResumeItem = { id: string; title: string; href: string; viewedAt: number };
+type ResumeItem = {
+  id: string;
+  title: string;
+  href: string;
+  viewedAt: number;
+  learning: LearningSurfaceSummary;
+  latestSummary: string;
+};
 
 let _idxCache: IndexDoc[] | null = null;
 async function loadDocs(): Promise<IndexDoc[]> {
@@ -49,6 +61,7 @@ export function HomeClient(_props: unknown) {
   const [history] = useHistory();
   const [docs, setDocs] = useState<IndexDoc[]>([]);
   const { traces } = useAllTraces();
+  const router = useRouter();
   useEffect(() => { loadDocs().then(setDocs); }, []);
 
   const docsById = useMemo(() => {
@@ -57,6 +70,17 @@ export function HomeClient(_props: unknown) {
     return m;
   }, [docs]);
 
+  const tracesByDocId = useMemo(() => {
+    const map = new Map<string, Trace[]>();
+    for (const trace of traces) {
+      if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
+      const existing = map.get(trace.source.docId) ?? [];
+      existing.push(trace);
+      map.set(trace.source.docId, existing);
+    }
+    return map;
+  }, [traces]);
+
   const resume: ResumeItem[] = useMemo(() => {
     const seen = new Set<string>();
     const out: ResumeItem[] = [];
@@ -64,15 +88,29 @@ export function HomeClient(_props: unknown) {
       if (seen.has(h.id) || out.length >= 5) continue;
       seen.add(h.id);
       const meta = docsById.get(h.id);
+      const traceSet = tracesByDocId.get(h.id) ?? [];
+      let latestSummary = '';
+      let latestAnchorAt = 0;
+      for (const trace of traceSet) {
+        for (const event of trace.events) {
+          if (event.kind !== 'thought-anchor') continue;
+          if (event.at >= latestAnchorAt) {
+            latestAnchorAt = event.at;
+            latestSummary = event.summary;
+          }
+        }
+      }
       out.push({
         id: h.id,
         title: meta?.title ?? h.title,
         href: meta?.href ?? h.href,
         viewedAt: h.viewedAt,
+        learning: summarizeLearningSurface(traceSet, h.viewedAt),
+        latestSummary,
       });
     }
     return out;
-  }, [history, docsById]);
+  }, [history, docsById, tracesByDocId]);
 
   const kesiCount = useMemo(() => {
     let count = 0;
@@ -83,31 +121,142 @@ export function HomeClient(_props: unknown) {
     return count;
   }, [traces]);
 
-  // Auto-resume: if there's reading history, navigate directly to
-  // the last-read doc. The user opens Loom → sees their book open to
-  // where they left off. No homepage speed bump.
-  const router = useRouter();
-  const [autoResumed, setAutoResumed] = useState(false);
-  useEffect(() => {
-    if (autoResumed || resume.length === 0) return;
-    const last = resume[0];
-    if (last?.href && last.href !== '/' && last.href !== window.location.pathname) {
-      setAutoResumed(true);
-      router.push(last.href);
-    }
-  }, [resume, autoResumed, router]);
-
   if (resume.length === 0) {
     return <HomeLoom kesiCount={kesiCount} />;
   }
 
-  // While auto-resuming, show nothing (avoid flash of homepage)
-  if (!autoResumed && resume.length > 0 && resume[0]?.href && resume[0].href !== '/') {
-    return null;
-  }
+  const current = resume[0] ?? null;
+
+  const openReview = (item: ResumeItem, anchorId: string | null = null) => {
+    const payload: ReviewResumePayload = { href: item.href, anchorId };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(item.href);
+  };
+
+  const openRefresh = (item: ResumeItem) => {
+    const reviewPayload: ReviewResumePayload = { href: item.href, anchorId: null };
+    const refreshPayload: RefreshResumePayload = { href: item.href, source: 'kesi' };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+    } catch {}
+    router.push(item.href);
+  };
+
+  const openOverlay = (item: ResumeItem, overlay: OverlayResumePayload['overlay']) => {
+    const payload: OverlayResumePayload = { href: item.href, overlay };
+    try {
+      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(item.href);
+  };
+
+  const openPrimaryAction = (item: ResumeItem) => {
+    if (item.learning.nextAction === 'refresh') {
+      openRefresh(item);
+    } else if (item.learning.nextAction === 'rehearse') {
+      openOverlay(item, 'rehearsal');
+    } else if (item.learning.nextAction === 'examine') {
+      openOverlay(item, 'examiner');
+    } else if (item.learning.nextAction === 'capture') {
+      router.push(item.href);
+    } else {
+      openReview(item);
+    }
+  };
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
+      {current && (
+        <section
+          className="material-thick"
+          style={{
+            padding: '1rem 1.05rem 1.05rem',
+            borderRadius: 'var(--r-3)',
+            marginBottom: 18,
+            boxShadow: 'var(--shadow-1)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
+            <span
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+              }}
+            >
+              Continue weaving
+            </span>
+            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+            <LearningStatusInline status={current.learning} compact />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div
+                style={{
+                  fontFamily: 'var(--display)',
+                  fontSize: '1.18rem',
+                  fontWeight: 650,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.25,
+                  marginBottom: 6,
+                }}
+              >
+                {current.title}
+              </div>
+
+              <div
+                className="t-caption2"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  color: 'var(--muted)',
+                  letterSpacing: '0.04em',
+                  marginBottom: 8,
+                }}
+              >
+                <span>{relativeTime(current.viewedAt)}</span>
+                <span aria-hidden>·</span>
+                <span>{current.learning.anchorCount} stitches</span>
+                <span aria-hidden>·</span>
+                <span>{current.learning.quality}</span>
+              </div>
+
+              <div
+                style={{
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.55,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {current.latestSummary || 'Return to the document you were shaping most recently.'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
+              <button onClick={() => openPrimaryAction(current)} style={homeActionStyle(true)}>
+                {homePrimaryActionLabel(current.learning.nextAction)}
+              </button>
+              <button onClick={() => router.push(current.href)} style={homeActionStyle(false)}>
+                Source
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         marginBottom: 18,
@@ -140,24 +289,71 @@ export function HomeClient(_props: unknown) {
                 borderBottom: '0.5px solid var(--mat-border)',
               }}
             >
-              <span style={{
-                flex: 1, minWidth: 0,
-                fontFamily: 'var(--display)',
-                fontSize: '1rem',
-                fontWeight: 500,
-                letterSpacing: '-0.012em',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{item.title}</span>
-              <span suppressHydrationWarning className="t-caption" style={{
-                color: 'var(--muted)', flexShrink: 0,
-                fontVariantNumeric: 'tabular-nums',
-              }}>{relativeTime(item.viewedAt)}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{
+                  display: 'block',
+                  fontFamily: 'var(--display)',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  letterSpacing: '-0.012em',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{item.title}</span>
+                {item.latestSummary ? (
+                  <span style={{
+                    display: 'block',
+                    color: 'var(--fg-secondary)',
+                    fontSize: '0.83rem',
+                    lineHeight: 1.5,
+                    marginTop: 4,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{item.latestSummary}</span>
+                ) : null}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <LearningStatusInline status={item.learning} compact />
+                <span suppressHydrationWarning className="t-caption" style={{
+                  color: 'var(--muted)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>{relativeTime(item.viewedAt)}</span>
+              </span>
             </Link>
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+function homeActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
+    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
+    color: primary ? 'var(--accent)' : 'var(--fg)',
+    borderRadius: 999,
+    padding: '0.52rem 0.82rem',
+    fontSize: '0.82rem',
+    fontWeight: 650,
+    letterSpacing: '-0.01em',
+    lineHeight: 1,
+    cursor: 'pointer',
+    boxShadow: primary ? 'var(--shadow-1)' : 'none',
+  };
+}
+
+function homePrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  switch (nextAction) {
+    case 'refresh':
+      return 'Refresh';
+    case 'rehearse':
+      return 'Rehearsal';
+    case 'examine':
+      return 'Examiner';
+    case 'capture':
+      return 'Open';
+    default:
+      return 'Continue';
+  }
 }
 
 function relativeTime(ts: number): string {
