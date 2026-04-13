@@ -2,7 +2,7 @@ import { getAllDocs, getKnowledgeCategories } from '../../lib/knowledge-store';
 import { chapters } from '../../lib/nav';
 import { BrowseClient } from './BrowseClient';
 
-export const metadata = { title: 'Browse · Loom' };
+export const metadata = { title: 'Reference · Loom' };
 
 export default async function BrowsePage() {
   const [allDocs, knowledgeCategories] = await Promise.all([getAllDocs(), getKnowledgeCategories()]);

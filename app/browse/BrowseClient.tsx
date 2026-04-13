@@ -1,22 +1,21 @@
 'use client';
 /**
- * /browse — text index of all collections, by top-level group.
+ * /browse — secondary reference index.
  *
  * §1, §11, §13 — the previous version was Apple TV streaming rows: aurora
  * hero, gradient cover tiles per doc, recently-viewed scroll-snap row,
  * file-type pills, "See all →" CTAs, internal horizontal scroll containers
  * (which §13 forbids). All chrome.
  *
- * /knowledge keeps the kesi-swatch grid view of the same data; /browse
- * is the text-list complement — strict typography, no visuals. Same
- * grammar as /notes /highlights /quizzes.
+ * /knowledge is the primary collection entry. /browse is the quieter,
+ * secondary reference surface: text lists, direct chapter finding, no
+ * "continue this collection" framing.
  */
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
-import { summarizeLearningSurface, type LearningNextAction } from '../../lib/learning-status';
+import { summarizeLearningSurface } from '../../lib/learning-status';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -89,7 +88,6 @@ export function BrowseClient({
   llmSections: LLMSection[];
   totalDocs: number;
 }) {
-  const router = useRouter();
   const [query, setQuery] = useState('');
   const [history] = useHistory();
   const { traces } = useAllTraces();
@@ -121,14 +119,12 @@ export function BrowseClient({
   }, [categories, normalizedQuery]);
 
   const categoryProgress = useMemo(() => {
-    const map = new Map<string, { touched: number; crystallized: number; examined: number; stale: number; latestTouched: number; nextAction: LearningNextAction }>();
+    const map = new Map<string, { touched: number; crystallized: number; examined: number; stale: number }>();
     for (const category of categories) {
       let touched = 0;
       let crystallized = 0;
       let examined = 0;
       let stale = 0;
-      let latestTouched = 0;
-      let nextAction: LearningNextAction = 'capture';
       for (const doc of category.docs) {
         const docId = docIdForCategoryDoc(doc.id);
         const viewedAt = viewedByDocId.get(docId) ?? 0;
@@ -138,12 +134,8 @@ export function BrowseClient({
         if (learning.crystallized) crystallized += 1;
         if (learning.examinerCount > 0) examined += 1;
         if (learning.opened && learning.recency === 'stale') stale += 1;
-        latestTouched = Math.max(latestTouched, learning.touchedAt);
-        if (browseNextActionRank[learning.nextAction] < browseNextActionRank[nextAction]) {
-          nextAction = learning.nextAction;
-        }
       }
-      map.set(category.slug, { touched, crystallized, examined, stale, latestTouched, nextAction });
+      map.set(category.slug, { touched, crystallized, examined, stale });
     }
     return map;
   }, [categories, tracesByDocId, viewedByDocId]);
@@ -153,125 +145,11 @@ export function BrowseClient({
     return llmSections.filter((section) => matchesSection(section, normalizedQuery));
   }, [llmSections, normalizedQuery]);
 
-  const focusCollection = useMemo(() => {
-    return filteredCategories
-      .filter((category) => (categoryProgress.get(category.slug)?.touched ?? 0) > 0)
-      .sort((a, b) => {
-        const ap = categoryProgress.get(a.slug)!;
-        const bp = categoryProgress.get(b.slug)!;
-        if (browseNextActionRank[ap.nextAction] !== browseNextActionRank[bp.nextAction]) {
-          return browseNextActionRank[ap.nextAction] - browseNextActionRank[bp.nextAction];
-        }
-        return bp.latestTouched - ap.latestTouched;
-      })[0] ?? null;
-  }, [filteredCategories, categoryProgress]);
-
   const groups = useMemo(() => groupTop(filteredCategories), [filteredCategories]);
   const hasResults = groups.length > 0 || filteredSections.length > 0;
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      {focusCollection && (() => {
-        const progress = categoryProgress.get(focusCollection.slug)!;
-        return (
-          <section
-            style={{
-              padding: '0.1rem 0 1rem',
-              marginBottom: 20,
-              borderBottom: '0.5px solid var(--mat-border)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-              <span
-                className="t-caption2"
-                style={{
-                  color: 'var(--muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 700,
-                }}
-            >
-                Keep this collection warm
-              </span>
-              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 260 }}>
-                <div
-                  style={{
-                    fontFamily: 'var(--display)',
-                    fontSize: '1.18rem',
-                    fontWeight: 650,
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.25,
-                    marginBottom: 6,
-                  }}
-                >
-                  {displayLabel(focusCollection.label)}
-                </div>
-
-                <div
-                  className="t-caption2"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    color: 'var(--muted)',
-                    letterSpacing: '0.04em',
-                    marginBottom: 8,
-                  }}
-                >
-                  <span>{focusCollection.count} docs</span>
-                  <span aria-hidden>·</span>
-                  <span>{progress.touched} touched</span>
-                  {progress.examined > 0 && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span>{progress.examined} examined</span>
-                    </>
-                  )}
-                  {progress.crystallized > 0 && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span>{progress.crystallized} settled</span>
-                    </>
-                  )}
-                  {progress.stale > 0 && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span>{progress.stale} stale</span>
-                    </>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    color: 'var(--fg-secondary)',
-                    fontSize: '0.9rem',
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {browseFocusLine(progress.nextAction)}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/knowledge/${focusCollection.slug}`)}
-                  style={browseActionStyle(true)}
-                >
-                  {browsePrimaryLabel(progress.nextAction)}
-                </button>
-              </div>
-            </div>
-          </section>
-        );
-      })()}
-
       <div
         style={{
           display: 'flex',
@@ -286,12 +164,12 @@ export function BrowseClient({
           aria-hidden
           style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
         >
-          Browse
+          Reference
         </span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find a collection or chapter…"
+          placeholder="Find a chapter or collection…"
           style={{
             flex: 1,
             minWidth: 0,
@@ -327,7 +205,7 @@ export function BrowseClient({
             borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
-          Nothing in Loom matches “{query}”.
+          Nothing in the reference index matches “{query}”.
         </div>
       )}
 
@@ -447,61 +325,6 @@ export function BrowseClient({
       )}
     </div>
   );
-}
-
-const browseNextActionRank: Record<LearningNextAction, number> = {
-  refresh: 0,
-  examine: 1,
-  rehearse: 2,
-  revisit: 3,
-  capture: 4,
-};
-
-function browsePrimaryLabel(nextAction: LearningNextAction) {
-  switch (nextAction) {
-    case 'refresh':
-      return 'Return';
-    case 'examine':
-      return 'Ask';
-    case 'rehearse':
-      return 'Write';
-    case 'capture':
-      return 'Open';
-    default:
-      return 'Review';
-  }
-}
-
-function browseFocusLine(nextAction: LearningNextAction) {
-  switch (nextAction) {
-    case 'refresh':
-      return 'This collection has cooled. Re-enter it and warm the weave back up.';
-    case 'examine':
-      return 'This collection is ready to verify. Move from rehearsal into examiner while it is still coherent.';
-    case 'rehearse':
-      return 'This collection has captures that still need shaping into stronger understanding.';
-    case 'capture':
-      return 'You have opened this collection before, but the weave has barely started. Return and capture the live passages.';
-    default:
-      return 'This collection is already in motion. Return to review and keep the weave coherent.';
-  }
-}
-
-function browseActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    borderRadius: 999,
-    padding: '0.3rem 0',
-    fontSize: '0.82rem',
-    fontWeight: 650,
-    letterSpacing: '-0.01em',
-    lineHeight: 1,
-    cursor: 'pointer',
-  };
 }
 
 function Block({ label, children }: { label: string; children: React.ReactNode }) {
