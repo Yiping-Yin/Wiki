@@ -68,8 +68,8 @@ export function KeyboardHelpOverlay() {
       onClick={() => setOpen(false)}
       style={{
         position: 'fixed', inset: 0,
-        background: 'color-mix(in srgb, var(--bg) 85%, transparent)',
-        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        background: 'color-mix(in srgb, var(--bg) 82%, transparent)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 40, animation: 'loom-overlay-fade-in 0.15s ease-out',
       }}
@@ -78,13 +78,14 @@ export function KeyboardHelpOverlay() {
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: 420, width: '100%', maxHeight: '85vh', overflow: 'auto',
-          background: 'var(--bg-elevated)', border: '0.5px solid var(--mat-border)',
-          borderRadius: 16, padding: '24px 28px',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.18)',
+          background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
+          padding: '22px 26px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, paddingBottom: 12, borderBottom: '0.5px solid var(--mat-border)' }}>
-          <strong style={{ fontSize: '0.88rem', color: 'var(--accent)' }}>Shortcuts</strong>
+          <strong style={{ fontSize: '0.88rem', color: 'var(--fg-secondary)', fontWeight: 600 }}>Shortcuts</strong>
           <span style={{ flex: 1 }} />
           <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontFamily: 'var(--mono)' }}>? toggle · Esc close</span>
         </div>
@@ -97,7 +98,7 @@ export function KeyboardHelpOverlay() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {g.items.map((it, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: '0.78rem', lineHeight: 1.5 }}>
-                    <kbd style={{ flex: '0 0 auto', padding: '2px 8px', fontSize: '0.72rem', fontFamily: 'var(--mono)', background: 'var(--bg)', border: '0.5px solid var(--mat-border)', borderRadius: 4, color: 'var(--fg)', minWidth: 70, textAlign: 'center' }}>
+                    <kbd style={{ flex: '0 0 auto', padding: '2px 0', fontSize: '0.72rem', fontFamily: 'var(--mono)', background: 'transparent', border: 0, borderBottom: '0.5px solid var(--mat-border)', color: 'var(--fg)', minWidth: 70, textAlign: 'center' }}>
                       {it.keys}
                     </kbd>
                     <span style={{ color: 'var(--fg-secondary)' }}>{it.label}</span>

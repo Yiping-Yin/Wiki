@@ -10,7 +10,7 @@
  *
  * Mount ToastHost only on surfaces that deliberately opt into toast feedback.
  * It listens for `wiki:toast` CustomEvents on window and renders a
- * bottom-center stack of material-thick capsules with spring entry/exit.
+ * bottom-center stack of quiet strips with spring entry/exit.
  */
 import { useEffect, useState } from 'react';
 
@@ -28,9 +28,9 @@ export function toast(text: string, opts: { kind?: ToastKind; durationMs?: numbe
 }
 
 const KIND_META: Record<ToastKind, { color: string; label: string }> = {
-  ok:    { color: 'var(--tint-green)',  label: 'OK' },
-  info:  { color: 'var(--tint-blue)',   label: 'Info' },
-  warn:  { color: 'var(--tint-orange)', label: 'Warn' },
+  ok:    { color: 'var(--tint-green)',  label: 'Held' },
+  info:  { color: 'var(--tint-blue)',   label: 'Note' },
+  warn:  { color: 'var(--tint-orange)', label: 'Watch' },
   error: { color: 'var(--tint-red)',    label: 'Error' },
 };
 
@@ -74,13 +74,13 @@ export function ToastHost() {
           <button
             key={t.id}
             onClick={() => dismiss(t.id)}
-            className="material-thick toast-item"
             style={{
               pointerEvents: 'auto',
               display: 'inline-flex', alignItems: 'center', gap: 10,
-              padding: '0.55rem 1rem 0.55rem 0.85rem',
-              borderRadius: 999,
-              border: 0,
+              padding: '0.52rem 0.9rem 0.52rem 0.75rem',
+              borderTop: '0.5px solid var(--mat-border)',
+              borderBottom: '0.5px solid var(--mat-border)',
+              background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
               cursor: 'pointer',
               color: 'var(--fg)',
               fontFamily: 'var(--display)',

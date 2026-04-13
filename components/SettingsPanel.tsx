@@ -8,7 +8,7 @@
  *   - Sidebar: default mode (hidden / mini / pinned)
  *   - Reset: clear all wiki:* localStorage keys
  *
- * Designed as a centered glass modal with macOS-style chrome.
+ * Designed as a quiet sheet, not a system dialog impersonation.
  */
 import { useEffect, useState } from 'react';
 import { type AiCliKind, readAiCliPreference, writeAiCliPreference } from '../lib/ai-cli';
@@ -134,21 +134,22 @@ export function SettingsPanel() {
       onClick={(e) => e.target === e.currentTarget && setOpen(false)}
       style={{
         position: 'fixed', inset: 0, zIndex: 140,
-        background: 'rgba(0,0,0,0.42)',
+        background: 'rgba(0,0,0,0.28)',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         paddingTop: '11vh',
-        backdropFilter: 'saturate(140%) blur(10px)',
-        WebkitBackdropFilter: 'saturate(140%) blur(10px)',
+        backdropFilter: 'saturate(125%) blur(7px)',
+        WebkitBackdropFilter: 'saturate(125%) blur(7px)',
         animation: 'lpFade 0.18s var(--ease)',
       }}
     >
       <div
-        className="material-thick"
         role="dialog"
         aria-label="Settings"
         style={{
           width: 'min(560px, 92vw)',
-          borderRadius: 'var(--r-3)',
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
+          background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
           maxHeight: '78vh',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
@@ -170,18 +171,20 @@ export function SettingsPanel() {
             aria-label="Close settings"
             title="Close (Esc)"
             style={{
-              width: 22, height: 22, borderRadius: '50%',
               background: 'transparent',
-              border: '0.5px solid var(--mat-border)',
+              border: 0,
               color: 'var(--muted)',
               cursor: 'pointer',
-              fontSize: '0.78rem',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.7rem',
+              fontFamily: 'var(--mono)',
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              padding: 0,
             }}
-          >×</button>
+          >Esc</button>
         </div>
 
-        <div style={{ overflowY: 'auto', padding: '1.4rem 1.6rem 1.6rem' }}>
+        <div style={{ overflowY: 'auto', padding: '1.25rem 1.4rem 1.45rem' }}>
           <Section label="Appearance">
             <Row label="Theme">
               <Segmented<Theme>
@@ -191,7 +194,7 @@ export function SettingsPanel() {
               />
             </Row>
             <Row label="Accent">
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {ACCENT_PRESETS.map((p, i) => (
                   <button
                     key={p.name}
@@ -199,12 +202,12 @@ export function SettingsPanel() {
                     aria-label={p.name}
                     title={p.name}
                     style={{
-                      width: 22, height: 22, borderRadius: '50%',
+                      width: 18, height: 18, borderRadius: '50%',
                       background: p.light,
-                      border: accent === i ? '2px solid var(--fg)' : '0.5px solid var(--mat-border)',
+                      border: accent === i ? '1.5px solid var(--fg)' : '0.5px solid var(--mat-border)',
                       cursor: 'pointer', padding: 0,
                       boxShadow: 'inset 0 0.5px 0 rgba(255,255,255,0.45)',
-                      transform: accent === i ? 'scale(1.1)' : 'scale(1)',
+                      transform: accent === i ? 'scale(1.08)' : 'scale(1)',
                       transition: 'transform 0.16s var(--ease-spring)',
                     }}
                   />
@@ -235,7 +238,7 @@ export function SettingsPanel() {
               />
             </Row>
             <p className="t-caption" style={{ marginTop: -6, color: 'var(--muted)', lineHeight: 1.5 }}>
-              Used by passage chat, note organization, and inline note completion. If the selected CLI is not authenticated, Loom falls back to the other allowed CLI.
+              Used by passage chat, note organization, and inline note completion. If the selected CLI is unavailable, Loom quietly falls back to the other allowed CLI.
             </p>
           </Section>
 
@@ -249,8 +252,8 @@ export function SettingsPanel() {
             <button
               onClick={resetAll}
               style={{
-                background: 'var(--surface-2)',
-                border: '0.5px solid var(--mat-border)',
+                background: 'transparent',
+                border: '0.5px solid var(--tint-red)',
                 borderRadius: 999,
                 padding: '8px 16px',
                 cursor: 'pointer',
@@ -277,7 +280,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
         textTransform: 'uppercase', letterSpacing: '0.10em',
         color: 'var(--muted)', fontWeight: 700, marginBottom: 10,
       }}>{label}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>{children}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, borderTop: '0.5px solid var(--mat-border)', paddingTop: 10 }}>{children}</div>
     </div>
   );
 }
@@ -301,28 +304,26 @@ function Segmented<T extends string>({
   return (
     <div style={{
       display: 'inline-flex',
-      background: 'var(--surface-2)',
-      borderRadius: 999,
-      padding: 2,
-      border: '0.5px solid var(--mat-border)',
+      gap: 10,
+      borderBottom: '0.5px solid var(--mat-border)',
     }}>
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
           style={{
-            background: value === o.value ? 'var(--bg-elevated)' : 'transparent',
+            background: 'transparent',
             color: value === o.value ? 'var(--fg)' : 'var(--muted)',
             border: 0,
-            borderRadius: 999,
-            padding: '5px 14px',
+            borderBottom: value === o.value ? '1px solid var(--accent)' : '1px solid transparent',
+            borderRadius: 0,
+            padding: '4px 0 5px',
             cursor: 'pointer',
             fontSize: '0.78rem',
             fontWeight: value === o.value ? 700 : 500,
             fontFamily: 'var(--display)',
             letterSpacing: '-0.005em',
-            boxShadow: value === o.value ? 'var(--shadow-1)' : 'none',
-            transition: 'all 0.18s var(--ease)',
+            transition: 'color 0.18s var(--ease), border-color 0.18s var(--ease)',
           }}
         >{o.label}</button>
       ))}

@@ -63,9 +63,9 @@ function fuzzy(needle: string, hay: string): number {
 }
 
 const KIND_META = {
-  doc:        { icon: '📄', label: 'Document',   tint: 'var(--tint-blue)'   },
-  collection: { icon: '🗂', label: 'Collection', tint: 'var(--tint-purple)' },
-  week:       { icon: '◷', label: 'Week',       tint: 'var(--tint-indigo)' },
+  doc:        { label: 'Document',   tint: 'var(--tint-blue)'   },
+  collection: { label: 'Collection', tint: 'var(--tint-purple)' },
+  week:       { label: 'Week',       tint: 'var(--tint-indigo)' },
 } as const;
 
 export function QuickSwitcher() {
@@ -236,21 +236,25 @@ export function QuickSwitcher() {
               onMouseEnter={() => setActive(i)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
-                padding: '0.65rem 1.1rem 0.65rem 0.9rem',
+                padding: '0.65rem 1.1rem 0.65rem 0.15rem',
                 cursor: 'pointer',
                 background: isActive ? 'var(--accent-soft)' : 'transparent',
-                borderLeft: '3px solid ' + (isActive ? 'var(--accent)' : 'transparent'),
+                borderLeft: '1px solid ' + (isActive ? 'var(--accent)' : 'transparent'),
               }}
             >
-              <div style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                background: `linear-gradient(135deg, ${meta.tint}33, ${meta.tint}11)`,
-                color: meta.tint,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.95rem',
-              }}>
-                {meta.icon}
-              </div>
+              <span
+                className="t-caption2"
+                style={{
+                  color: meta.tint,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 700,
+                  minWidth: 70,
+                  flexShrink: 0,
+                }}
+              >
+                {meta.label}
+              </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="t-subhead" style={{
                   fontWeight: isActive ? 700 : 600, color: 'var(--fg)',
@@ -281,17 +285,19 @@ export function QuickSwitcher() {
       onClick={(e) => e.target === e.currentTarget && setOpen(false)}
       style={{
         position: 'fixed', inset: 0, zIndex: 120,
-        background: 'rgba(0,0,0,0.42)',
+        background: 'rgba(0,0,0,0.28)',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         paddingTop: '11vh',
-        backdropFilter: 'saturate(140%) blur(10px)',
-        WebkitBackdropFilter: 'saturate(140%) blur(10px)',
+        backdropFilter: 'saturate(125%) blur(7px)',
+        WebkitBackdropFilter: 'saturate(125%) blur(7px)',
         animation: 'lpFade 0.18s var(--ease)',
       }}
     >
-      <div className="material-thick" style={{
+      <div style={{
         width: 'min(680px, 92vw)',
-        borderRadius: 'var(--r-3)',
+        background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+        borderTop: '0.5px solid var(--mat-border)',
+        borderBottom: '0.5px solid var(--mat-border)',
         overflow: 'hidden',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.85rem 1.1rem', borderBottom: '0.5px solid var(--mat-border)' }}>
@@ -316,8 +322,6 @@ export function QuickSwitcher() {
           />
           <span className="t-caption2" style={{
             color: 'var(--muted)', fontFamily: 'var(--mono)',
-            border: '0.5px solid var(--mat-border)',
-            borderRadius: 4, padding: '2px 6px',
           }}>esc</span>
         </div>
         <div ref={listRef} style={{ maxHeight: '60vh', overflowY: 'auto', padding: '4px 0 8px' }}>
@@ -339,7 +343,7 @@ export function QuickSwitcher() {
               borderTop: '0.5px solid var(--mat-border)',
               color: 'var(--muted)', marginTop: 6,
             }}>
-              Type to fuzzy match · ↑↓ navigate · ↵ open · Esc close
+              Type to match · ↑↓ move · ↵ open · Esc close
             </div>
           )}
         </div>
