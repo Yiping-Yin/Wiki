@@ -118,11 +118,29 @@ function buildPanels(traces: Trace[]) {
   return { panels, tracesByDocId };
 }
 
-function syncFocusParam(docId: string | null) {
+type ScopeFilter = 'all' | 'nearby' | 'incoming' | 'outgoing';
+
+function syncGraphParams({
+  docId,
+  query,
+  family,
+  scope,
+}: {
+  docId: string | null;
+  query: string;
+  family: string;
+  scope: ScopeFilter;
+}) {
   if (typeof window === 'undefined') return;
   const url = new URL(window.location.href);
   if (docId) url.searchParams.set('focus', docId);
   else url.searchParams.delete('focus');
+  if (query.trim()) url.searchParams.set('q', query.trim());
+  else url.searchParams.delete('q');
+  if (family !== 'all') url.searchParams.set('family', family);
+  else url.searchParams.delete('family');
+  if (scope !== 'all') url.searchParams.set('scope', scope);
+  else url.searchParams.delete('scope');
   window.history.replaceState({}, '', url.toString());
 }
 
@@ -132,14 +150,25 @@ export default function GraphPage() {
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [familyFilter, setFamilyFilter] = useState<string>('all');
-  const [scopeFilter, setScopeFilter] = useState<'all' | 'nearby' | 'incoming' | 'outgoing'>('all');
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
 
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       setFocusDocId(params.get('focus'));
+      setQuery(params.get('q') ?? '');
+      setFamilyFilter(params.get('family') ?? 'all');
+      const requestedScope = params.get('scope');
+      setScopeFilter(
+        requestedScope === 'nearby' || requestedScope === 'incoming' || requestedScope === 'outgoing'
+          ? requestedScope
+          : 'all',
+      );
     } catch {
       setFocusDocId(null);
+      setQuery('');
+      setFamilyFilter('all');
+      setScopeFilter('all');
     }
   }, []);
 
@@ -331,9 +360,22 @@ export default function GraphPage() {
     [edges, visibleDocIds],
   );
 
+  useEffect(() => {
+    syncGraphParams({
+      docId: focusDocId,
+      query,
+      family: familyFilter,
+      scope: scopeFilter,
+    });
+  }, [familyFilter, focusDocId, query, scopeFilter]);
+
   const focusPanelNode = (panel: PanelNode) => {
     setFocusDocId(panel.docId);
-    syncFocusParam(panel.docId);
+  };
+
+  const clearFocus = () => {
+    setFocusDocId(null);
+    setScopeFilter('all');
   };
 
   if (panelCount === 0) return null;
@@ -600,6 +642,9 @@ export default function GraphPage() {
                 <button type="button" onClick={() => router.push(`/kesi?focus=${encodeURIComponent(focusPanel.docId)}`)} style={focusLinkStyle}>
                   Open this panel in Kesi
                 </button>
+                <button type="button" onClick={clearFocus} style={focusLinkStyle}>
+                  Clear focus
+                </button>
               </div>
             </div>
           </div>
@@ -623,6 +668,7 @@ export default function GraphPage() {
             const panel = panelByDocId.get(node.id);
             if (panel) focusPanelNode(panel);
           }}
+          onPaneClick={clearFocus}
         >
           <Background color="var(--mat-border)" gap={24} size={0.8} />
         </ReactFlow>
