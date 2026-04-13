@@ -74,6 +74,24 @@ Design effect:
 - `/help` is now closer to the current interaction model and carries less
   decorative brand presence
 
+### 4. Generic loading copy reduced on user-facing overlays
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `components/ExaminerOverlay.tsx` no longer renders literal `Loading…`
+- `components/PyodideRunner.tsx` no longer writes `Loading Python runtime…`
+  or swaps the primary action label to `Running…`
+
+Design effect:
+
+- examiner loading now uses a quiet shuttle indicator
+- Pyodide execution now keeps the action label stable and uses a quieter
+  in-header shuttle instead of generic loading copy
+
 ## Remaining drift
 
 ### Global toast primitive
@@ -111,5 +129,6 @@ Residual note:
 - reading-surface drift reduced
 - root-shell toast drift removed
 - `/about` and `/help` copy brought closer to current canon
+- user-facing generic loading copy reduced further
 - no mother-document changes required
 - remaining work, if any, is calibration-level rather than contradiction-level
