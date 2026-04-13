@@ -20,6 +20,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { contextFromPathname } from '../lib/doc-context';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { appendEventForDoc } from '../lib/trace/source-bound';
 import { captureCurrentSelection } from '../lib/capture/from-selection';
 import type { SourceAnchor } from '../lib/trace/types';
@@ -114,10 +115,12 @@ function stableFragmentAnchorId(blockId: string, charStart: number, charEnd: num
 }
 
 export function SelectionWarp() {
+  const smallScreen = useSmallScreen();
   const [spot, setSpot] = useState<Spot | null>(null);
   const [hovered, setHovered] = useState(false);
   const [tint, setTint] = useState<string>(HIGHLIGHT_TINTS[0]);
   const [intent, setIntent] = useState<Intent>('ask');
+  const [touchActionsOpen, setTouchActionsOpen] = useState(false);
   // Ref to the warp's outer DOM element so the document-level mouseup
   // handler can detect "this click is on me, don't recompute".
   const warpRef = useRef<HTMLDivElement>(null);
@@ -225,6 +228,10 @@ export function SelectionWarp() {
       defer(compute);
     };
 
+    const onTouchEnd = () => {
+      defer(compute);
+    };
+
     // selectionchange fires when selection becomes empty (e.g. user
     // clicked elsewhere) — hide the warp in that case. We do NOT use
     // it for "show" because it fires too aggressively during drag.
@@ -232,6 +239,7 @@ export function SelectionWarp() {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
         setSpot(null);
+        setTouchActionsOpen(false);
       }
     };
 
@@ -245,6 +253,7 @@ export function SelectionWarp() {
     const onWindowBlur = () => setIntent('ask');
 
     document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('touchend', onTouchEnd);
     document.addEventListener('selectionchange', onSelectionChange);
     window.addEventListener('keydown', onKeyChange);
     window.addEventListener('keyup', onKeyChange);
@@ -257,6 +266,7 @@ export function SelectionWarp() {
     return () => {
       timers.forEach((id) => clearTimeout(id));
       document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchend', onTouchEnd);
       document.removeEventListener('selectionchange', onSelectionChange);
       window.removeEventListener('keydown', onKeyChange);
       window.removeEventListener('keyup', onKeyChange);
@@ -292,6 +302,7 @@ export function SelectionWarp() {
     autoHighlight(spot.text);
     setSpot(null);
     setHovered(false);
+    setTouchActionsOpen(false);
   };
 
   const autoHighlight = (text: string) => {
@@ -317,6 +328,7 @@ export function SelectionWarp() {
     window.getSelection()?.removeAllRanges();
     setSpot(null);
     setHovered(false);
+    setTouchActionsOpen(false);
   };
 
   const cycleTint = (e: React.MouseEvent) => {
@@ -333,6 +345,10 @@ export function SelectionWarp() {
   const trigger = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (smallScreen && e.pointerType !== 'mouse') {
+      setTouchActionsOpen((open) => !open);
+      return;
+    }
     const nextIntent = intentFromInput(e);
     if (nextIntent === 'capture') {
       // ⌘-click → capture quick path: create a thought-anchor with empty
@@ -356,6 +372,7 @@ export function SelectionWarp() {
       });
       setSpot(null);
       setHovered(false);
+      setTouchActionsOpen(false);
       setIntent('ask');
     } else if (nextIntent === 'highlight') {
       // ⌥-click or right-click → manual highlight only (no Ask)
@@ -370,6 +387,7 @@ export function SelectionWarp() {
       window.getSelection()?.removeAllRanges();
       setSpot(null);
       setHovered(false);
+      setTouchActionsOpen(false);
       setIntent('ask');
     } else {
       ask(e as unknown as React.MouseEvent);
@@ -392,7 +410,42 @@ export function SelectionWarp() {
     : intent === 'highlight'
       ? tint
       : 'var(--accent)';
-  const showLabel = hovered || intent !== 'ask';
+  const showLabel = !smallScreen && (hovered || intent !== 'ask');
+
+  const capture = async () => {
+    const captured = await captureCurrentSelection();
+    if (!captured) return;
+    window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
+    window.dispatchEvent(new CustomEvent('loom:capture:done', {
+      detail: {
+        anchorId: captured.anchorId,
+        quote: captured.quote,
+        reviewHint: '⌘/ 打开 Thought Map 延伸',
+        viewport: {
+          x: spot.left,
+          y: spot.top,
+          height: spot.height,
+        },
+      },
+    }));
+    setSpot(null);
+    setHovered(false);
+    setTouchActionsOpen(false);
+  };
+
+  const highlightSelection = () => {
+    const ctx = contextFromPathname(window.location.pathname);
+    void appendEventForDoc(
+      { docId: ctx.docId, href: ctx.href, sourceTitle: ctx.sourceTitle },
+      { kind: 'highlight', text: spot.text, tint, anchor: spot.anchor, at: Date.now() },
+    ).then(() => {
+      window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
+    });
+    window.getSelection()?.removeAllRanges();
+    setSpot(null);
+    setHovered(false);
+    setTouchActionsOpen(false);
+  };
 
   return (
     <div
@@ -468,6 +521,55 @@ export function SelectionWarp() {
           flexShrink: 0,
         }}
       />
+      {smallScreen && touchActionsOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            left: 12,
+            right: 12,
+            bottom: 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)',
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            padding: '0.7rem 0.8rem',
+            borderTop: '0.5px solid var(--mat-border)',
+            borderBottom: '0.5px solid var(--mat-border)',
+            borderRadius: 14,
+            background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+            boxShadow: 'var(--shadow-2)',
+            zIndex: 10000,
+          }}
+        >
+          <button type="button" onClick={(e) => ask(e as unknown as React.MouseEvent)} style={touchActionStyle(true)}>
+            Ask
+          </button>
+          <button type="button" onClick={() => void capture()} style={touchActionStyle(false)}>
+            Capture
+          </button>
+          <button type="button" onClick={highlightSelection} style={touchActionStyle(false)}>
+            Mark
+          </button>
+          <button type="button" onClick={() => setTouchActionsOpen(false)} style={touchActionStyle(false)}>
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
+}
+
+function touchActionStyle(primary: boolean): React.CSSProperties {
+  return {
+    appearance: 'none',
+    border: 0,
+    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    borderBottom: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
+    padding: '0.35rem 0',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    letterSpacing: '0.03em',
+    cursor: 'pointer',
+    minWidth: 64,
+  };
 }
