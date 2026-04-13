@@ -271,10 +271,10 @@ export function KesiView() {
     .filter((panel) => panel.learning.nextAction === 'refresh' && panel.traceId !== returnPanel?.traceId)
     .slice(0, 4);
 
-  const openReview = (panel: Panel) => {
+  const openReview = (panel: Panel, anchorId: string | null = null) => {
     const payload: ReviewResumePayload = {
       href: panel.href,
-      anchorId: panel.sections[0]?.anchorId ?? null,
+      anchorId: anchorId ?? panel.sections[0]?.anchorId ?? null,
     };
     try {
       sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
@@ -705,7 +705,7 @@ export function KesiView() {
                       color: 'var(--fg)',
                       cursor: 'pointer',
                     }}
-                    onClick={() => router.push(panel.href)}
+                    onClick={() => openPrimaryAction(panel)}
                     onMouseEnter={(e) => {
                       const btn = e.currentTarget.querySelector('[aria-label="Remove from Kesi"]') as HTMLElement | null;
                       if (btn) btn.style.opacity = '0.5';
@@ -864,7 +864,23 @@ export function KesiView() {
                         }}
                       >
                         {panel.sections.slice(0, 4).map((section) => (
-                          <div key={section.anchorId}>
+                          <div
+                            key={section.anchorId}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openReview(panel, section.anchorId);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openReview(panel, section.anchorId);
+                              }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
                             <div
                               style={{
                                 color: panel.tint,
@@ -889,14 +905,14 @@ export function KesiView() {
                                   marginTop: 4,
                                   overflow: 'hidden',
                                   display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                }}
-                              >
-                                {section.quote.length > 120 ? `${section.quote.slice(0, 120)}…` : section.quote}
-                              </div>
-                            )}
-                          </div>
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                            >
+                              {section.quote.length > 120 ? `${section.quote.slice(0, 120)}…` : section.quote}
+                            </div>
+                          )}
+                        </div>
                         ))}
                       </div>
                     )}
