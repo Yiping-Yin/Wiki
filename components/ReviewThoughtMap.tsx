@@ -590,6 +590,10 @@ function WideThoughtList({
     return sortedGroups;
   }, [thoughts, activeAnchorId]);
 
+  const focusThought = useMemo(() => {
+    return thoughts.find((thought) => thought.anchorId === activeAnchorId) ?? thoughts[0] ?? null;
+  }, [thoughts, activeAnchorId]);
+
   return (
     <div
       style={{
@@ -598,6 +602,7 @@ function WideThoughtList({
         gap: 16,
       }}
     >
+      {focusThought && <WideThoughtHeader thought={focusThought} />}
       {sectionGroups.map((group) => (
         <section key={group.key}>
           <div
@@ -652,6 +657,117 @@ function WideThoughtList({
         </section>
       ))}
     </div>
+  );
+}
+
+function WideThoughtHeader({ thought }: { thought: ThoughtAnchorView }) {
+  const goToSource = () => {
+    window.dispatchEvent(
+      new CustomEvent(REVIEW_SCROLL_EVENT, {
+        detail: { anchorId: thought.anchorId },
+      }),
+    );
+  };
+
+  const heading = thought.summary.trim() || thought.content.trim() || 'This weave is still taking shape.';
+  const excerpt = thought.quote?.trim() || thought.anchorBlockText?.trim() || '';
+
+  return (
+    <section
+      className="material-thick"
+      style={{
+        padding: '0.95rem 1rem 1rem',
+        borderRadius: 14,
+        boxShadow: 'var(--shadow-1)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Weaving now
+        </span>
+        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+        <span className="t-caption2" style={{ color: 'var(--accent)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          {thought.sectionNumber ? `${String(thought.sectionNumber).padStart(2, '0')} · ` : ''}{thought.section}
+        </span>
+      </div>
+
+      <div
+        style={{
+          fontFamily: 'var(--display)',
+          fontSize: '0.98rem',
+          fontWeight: 600,
+          letterSpacing: '-0.016em',
+          lineHeight: 1.35,
+          marginBottom: 8,
+          color: 'var(--fg)',
+        }}
+      >
+        {heading}
+      </div>
+
+      {excerpt ? (
+        <div
+          style={{
+            fontSize: '0.78rem',
+            color: 'var(--muted)',
+            fontStyle: 'italic',
+            lineHeight: 1.5,
+            paddingLeft: 10,
+            borderLeft: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)',
+            marginBottom: 10,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+          }}
+        >
+          {excerpt}
+        </div>
+      ) : null}
+
+      <div
+        className="t-caption2"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          color: 'var(--muted)',
+          letterSpacing: '0.04em',
+        }}
+      >
+        <span>{thought.versionCount > 1 ? `${thought.versionCount} versions` : 'first weave'}</span>
+        <span aria-hidden>·</span>
+        <span>{thought.isCrystallized ? 'crystallized' : 'open'}</span>
+        <span aria-hidden>·</span>
+        <button
+          type="button"
+          onClick={goToSource}
+          style={{
+            appearance: 'none',
+            border: 0,
+            background: 'transparent',
+            color: 'var(--fg-secondary)',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
+          Source
+        </button>
+      </div>
+    </section>
   );
 }
 
