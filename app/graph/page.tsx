@@ -575,64 +575,18 @@ export default function GraphPage() {
                 {(focusRelated.incoming.length > 0 || focusRelated.outgoing.length > 0) && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {focusRelated.incoming.length > 0 && (
-                      <div
-                        className="t-caption2"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          flexWrap: 'wrap',
-                          color: 'var(--muted)',
-                          letterSpacing: '0.04em',
-                        }}
-                      >
-                        <span>Referenced by</span>
-                        {focusRelated.incoming.slice(0, 4).map((related, index) => (
-                          <button
-                            key={`in-${related.panel.docId}`}
-                            type="button"
-                            onClick={() => focusPanelNode(related.panel)}
-                            style={focusLinkStyle}
-                          >
-                            <span>{related.panel.title}</span>
-                            <span style={{ color: 'var(--muted)' }}> ×{related.weight}</span>
-                            {related.snippet ? (
-                              <span style={{ color: 'var(--muted)' }}> — {related.snippet}</span>
-                            ) : null}
-                            {index < Math.min(focusRelated.incoming.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
-                          </button>
-                        ))}
-                      </div>
+                      <RelatedList
+                        label="Referenced by"
+                        items={focusRelated.incoming}
+                        onSelect={focusPanelNode}
+                      />
                     )}
                     {focusRelated.outgoing.length > 0 && (
-                      <div
-                        className="t-caption2"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          flexWrap: 'wrap',
-                          color: 'var(--muted)',
-                          letterSpacing: '0.04em',
-                        }}
-                      >
-                        <span>Points to</span>
-                        {focusRelated.outgoing.slice(0, 4).map((related, index) => (
-                          <button
-                            key={`out-${related.panel.docId}`}
-                            type="button"
-                            onClick={() => focusPanelNode(related.panel)}
-                            style={focusLinkStyle}
-                          >
-                            <span>{related.panel.title}</span>
-                            <span style={{ color: 'var(--muted)' }}> ×{related.weight}</span>
-                            {related.snippet ? (
-                              <span style={{ color: 'var(--muted)' }}> — {related.snippet}</span>
-                            ) : null}
-                            {index < Math.min(focusRelated.outgoing.length, 4) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
-                          </button>
-                        ))}
-                      </div>
+                      <RelatedList
+                        label="Points to"
+                        items={focusRelated.outgoing}
+                        onSelect={focusPanelNode}
+                      />
                     )}
                   </div>
                 )}
@@ -702,3 +656,78 @@ const focusLinkStyle = {
   padding: 0,
   cursor: 'pointer',
 };
+
+function RelatedList({
+  label,
+  items,
+  onSelect,
+}: {
+  label: string;
+  items: RelatedPanel[];
+  onSelect: (panel: PanelNode) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div
+        className="t-caption2"
+        style={{
+          color: 'var(--muted)',
+          letterSpacing: '0.04em',
+        }}
+      >
+        {label} · {items.length}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {items.slice(0, 5).map((related) => (
+          <button
+            key={`${label}-${related.panel.docId}`}
+            type="button"
+            onClick={() => onSelect(related.panel)}
+            style={{
+              appearance: 'none',
+              border: 0,
+              padding: '0.38rem 0',
+              background: 'transparent',
+              textAlign: 'left',
+              borderTop: '0.5px solid var(--mat-border)',
+              cursor: 'pointer',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 8,
+                flexWrap: 'wrap',
+                fontSize: '0.78rem',
+                lineHeight: 1.35,
+              }}
+            >
+              <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
+                {related.panel.title}
+              </span>
+              <span
+                className="t-caption2"
+                style={{ color: 'var(--muted)', letterSpacing: '0.04em' }}
+              >
+                ×{related.weight}
+              </span>
+            </div>
+            {related.snippet ? (
+              <div
+                style={{
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.76rem',
+                  lineHeight: 1.45,
+                  marginTop: 2,
+                }}
+              >
+                {related.snippet}
+              </div>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
