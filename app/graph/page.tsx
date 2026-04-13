@@ -26,6 +26,10 @@ type RelatedPanel = {
   snippet: string;
 };
 
+type DirectedRelatedPanel = RelatedPanel & {
+  direction: 'incoming' | 'outgoing';
+};
+
 function extractMarkdownLinkUrls(content: string): string[] {
   if (!content) return [];
   const urls: string[] = [];
@@ -320,6 +324,23 @@ export default function GraphPage() {
     incoming: focusRelated.incoming.length,
     outgoing: focusRelated.outgoing.length,
   };
+  const focusInsights = useMemo(() => {
+    if (!focusPanel) return null;
+    const nearby: DirectedRelatedPanel[] = [
+      ...focusRelated.incoming.map((item) => ({ ...item, direction: 'incoming' as const })),
+      ...focusRelated.outgoing.map((item) => ({ ...item, direction: 'outgoing' as const })),
+    ];
+    if (nearby.length === 0) return null;
+    const sameFamilyCount = nearby.filter((item) => item.panel.family === focusPanel.family).length;
+    const strongest = [...nearby].sort(
+      (a, b) => b.weight - a.weight || a.panel.title.localeCompare(b.panel.title),
+    )[0];
+    return {
+      nearbyCount: nearby.length,
+      sameFamilyCount,
+      strongest,
+    };
+  }, [focusPanel, focusRelated.incoming, focusRelated.outgoing]);
 
   const visibleDocIds = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -572,6 +593,37 @@ export default function GraphPage() {
                 >
                   {focusPanel.summary || 'This panel is woven, and its threads are visible here.'}
                 </div>
+                {focusInsights && (
+                  <div
+                    className="t-caption2"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      color: 'var(--muted)',
+                      letterSpacing: '0.04em',
+                      marginTop: 8,
+                    }}
+                  >
+                    <span>Nearby · {focusInsights.nearbyCount}</span>
+                    {focusInsights.sameFamilyCount > 0 ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span>Same family · {focusInsights.sameFamilyCount}</span>
+                      </>
+                    ) : null}
+                    <span aria-hidden>·</span>
+                    <button
+                      type="button"
+                      onClick={() => focusPanelNode(focusInsights.strongest.panel)}
+                      style={focusLinkStyle}
+                    >
+                      Strongest {focusInsights.strongest.direction === 'incoming' ? 'from' : 'to'}{' '}
+                      {focusInsights.strongest.panel.title} ×{focusInsights.strongest.weight}
+                    </button>
+                  </div>
+                )}
                 {(focusRelated.incoming.length > 0 || focusRelated.outgoing.length > 0) && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {focusRelated.incoming.length > 0 && (
