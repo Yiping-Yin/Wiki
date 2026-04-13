@@ -38,22 +38,47 @@ export default function GraphPage() {
       id: c.slug,
       data: { label: c.title },
       position: { x: SECTION_X[c.section] ?? 0, y: y + (c.section === 'Finetuning' ? 350 : 0) },
-      style: { padding: 10, border: '1px solid #2563eb', borderRadius: 8, background: '#fff', fontSize: 12, width: 200 },
+      style: {
+        padding: 10,
+        border: '0.5px solid var(--mat-border)',
+        borderRadius: 0,
+        background: 'color-mix(in srgb, var(--bg) 96%, white)',
+        color: 'var(--fg)',
+        fontSize: 12,
+        width: 200,
+        boxShadow: 'none',
+      },
     };
   });
-  const flowEdges = edges.map(([s, t]) => ({ id: `${s}-${t}`, source: s, target: t, animated: true, style: { stroke: '#94a3b8' } }));
+  const flowEdges = edges.map(([s, t]) => ({
+    id: `${s}-${t}`,
+    source: s,
+    target: t,
+    animated: false,
+    style: { stroke: '#b6bcc8', strokeWidth: 1 },
+  }));
 
   return (
-    <div style={{ width: '100%', height: '100vh' }}>
-      <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
-        <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>🕸 Knowledge Graph</h1>
-        <div style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Click any node to open the chapter.</div>
+    <div style={{ width: '100%', height: '100vh', background: 'var(--bg)' }}>
+      <div style={{ padding: '1rem 1.5rem 0.9rem', borderBottom: '0.5px solid var(--mat-border)' }}>
+        <div
+          className="t-caption2"
+          style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 6 }}
+        >
+          Map
+        </div>
+        <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 650, letterSpacing: '-0.02em' }}>Knowledge graph</h1>
+        <div style={{ fontSize: '0.84rem', color: 'var(--muted)', marginTop: 4 }}>Choose any thread to open its page.</div>
       </div>
       <div style={{ height: 'calc(100vh - 80px)' }}>
         <ReactFlow
           nodes={nodes}
           edges={flowEdges}
+          proOptions={{ hideAttribution: true }}
           fitView
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
           onNodeClick={(_, n) => (window.location.href = `/wiki/${n.id}`)}
         />
       </div>

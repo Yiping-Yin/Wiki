@@ -27,7 +27,6 @@ import {
   type Trace,
 } from '../../../lib/trace';
 import { toast, ToastHost } from '../../../components/Toast';
-import { PageHero } from '../../../components/PageHero';
 import { useEffect } from 'react';
 
 export default function TraceInspectorPage() {
@@ -144,32 +143,37 @@ export default function TraceInspectorPage() {
   return (
     <>
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '2rem 2rem 6rem' }}>
-        <PageHero
-          eyebrow="Dev · Phases 1-5"
-          title="Trace Inspector"
-          stats={[
-            { value: stats.total, label: 'traces' },
-            { value: stats.totalEvents, label: 'events' },
-            { value: embeddingCount, label: 'embeddings' },
-            ...Object.entries(stats.byKind).map(([k, n]) => ({ value: n, label: k })),
-          ]}
-          description={`Migration: ${isMigrated() ? '✓' : '○'} · Embedding pipeline: ${pipelineState}. This page is for verifying internal state; it isn't linked from the main nav.`}
-        />
+        <section style={{ marginBottom: '1.5rem' }}>
+          <div className="t-caption2" style={{
+            color: 'var(--muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontWeight: 700,
+            marginBottom: 6,
+          }}>
+            Dev
+          </div>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 650, letterSpacing: '-0.03em' }}>
+            Trace inspector
+          </h1>
+          <div className="t-footnote" style={{ marginTop: 8, color: 'var(--muted)' }}>
+            {stats.total} traces · {stats.totalEvents} events · {embeddingCount} embeddings · migration {isMigrated() ? 'ready' : 'pending'} · pipeline {pipelineState}
+          </div>
+        </section>
 
         {/* Indexer progress bar */}
         {indexProgress && (
           <div style={{
             marginBottom: '1rem',
-            padding: '0.7rem 1rem',
-            borderRadius: 'var(--r-2)',
-            background: 'var(--accent-soft)',
-            border: '0.5px solid var(--accent)',
+            padding: '0.7rem 0',
+            borderTop: '0.5px solid var(--accent)',
+            borderBottom: '0.5px solid var(--accent)',
           }}>
             <div className="t-caption2" style={{
               color: 'var(--accent)', textTransform: 'uppercase',
               letterSpacing: '0.10em', fontWeight: 700, marginBottom: 5,
             }}>
-              ✦ Embedding · {indexProgress.done} / {indexProgress.total}
+              Embedding · {indexProgress.done} / {indexProgress.total}
             </div>
             <div style={{
               height: 4, borderRadius: 999,
@@ -186,15 +190,15 @@ export default function TraceInspectorPage() {
 
         {/* Action bar */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '1.4rem' }}>
-          <ActionButton onClick={createTest}>+ Create test trace</ActionButton>
-          <ActionButton onClick={appendTest} disabled={!selected}>+ Append event</ActionButton>
-          <ActionButton onClick={crystallize} disabled={!selected}>✦ Crystallize</ActionButton>
-          <ActionButton onClick={removeTrace} disabled={!selected} danger>✕ Delete</ActionButton>
+          <ActionButton onClick={createTest}>Create test trace</ActionButton>
+          <ActionButton onClick={appendTest} disabled={!selected}>Append event</ActionButton>
+          <ActionButton onClick={crystallize} disabled={!selected}>Crystallize</ActionButton>
+          <ActionButton onClick={removeTrace} disabled={!selected} danger>Delete</ActionButton>
           <div style={{ flex: 1 }} />
-          <ActionButton onClick={runIndexer}>✦ Build embedding index</ActionButton>
-          <ActionButton onClick={wipeEmbeddings} danger>⚠ Wipe embeddings</ActionButton>
-          <ActionButton onClick={rerunMigration}>↻ Re-run migration</ActionButton>
-          <ActionButton onClick={wipeAll} danger>⚠ Wipe all</ActionButton>
+          <ActionButton onClick={runIndexer}>Build embedding index</ActionButton>
+          <ActionButton onClick={wipeEmbeddings} danger>Wipe embeddings</ActionButton>
+          <ActionButton onClick={rerunMigration}>Run migration again</ActionButton>
+          <ActionButton onClick={wipeAll} danger>Wipe all</ActionButton>
         </div>
 
         {/* Two-column: list + detail */}
@@ -206,10 +210,8 @@ export default function TraceInspectorPage() {
         }}>
         {/* Trace list */}
         <div style={{
-          borderRadius: 'var(--r-3)',
-          border: '0.5px solid var(--mat-border)',
-          background: 'var(--bg-elevated)',
-          boxShadow: 'var(--shadow-1)',
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
           overflow: 'hidden',
           maxHeight: '70vh',
           display: 'flex', flexDirection: 'column',
@@ -219,7 +221,6 @@ export default function TraceInspectorPage() {
             borderBottom: '0.5px solid var(--mat-border)',
             color: 'var(--muted)', fontWeight: 700,
             textTransform: 'uppercase', letterSpacing: '0.10em',
-            background: 'var(--surface-2)',
           }}>{traces.length} traces · sorted by recency</div>
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {loading && <div className="t-footnote" style={{ padding: '1rem', color: 'var(--muted)' }}>Loading…</div>}
@@ -264,10 +265,8 @@ export default function TraceInspectorPage() {
 
         {/* Detail panel */}
         <div style={{
-          borderRadius: 'var(--r-3)',
-          border: '0.5px solid var(--mat-border)',
-          background: 'var(--bg-elevated)',
-          boxShadow: 'var(--shadow-1)',
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
           padding: '1.2rem 1.4rem',
           maxHeight: '70vh',
           overflowY: 'auto',
@@ -308,8 +307,9 @@ function TraceDetail({ trace }: { trace: Trace }) {
 
       {trace.source && (
         <div style={{
-          padding: '0.7rem 0.9rem', borderRadius: 'var(--r-1)',
-          background: 'var(--surface-2)', marginBottom: 16,
+          padding: '0.7rem 0', marginBottom: 16,
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
         }}>
           <div className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>Source</div>
           <div className="t-footnote" style={{ color: 'var(--fg)' }}>
@@ -321,11 +321,11 @@ function TraceDetail({ trace }: { trace: Trace }) {
 
       {trace.crystallizedSummary && (
         <div style={{
-          padding: '0.7rem 0.9rem', borderRadius: 'var(--r-1)',
-          background: 'var(--accent-soft)', marginBottom: 16,
-          borderLeft: '3px solid var(--accent)',
+          padding: '0.7rem 0', marginBottom: 16,
+          borderTop: '0.5px solid var(--accent)',
+          borderBottom: '0.5px solid var(--accent)',
         }}>
-          <div className="t-caption2" style={{ color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>✦ Crystallized</div>
+          <div className="t-caption2" style={{ color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>Crystallized</div>
           <div className="t-footnote" style={{ color: 'var(--fg)' }}>{trace.crystallizedSummary}</div>
         </div>
       )}
@@ -393,9 +393,8 @@ function TraceDetail({ trace }: { trace: Trace }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {trace.events.map((e, i) => (
           <div key={i} style={{
-            padding: '0.55rem 0.8rem',
-            borderRadius: 'var(--r-1)',
-            background: 'var(--surface-2)',
+            padding: '0.55rem 0',
+            borderBottom: '0.5px solid var(--mat-border)',
             fontFamily: 'var(--mono)',
             fontSize: '0.78rem',
           }}>
@@ -416,9 +415,8 @@ function TraceDetail({ trace }: { trace: Trace }) {
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div style={{
-      padding: '0.55rem 0.7rem', borderRadius: 'var(--r-1)',
-      background: 'var(--surface-2)',
-      border: '0.5px solid var(--mat-border)',
+      padding: '0.45rem 0',
+      borderBottom: '0.5px solid var(--mat-border)',
     }}>
       <div className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>{label}</div>
       <div className="t-headline" style={{ color: 'var(--fg)', marginTop: 2 }}>{value}</div>
@@ -455,7 +453,7 @@ function ActionButton({
       style={{
         padding: '7px 14px',
         borderRadius: 999,
-        background: danger ? 'var(--surface-2)' : 'var(--bg-elevated)',
+        background: 'transparent',
         border: '0.5px solid ' + (danger ? 'var(--tint-red)' : 'var(--mat-border)'),
         color: danger ? 'var(--tint-red)' : 'var(--fg)',
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -463,7 +461,6 @@ function ActionButton({
         fontWeight: 600,
         fontFamily: 'var(--display)',
         opacity: disabled ? 0.4 : 1,
-        boxShadow: 'var(--shadow-1)',
       }}
     >{children}</button>
   );
