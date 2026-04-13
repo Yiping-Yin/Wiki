@@ -5,6 +5,9 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
+import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
+import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../../lib/overlay-resume';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
@@ -109,7 +112,7 @@ export default function GraphPage() {
   const router = useRouter();
   const { traces } = useAllTraces();
 
-  const { nodes, edges, panelCount, relationCount } = useMemo(() => {
+  const { nodes, edges, panelCount, relationCount, panels } = useMemo(() => {
     const { panels, tracesByDocId } = buildPanels(traces);
     const panelByDocId = new Map(panels.map((panel) => [panel.docId, panel] as const));
     const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
@@ -194,8 +197,52 @@ export default function GraphPage() {
       edges: flowEdges,
       panelCount: panels.length,
       relationCount: flowEdges.length,
+      panels,
     };
   }, [traces]);
+
+  const panelByDocId = useMemo(
+    () => new Map(panels.map((panel) => [panel.docId, panel] as const)),
+    [panels],
+  );
+
+  const openReview = (panel: PanelNode) => {
+    const payload: ReviewResumePayload = { href: panel.href, anchorId: null };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openRefresh = (panel: PanelNode) => {
+    const reviewPayload: ReviewResumePayload = { href: panel.href, anchorId: null };
+    const refreshPayload: RefreshResumePayload = { href: panel.href, source: 'kesi' };
+    try {
+      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(reviewPayload));
+      sessionStorage.setItem(REFRESH_RESUME_KEY, JSON.stringify(refreshPayload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openOverlay = (panel: PanelNode, overlay: OverlayResumePayload['overlay']) => {
+    const payload: OverlayResumePayload = { href: panel.href, overlay };
+    try {
+      sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+    } catch {}
+    router.push(panel.href);
+  };
+
+  const openPrimaryAction = (panel: PanelNode) => {
+    if (panel.learning.nextAction === 'refresh') {
+      openRefresh(panel);
+    } else if (panel.learning.nextAction === 'rehearse') {
+      openOverlay(panel, 'rehearsal');
+    } else if (panel.learning.nextAction === 'examine') {
+      openOverlay(panel, 'examiner');
+    } else {
+      openReview(panel);
+    }
+  };
 
   if (panelCount === 0) return null;
 
@@ -214,6 +261,9 @@ export default function GraphPage() {
         <div style={{ fontSize: '0.84rem', color: 'var(--muted)', marginTop: 4 }}>
           {panelCount} woven panels · {relationCount} cross-document references
         </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 6 }}>
+          Click any panel to continue it through its current weave.
+        </div>
       </div>
       <div style={{ height: 'calc(100vh - 84px)' }}>
         <ReactFlow
@@ -227,10 +277,8 @@ export default function GraphPage() {
           elementsSelectable={false}
           proOptions={{ hideAttribution: true }}
           onNodeClick={(_, node) => {
-            const href = traces
-              .find((trace) => trace.kind === 'reading' && !trace.parentId && trace.source?.docId === node.id)
-              ?.source?.href;
-            if (href) router.push(href);
+            const panel = panelByDocId.get(node.id);
+            if (panel) openPrimaryAction(panel);
           }}
         >
           <Background color="var(--mat-border)" gap={24} size={0.8} />
