@@ -11,7 +11,9 @@
  * is the text-list complement — strict typography, no visuals. Same
  * grammar as /notes /highlights /quizzes.
  */
+'use client';
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -38,19 +40,129 @@ function groupTop(cats: Category[]) {
     .sort((a, b) => b.count - a.count);
 }
 
+function displayLabel(label: string) {
+  return label.replace(/^[^·]+·\s*/, '');
+}
+
+function categoryPreview(category: Category) {
+  const subcategories = Array.from(
+    new Set(category.docs.map((doc) => doc.subcategory.trim()).filter(Boolean)),
+  );
+  if (subcategories.length > 0) return subcategories.slice(0, 3).join(' · ');
+  return category.docs.slice(0, 3).map((doc) => doc.title).join(' · ');
+}
+
+function llmPreview(section: LLMSection) {
+  return section.chapters.slice(0, 3).map((chapter) => chapter.title).join(' · ');
+}
+
+function matchesCategory(category: Category, query: string) {
+  const hay = [
+    category.label,
+    ...category.docs.map((doc) => `${doc.title} ${doc.subcategory}`),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return hay.includes(query);
+}
+
+function matchesSection(section: LLMSection, query: string) {
+  const hay = [section.section, ...section.chapters.map((chapter) => chapter.title)]
+    .join(' ')
+    .toLowerCase();
+  return hay.includes(query);
+}
+
 export function BrowseClient({
   categories,
   llmSections,
-  totalDocs: _totalDocs,
+  totalDocs,
 }: {
   categories: Category[];
   llmSections: LLMSection[];
   totalDocs: number;
 }) {
-  const groups = groupTop(categories.filter((c) => c.docs.length > 0));
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const filteredCategories = useMemo(() => {
+    const base = categories.filter((category) => category.docs.length > 0);
+    if (!normalizedQuery) return base;
+    return base.filter((category) => matchesCategory(category, normalizedQuery));
+  }, [categories, normalizedQuery]);
+
+  const filteredSections = useMemo(() => {
+    if (!normalizedQuery) return llmSections;
+    return llmSections.filter((section) => matchesSection(section, normalizedQuery));
+  }, [llmSections, normalizedQuery]);
+
+  const groups = useMemo(() => groupTop(filteredCategories), [filteredCategories]);
+  const hasResults = groups.length > 0 || filteredSections.length > 0;
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
+      <div
+        className="material-thick"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0.55rem 0.82rem',
+          borderRadius: 999,
+          marginBottom: 24,
+          boxShadow: 'var(--shadow-1)',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
+        >
+          Browse
+        </span>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Find a collection or chapter…"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: 0,
+            outline: 'none',
+            background: 'transparent',
+            color: 'var(--fg)',
+            fontFamily: 'var(--display)',
+            fontSize: '0.92rem',
+            letterSpacing: '-0.01em',
+          }}
+        />
+        <span
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            fontFamily: 'var(--mono)',
+            fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0,
+          }}
+        >
+          {normalizedQuery ? `${filteredCategories.length + filteredSections.length}` : totalDocs}
+        </span>
+      </div>
+
+      {!hasResults && (
+        <div
+          className="material-thick"
+          style={{
+            padding: '1rem 1.1rem',
+            borderRadius: 14,
+            color: 'var(--muted)',
+            fontStyle: 'italic',
+            marginBottom: 24,
+          }}
+        >
+          Nothing in Loom matches “{query}”.
+        </div>
+      )}
+
       {groups.map((g) => (
         <Block key={g.label} label={g.label}>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -79,16 +191,31 @@ export function BrowseClient({
                     fontFamily: 'var(--mono)',
                   }}>{c.count}</span>
                 </Link>
+                <div
+                  className="t-caption2"
+                  style={{
+                    color: 'var(--muted)',
+                    marginTop: -4,
+                    marginBottom: 10,
+                    marginLeft: 2,
+                    lineHeight: 1.5,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {categoryPreview(c)}
+                </div>
               </li>
             ))}
           </ul>
         </Block>
       ))}
 
-      {llmSections.length > 0 && (
+      {filteredSections.length > 0 && (
         <Block label="LLM">
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {llmSections.map((s) => (
+            {filteredSections.map((s) => (
               <li key={s.section}>
                 <Link
                   href={`/wiki/${s.chapters[0]?.slug ?? 'llm101n'}`}
@@ -112,6 +239,21 @@ export function BrowseClient({
                     fontFamily: 'var(--mono)',
                   }}>{s.chapters.length}</span>
                 </Link>
+                <div
+                  className="t-caption2"
+                  style={{
+                    color: 'var(--muted)',
+                    marginTop: -4,
+                    marginBottom: 10,
+                    marginLeft: 2,
+                    lineHeight: 1.5,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {llmPreview(s)}
+                </div>
               </li>
             ))}
           </ul>
