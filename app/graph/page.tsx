@@ -398,7 +398,7 @@ export default function GraphPage() {
                   Open source
                 </button>
                 <button type="button" onClick={() => router.push('/kesi')} style={focusLinkStyle}>
-                  Back to Kesi
+                  Open Kesi
                 </button>
               </div>
             </div>
