@@ -269,14 +269,22 @@ export function ChatFocus() {
   // Listen for activation
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { text: string; anchorId?: string };
+      const detail = (e as CustomEvent).detail as {
+        text: string;
+        anchorId?: string;
+        anchorBlockId?: string;
+        anchorBlockText?: string;
+        charStart?: number;
+        charEnd?: number;
+        localOffsetPx?: number;
+      };
 
       let block: HTMLElement | null = null;
       let proseContainer: HTMLElement | null = null;
       let selectionRange: Range | null = null;
 
       if (detail.anchorId) {
-        const target = resolveOpenTarget(detail.anchorId);
+        const target = resolveOpenTarget(detail.anchorBlockId ?? detail.anchorId);
         if (!target) return;
         proseContainer = target.closest('.loom-source-prose') as HTMLElement | null;
         if (!proseContainer) return;
@@ -315,7 +323,14 @@ export function ChatFocus() {
           : window.getSelection()?.rangeCount
           ? window.getSelection()!.getRangeAt(0).getBoundingClientRect()
           : rect;
-        const charOffsets = detail.anchorId || !selectionRange ? null : rangeTextOffsets(block, selectionRange);
+        const charOffsets = detail.anchorId
+          ? {
+              start: detail.charStart ?? 0,
+              end: detail.charEnd ?? Math.max(detail.charStart ?? 0, detail.text.length),
+            }
+          : !selectionRange
+            ? null
+            : rangeTextOffsets(block, selectionRange);
       restoreViewportTopRef.current = rect.top;
       restoreScrollYRef.current = window.scrollY;
       setAnchor({
@@ -327,7 +342,7 @@ export function ChatFocus() {
           bottom: rect.bottom + window.scrollY,
           height: rect.height,
         },
-        localOffsetPx: Math.max(4, selectionRect.top - rect.top + 4),
+        localOffsetPx: detail.localOffsetPx ?? Math.max(4, selectionRect.top - rect.top + 4),
         charStart: charOffsets?.start,
         charEnd: charOffsets?.end,
       });

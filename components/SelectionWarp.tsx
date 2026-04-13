@@ -38,6 +38,10 @@ type Spot = {
   left: number;    // page x of selection's last rect right + small offset
   text: string;    // the selected text
   anchor: SourceAnchor;
+  anchorId: string;
+  anchorBlockId: string;
+  anchorBlockText: string;
+  localOffsetPx: number;
 };
 
 type Intent = 'ask' | 'capture' | 'highlight';
@@ -105,6 +109,10 @@ function rangeTextOffsets(block: HTMLElement, range: Range) {
   };
 }
 
+function stableFragmentAnchorId(blockId: string, charStart: number, charEnd: number) {
+  return `${blockId}::frag:${Math.max(0, charStart)}-${Math.max(charStart, charEnd)}`;
+}
+
 export function SelectionWarp() {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -159,7 +167,11 @@ export function SelectionWarp() {
       if (!block) { setSpot(null); return; }
 
       const blockId = ensureBlockAnchorId(block, proseContainer);
+      const blockText = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 280);
       const charOffsets = rangeTextOffsets(block, range);
+      const anchorId = block.tagName.match(/^H[1-6]$/)
+        ? blockId
+        : stableFragmentAnchorId(blockId, charOffsets.start, charOffsets.end);
 
       // Position ✦ at the end of the selection (near the cursor release point),
       // not at the right edge of the bounding rect. This way the user's
@@ -187,6 +199,10 @@ export function SelectionWarp() {
         height: anchorH,
         left: anchorX,
         text,
+        anchorId,
+        anchorBlockId: blockId,
+        anchorBlockText: blockText,
+        localOffsetPx: Math.max(4, anchorY - (block.getBoundingClientRect().top + window.scrollY) + 4),
         anchor: {
           paragraphId: blockId,
           blockId,
@@ -259,10 +275,18 @@ export function SelectionWarp() {
     e.stopPropagation();
     // §37 · trigger ChatFocus — vertical focus mode. The doc collapses
     // around the selected paragraph, an inline discussion appears below.
-    // Do NOT clear the selection here — ChatFocus needs it to find the
-    // focused element.
+    // Pass explicit anchor details so ChatFocus does not depend on the
+    // browser preserving the native selection after pointerdown.
     window.dispatchEvent(new CustomEvent('loom:chat:focus', {
-      detail: { text: spot.text },
+      detail: {
+        text: spot.text,
+        anchorId: spot.anchorId,
+        anchorBlockId: spot.anchorBlockId,
+        anchorBlockText: spot.anchorBlockText,
+        charStart: spot.anchor.charStart,
+        charEnd: spot.anchor.charEnd,
+        localOffsetPx: spot.localOffsetPx,
+      },
     }));
     // §23 extended · Ask absorbs Highlight
     autoHighlight(spot.text);
