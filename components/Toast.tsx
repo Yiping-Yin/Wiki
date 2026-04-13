@@ -35,6 +35,7 @@ const KIND_META: Record<ToastKind, { color: string; label: string }> = {
 };
 
 export function ToastHost() {
+  const [smallScreen, setSmallScreen] = useState(false);
   const [items, setItems] = useState<ToastItem[]>([]);
 
   useEffect(() => {
@@ -51,6 +52,15 @@ export function ToastHost() {
     return () => window.removeEventListener(EVENT, onToast);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 900px)');
+    const apply = () => setSmallScreen(media.matches);
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, []);
+
   const dismiss = (id: number) => setItems((prev) => prev.filter((t) => t.id !== id));
 
   if (items.length === 0) return null;
@@ -60,8 +70,11 @@ export function ToastHost() {
       aria-live="polite"
       aria-atomic="false"
       style={{
-        position: 'fixed', bottom: 28, left: '50%',
-        transform: 'translateX(-50%)',
+        position: 'fixed',
+        bottom: smallScreen ? 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)' : 28,
+        left: smallScreen ? 12 : '50%',
+        right: smallScreen ? 12 : 'auto',
+        transform: smallScreen ? 'none' : 'translateX(-50%)',
         zIndex: 135,
         display: 'flex', flexDirection: 'column-reverse',
         alignItems: 'center', gap: 8,

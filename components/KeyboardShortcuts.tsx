@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 export function KeyboardShortcuts() {
+  const smallScreen = useSmallScreen();
   const [showHelp, setShowHelp] = useState(false);
   const [showTop, setShowTop] = useState(false);
   const [lastG, setLastG] = useState(0);
@@ -54,16 +56,23 @@ export function KeyboardShortcuts() {
           onClick={(e) => e.target === e.currentTarget && setShowHelp(false)}
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.28)', zIndex: 130,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex',
+            alignItems: smallScreen ? 'stretch' : 'center',
+            justifyContent: 'center',
             backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
             animation: 'lpFade 0.2s var(--ease)',
           }}
         >
           <div style={{
             background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
-            borderTop: '0.5px solid var(--mat-border)',
-            borderBottom: '0.5px solid var(--mat-border)',
-            padding: '1.4rem 1.6rem', minWidth: 400, maxWidth: '90vw',
+            borderTop: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+            borderBottom: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+            padding: smallScreen
+              ? 'max(12px, env(safe-area-inset-top, 0px)) 18px max(12px, env(safe-area-inset-bottom, 0px))'
+              : '1.4rem 1.6rem',
+            minWidth: smallScreen ? '100vw' : 400,
+            maxWidth: smallScreen ? '100vw' : '90vw',
+            minHeight: smallScreen ? '100vh' : 'auto',
           }}>
             <h2 style={{ margin: '0 0 0.8rem', fontSize: '1.1rem', fontWeight: 700 }}>Keyboard shortcuts</h2>
             <table style={{ fontSize: '0.85rem', width: '100%' }}>

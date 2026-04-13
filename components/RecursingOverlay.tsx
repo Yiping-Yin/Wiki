@@ -4,10 +4,12 @@
  * Lazy-loads trace data only when active.
  */
 import { useEffect, useState } from 'react';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { RecursingPanel } from './unified/RecursingPanel';
 
 export function RecursingOverlay() {
+  const smallScreen = useSmallScreen();
   const [active, setActive] = useState(false);
   const { mounted, visible } = useAnimatedPresence(active, 250);
 
@@ -47,15 +49,23 @@ export function RecursingOverlay() {
     <div
       className="loom-recursing-overlay"
       style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: 440, maxWidth: '42vw', zIndex: 900,
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: smallScreen ? 0 : 'auto',
+        width: smallScreen ? '100vw' : 440,
+        maxWidth: smallScreen ? '100vw' : '42vw',
+        zIndex: 900,
         display: 'flex', flexDirection: 'column',
         background: 'var(--bg)',
-        borderLeft: '0.5px solid var(--mat-border)',
-        boxShadow: '-8px 0 24px rgba(0,0,0,0.12)',
+        borderLeft: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+        boxShadow: smallScreen ? 'none' : '-8px 0 24px rgba(0,0,0,0.12)',
         animation: visible
           ? 'loom-slide-in-right 0.25s cubic-bezier(0.22, 1, 0.36, 1) both'
           : 'loom-slide-out-right 0.2s cubic-bezier(0.22, 1, 0.36, 1) both',
+        paddingTop: smallScreen ? 'max(8px, env(safe-area-inset-top, 0px))' : 0,
+        paddingBottom: smallScreen ? 'max(8px, env(safe-area-inset-bottom, 0px))' : 0,
       }}
     >
       <div style={{ padding: '10px 16px', borderBottom: '0.5px solid var(--mat-border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem' }}>
