@@ -18,7 +18,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRemoveEvents, useAppendEvent, useBacklinksForDoc } from '../lib/trace';
+import { useRemoveEvents, useAppendEvent, useBacklinksForDoc, useAllTraces } from '../lib/trace';
 import { LOOM_CRYSTALLIZED_EVENT, type CrystallizedDetail, dispatchCrystallized } from '../lib/crystallize-events';
 import { useReadingThoughtAnchors } from './thought-anchor-model';
 import { VersionedAnchorCard } from './VersionedAnchorCard';
@@ -37,9 +37,19 @@ function extractMarkdownLinkUrls(content: string): string[] {
   return urls;
 }
 
+function urlReferencesDoc(url: string, docHref: string): boolean {
+  if (!url || !docHref) return false;
+  const cleanUrl = url.split('#')[0].split('?')[0];
+  if (cleanUrl === docHref) return true;
+  if (cleanUrl.endsWith(docHref)) return true;
+  if (cleanUrl.endsWith(docHref.replace(/^\//, ''))) return true;
+  return false;
+}
+
 export function LiveArtifact({ docId }: { docId: string }) {
   const { readingTraces, primaryReadingTrace: readingTrace, thoughtItems, loading } = useReadingThoughtAnchors(docId);
   const router = useRouter();
+  const { traces } = useAllTraces();
   // Backlinks: anchors in OTHER docs that reference this doc via markdown link
   const docHref = readingTrace?.source?.href ?? null;
   const backlinks = useBacklinksForDoc(docId, docHref);
@@ -154,6 +164,51 @@ export function LiveArtifact({ docId }: { docId: string }) {
     () => new Set(backlinks.map((backlink) => backlink.fromDocId)).size,
     [backlinks],
   );
+  const relationPreview = useMemo(() => {
+    const incoming = new Map<string, { docId: string; title: string }>();
+    for (const backlink of backlinks) {
+      if (!incoming.has(backlink.fromDocId)) {
+        incoming.set(backlink.fromDocId, {
+          docId: backlink.fromDocId,
+          title: backlink.fromDocTitle,
+        });
+      }
+    }
+
+    const traceByDocId = new Map(
+      traces
+        .filter((trace) => trace.kind === 'reading' && !trace.parentId && trace.source?.docId && trace.source?.href)
+        .map((trace) => [
+          trace.source!.docId,
+          {
+            href: trace.source!.href,
+            title: trace.source!.sourceTitle ?? trace.title,
+          },
+        ] as const),
+    );
+
+    const outgoing = new Map<string, { docId: string; title: string }>();
+    const ownHref = readingTrace?.source?.href ?? '';
+    for (const thought of thoughtItems) {
+      for (const url of extractMarkdownLinkUrls(thought.content)) {
+        const target = Array.from(traceByDocId.entries()).find(([, meta]) => urlReferencesDoc(url, meta.href));
+        if (!target) continue;
+        const [targetDocId, meta] = target;
+        if (targetDocId === docId || meta.href === ownHref) continue;
+        if (!outgoing.has(targetDocId)) {
+          outgoing.set(targetDocId, {
+            docId: targetDocId,
+            title: meta.title,
+          });
+        }
+      }
+    }
+
+    return {
+      incoming: Array.from(incoming.values()),
+      outgoing: Array.from(outgoing.values()),
+    };
+  }, [backlinks, docId, readingTrace?.source?.href, thoughtItems, traces]);
 
   // §22 race fix: when the trace's latest recompile event matches our
   // in-flight stream buffer, the new permanent version has landed —
@@ -308,38 +363,96 @@ export function LiveArtifact({ docId }: { docId: string }) {
               {settledSummary || readingTrace?.crystallizedSummary || 'This panel is no longer provisional. It now lives in your kesi.'}
             </div>
             {incomingDocThreads + outgoingDocThreads > 0 && (
-              <div
-                className="t-caption2"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {incomingDocThreads > 0 && <span>{incomingDocThreads} incoming threads</span>}
-                {incomingDocThreads > 0 && outgoingDocThreads > 0 && <span aria-hidden>·</span>}
-                {outgoingDocThreads > 0 && <span>{outgoingDocThreads} outgoing threads</span>}
-                <span aria-hidden>·</span>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/graph?focus=${encodeURIComponent(docId)}`)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div
+                  className="t-caption2"
                   style={{
-                    appearance: 'none',
-                    border: 0,
-                    background: 'transparent',
-                    color: 'var(--fg-secondary)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    color: 'var(--muted)',
                     letterSpacing: '0.04em',
-                    padding: 0,
-                    cursor: 'pointer',
                   }}
                 >
-                  Relations
-                </button>
+                  {incomingDocThreads > 0 && <span>{incomingDocThreads} incoming threads</span>}
+                  {incomingDocThreads > 0 && outgoingDocThreads > 0 && <span aria-hidden>·</span>}
+                  {outgoingDocThreads > 0 && <span>{outgoingDocThreads} outgoing threads</span>}
+                  <span aria-hidden>·</span>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/graph?focus=${encodeURIComponent(docId)}`)}
+                    style={{
+                      appearance: 'none',
+                      border: 0,
+                      background: 'transparent',
+                      color: 'var(--fg-secondary)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      padding: 0,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Relations
+                  </button>
+                </div>
+                {relationPreview.incoming.length > 0 && (
+                  <div
+                    className="t-caption2"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      color: 'var(--muted)',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <span>Referenced by</span>
+                    {relationPreview.incoming.slice(0, 2).map((item, index) => (
+                      <button
+                        key={item.docId}
+                        type="button"
+                        onClick={() => router.push(`/graph?focus=${encodeURIComponent(item.docId)}`)}
+                        style={settledRelationLinkStyle}
+                      >
+                        {item.title}
+                        {index < Math.min(relationPreview.incoming.length, 2) - 1 ? (
+                          <span style={{ color: 'var(--muted)' }}> · </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {relationPreview.outgoing.length > 0 && (
+                  <div
+                    className="t-caption2"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      color: 'var(--muted)',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <span>Points to</span>
+                    {relationPreview.outgoing.slice(0, 2).map((item, index) => (
+                      <button
+                        key={item.docId}
+                        type="button"
+                        onClick={() => router.push(`/graph?focus=${encodeURIComponent(item.docId)}`)}
+                        style={settledRelationLinkStyle}
+                      >
+                        {item.title}
+                        {index < Math.min(relationPreview.outgoing.length, 2) - 1 ? (
+                          <span style={{ color: 'var(--muted)' }}> · </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -744,6 +857,18 @@ export function LiveArtifact({ docId }: { docId: string }) {
     </section>
   );
 }
+
+const settledRelationLinkStyle: React.CSSProperties = {
+  appearance: 'none',
+  border: 0,
+  background: 'transparent',
+  color: 'var(--accent)',
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  letterSpacing: '0.02em',
+  padding: 0,
+  cursor: 'pointer',
+};
 
 /** Extract a short summary from artifact markdown — first heading or sentence. */
 function deriveSummary(md: string): string | null {
