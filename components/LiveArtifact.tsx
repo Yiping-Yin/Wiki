@@ -16,7 +16,7 @@
  */
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRemoveEvents, useAppendEvent, useBacklinksForDoc } from '../lib/trace';
 import { useReadingThoughtAnchors } from './thought-anchor-model';
 import { VersionedAnchorCard } from './VersionedAnchorCard';
@@ -34,6 +34,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
   const [streamingDocId, setStreamingDocId] = useState<string | null>(null);
   const [viewVersion, setViewVersion] = useState<number | null>(null); // null = latest
   const [showHistory, setShowHistory] = useState(false);
+  const [activeAnchorId, setActiveAnchorId] = useState<string>('');
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Free-mode still streams a recompiled artifact; doc-mode is derived from
@@ -128,9 +129,20 @@ export function LiveArtifact({ docId }: { docId: string }) {
     }
   }, [latestArtifact, streamBuf]);
 
+  useEffect(() => {
+    const onActive = (e: Event) => {
+      const anchorId = (e as CustomEvent).detail?.anchorId as string | null | undefined;
+      setActiveAnchorId(anchorId ?? '');
+    };
+    window.addEventListener('loom:review:active-anchor', onActive);
+    return () => window.removeEventListener('loom:review:active-anchor', onActive);
+  }, []);
+
   if (loading) return null;
 
   if (docBound && thoughtItems.length > 0) {
+    const focusThought = thoughtItems.find((item) => item.anchorId === activeAnchorId) ?? thoughtItems[0] ?? null;
+
     return (
       <section
         aria-label="Live note"
@@ -166,6 +178,87 @@ export function LiveArtifact({ docId }: { docId: string }) {
             >✦</button>
           )}
         </div>
+
+        {focusThought && (
+          <div
+            className="material-thick"
+            style={{
+              padding: '0.95rem 1rem 1rem',
+              borderRadius: 14,
+              boxShadow: 'var(--shadow-1)',
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span
+                className="t-caption2"
+                style={{
+                  color: 'var(--muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Settling now
+              </span>
+              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+              <span className="t-caption2" style={{ color: 'var(--accent)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {focusThought.sectionNumber ? `${String(focusThought.sectionNumber).padStart(2, '0')} · ` : ''}{focusThought.section}
+              </span>
+            </div>
+
+            <div
+              style={{
+                fontFamily: 'var(--display)',
+                fontSize: '1rem',
+                fontWeight: 600,
+                letterSpacing: '-0.016em',
+                lineHeight: 1.38,
+                marginBottom: focusThought.quote ? 8 : 0,
+                color: 'var(--fg)',
+              }}
+            >
+              {focusThought.summary || focusThought.content || 'This weave is still taking shape.'}
+            </div>
+
+            {focusThought.quote ? (
+              <div
+                style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--muted)',
+                  fontStyle: 'italic',
+                  lineHeight: 1.5,
+                  paddingLeft: 10,
+                  borderLeft: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)',
+                  marginBottom: 10,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {focusThought.quote}
+              </div>
+            ) : null}
+
+            <div
+              className="t-caption2"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                color: 'var(--muted)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              <span>{focusThought.versionCount > 1 ? `${focusThought.versionCount} versions` : 'first weave'}</span>
+              <span aria-hidden>·</span>
+              <span>{focusThought.isCrystallized ? 'crystallized' : 'open'}</span>
+            </div>
+          </div>
+        )}
 
         {backlinks.length > 0 && (
           <div
@@ -242,7 +335,11 @@ export function LiveArtifact({ docId }: { docId: string }) {
 
         <div ref={bodyRef} className="prose-notion live-artifact-body" style={{ color: 'var(--fg)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {thoughtItems.map((item) => (
-            <VersionedAnchorCard key={item.containerKey} item={item} />
+            <VersionedAnchorCard
+              key={item.containerKey}
+              item={item}
+              emphasized={item.anchorId === activeAnchorId}
+            />
           ))}
         </div>
       </section>

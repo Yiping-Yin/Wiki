@@ -30,6 +30,7 @@ export function VersionedAnchorCard({
   item,
   dataReviewAnchorId,
   onSectionClick,
+  emphasized = false,
 }: {
   item: ThoughtAnchorView;
   /** Optional data-review-anchor-id attribute for ReviewSheet's IntersectionObserver */
@@ -37,6 +38,7 @@ export function VersionedAnchorCard({
   /** Optional override for what happens when the section label is clicked.
    *  Defaults to scrolling the doc to the anchor's source passage. */
   onSectionClick?: (item: ThoughtAnchorView) => void;
+  emphasized?: boolean;
 }) {
   const append = useAppendEvent();
   const removeEvents = useRemoveEvents();
@@ -146,6 +148,13 @@ export function VersionedAnchorCard({
         paddingBottom: 14,
         borderBottom: '0.5px solid var(--mat-border)',
         opacity: item.isCrystallized ? 0.88 : 1,
+        borderRadius: 12,
+        paddingInline: 10,
+        paddingTop: 10,
+        marginInline: -10,
+        background: emphasized ? 'color-mix(in srgb, var(--accent) 4%, transparent)' : 'transparent',
+        boxShadow: emphasized ? 'inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 24%, var(--mat-border))' : 'none',
+        transition: 'background 0.18s var(--ease), box-shadow 0.18s var(--ease)',
       }}
     >
       {/* Header row: section label with ◆ + version count, crystallize toggle, delete-container button */}
