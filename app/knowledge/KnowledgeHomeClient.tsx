@@ -1,8 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LearningStatusInline } from '../../components/LearningStatusInline';
 import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
@@ -225,7 +225,7 @@ export function KnowledgeHomeClient({
       {focusCollection && (
         <section
           style={{
-            padding: '0.1rem 0 1rem',
+            padding: '0.1rem 0 0.8rem',
             marginBottom: 20,
             borderBottom: '0.5px solid var(--mat-border)',
           }}
@@ -238,13 +238,12 @@ export function KnowledgeHomeClient({
                 color: 'var(--muted)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                fontWeight: 700,
+              fontWeight: 700,
               }}
             >
               Continue collection
             </span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            {focusCollection.activeDoc && <LearningStatusInline status={focusCollection.activeDoc.learning} compact />}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
@@ -275,16 +274,16 @@ export function KnowledgeHomeClient({
                 }}
               >
                 <span>{focusCollection.count} docs</span>
-                {focusCollection.weeks > 0 && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{focusCollection.weeks} weeks</span>
-                  </>
-                )}
                 {focusCollection.activeCount > 0 && (
                   <>
                     <span aria-hidden>·</span>
                     <span>{focusCollection.activeCount} touched</span>
+                  </>
+                )}
+                {focusCollection.weeks > 0 && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span>{focusCollection.weeks} weeks</span>
                   </>
                 )}
                 {focusCollection.touchedAt > 0 && (
@@ -312,17 +311,11 @@ export function KnowledgeHomeClient({
 
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => openPrimaryAction(focusCollection)} style={knowledgeActionStyle(true)}>
-                {actionLabel(focusCollection.activeDoc?.learning.nextAction ?? 'capture')}
+                Continue collection
               </button>
-              <button type="button" onClick={() => router.push(focusCollection.href)} style={knowledgeActionStyle(false)}>
-                Collection
-              </button>
-              <button type="button" onClick={() => openKesi(focusCollection)} style={knowledgeActionStyle(false)}>
-                Kesi
-              </button>
-              <button type="button" onClick={() => openRelations(focusCollection)} style={knowledgeActionStyle(false)}>
-                Relations
-              </button>
+              <Link href={focusCollection.href} style={{ ...knowledgeActionStyle(false), textDecoration: 'none' }}>
+                All material
+              </Link>
             </div>
           </div>
         </section>
