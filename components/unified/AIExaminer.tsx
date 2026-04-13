@@ -23,7 +23,7 @@
  * crystallize-on-pass, and handoff back to review / rehearsal are all
  * wired, but scoring/rubrics still remain intentionally light.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Note, SourceDocId } from '../../lib/note/types';
 import { appendNote } from '../../lib/note/store';
 import { WeftShuttle } from '../DocViewer';
@@ -42,6 +42,14 @@ type Phase =
   | { kind: 'verdict'; question: string; answer: string; verdict: 'pass' | 'retry'; feedback: string };
 
 const LS_EXAMINER_KEY = 'loom:examiner:session';
+
+type ExaminerHistory = {
+  passCount: number;
+  retryCount: number;
+  lastFailedQuestion?: string;
+  lastFailedFeedback?: string;
+  quality: 'untested' | 'fragile' | 'developing' | 'solid';
+};
 
 function loadSession(docId: string | null): { phase: Phase; draft: string } {
   if (!docId) return { phase: { kind: 'idle' }, draft: '' };
@@ -71,6 +79,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
   const [phase, setPhase] = useState<Phase>(() => loadSession(docId).phase);
   const [draft, setDraft] = useState(() => loadSession(docId).draft);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const examinerHistory = useMemo(() => deriveExaminerHistory(contextNotes), [contextNotes]);
 
   // Persist session on phase/draft change
   useEffect(() => {
@@ -107,7 +116,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
     setPhase({ kind: 'generating' });
     window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-start' } }));
     try {
-      const prompt = buildQuestionPrompt(contextNotes);
+      const prompt = buildQuestionPrompt(contextNotes, examinerHistory);
       const question = await callAi(prompt);
       if (!question.trim()) throw new Error('Empty question from AI');
       setPhase({ kind: 'awaiting-answer', question });
@@ -123,7 +132,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
     } finally {
       window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-end' } }));
     }
-  }, [docId, contextNotes]);
+  }, [docId, contextNotes, examinerHistory]);
 
   const submitAnswer = useCallback(async () => {
     if (phase.kind !== 'awaiting-answer') return;
@@ -243,7 +252,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           fontFamily: 'var(--mono)',
         }}
       >
-        Examiner · {contextNotes.length} notes available
+        Examiner · {contextNotes.length} notes · {examinerHistory.quality}
       </div>
 
       {/* Idle: show "start" button */}
@@ -260,7 +269,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           }}
         >
           <div style={{ fontSize: '0.82rem', textAlign: 'center', maxWidth: 320 }}>
-            Probe for gaps in your understanding of this doc.
+            {idlePromptForQuality(examinerHistory)}
           </div>
           <button
             type="button"
@@ -487,8 +496,9 @@ function buttonStyle(enabled: boolean, variant: 'accent' | 'muted' = 'accent'): 
 
 // ── AI call + prompts ────────────────────────────────────────────────────
 
-function buildQuestionPrompt(notes: Note[]): string {
+function buildQuestionPrompt(notes: Note[], history: ExaminerHistory): string {
   const ctx = notes
+    .filter((note) => note.anchor.blockId !== 'loom-examiner-root')
     .map((n, i) => {
       const q = n.anchor.quote ? `Quote: "${n.anchor.quote}"` : '';
       const s = n.summary ? `Summary: ${n.summary}` : '';
@@ -498,11 +508,15 @@ function buildQuestionPrompt(notes: Note[]): string {
     .join('\n\n')
     .slice(0, 4000);
 
+  const historyBlock = buildExaminerHistoryPrompt(history);
+
   return [
     'You are an AI tutor probing a learner for detail-level understanding.',
     'The learner has captured these notes on a specific doc:',
     '',
     ctx,
+    '',
+    historyBlock,
     '',
     'Generate ONE concise, specific question that tests whether they truly',
     'understand a DETAIL of this topic — not a surface recall question, but',
@@ -514,6 +528,8 @@ function buildQuestionPrompt(notes: Note[]): string {
     '- One question only, ending with a question mark',
     '- Keep it under 200 characters',
     '- Prefer "why" or "how" over "what" or "define"',
+    '- If the learner has retries, ask a narrower and more concrete question on the weak spot rather than a broader one',
+    '- If the learner has been solid, ask a slightly more transfer-oriented question',
   ].join('\n');
 }
 
@@ -568,6 +584,85 @@ function parseGradingResponse(raw: string): { verdict: 'pass' | 'retry'; feedbac
   }
   if (!feedback) feedback = raw.slice(0, 300);
   return { verdict, feedback };
+}
+
+function deriveExaminerHistory(notes: Note[]): ExaminerHistory {
+  let passCount = 0;
+  let retryCount = 0;
+  let lastFailedAt = 0;
+  let lastFailedQuestion = '';
+  let lastFailedFeedback = '';
+
+  for (const note of notes) {
+    if (note.anchor.blockId !== 'loom-examiner-root') continue;
+    const verdict = verdictFromExaminerNote(note.content);
+    if (verdict === 'pass') passCount += 1;
+    if (verdict === 'retry') {
+      retryCount += 1;
+      if (note.at >= lastFailedAt) {
+        lastFailedAt = note.at;
+        lastFailedQuestion = note.anchor.quote ?? note.summary ?? '';
+        lastFailedFeedback = feedbackFromExaminerNote(note.content);
+      }
+    }
+  }
+
+  const quality =
+    passCount === 0 && retryCount === 0
+      ? 'untested'
+      : retryCount > passCount || (retryCount >= 2 && passCount === 0)
+        ? 'fragile'
+        : retryCount > 0
+          ? 'developing'
+          : 'solid';
+
+  return {
+    passCount,
+    retryCount,
+    lastFailedQuestion: lastFailedQuestion || undefined,
+    lastFailedFeedback: lastFailedFeedback || undefined,
+    quality,
+  };
+}
+
+function verdictFromExaminerNote(content: string): 'pass' | 'retry' | null {
+  const lower = content.toLowerCase();
+  if (lower.includes('**verdict**: pass')) return 'pass';
+  if (lower.includes('**verdict**: retry')) return 'retry';
+  return null;
+}
+
+function feedbackFromExaminerNote(content: string): string {
+  const match = content.match(/\*\*Verdict\*\*:[^\n]+\n\n([\s\S]+)/i);
+  return match?.[1]?.trim().slice(0, 220) ?? '';
+}
+
+function buildExaminerHistoryPrompt(history: ExaminerHistory) {
+  if (history.quality === 'untested') return 'Prior examiner history: none yet.';
+  const lines = [`Prior examiner history: ${history.passCount} pass, ${history.retryCount} retry.`];
+  if (history.lastFailedQuestion) lines.push(`Most recent failed question: ${history.lastFailedQuestion}`);
+  if (history.lastFailedFeedback) lines.push(`What was missing last time: ${history.lastFailedFeedback}`);
+  if (history.quality === 'fragile') {
+    lines.push('The learner is still fragile here. Ask a tighter, more concrete question on the same weak concept.');
+  } else if (history.quality === 'developing') {
+    lines.push('The learner is improving but not stable. Ask a medium-difficulty question that checks the previously weak edge.');
+  } else {
+    lines.push('The learner has been solid recently. Ask a slightly more transfer-oriented question.');
+  }
+  return lines.join('\n');
+}
+
+function idlePromptForQuality(history: ExaminerHistory) {
+  switch (history.quality) {
+    case 'fragile':
+      return 'This topic has failed before. Probe the weak edge again, not the easy summary.';
+    case 'developing':
+      return 'This topic is improving. One sharper question should tell you whether it is stable yet.';
+    case 'solid':
+      return 'This topic has held up so far. Push it once with a transfer question.';
+    default:
+      return 'Probe for gaps in your understanding of this doc.';
+  }
 }
 
 async function callAi(prompt: string): Promise<string> {
