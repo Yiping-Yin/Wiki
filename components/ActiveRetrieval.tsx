@@ -15,7 +15,7 @@ import { contextFromPathname } from '../lib/doc-context';
 import { useSmallScreen } from '../lib/use-small-screen';
 import { traceStore } from '../lib/trace';
 import { findSimilarNotes, type SimilarNote } from '../lib/note/similarity';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
+import { openPanelReview } from '../lib/panel-resume';
 
 type Match = {
   paragraphEl: HTMLElement;
@@ -275,11 +275,10 @@ function RetrievalDot({
       if (best && best.score > 0) anchorId = best.anchorId;
     }
 
-    const payload: ReviewResumePayload = { href, anchorId };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    window.location.href = href;
+    openPanelReview(
+      { push: (nextHref: string) => { window.location.href = nextHref; } },
+      { href, anchorId },
+    );
   };
 
   return (

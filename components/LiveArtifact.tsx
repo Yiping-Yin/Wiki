@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRemoveEvents, useAppendEvent, useBacklinksForDoc, useAllTraces } from '../lib/trace';
 import { LOOM_CRYSTALLIZED_EVENT, type CrystallizedDetail, dispatchCrystallized } from '../lib/crystallize-events';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../lib/review-resume';
+import { openPanelReview } from '../lib/panel-resume';
 import { useReadingThoughtAnchors } from './thought-anchor-model';
 import { VersionedAnchorCard } from './VersionedAnchorCard';
 
@@ -65,11 +65,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const openBacklinkReview = (href: string, anchorId: string) => {
-    const payload: ReviewResumePayload = { href, anchorId };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(href);
+    openPanelReview(router, { href, anchorId });
   };
 
   // Free-mode still streams a recompiled artifact; doc-mode is derived from

@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../../components/QuietGuideCard';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { openPanelReview } from '../../lib/panel-resume';
 import { useAllTraces } from '../../lib/trace';
 
 type IndexDoc = { id: string; title: string; href: string; category: string };
@@ -125,11 +125,7 @@ export default function NotesPage() {
   const focus = grouped[0]?.items[0] ?? null;
 
   const openReview = (note: NoteItem) => {
-    const payload: ReviewResumePayload = { href: note.href, anchorId: note.anchorId };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(note.href);
+    openPanelReview(router, { href: note.href, anchorId: note.anchorId });
   };
 
   return (

@@ -25,7 +25,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import type { SourceDocId } from '../../lib/note/types';
 import { appendRehearsal } from '../../lib/note/store';
-import { REVIEW_RESUME_KEY, type ReviewResumePayload } from '../../lib/review-resume';
+import { openPanelReview } from '../../lib/panel-resume';
 
 const MarkdownPreview = dynamic(
   () => import('../NoteRenderer').then((m) => m.NoteRenderer),
@@ -90,14 +90,10 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
 
   const openReview = useCallback(() => {
     if (!docId) return;
-    const payload: ReviewResumePayload = {
+    openPanelReview(router, {
       href: docHrefFromDocId(docId),
       anchorId: savedState?.anchorId ?? null,
-    };
-    try {
-      sessionStorage.setItem(REVIEW_RESUME_KEY, JSON.stringify(payload));
-    } catch {}
-    router.push(docHrefFromDocId(docId));
+    });
   }, [docId, router, savedState?.anchorId]);
 
   const openKesi = useCallback(() => {
