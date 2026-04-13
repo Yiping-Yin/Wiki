@@ -279,6 +279,23 @@ export function LiveArtifact({ docId }: { docId: string }) {
               >
                 Open Kesi
               </button>
+              <button
+                type="button"
+                onClick={() => void uncrystallize()}
+                style={{
+                  appearance: 'none',
+                  border: 0,
+                  background: 'transparent',
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                Uncrystallize
+              </button>
             </div>
             <div
               style={{
