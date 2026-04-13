@@ -12,10 +12,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { RehearsalPanel } from './unified/RehearsalPanel';
 
 export function RehearsalOverlay() {
+  const smallScreen = useSmallScreen();
   const [active, setActive] = useState(false);
   const [resumeDraft, setResumeDraft] = useState('');
   const [resumeLabel, setResumeLabel] = useState('');
@@ -113,15 +115,15 @@ export function RehearsalOverlay() {
       <div
         style={{
           width: '100%',
-          maxWidth: 720,
-          height: '82vh',
+          maxWidth: smallScreen ? '100vw' : 720,
+          height: smallScreen ? '100vh' : '82vh',
           display: 'flex',
           flexDirection: 'column',
           background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
           borderTop: '0.5px solid var(--mat-border)',
           borderBottom: '0.5px solid var(--mat-border)',
           borderRadius: 0,
-          boxShadow: '0 16px 36px rgba(0,0,0,0.08)',
+          boxShadow: smallScreen ? 'none' : '0 16px 36px rgba(0,0,0,0.08)',
           overflow: 'hidden',
           animation: visible
             ? 'loom-overlay-fade-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both'

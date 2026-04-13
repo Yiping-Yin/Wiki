@@ -6,11 +6,13 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { AIExaminer } from './unified/AIExaminer';
 import { WeftShuttle } from './DocViewer';
 
 export function ExaminerOverlay() {
+  const smallScreen = useSmallScreen();
   const [active, setActive] = useState(false);
   const { mounted, visible } = useAnimatedPresence(active, 250);
   const pathname = usePathname();
@@ -69,12 +71,18 @@ export function ExaminerOverlay() {
     <div
       className="loom-examiner-overlay"
       style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: 400, maxWidth: '38vw', zIndex: 900,
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: smallScreen ? 0 : 'auto',
+        width: smallScreen ? '100vw' : 400,
+        maxWidth: smallScreen ? '100vw' : '38vw',
+        zIndex: 900,
         display: 'flex', flexDirection: 'column',
         background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
-        borderLeft: '0.5px solid color-mix(in srgb, var(--mat-border) 80%, transparent)',
-        boxShadow: '-6px 0 18px rgba(0,0,0,0.08)',
+        borderLeft: smallScreen ? 'none' : '0.5px solid color-mix(in srgb, var(--mat-border) 80%, transparent)',
+        boxShadow: smallScreen ? 'none' : '-6px 0 18px rgba(0,0,0,0.08)',
         animation: visible
           ? 'loom-slide-in-right 0.25s cubic-bezier(0.22, 1, 0.36, 1) both'
           : 'loom-slide-out-right 0.2s cubic-bezier(0.22, 1, 0.36, 1) both',

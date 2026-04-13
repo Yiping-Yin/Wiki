@@ -26,6 +26,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { useAppendEvent, useRemoveEvents } from '../lib/trace';
 import {
   buildThoughtMapNodes,
@@ -57,6 +58,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const router = useRouter();
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
+  const smallScreen = useSmallScreen();
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [nodes, setNodes] = useState<ThoughtMapNode[]>([]);
   const [activeAnchorId, setActiveAnchorId] = useState<string>('');
@@ -270,6 +272,11 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   // Empty state: no reading-page chrome if no captures exist yet.
   const narrowWidth = hasThoughts ? 'clamp(240px, 20vw, 320px)' : '40px';
   const wideWidth = 'min(440px, 40vw)';
+  const setReviewActive = (next: boolean) => {
+    window.dispatchEvent(
+      new CustomEvent('loom:review:set-active', { detail: { active: next } }),
+    );
+  };
 
   if (thoughtItems.length === 0 && !active) {
     return null;
@@ -280,13 +287,20 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
       className="loom-thought-map"
       style={{
         position: 'fixed',
-        left: active
-          ? 'auto'
-          : 'calc(50vw + (var(--stage-width) / 2) + 28px)',
-        right: active ? '24px' : 'auto',
-        top: '4rem',
-        width: active ? wideWidth : narrowWidth,
-        maxHeight: 'calc(100vh - 6rem)',
+        left: smallScreen
+          ? '12px'
+          : active
+            ? 'auto'
+            : 'calc(50vw + (var(--stage-width) / 2) + 28px)',
+        right: smallScreen ? '12px' : active ? '24px' : 'auto',
+        top: smallScreen ? 'auto' : '4rem',
+        bottom: smallScreen ? 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)' : 'auto',
+        width: smallScreen ? 'auto' : active ? wideWidth : narrowWidth,
+        maxHeight: smallScreen
+          ? active
+            ? 'min(78vh, 720px)'
+            : 'min(28vh, 220px)'
+          : 'calc(100vh - 6rem)',
         overflowY: 'auto',
         zIndex: 76,
         pointerEvents: visible && (active || introVisibility > 0.16) ? 'auto' : 'none',
@@ -295,9 +309,17 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
         transform: visible ? 'translateX(0)' : 'translateX(6px)',
         transition:
           'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), width 0.4s cubic-bezier(0.22, 1, 0.36, 1), left 0.4s cubic-bezier(0.22, 1, 0.36, 1), right 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
+        background: smallScreen ? 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))' : 'transparent',
+        borderTop: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
+        borderBottom: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
+        borderRadius: smallScreen ? 16 : 0,
+        boxShadow: smallScreen ? 'var(--shadow-2)' : 'none',
+        padding: smallScreen ? '0.75rem 0.85rem 0.85rem' : 0,
+        backdropFilter: smallScreen ? 'saturate(180%) blur(20px)' : 'none',
+        WebkitBackdropFilter: smallScreen ? 'saturate(180%) blur(20px)' : 'none',
       }}
     >
-      {active && (
+      {(active || smallScreen) && (
         <div
           className="t-caption2"
           style={{
@@ -314,6 +336,25 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           <span style={{ fontSize: '0.62rem', opacity: 0.8 }}>Thought Map</span>
           <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           <span style={{ color: 'var(--muted)', fontSize: '0.62rem', opacity: 0.7 }}>{thoughtItems.length}</span>
+          {smallScreen && (
+            <button
+              type="button"
+              onClick={() => setReviewActive(!active)}
+              style={{
+                appearance: 'none',
+                border: 0,
+                background: 'transparent',
+                color: 'var(--accent)',
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
+              {active ? 'Done' : 'Open'}
+            </button>
+          )}
         </div>
       )}
 
@@ -334,6 +375,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           nodes={nodes}
           activeAnchorId={activeAnchorId}
           activeBtnRef={activeBtnRef}
+          smallScreen={smallScreen}
         />
       )}
     </aside>
@@ -346,10 +388,12 @@ function NarrowSectionTOC({
   nodes,
   activeAnchorId,
   activeBtnRef,
+  smallScreen,
 }: {
   nodes: ThoughtMapNode[];
   activeAnchorId: string;
   activeBtnRef: React.MutableRefObject<HTMLButtonElement | null>;
+  smallScreen: boolean;
 }) {
   return (
     <div
@@ -357,8 +401,8 @@ function NarrowSectionTOC({
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
-        borderLeft: '0.5px solid color-mix(in srgb, var(--mat-border) 78%, transparent)',
-        paddingLeft: '0.62rem',
+        borderLeft: smallScreen ? 'none' : '0.5px solid color-mix(in srgb, var(--mat-border) 78%, transparent)',
+        paddingLeft: smallScreen ? 0 : '0.62rem',
       }}
     >
       {nodes.map((item) => {
