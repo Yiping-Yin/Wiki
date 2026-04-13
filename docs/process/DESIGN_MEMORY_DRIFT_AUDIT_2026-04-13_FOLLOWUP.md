@@ -1,0 +1,115 @@
+# Design Memory Drift Audit Follow-up · 2026-04-13
+
+Status: remediation follow-up
+Supersedes for implementation status:
+
+- `docs/process/DESIGN_MEMORY_DRIFT_AUDIT_2026-04-13.md`
+
+## Summary
+
+This follow-up records the implementation work completed immediately after the
+baseline audit.
+
+## Addressed findings
+
+### 1. First-visit instructional chrome removed from reading pages
+
+Status:
+
+- fixed
+
+Evidence:
+
+- `components/PageScopedChrome.tsx` no longer mounts `FirstTimeHint`
+- `components/FirstTimeHint.tsx` removed
+
+Design effect:
+
+- reading pages no longer auto-inject a first-visit bottom tutorial bar
+- the default reading surface is quieter and closer to `default chrome =
+  absence`
+
+### 2. Narrow thought map no longer behaves like a permanent right sidebar
+
+Status:
+
+- partially fixed
+
+Evidence:
+
+- `components/ReviewThoughtMap.tsx` now computes `introVisibility` from reading
+  depth
+- narrow mode renders only while near the top of the source document, then
+  fades out as reading continues
+- wide review mode still restores full presence on explicit user intent
+
+Design effect:
+
+- the narrow rail now behaves more like an intro/review affordance than a
+  fully permanent right-side structure
+
+Residual question:
+
+- the exact fade window (`96 -> 760px`) is implementation-tuned and may still
+  need refinement after real usage
+
+### 3. Product-shell branding and help copy tightened
+
+Status:
+
+- fixed / reduced
+
+Evidence:
+
+- `/about` no longer opens with a `Loom` hero title + slogan pair
+- `/about` no longer closes with a decorative slogan line
+- `/help` no longer claims the thought map is always visible on the right
+- `/help` no longer contains the broken `any reading page` link
+- `/help` no longer ends with a decorative brand footer line
+
+Design effect:
+
+- `/about` reads more like prose-first design documentation and less like a
+  branded hero surface
+- `/help` is now closer to the current interaction model and carries less
+  decorative brand presence
+
+## Remaining drift
+
+### Global toast primitive
+
+Status:
+
+- fixed for product shell
+
+Evidence:
+
+- `app/layout.tsx` no longer mounts `ToastHost`
+- `app/dev/traces/page.tsx` mounts `ToastHost` locally on the debug surface
+- `components/Toast.tsx` usage examples no longer normalize saved/synced
+  product toasts
+
+Design effect:
+
+- the toast system is no longer a root-level product primitive
+- toast feedback is now scoped to an explicit dev/debug surface rather than
+  being available by default across the user-facing product shell
+
+Residual note:
+
+- if future product-facing surfaces request toast feedback, the change should
+  be reviewed against the forbidden list rather than reusing the root-shell
+  pattern
+
+## Verification
+
+- `npm run typecheck` passed
+- `npm run smoke` passed
+
+## Current status
+
+- reading-surface drift reduced
+- root-shell toast drift removed
+- `/about` and `/help` copy brought closer to current canon
+- no mother-document changes required
+- remaining work, if any, is calibration-level rather than contradiction-level
