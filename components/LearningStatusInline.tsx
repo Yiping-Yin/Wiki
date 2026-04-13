@@ -19,6 +19,30 @@ export function LearningStatusInline({
   const activeColor = 'var(--accent)';
   const mutedColor = 'var(--muted)';
 
+  if (compact) {
+    const label = compactStageLabel(status);
+    if (!label) return null;
+    const active = status.stage !== 'opened';
+    return (
+      <div
+        className="t-caption2"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flexWrap: 'wrap',
+          color: active ? activeColor : mutedColor,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          fontWeight: active ? 700 : 600,
+          opacity: active ? 1 : 0.72,
+        }}
+      >
+        <span>{label}</span>
+      </div>
+    );
+  }
+
   const steps = STEP_META.map((step) => {
     const completed =
       step.key === 'capture'
@@ -66,20 +90,35 @@ export function LearningStatusInline({
             opacity: step.completed ? 1 : 0.65,
           }}
         >
-          {labelForStep(step.key, step.label, status, compact)}
+          {labelForStep(step.key, step.label, status)}
         </span>
       ))}
     </div>
   );
 }
 
+function compactStageLabel(status: LearningStatusSummary) {
+  switch (status.stage) {
+    case 'crystallized':
+      return 'Crystallized';
+    case 'examined':
+      return status.examinerCount > 1 ? `Examiner ${status.examinerCount}` : 'Examiner';
+    case 'rehearsed':
+      return status.rehearsalCount > 1 ? `Rehearsal ${status.rehearsalCount}` : 'Rehearsal';
+    case 'captured':
+      return status.captureCount > 1 ? `Capture ${status.captureCount}` : 'Capture';
+    case 'opened':
+      return 'Opened';
+    default:
+      return '';
+  }
+}
+
 function labelForStep(
   key: 'capture' | 'rehearsal' | 'examiner' | 'crystallized',
   base: string,
   status: LearningStatusSummary,
-  compact: boolean,
 ) {
-  if (compact) return base;
   if (key === 'capture' && status.captureCount > 1) return `${base} ${status.captureCount}`;
   if (key === 'rehearsal' && status.rehearsalCount > 1) return `${base} ${status.rehearsalCount}`;
   if (key === 'examiner' && status.examinerCount > 1) return `${base} ${status.examinerCount}`;

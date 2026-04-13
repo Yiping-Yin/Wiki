@@ -8,7 +8,7 @@ import { LearningStatusInline } from '../../../components/LearningStatusInline';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
 import type { KnowledgeCategory } from '../../../lib/knowledge-types';
-import { summarizeLearningStatus, type LearningStatusSummary } from '../../../lib/learning-status';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../../lib/learning-status';
 
 export type CategoryDocCard = {
   id: string;
@@ -36,7 +36,7 @@ type CategorySurface = CategoryDocCard & {
   anchorCount: number;
   latestSummary: string;
   latestQuote?: string;
-  learning: LearningStatusSummary;
+  learning: LearningSurfaceSummary;
 };
 
 function docIdFor(doc: CategoryDocCard) {
@@ -52,34 +52,6 @@ function formatWhen(ts: number) {
   if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
   if (diff < day * 30) return `${Math.floor(diff / day / 7)}w ago`;
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function summarizeTrace(trace: Trace) {
-  let latestSummary = '';
-  let latestQuote = '';
-  let latestAnchorAt = 0;
-  let anchorCount = 0;
-  let finished = false;
-
-  for (const event of trace.events) {
-    if (event.kind === 'thought-anchor') {
-      anchorCount += 1;
-      if (event.at >= latestAnchorAt) {
-        latestAnchorAt = event.at;
-        latestSummary = event.summary;
-        latestQuote = event.quote ?? '';
-      }
-    }
-    if (event.kind === 'crystallize' && !event.anchorId) finished = true;
-  }
-
-  return {
-    latestSummary,
-    latestQuote: latestQuote || undefined,
-    anchorCount,
-    finished,
-    touchedAt: Math.max(trace.updatedAt, trace.crystallizedAt ?? 0, trace.createdAt, latestAnchorAt),
-  };
 }
 
 function stateLabel(surface: CategorySurface) {
@@ -138,12 +110,13 @@ export function CategoryLandingClient({
   }, [history, category.slug]);
 
   const tracesByDocId = useMemo(() => {
-    const map = new Map<string, Trace>();
+    const map = new Map<string, Trace[]>();
     for (const trace of traces) {
       if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
       if (!trace.source.docId.startsWith(`know/${category.slug}__`)) continue;
-      const current = map.get(trace.source.docId);
-      if (!current || trace.updatedAt > current.updatedAt) map.set(trace.source.docId, trace);
+      const current = map.get(trace.source.docId) ?? [];
+      current.push(trace);
+      map.set(trace.source.docId, current);
     }
     return map;
   }, [traces, category.slug]);
@@ -153,20 +126,20 @@ export function CategoryLandingClient({
       .map((doc) => {
         const docId = docIdFor(doc);
         const viewedAt = viewedByDocId.get(docId) ?? 0;
-        const trace = tracesByDocId.get(docId);
+        const traceSet = tracesByDocId.get(docId) ?? [];
 
-        if (!trace) {
+        if (traceSet.length === 0) {
           return {
             ...doc,
             state: viewedAt > 0 ? 'opened' : 'new',
             touchedAt: viewedAt,
             anchorCount: 0,
             latestSummary: '',
-            learning: summarizeLearningStatus(null, viewedAt),
+            learning: summarizeLearningSurface([], viewedAt),
           } satisfies CategorySurface;
         }
 
-        const summary = summarizeTrace(trace);
+        const summary = summarizeLearningSurface(traceSet, viewedAt);
         return {
           ...doc,
           state: summary.finished ? 'finished' : summary.anchorCount > 0 ? 'woven' : 'opened',
@@ -174,7 +147,7 @@ export function CategoryLandingClient({
           anchorCount: summary.anchorCount,
           latestSummary: summary.latestSummary,
           latestQuote: summary.latestQuote,
-          learning: summarizeLearningStatus(trace, viewedAt),
+          learning: summarizeLearningSurface(traceSet, viewedAt),
         } satisfies CategorySurface;
       })
       .sort((a, b) => stateRank(a) - stateRank(b) || b.touchedAt - a.touchedAt || a.subOrder - b.subOrder);
@@ -431,7 +404,7 @@ export function CategoryLandingClient({
                             </span>
                           )}
                         </div>
-                        {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '' } as CategorySurface)) && (
+                        {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface)) && (
                           <div
                             className="t-footnote"
                             style={{
@@ -444,7 +417,7 @@ export function CategoryLandingClient({
                               WebkitBoxOrient: 'vertical',
                             }}
                           >
-                            {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '' } as CategorySurface))}
+                            {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface))}
                           </div>
                         )}
                       </Link>

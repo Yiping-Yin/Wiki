@@ -7,7 +7,7 @@ import { LearningStatusInline } from '../../../../components/LearningStatusInlin
 import { useHistory } from '../../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../../lib/trace';
 import type { KnowledgeCategory } from '../../../../lib/knowledge-types';
-import { summarizeLearningStatus, type LearningStatusSummary } from '../../../../lib/learning-status';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../../../lib/learning-status';
 
 export type CollectionDocCard = {
   id: string;
@@ -35,39 +35,11 @@ type CollectionSurface = CollectionDocCard & {
   anchorCount: number;
   latestSummary: string;
   latestQuote?: string;
-  learning: LearningStatusSummary;
+  learning: LearningSurfaceSummary;
 };
 
 function docIdFor(doc: CollectionDocCard) {
   return `know/${doc.id}`;
-}
-
-function summarizeTrace(trace: Trace) {
-  let latestSummary = '';
-  let latestQuote = '';
-  let latestAnchorAt = 0;
-  let anchorCount = 0;
-  let finished = false;
-
-  for (const event of trace.events) {
-    if (event.kind === 'thought-anchor') {
-      anchorCount += 1;
-      if (event.at >= latestAnchorAt) {
-        latestAnchorAt = event.at;
-        latestSummary = event.summary;
-        latestQuote = event.quote ?? '';
-      }
-    }
-    if (event.kind === 'crystallize' && !event.anchorId) finished = true;
-  }
-
-  return {
-    latestSummary,
-    latestQuote: latestQuote || undefined,
-    anchorCount,
-    finished,
-    touchedAt: Math.max(trace.updatedAt, trace.crystallizedAt ?? 0, trace.createdAt, latestAnchorAt),
-  };
 }
 
 function formatWhen(ts: number) {
@@ -138,12 +110,13 @@ export function CollectionContextClient({
   }, [history, category.slug]);
 
   const tracesByDocId = useMemo(() => {
-    const map = new Map<string, Trace>();
+    const map = new Map<string, Trace[]>();
     for (const trace of traces) {
       if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
       if (!trace.source.docId.startsWith(`know/${category.slug}__`)) continue;
-      const existing = map.get(trace.source.docId);
-      if (!existing || trace.updatedAt > existing.updatedAt) map.set(trace.source.docId, trace);
+      const existing = map.get(trace.source.docId) ?? [];
+      existing.push(trace);
+      map.set(trace.source.docId, existing);
     }
     return map;
   }, [traces, category.slug]);
@@ -153,20 +126,20 @@ export function CollectionContextClient({
       .map((doc) => {
         const docId = docIdFor(doc);
         const viewedAt = viewedByDocId.get(docId) ?? 0;
-        const trace = tracesByDocId.get(docId);
+        const traceSet = tracesByDocId.get(docId) ?? [];
 
-        if (!trace) {
+        if (traceSet.length === 0) {
           return {
             ...doc,
             state: viewedAt > 0 ? 'opened' : 'new',
             touchedAt: viewedAt,
             anchorCount: 0,
             latestSummary: '',
-            learning: summarizeLearningStatus(null, viewedAt),
+            learning: summarizeLearningSurface([], viewedAt),
           } satisfies CollectionSurface;
         }
 
-        const summary = summarizeTrace(trace);
+        const summary = summarizeLearningSurface(traceSet, viewedAt);
         return {
           ...doc,
           state: summary.finished ? 'finished' : summary.anchorCount > 0 ? 'woven' : 'opened',
@@ -174,7 +147,7 @@ export function CollectionContextClient({
           anchorCount: summary.anchorCount,
           latestSummary: summary.latestSummary,
           latestQuote: summary.latestQuote,
-          learning: summarizeLearningStatus(trace, viewedAt),
+          learning: summarizeLearningSurface(traceSet, viewedAt),
         } satisfies CollectionSurface;
       })
       .sort((a, b) => stateRank(a) - stateRank(b) || b.touchedAt - a.touchedAt || a.subOrder - b.subOrder);

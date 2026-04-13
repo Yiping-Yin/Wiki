@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { LearningStatusInline } from '../../components/LearningStatusInline';
-import { summarizeLearningStatus, type LearningStatusSummary } from '../../lib/learning-status';
+import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
 import { UploadButton } from './UploadButton';
@@ -24,7 +24,7 @@ type UploadSurface = UploadListItem & {
   anchorCount: number;
   latestSummary: string;
   latestQuote?: string;
-  learning: LearningStatusSummary;
+  learning: LearningSurfaceSummary;
 };
 
 function formatSize(bytes: number) {
@@ -52,40 +52,13 @@ function matchUpload(item: UploadListItem, query: string) {
   return hay.includes(query);
 }
 
-function summarizeTrace(trace: Trace) {
-  let latestSummary = '';
-  let latestQuote = '';
-  let latestAnchorAt = 0;
-  let anchorCount = 0;
-  let finished = false;
-  for (const event of trace.events) {
-    if (event.kind === 'thought-anchor') {
-      anchorCount += 1;
-      if (event.at >= latestAnchorAt) {
-        latestAnchorAt = event.at;
-        latestSummary = event.summary;
-        latestQuote = event.quote ?? '';
-      }
-    }
-    if (event.kind === 'crystallize' && !event.anchorId) finished = true;
-  }
-
-  return {
-    touchedAt: Math.max(latestVisitAt(trace), trace.updatedAt, trace.crystallizedAt ?? 0, trace.createdAt),
-    latestSummary,
-    latestQuote: latestQuote || undefined,
-    anchorCount,
-    finished,
-  };
-}
-
 function uploadSurface(item: UploadListItem, traces: Trace[]): UploadSurface {
   const docId = `upload/${item.name}`;
-  const rootTrace = traces
+  const rootTraces = traces
     .filter((trace) => trace.kind === 'reading' && !trace.parentId && trace.source?.docId === docId)
-    .sort((a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt)[0];
+    .sort((a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt);
 
-  if (!rootTrace) {
+  if (rootTraces.length === 0) {
     return {
       ...item,
       title: uploadTitle(item.name),
@@ -94,21 +67,22 @@ function uploadSurface(item: UploadListItem, traces: Trace[]): UploadSurface {
       touchedAt: item.mtime,
       anchorCount: 0,
       latestSummary: '',
-      learning: summarizeLearningStatus(null, 0),
+      learning: summarizeLearningSurface([], 0),
     };
   }
 
-  const summary = summarizeTrace(rootTrace);
+  const primaryTrace = rootTraces[0];
+  const summary = summarizeLearningSurface(rootTraces, latestVisitAt(primaryTrace));
   return {
     ...item,
-    title: rootTrace.source?.sourceTitle ?? uploadTitle(item.name),
+    title: primaryTrace.source?.sourceTitle ?? uploadTitle(item.name),
     href: `/uploads/${encodeURIComponent(item.name)}`,
     state: summary.finished ? 'finished' : summary.anchorCount > 0 ? 'woven' : 'opened',
     touchedAt: Math.max(item.mtime, summary.touchedAt),
     anchorCount: summary.anchorCount,
     latestSummary: summary.latestSummary,
     latestQuote: summary.latestQuote,
-    learning: summarizeLearningStatus(rootTrace, latestVisitAt(rootTrace)),
+    learning: summary,
   };
 }
 
