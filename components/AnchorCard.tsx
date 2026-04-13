@@ -7,6 +7,7 @@
  */
 import { forwardRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 // Preload on idle so first card open isn't delayed by chunk loading
 const noteRendererImport = () => import('./NoteRenderer').then((m) => m.NoteRenderer);
@@ -47,6 +48,7 @@ export const AnchorCard = forwardRef<HTMLDivElement, Props>(function AnchorCard(
   { mode, docTop, viewportTop, fixedRight, attentionOpacity = 1, summary, content, quote, onClose, onMouseEnter, onMouseLeave, onUserActivity },
   ref,
 ) {
+  const smallScreen = useSmallScreen();
   const pinned = mode === 'pinned';
   const compact = mode !== 'pinned';
   const previewText = plainExcerpt(content || summary);
@@ -63,10 +65,13 @@ export const AnchorCard = forwardRef<HTMLDivElement, Props>(function AnchorCard(
       onMouseLeave={onMouseLeave}
       onClick={(e) => e.stopPropagation()}
       style={{
-        position: pinned ? 'fixed' : 'absolute',
-        top: pinned ? pinnedTop : docTop - 8,
-        right: pinned ? 24 : 28,
-        width: pinned ? 'min(380px, calc(100vw - 48px))' : 300,
+        position: smallScreen || pinned ? 'fixed' : 'absolute',
+        top: smallScreen ? 'auto' : pinned ? pinnedTop : docTop - 8,
+        right: smallScreen ? 12 : pinned ? 24 : 28,
+        left: smallScreen ? 12 : 'auto',
+        bottom: smallScreen ? 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)' : 'auto',
+        width: smallScreen ? 'auto' : pinned ? 'min(380px, calc(100vw - 48px))' : 300,
+        maxHeight: smallScreen ? (pinned ? 'min(58vh, 520px)' : 'min(34vh, 280px)') : 'none',
         zIndex: pinned ? 90 : 50,
         animation: 'anchorCardIn 0.2s cubic-bezier(0.22, 1, 0.36, 1) both',
         pointerEvents: 'auto',
@@ -83,10 +88,20 @@ export const AnchorCard = forwardRef<HTMLDivElement, Props>(function AnchorCard(
       <div
         style={{
           background: 'color-mix(in srgb, var(--accent) 6%, var(--bg))',
-          borderRadius: 14,
-          padding: pinned ? '0.9rem 1rem 0.95rem' : '0.72rem 0.95rem',
-          borderLeft: '2px solid var(--accent)',
-          boxShadow: pinned ? '0 18px 48px rgba(0,0,0,0.08)' : '0 8px 28px rgba(0,0,0,0.05)',
+          borderRadius: smallScreen ? 16 : 14,
+          padding: smallScreen
+            ? '0.8rem 0.95rem 0.9rem'
+            : pinned
+              ? '0.9rem 1rem 0.95rem'
+              : '0.72rem 0.95rem',
+          borderLeft: smallScreen ? 'none' : '2px solid var(--accent)',
+          borderTop: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
+          borderBottom: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
+          boxShadow: smallScreen
+            ? 'var(--shadow-2)'
+            : pinned
+              ? '0 18px 48px rgba(0,0,0,0.08)'
+              : '0 8px 28px rgba(0,0,0,0.05)',
         }}
       >
         {pinned && (
