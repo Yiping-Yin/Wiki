@@ -53,16 +53,17 @@ export function KeyboardShortcuts() {
         <div
           onClick={(e) => e.target === e.currentTarget && setShowHelp(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 130,
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.28)', zIndex: 130,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
             animation: 'lpFade 0.2s var(--ease)',
           }}
         >
-          <div className="glass" style={{
-            borderRadius: 'var(--r-3)',
-            padding: '1.6rem 1.8rem', minWidth: 400, maxWidth: '90vw',
-            boxShadow: 'var(--shadow-3)',
+          <div style={{
+            background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
+            borderTop: '0.5px solid var(--mat-border)',
+            borderBottom: '0.5px solid var(--mat-border)',
+            padding: '1.4rem 1.6rem', minWidth: 400, maxWidth: '90vw',
           }}>
             <h2 style={{ margin: '0 0 0.8rem', fontSize: '1.1rem', fontWeight: 700 }}>Keyboard shortcuts</h2>
             <table style={{ fontSize: '0.85rem', width: '100%' }}>
@@ -72,10 +73,10 @@ export function KeyboardShortcuts() {
                     <td style={{ padding: '0.3rem 0.6rem 0.3rem 0', whiteSpace: 'nowrap' }}>
                       {keys.split(' ').map((k, i) => (
                         <kbd key={i} style={{
-                          display: 'inline-block', minWidth: 18, padding: '1px 6px',
+                          display: 'inline-block', minWidth: 18, padding: '1px 0',
                           margin: '0 2px',
-                          background: 'var(--code-bg)', border: '1px solid var(--border)',
-                          borderBottomWidth: 2, borderRadius: 4,
+                          background: 'transparent', border: 0,
+                          borderBottom: '0.5px solid var(--mat-border)',
                           fontFamily: 'var(--mono)', fontSize: '0.78em',
                         }}>{k}</kbd>
                       ))}
@@ -89,8 +90,9 @@ export function KeyboardShortcuts() {
               <button
                 onClick={() => setShowHelp(false)}
                 style={{
-                  background: 'var(--code-bg)', border: '1px solid var(--border)',
-                  borderRadius: 6, padding: '0.35rem 0.9rem', cursor: 'pointer', color: 'var(--fg)',
+                  background: 'transparent', border: 0,
+                  borderBottom: '0.5px solid var(--mat-border)',
+                  padding: '0.35rem 0', cursor: 'pointer', color: 'var(--fg-secondary)',
                   fontSize: '0.85rem',
                 }}
               >Close</button>

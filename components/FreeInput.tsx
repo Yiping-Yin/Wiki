@@ -187,13 +187,12 @@ export function FreeInput() {
         display: 'flex',
         alignItems: 'flex-end',
         gap: 10,
-        background: 'var(--bg-translucent)',
-        backdropFilter: 'saturate(180%) blur(20px)',
-        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-        border: '0.5px solid var(--mat-border)',
-        borderRadius: 16,
+        background: 'color-mix(in srgb, var(--bg) 94%, transparent)',
+        backdropFilter: 'saturate(150%) blur(12px)',
+        WebkitBackdropFilter: 'saturate(150%) blur(12px)',
+        borderTop: '0.5px solid var(--mat-border)',
+        borderBottom: '0.5px solid var(--mat-border)',
         padding: '0.6rem 0.8rem',
-        boxShadow: 'var(--shadow-2)',
         animation: 'lpFade 0.18s var(--ease)',
       }}>
         <span style={{

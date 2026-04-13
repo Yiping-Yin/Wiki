@@ -309,7 +309,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
             borderBottom: '0.5px solid var(--mat-border)',
           }}
         >
-          Nothing has landed here yet. Add a file, then come back to continue weaving against it.
+          Nothing has landed here yet. Add a file, then come back when the source is ready to hold a thread.
         </div>
       )}
 

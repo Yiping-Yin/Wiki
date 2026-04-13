@@ -150,11 +150,12 @@ export function RefreshCoach() {
 
 function actionStyle(primary: boolean) {
   return {
-    padding: '0.42rem 0.72rem',
+    padding: '0.28rem 0',
     borderRadius: 999,
-    border: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
-    background: primary ? 'var(--accent-soft)' : 'transparent',
-    color: primary ? 'var(--fg)' : 'var(--fg-secondary)',
+    border: 0,
+    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
     fontSize: '0.76rem',
     fontWeight: 700,
     letterSpacing: '0.04em',
