@@ -108,6 +108,14 @@ function buildPanels(traces: Trace[]) {
   return { panels, tracesByDocId };
 }
 
+function syncFocusParam(docId: string | null) {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (docId) url.searchParams.set('focus', docId);
+  else url.searchParams.delete('focus');
+  window.history.replaceState({}, '', url.toString());
+}
+
 export default function GraphPage() {
   const router = useRouter();
   const { traces } = useAllTraces();
@@ -259,6 +267,11 @@ export default function GraphPage() {
     }
   };
 
+  const focusPanelNode = (panel: PanelNode) => {
+    setFocusDocId(panel.docId);
+    syncFocusParam(panel.docId);
+  };
+
   if (panelCount === 0) return null;
 
   return (
@@ -277,8 +290,83 @@ export default function GraphPage() {
           {panelCount} woven panels · {relationCount} cross-document references
         </div>
         {focusPanel && (
-          <div style={{ fontSize: '0.78rem', color: 'var(--fg-secondary)', marginTop: 6 }}>
-            Focused on {focusPanel.title} · {focusPanel.learning.nextAction}
+          <div
+            style={{
+              marginTop: 10,
+              paddingTop: 10,
+              borderTop: '0.5px solid var(--mat-border)',
+            }}
+          >
+            <div
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+                marginBottom: 6,
+              }}
+            >
+              Focused panel
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--display)',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    letterSpacing: '-0.016em',
+                    lineHeight: 1.35,
+                    marginBottom: 6,
+                  }}
+                >
+                  {focusPanel.title}
+                </div>
+                <div
+                  className="t-caption2"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    color: 'var(--muted)',
+                    letterSpacing: '0.04em',
+                    marginBottom: 8,
+                  }}
+                >
+                  <span>{focusPanel.family}</span>
+                  <span aria-hidden>·</span>
+                  <span>{focusPanel.learning.nextAction}</span>
+                  <span aria-hidden>·</span>
+                  <span>{new Date(focusPanel.crystallizedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                </div>
+                <div
+                  style={{
+                    color: 'var(--fg-secondary)',
+                    fontSize: '0.84rem',
+                    lineHeight: 1.5,
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {focusPanel.summary || 'This panel is woven, and its threads are visible here.'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => openPrimaryAction(focusPanel)} style={focusActionStyle(true)}>
+                  {primaryActionLabel(focusPanel.learning.nextAction)}
+                </button>
+                <button type="button" onClick={() => router.push(focusPanel.href)} style={focusActionStyle(false)}>
+                  Source
+                </button>
+                <button type="button" onClick={() => router.push('/kesi')} style={focusActionStyle(false)}>
+                  Kesi
+                </button>
+              </div>
+            </div>
           </div>
         )}
         <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 6 }}>
@@ -298,7 +386,7 @@ export default function GraphPage() {
           proOptions={{ hideAttribution: true }}
           onNodeClick={(_, node) => {
             const panel = panelByDocId.get(node.id);
-            if (panel) openPrimaryAction(panel);
+            if (panel) focusPanelNode(panel);
           }}
         >
           <Background color="var(--mat-border)" gap={24} size={0.8} />
@@ -306,4 +394,36 @@ export default function GraphPage() {
       </div>
     </div>
   );
+}
+
+function focusActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
+    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'var(--bg-elevated)',
+    color: primary ? 'var(--accent)' : 'var(--fg)',
+    borderRadius: 999,
+    padding: '0.48rem 0.78rem',
+    fontSize: '0.78rem',
+    fontWeight: 650,
+    letterSpacing: '-0.01em',
+    lineHeight: 1,
+    cursor: 'pointer',
+    boxShadow: primary ? 'var(--shadow-1)' : 'none',
+  };
+}
+
+function primaryActionLabel(nextAction: PanelNode['learning']['nextAction']) {
+  switch (nextAction) {
+    case 'refresh':
+      return 'Refresh';
+    case 'rehearse':
+      return 'Rehearsal';
+    case 'examine':
+      return 'Examiner';
+    case 'capture':
+      return 'Open';
+    default:
+      return 'Review';
+  }
 }
