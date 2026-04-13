@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 
 type Doc = { id: string; title: string; href: string; category: string };
@@ -73,6 +74,7 @@ const KIND_META = {
 export function QuickSwitcher() {
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
+  const smallScreen = useSmallScreen();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -298,21 +300,28 @@ export function QuickSwitcher() {
       style={{
         position: 'fixed', inset: 0, zIndex: 120,
         background: 'rgba(0,0,0,0.28)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        paddingTop: '11vh',
+        display: 'flex',
+        alignItems: smallScreen ? 'stretch' : 'flex-start',
+        justifyContent: 'center',
+        paddingTop: smallScreen ? 0 : '11vh',
         backdropFilter: 'saturate(125%) blur(7px)',
         WebkitBackdropFilter: 'saturate(125%) blur(7px)',
         animation: 'lpFade 0.18s var(--ease)',
       }}
     >
       <div style={{
-        width: 'min(680px, 92vw)',
+        width: smallScreen ? '100vw' : 'min(680px, 92vw)',
+        minHeight: smallScreen ? '100vh' : 'auto',
         background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
-        borderTop: '0.5px solid var(--mat-border)',
-        borderBottom: '0.5px solid var(--mat-border)',
+        borderTop: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+        borderBottom: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
         overflow: 'hidden',
+        paddingTop: smallScreen ? 'max(8px, env(safe-area-inset-top, 0px))' : 0,
+        paddingBottom: smallScreen ? 'max(8px, env(safe-area-inset-bottom, 0px))' : 0,
+        display: 'flex',
+        flexDirection: 'column',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.85rem 1.1rem', borderBottom: '0.5px solid var(--mat-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: smallScreen ? '0.85rem 1rem' : '0.85rem 1.1rem', borderBottom: '0.5px solid var(--mat-border)' }}>
           <span style={{ color: 'var(--muted)', fontSize: '1.05rem' }}>⌕</span>
           <input
             ref={inputRef}
@@ -336,7 +345,7 @@ export function QuickSwitcher() {
             color: 'var(--muted)', fontFamily: 'var(--mono)',
           }}>esc</span>
         </div>
-        <div ref={listRef} style={{ maxHeight: '60vh', overflowY: 'auto', padding: '4px 0 8px' }}>
+        <div ref={listRef} style={{ maxHeight: smallScreen ? 'none' : '60vh', flex: smallScreen ? 1 : 'none', overflowY: 'auto', padding: '4px 0 8px' }}>
           {flat.length === 0 && q ? (
             <div style={{ padding: '1.4rem 1.2rem', color: 'var(--muted)' }} className="t-footnote">
               No matches for &ldquo;{q}&rdquo;.

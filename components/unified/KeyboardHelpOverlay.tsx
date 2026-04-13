@@ -3,6 +3,7 @@
  * KeyboardHelpOverlay · Toggled by "?" key. Shows all keyboard shortcuts.
  */
 import { useEffect, useState } from 'react';
+import { useSmallScreen } from '../../lib/use-small-screen';
 
 type Shortcut = { keys: string; label: string };
 type Group = { title: string; items: Shortcut[] };
@@ -40,6 +41,7 @@ const GROUPS: Group[] = [
 ];
 
 export function KeyboardHelpOverlay() {
+  const smallScreen = useSmallScreen();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -71,18 +73,26 @@ export function KeyboardHelpOverlay() {
         position: 'fixed', inset: 0,
         background: 'color-mix(in srgb, var(--bg) 82%, transparent)',
         backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-        zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 40, animation: 'loom-overlay-fade-in 0.15s ease-out',
+        zIndex: 9998,
+        display: 'flex',
+        alignItems: smallScreen ? 'stretch' : 'center',
+        justifyContent: 'center',
+        padding: smallScreen ? 0 : 40,
+        animation: 'loom-overlay-fade-in 0.15s ease-out',
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: 420, width: '100%', maxHeight: '85vh', overflow: 'auto',
+          maxWidth: smallScreen ? '100vw' : 420,
+          width: '100%',
+          minHeight: smallScreen ? '100vh' : 'auto',
+          maxHeight: smallScreen ? '100vh' : '85vh',
+          overflow: 'auto',
           background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
-          borderTop: '0.5px solid var(--mat-border)',
-          borderBottom: '0.5px solid var(--mat-border)',
-          padding: '22px 26px',
+          borderTop: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+          borderBottom: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+          padding: smallScreen ? 'max(12px, env(safe-area-inset-top, 0px)) 18px max(12px, env(safe-area-inset-bottom, 0px))' : '22px 26px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, paddingBottom: 12, borderBottom: '0.5px solid var(--mat-border)' }}>

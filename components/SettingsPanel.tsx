@@ -12,6 +12,7 @@
  */
 import { useEffect, useState } from 'react';
 import { type AiCliKind, readAiCliPreference, writeAiCliPreference } from '../lib/ai-cli';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 type Theme = 'auto' | 'light' | 'dark';
 type SbMode = 'hidden' | 'pinned';
@@ -63,6 +64,7 @@ function applyReduceMotion(on: boolean) {
 }
 
 export function SettingsPanel() {
+  const smallScreen = useSmallScreen();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>('auto');
   const [accent, setAccent] = useState<number | null>(null);
@@ -135,8 +137,10 @@ export function SettingsPanel() {
       style={{
         position: 'fixed', inset: 0, zIndex: 140,
         background: 'rgba(0,0,0,0.28)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        paddingTop: '11vh',
+        display: 'flex',
+        alignItems: smallScreen ? 'stretch' : 'flex-start',
+        justifyContent: 'center',
+        paddingTop: smallScreen ? 0 : '11vh',
         backdropFilter: 'saturate(125%) blur(7px)',
         WebkitBackdropFilter: 'saturate(125%) blur(7px)',
         animation: 'lpFade 0.18s var(--ease)',
@@ -146,19 +150,22 @@ export function SettingsPanel() {
         role="dialog"
         aria-label="Settings"
         style={{
-          width: 'min(560px, 92vw)',
-          borderTop: '0.5px solid var(--mat-border)',
-          borderBottom: '0.5px solid var(--mat-border)',
+          width: smallScreen ? '100vw' : 'min(560px, 92vw)',
+          minHeight: smallScreen ? '100vh' : 'auto',
+          borderTop: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
+          borderBottom: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
           background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
-          maxHeight: '78vh',
+          maxHeight: smallScreen ? '100vh' : '78vh',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
+          paddingTop: smallScreen ? 'max(8px, env(safe-area-inset-top, 0px))' : 0,
+          paddingBottom: smallScreen ? 'max(8px, env(safe-area-inset-bottom, 0px))' : 0,
         }}
       >
         {/* Minimal title bar */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0.85rem 1.2rem',
+          padding: smallScreen ? '0.85rem 1rem' : '0.85rem 1.2rem',
           borderBottom: '0.5px solid var(--mat-border)',
         }}>
           <div className="t-headline" style={{
@@ -184,7 +191,7 @@ export function SettingsPanel() {
           >Esc</button>
         </div>
 
-        <div style={{ overflowY: 'auto', padding: '1.25rem 1.4rem 1.45rem' }}>
+        <div style={{ overflowY: 'auto', flex: 1, padding: smallScreen ? '1.05rem 1rem 1.2rem' : '1.25rem 1.4rem 1.45rem' }}>
           <Section label="Appearance">
             <Row label="Theme">
               <Segmented<Theme>
