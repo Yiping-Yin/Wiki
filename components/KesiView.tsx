@@ -620,20 +620,10 @@ export function KesiView() {
                     letterSpacing: '0.04em',
                   marginBottom: 8,
                 }}
-              >
-                <span>{returnPanel.family}</span>
-                <span aria-hidden>·</span>
-                <span>{formatWhen(returnPanel.crystallizedAt)}</span>
-                  {(() => {
-                    const relation = relationCounts.get(returnPanel.docId);
-                    if (!relation || relation.incoming + relation.outgoing === 0) return null;
-                    return (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span>{relation.incoming + relation.outgoing} threads</span>
-                      </>
-                    );
-                  })()}
+                >
+                  <span>{returnPanel.family}</span>
+                  <span aria-hidden>·</span>
+                  <span>{formatWhen(returnPanel.crystallizedAt)}</span>
                   {returnPanel.collectionLabel && returnPanel.collectionLabel !== returnPanel.family && (
                     <>
                       <span aria-hidden>·</span>
@@ -764,16 +754,6 @@ export function KesiView() {
                       <span>{panel.family}</span>
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.crystallizedAt)}</span>
-                      {(() => {
-                        const relation = relationCounts.get(panel.docId);
-                        if (!relation || relation.incoming + relation.outgoing === 0) return null;
-                        return (
-                          <>
-                            <span aria-hidden>·</span>
-                            <span>{relation.incoming + relation.outgoing} threads</span>
-                          </>
-                        );
-                      })()}
                     </div>
                   </div>
 
@@ -1132,18 +1112,6 @@ export function KesiView() {
                       <span>{panel.family}</span>
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.crystallizedAt)}</span>
-                      <span aria-hidden>·</span>
-                      <span>{panel.stitches} stitches</span>
-                      {(() => {
-                        const relation = relationCounts.get(panel.docId);
-                        if (!relation || relation.incoming + relation.outgoing === 0) return null;
-                        return (
-                          <>
-                            <span aria-hidden>·</span>
-                            <span>{relation.incoming + relation.outgoing} threads</span>
-                          </>
-                        );
-                      })()}
                       {panel.collectionLabel && panel.collectionLabel !== panel.family && (
                         <>
                           <span aria-hidden>·</span>
