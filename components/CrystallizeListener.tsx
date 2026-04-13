@@ -9,6 +9,7 @@
  */
 import { useEffect } from 'react';
 import { appendEventForDoc } from '../lib/trace/source-bound';
+import { dispatchCrystallized } from '../lib/crystallize-events';
 
 const LS_KEY = 'loom:crystallized';
 
@@ -50,6 +51,11 @@ export function CrystallizeListener() {
           );
 
           window.dispatchEvent(new CustomEvent('loom:trace:changed'));
+          dispatchCrystallized({
+            docId,
+            href: docHrefFromDocId(docId),
+            summary: 'Examiner verified',
+          });
         } catch {}
       })();
     };

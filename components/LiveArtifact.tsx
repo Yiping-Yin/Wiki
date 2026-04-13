@@ -16,8 +16,10 @@
  */
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRemoveEvents, useAppendEvent, useBacklinksForDoc } from '../lib/trace';
+import { LOOM_CRYSTALLIZED_EVENT, type CrystallizedDetail, dispatchCrystallized } from '../lib/crystallize-events';
 import { useReadingThoughtAnchors } from './thought-anchor-model';
 import { VersionedAnchorCard } from './VersionedAnchorCard';
 
@@ -25,6 +27,7 @@ const NoteRenderer = dynamic(() => import('./NoteRenderer').then((m) => m.NoteRe
 
 export function LiveArtifact({ docId }: { docId: string }) {
   const { readingTraces, primaryReadingTrace: readingTrace, thoughtItems, loading } = useReadingThoughtAnchors(docId);
+  const router = useRouter();
   // Backlinks: anchors in OTHER docs that reference this doc via markdown link
   const docHref = readingTrace?.source?.href ?? null;
   const backlinks = useBacklinksForDoc(docId, docHref);
@@ -35,6 +38,8 @@ export function LiveArtifact({ docId }: { docId: string }) {
   const [viewVersion, setViewVersion] = useState<number | null>(null); // null = latest
   const [showHistory, setShowHistory] = useState(false);
   const [activeAnchorId, setActiveAnchorId] = useState<string>('');
+  const [settledPulse, setSettledPulse] = useState(false);
+  const [settledSummary, setSettledSummary] = useState('');
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Free-mode still streams a recompiled artifact; doc-mode is derived from
@@ -108,6 +113,11 @@ export function LiveArtifact({ docId }: { docId: string }) {
       summary,
       at: Date.now(),
     });
+    dispatchCrystallized({
+      docId,
+      href: readingTrace.source?.href,
+      summary,
+    });
   };
   const uncrystallize = async () => {
     if (!readingTrace) return;
@@ -137,6 +147,26 @@ export function LiveArtifact({ docId }: { docId: string }) {
     window.addEventListener('loom:review:active-anchor', onActive);
     return () => window.removeEventListener('loom:review:active-anchor', onActive);
   }, []);
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+    const onCrystallized = (e: Event) => {
+      const detail = (e as CustomEvent<CrystallizedDetail>).detail;
+      if (!detail?.docId || detail.docId !== docId) return;
+      setSettledSummary(detail.summary ?? '');
+      setSettledPulse(true);
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        setSettledPulse(false);
+        timeoutId = null;
+      }, 2600);
+    };
+    window.addEventListener(LOOM_CRYSTALLIZED_EVENT, onCrystallized);
+    return () => {
+      window.removeEventListener(LOOM_CRYSTALLIZED_EVENT, onCrystallized);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [docId]);
 
   if (loading) return null;
 
@@ -178,6 +208,63 @@ export function LiveArtifact({ docId }: { docId: string }) {
             >✦</button>
           )}
         </div>
+
+        {isCrystallized && (
+          <div
+            className="material-thick"
+            style={{
+              padding: '0.8rem 0.95rem',
+              borderRadius: 14,
+              boxShadow: settledPulse ? '0 0 0 1px color-mix(in srgb, var(--accent) 28%, var(--mat-border)), var(--shadow-2)' : 'var(--shadow-1)',
+              marginBottom: 16,
+              background: settledPulse
+                ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-elevated))'
+                : 'var(--bg-elevated)',
+              transition: 'background 0.28s var(--ease), box-shadow 0.28s var(--ease)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span
+                className="t-caption2"
+                style={{
+                  color: 'var(--accent)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 700,
+                }}
+              >
+                Settled into Kesi
+              </span>
+              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+              <button
+                type="button"
+                onClick={() => router.push('/kesi')}
+                style={{
+                  appearance: 'none',
+                  border: 0,
+                  background: 'transparent',
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                Open Kesi
+              </button>
+            </div>
+            <div
+              style={{
+                color: 'var(--fg-secondary)',
+                fontSize: '0.86rem',
+                lineHeight: 1.5,
+              }}
+            >
+              {settledSummary || readingTrace?.crystallizedSummary || 'This panel is no longer provisional. It now lives in your kesi.'}
+            </div>
+          </div>
+        )}
 
         {focusThought && (
           <div
