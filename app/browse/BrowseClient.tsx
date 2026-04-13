@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
@@ -223,97 +224,31 @@ export function BrowseClient({
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       {focusCollection && (
-        <section
-          style={{
-            padding: '0.1rem 0 0.8rem',
-            marginBottom: 20,
-            borderBottom: '0.5px solid var(--mat-border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-            <span
-              className="t-caption2"
-              style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-              fontWeight: 700,
-              }}
-            >
-              Continue collection
-            </span>
-            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <div
-                style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: '1.18rem',
-                  fontWeight: 650,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.25,
-                  marginBottom: 6,
-                }}
-              >
-                {focusCollection.label}
-              </div>
-              <div
-                className="t-caption2"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  marginBottom: 8,
-                }}
-              >
-                <span>{focusCollection.count} docs</span>
-                {focusCollection.activeCount > 0 && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{focusCollection.activeCount} touched</span>
-                  </>
-                )}
-                {focusCollection.touchedAt > 0 && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{formatWhen(focusCollection.touchedAt)}</span>
-                  </>
-                )}
-              </div>
-              <div
-                style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.55,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {focusCollection.activeDoc?.latestSummary
-                  || focusCollection.activeDoc?.latestQuote
-                  || focusCollection.activeDoc?.preview
-                  || 'Return to the collection you left warmest.'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => openPrimaryAction(focusCollection)} style={browseActionStyle(true)}>
-                Continue collection
-              </button>
-              <Link href={focusCollection.href} style={{ ...browseActionStyle(false), textDecoration: 'none' }}>
-                Open collection
-              </Link>
-            </div>
-          </div>
-        </section>
+        <QuietGuideCard
+          eyebrow="Continue collection"
+          title={focusCollection.label}
+          meta={
+            <>
+              <span>{focusCollection.count} docs</span>
+              {focusCollection.touchedAt > 0 ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatWhen(focusCollection.touchedAt)}</span>
+                </>
+              ) : null}
+            </>
+          }
+          summary={
+            focusCollection.activeDoc?.latestSummary
+              || focusCollection.activeDoc?.latestQuote
+              || focusCollection.activeDoc?.preview
+              || 'Return to the collection you left warmest.'
+          }
+          actions={[
+            { label: 'Continue collection', onClick: () => openPrimaryAction(focusCollection), primary: true },
+            { label: 'Open collection', href: focusCollection.href },
+          ]}
+        />
       )}
 
       <div
@@ -473,20 +408,6 @@ export function BrowseClient({
       )}
     </div>
   );
-}
-
-function browseActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
-    padding: 0,
-    cursor: 'pointer',
-  };
 }
 
 function Block({ label, children }: { label: string; children: React.ReactNode }) {
