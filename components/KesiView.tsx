@@ -565,9 +565,6 @@ export function KesiView() {
               Clear focus
             </button>
           )}
-          <span className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', fontWeight: 700 }}>
-            {sortedPanels.length}
-          </span>
         </div>
 
         {returnPanel && (
@@ -792,9 +789,6 @@ export function KesiView() {
                 Keep weaving
               </span>
               <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-              <span className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', fontWeight: 700 }}>
-                {continuePanels.length}
-              </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -1012,9 +1006,6 @@ export function KesiView() {
                   {group.label}
                 </span>
                 <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-                <span className="t-caption2" style={{ color: 'var(--muted)', opacity: 0.7 }}>
-                  {group.items.length}
-                </span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1091,9 +1082,6 @@ export function KesiView() {
                       >
                         {panel.title}
                       </div>
-                      <span className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', flexShrink: 0 }}>
-                        {panel.sections.length}◆
-                      </span>
                     </div>
 
                     <div
