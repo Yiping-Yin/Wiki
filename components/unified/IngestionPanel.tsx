@@ -27,6 +27,7 @@ import { callAiPrompt } from '../../lib/ai/runtime';
 import { useCallback, useState } from 'react';
 import type { Note } from '../../lib/note/types';
 import { appendNote } from '../../lib/note/store';
+import { AiInlineNotice, AiStageHeader } from './AiStagePrimitives';
 
 type IngestionItem = {
   filename: string;
@@ -160,6 +161,8 @@ export function IngestionPanel({ existingIngested }: Props) {
         gap: 10,
       }}
     >
+      <AiStageHeader title={ingestionStage.title} helper="Drop one source, then let Loom hold the first thread" />
+
       {/* Drop zone */}
       <div
         onDragOver={(e) => {
@@ -210,18 +213,9 @@ export function IngestionPanel({ existingIngested }: Props) {
       </div>
 
       {globalError && (
-        <div
-          style={{
-            padding: 10,
-            fontSize: '0.74rem',
-            color: 'var(--tint-red)',
-            background: 'color-mix(in srgb, var(--tint-red) 8%, var(--bg))',
-            border: '0.5px solid var(--tint-red)',
-            borderRadius: 6,
-          }}
-        >
+        <AiInlineNotice tone="error">
           {globalError}
-        </div>
+        </AiInlineNotice>
       )}
 
       {/* Current session items */}

@@ -30,7 +30,7 @@ import { useRouter } from 'next/navigation';
 import type { Note, SourceDocId } from '../../lib/note/types';
 import { appendNote } from '../../lib/note/store';
 import { setOverlayResume } from '../../lib/panel-resume';
-import { WeftShuttle } from '../DocViewer';
+import { AiStageBusyState, AiStageEmptyState, AiStageHeader, aiStageButtonStyle } from './AiStagePrimitives';
 
 type Props = {
   docId: SourceDocId | null;
@@ -238,20 +238,12 @@ export function AIExaminer({ docId, contextNotes }: Props) {
 
   if (!docId) {
     return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--muted)',
-          fontStyle: 'italic',
-          padding: 40,
-          fontSize: '0.85rem',
-        }}
-      >
-        Pick a doc above to begin one verifying question.
-      </div>
+      <AiStageEmptyState
+        message="Pick a doc above to begin one verifying question."
+        actionLabel="Choose a doc"
+        onAction={() => {}}
+        actionDisabled
+      />
     );
   }
 
@@ -268,58 +260,24 @@ export function AIExaminer({ docId, contextNotes }: Props) {
       }}
     >
       {/* Header */}
-      <div
-        style={{
-          fontSize: '0.7rem',
-          color: 'var(--muted)',
-          fontFamily: 'var(--mono)',
-        }}
-      >
-        From {contextNotes.length} note{contextNotes.length === 1 ? '' : 's'}
-      </div>
+      <AiStageHeader
+        title={questionStage.title}
+        helper={`from ${contextNotes.length} note${contextNotes.length === 1 ? '' : 's'}`}
+      />
 
       {/* Idle: show "start" button */}
       {phase.kind === 'idle' && (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            color: 'var(--muted)',
-          }}
-        >
-          <div style={{ fontSize: '0.82rem', textAlign: 'center', maxWidth: 320 }}>
-            Stay with the unfinished edge of this panel.
-          </div>
-          <button
-            type="button"
-            onClick={() => void generateQuestion()}
-            disabled={contextNotes.length === 0}
-            style={buttonStyle(contextNotes.length > 0)}
-          >
-            {contextNotes.length === 0
-              ? 'Capture first'
-              : questionStage.title}
-          </button>
-        </div>
+        <AiStageEmptyState
+          message="Stay with the unfinished edge of this panel."
+          actionLabel={contextNotes.length === 0 ? 'Capture first' : questionStage.title}
+          onAction={() => void generateQuestion()}
+          actionDisabled={contextNotes.length === 0}
+        />
       )}
 
       {/* Generating */}
       {phase.kind === 'generating' && (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--muted)',
-          }}
-        >
-          <WeftShuttle width={72} />
-        </div>
+        <AiStageBusyState label={questionStage.title} />
       )}
 
       {/* Awaiting answer */}
@@ -353,14 +311,14 @@ export function AIExaminer({ docId, contextNotes }: Props) {
             }}
           />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
+            <button type="button" onClick={stop} style={aiStageButtonStyle(true, 'muted')}>
               Close
             </button>
             <button
               type="button"
               onClick={() => void submitAnswer()}
               disabled={!draft.trim()}
-              style={buttonStyle(Boolean(draft.trim()))}
+              style={aiStageButtonStyle(Boolean(draft.trim()))}
             >
               Answer
             </button>
@@ -370,17 +328,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
 
       {/* Grading */}
       {phase.kind === 'grading' && (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--muted)',
-          }}
-        >
-          <WeftShuttle width={72} />
-        </div>
+        <AiStageBusyState label={gradeStage.title} />
       )}
 
       {/* Verdict */}
@@ -444,13 +392,13 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             {phase.verdict === 'pass' ? (
               <>
-                <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
+                <button type="button" onClick={stop} style={aiStageButtonStyle(true, 'muted')}>
                   Close
                 </button>
-                <button type="button" onClick={reviewNotes} style={buttonStyle(true, 'muted')}>
+                <button type="button" onClick={reviewNotes} style={aiStageButtonStyle(true, 'muted')}>
                   Review
                 </button>
-                <button type="button" onClick={next} style={buttonStyle(true)}>
+                <button type="button" onClick={next} style={aiStageButtonStyle(true)}>
                   Ask another
                 </button>
               </>
@@ -458,18 +406,18 @@ export function AIExaminer({ docId, contextNotes }: Props) {
               <button type="button" onClick={() => {
                 stop();
                 if (docId) router.push(docHrefFromDocId(docId));
-              }} style={buttonStyle(true)}>
+              }} style={aiStageButtonStyle(true)}>
                 Go read
               </button>
             ) : (
               <>
-                <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
+                <button type="button" onClick={stop} style={aiStageButtonStyle(true, 'muted')}>
                   Close
                 </button>
-                <button type="button" onClick={returnToRehearsal} style={buttonStyle(true, 'muted')}>
+                <button type="button" onClick={returnToRehearsal} style={aiStageButtonStyle(true, 'muted')}>
                   Write again
                 </button>
-                <button type="button" onClick={next} style={buttonStyle(true)}>
+                <button type="button" onClick={next} style={aiStageButtonStyle(true)}>
                   Ask another
                 </button>
               </>
@@ -514,25 +462,6 @@ function QuestionCard({ question }: { question: string }) {
   );
 }
 
-function buttonStyle(enabled: boolean, variant: 'accent' | 'muted' = 'accent'): React.CSSProperties {
-  return {
-    padding: '6px 14px',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    background:
-      enabled && variant === 'accent' ? 'var(--accent)' : 'transparent',
-    color:
-      enabled && variant === 'accent'
-        ? 'var(--bg)'
-        : enabled
-          ? 'var(--fg)'
-          : 'var(--muted)',
-    border: '0.5px solid ' + (enabled && variant === 'accent' ? 'var(--accent)' : 'var(--mat-border)'),
-    borderRadius: 6,
-    cursor: enabled ? 'pointer' : 'default',
-    opacity: enabled ? 1 : 0.5,
-  };
-}
 
 // ── AI call + prompts ────────────────────────────────────────────────────
 

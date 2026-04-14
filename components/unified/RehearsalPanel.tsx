@@ -28,6 +28,7 @@ import { useRouter } from 'next/navigation';
 import type { SourceDocId } from '../../lib/note/types';
 import { appendRehearsal } from '../../lib/note/store';
 import { openPanelReview } from '../../lib/panel-resume';
+import { AiInlineNotice, AiStageEmptyState, AiStageHeader, aiStageButtonStyle } from './AiStagePrimitives';
 
 const MarkdownPreview = dynamic(
   () => import('../NoteRenderer').then((m) => m.NoteRenderer),
@@ -176,20 +177,12 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
 
   if (!docId) {
     return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--muted)',
-          fontStyle: 'italic',
-          padding: 40,
-          fontSize: '0.85rem',
-        }}
-      >
-        Pick a doc above and begin the next memory pass.
-      </div>
+      <AiStageEmptyState
+        message="Pick a doc above and begin the next memory pass."
+        actionLabel="Choose a doc"
+        onAction={() => {}}
+        actionDisabled
+      />
     );
   }
 
@@ -208,36 +201,12 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
       }}
     >
       {/* Toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: '0.7rem',
-          color: 'var(--muted)',
-        }}
-      >
-        <span style={{ flex: 1 }}>
-          <strong style={{ color: 'var(--accent)' }}>{rehearsalStage.title}</strong>
-          {' · '}
-          <span style={{ fontFamily: 'var(--mono)' }}>
-            ⌘K shape · ⌘S save · Save & ask
-          </span>
-        </span>
-        {status && (
-          <span
-            style={{
-              color: 'var(--accent)',
-              fontFamily: 'var(--mono)',
-              fontSize: '0.68rem',
-              opacity: transforming || saving ? 0.6 : 1,
-              transition: 'opacity 0.15s ease',
-            }}
-          >
-            {status}
-          </span>
-        )}
-      </div>
+      <AiStageHeader
+        title={rehearsalStage.title}
+        helper="⌘K shape · ⌘S save · Save & ask"
+        status={status}
+        busy={transforming || saving}
+      />
 
       {seedLabel && (
         <div
@@ -315,28 +284,16 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
       )}
 
       {savedState?.mode === 'stay' && !draft.trim() && (
-        <div
-          style={{
-            padding: '10px 12px',
-            borderTop: '0.5px solid var(--accent)',
-            borderBottom: '0.5px solid var(--mat-border)',
-            color: 'var(--fg-secondary)',
-            fontSize: '0.8rem',
-            lineHeight: 1.5,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}
-        >
+        <AiInlineNotice tone="accent">
           <div>
             Saved into this weave. Return to the current panel when you want to keep weaving.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" onClick={openReview} style={buttonStyle(true, 'muted')}>
+            <button type="button" onClick={openReview} style={aiStageButtonStyle(true, 'muted')}>
               Review
             </button>
           </div>
-        </div>
+        </AiInlineNotice>
       )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -344,7 +301,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
           type="button"
           onClick={save}
           disabled={!draft.trim() || saving || transforming}
-          style={buttonStyle(Boolean(draft.trim()) && !saving && !transforming, 'muted')}
+          style={aiStageButtonStyle(Boolean(draft.trim()) && !saving && !transforming, 'muted')}
         >
           Save
         </button>
@@ -352,7 +309,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
           type="button"
           onClick={saveAndExamine}
           disabled={!draft.trim() || saving || transforming}
-          style={buttonStyle(Boolean(draft.trim()) && !saving && !transforming)}
+          style={aiStageButtonStyle(Boolean(draft.trim()) && !saving && !transforming)}
         >
           Save & ask
         </button>
@@ -408,24 +365,4 @@ function docTitleFromDocId(docId: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function buttonStyle(enabled: boolean, variant: 'accent' | 'muted' = 'accent'): React.CSSProperties {
-  return {
-    padding: '6px 14px',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    background:
-      enabled && variant === 'accent' ? 'var(--accent)' : 'transparent',
-    color:
-      enabled && variant === 'accent'
-        ? 'var(--bg)'
-        : enabled
-          ? 'var(--fg)'
-          : 'var(--muted)',
-    border: '0.5px solid ' + (enabled && variant === 'accent' ? 'var(--accent)' : 'var(--mat-border)'),
-    borderRadius: 6,
-    cursor: enabled ? 'pointer' : 'default',
-    opacity: enabled ? 1 : 0.5,
-  };
 }
