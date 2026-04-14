@@ -209,7 +209,6 @@ export function KnowledgeHomeClient({
               ) : null}
             </>
           }
-          summary={previewText(focusCollection)}
           actions={[
             { label: 'Continue collection', onClick: () => openPrimaryAction(focusCollection), primary: true },
             { label: 'All material', href: focusCollection.href },

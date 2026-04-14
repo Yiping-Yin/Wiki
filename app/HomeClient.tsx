@@ -144,8 +144,8 @@ export function HomeClient(_props: unknown) {
         <QuietGuideCard
           eyebrow="Keep this thread warm"
           title={current.title}
+          mode="inline"
           meta={<span>{relativeTime(current.viewedAt)}</span>}
-          summary={current.latestSummary || 'Return to the document you were shaping most recently.'}
           actions={[
             { label: homePrimaryActionLabel(current.learning.nextAction), onClick: () => openPrimaryAction(current), primary: true },
             { label: 'Open source', onClick: () => router.push(current.href) },

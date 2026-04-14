@@ -239,12 +239,6 @@ export function BrowseClient({
               ) : null}
             </>
           }
-          summary={
-            focusCollection.activeDoc?.latestSummary
-              || focusCollection.activeDoc?.latestQuote
-              || focusCollection.activeDoc?.preview
-              || 'Return to the collection you left warmest.'
-          }
           actions={[
             { label: 'Continue collection', onClick: () => openPrimaryAction(focusCollection), primary: true },
             { label: 'Open collection', href: focusCollection.href },

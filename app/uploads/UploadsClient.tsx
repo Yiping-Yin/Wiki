@@ -284,6 +284,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
         <QuietGuideCard
           eyebrow="Return to this source"
           title={focusItem.title}
+          mode="inline"
           meta={
             <>
               <span>{focusItem.ext.slice(1).toUpperCase()}</span>
@@ -293,7 +294,6 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
               <span>{formatWhen(focusItem.touchedAt)}</span>
             </>
           }
-          summary={focusItem.latestSummary || focusItem.preview || focusItem.latestQuote || 'Open this source and keep weaving from what has landed here.'}
           actions={[
             { label: 'Continue source', onClick: () => openPrimaryAction(focusItem), primary: true },
             { label: 'Open source', href: focusItem.href },

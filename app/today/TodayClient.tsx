@@ -255,6 +255,7 @@ export function TodayClient({
         <QuietGuideCard
           eyebrow="Keep the thread warm"
           title={focusSurface.title}
+          mode="inline"
           meta={
             <>
               <span>{kindLabel(focusSurface.kind)}</span>
@@ -262,7 +263,6 @@ export function TodayClient({
               <span>{timeOfDay(focusSurface.touchedAt)}</span>
             </>
           }
-          summary={focusSurface.latestSummary || focusSurface.latestQuote || focusSurface.preview || 'Pick up the weave you left warmest.'}
           actions={[
             {
               label: todayPrimaryActionLabel(focusSurface.learning.nextAction),
