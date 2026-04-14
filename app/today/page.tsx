@@ -19,9 +19,10 @@ function buildLite(allDocs: Awaited<ReturnType<typeof getAllDocs>>) {
 }
 
 export default async function TodayPage() {
-  const [allDocs] = await Promise.all([getAllDocs(), getKnowledgeTotal()]);
+  const [allDocs, totalDocs] = await Promise.all([getAllDocs(), getKnowledgeTotal()]);
   return (
     <TodayClient
+      totalDocs={totalDocs}
       docsLite={buildLite(allDocs)}
       daily={null}
     />

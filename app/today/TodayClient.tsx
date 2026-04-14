@@ -473,6 +473,7 @@ function ReviewCards({
   docsById: Map<string, DocLite>;
   onOpenReview: (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => void;
 }) {
+  const router = useRouter();
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const threeDaysAgo = Date.now() - 3 * 86400000;
 
