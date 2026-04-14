@@ -13,12 +13,9 @@
  */
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { useHistory } from '../../lib/use-history';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
-import { continuePanelLifecycle } from '../../lib/panel-resume';
 
 type DocCard = {
   id: string; title: string; href: string;
@@ -36,16 +33,6 @@ type BrowseDocSurface = DocCard & {
   latestSummary: string;
   latestQuote?: string;
   learning: LearningSurfaceSummary;
-};
-
-type BrowseCollectionSurface = {
-  slug: string;
-  label: string;
-  href: string;
-  count: number;
-  activeDoc: BrowseDocSurface | null;
-  activeCount: number;
-  touchedAt: number;
 };
 
 function groupTop(cats: Category[]) {
@@ -94,14 +81,6 @@ function matchesSection(section: LLMSection, query: string) {
   return hay.includes(query);
 }
 
-function actionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
-  if (nextAction === 'refresh') return 'Refresh';
-  if (nextAction === 'rehearse') return 'Rehearsal';
-  if (nextAction === 'examine') return 'Examiner';
-  if (nextAction === 'capture') return 'Open';
-  return 'Return';
-}
-
 function formatWhen(ts: number) {
   if (!ts) return '';
   const diff = Date.now() - ts;
@@ -120,7 +99,6 @@ export function BrowseClient({
   categories: Category[];
   llmSections: LLMSection[];
 }) {
-  const router = useRouter();
   const [history] = useHistory();
   const { traces } = useAllTraces();
   const [query, setQuery] = useState('');
@@ -147,64 +125,6 @@ export function BrowseClient({
     return map;
   }, [traces]);
 
-  const collectionSurfaces = useMemo(() => {
-    return categories.map((category) => {
-      const docSurfaces = category.docs
-        .map((doc) => {
-          const docId = `know/${doc.id}`;
-          const viewedAt = viewedByDocId.get(docId) ?? 0;
-          const traceSet = tracesByDocId.get(docId) ?? [];
-          const learning = summarizeLearningSurface(traceSet, viewedAt);
-          return {
-            ...doc,
-            docId,
-            categorySlug: category.slug,
-            viewedAt,
-            touchedAt: Math.max(learning.touchedAt, viewedAt),
-            latestSummary: learning.latestSummary,
-            latestQuote: learning.latestQuote,
-            learning,
-          } satisfies BrowseDocSurface;
-        })
-        .sort((a, b) => {
-          const rank = (surface: BrowseDocSurface) => {
-            if (surface.learning.finished) return 3;
-            if (surface.learning.anchorCount > 0) return 0;
-            if (surface.viewedAt > 0) return 1;
-            return 2;
-          };
-          return rank(a) - rank(b) || b.touchedAt - a.touchedAt || a.title.localeCompare(b.title);
-        });
-
-      const activeDoc = docSurfaces.find((doc) => doc.touchedAt > 0 || doc.learning.anchorCount > 0) ?? docSurfaces[0] ?? null;
-      return {
-        slug: category.slug,
-        label: category.label.replace(/^[^·]+·\s*/, ''),
-        href: `/knowledge/${category.slug}`,
-        count: category.count,
-        activeDoc,
-        activeCount: docSurfaces.filter((doc) => doc.touchedAt > 0 || doc.learning.anchorCount > 0).length,
-        touchedAt: activeDoc?.touchedAt ?? 0,
-      } satisfies BrowseCollectionSurface;
-    }).sort((a, b) => b.touchedAt - a.touchedAt || b.activeCount - a.activeCount || a.label.localeCompare(b.label));
-  }, [categories, tracesByDocId, viewedByDocId]);
-
-  const focusCollection = collectionSurfaces.find((collection) => collection.activeDoc && collection.touchedAt > 0) ?? null;
-
-  const openPrimaryAction = (collection: BrowseCollectionSurface) => {
-    const activeDoc = collection.activeDoc;
-    if (!activeDoc) {
-      router.push(collection.href);
-      return;
-    }
-    continuePanelLifecycle(router, {
-      href: activeDoc.href,
-      nextAction: activeDoc.learning.nextAction,
-      latestAnchorId: activeDoc.learning.latestAnchorId,
-      refreshSource: 'browse',
-    });
-  };
-
   const filteredCategories = useMemo(() => {
     const base = categories.filter((category) => category.docs.length > 0);
     if (!normalizedQuery) return base;
@@ -221,19 +141,6 @@ export function BrowseClient({
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      {focusCollection && (
-        <QuietGuideCard
-          eyebrow="Continue collection"
-          title={focusCollection.label}
-          mode="inline"
-          meta={focusCollection.touchedAt > 0 ? <span>{formatWhen(focusCollection.touchedAt)}</span> : undefined}
-          actions={[
-            { label: 'Continue collection', onClick: () => openPrimaryAction(focusCollection), primary: true },
-            { label: 'Open collection', href: focusCollection.href },
-          ]}
-        />
-      )}
-
       <div
         style={{
           display: 'flex',
