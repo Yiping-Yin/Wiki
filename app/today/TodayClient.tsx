@@ -366,18 +366,6 @@ function ScheduleList({
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span
-              className="t-caption2"
-              style={{
-                color: item.pinned ? 'var(--accent)' : 'var(--muted)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                fontWeight: 700,
-                flexShrink: 0,
-              }}
-            >
-              {kindLabel(item.kind)}
-            </span>
-            <span
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -442,19 +430,6 @@ function ScheduleList({
       ))}
     </div>
   );
-}
-
-function kindLabel(kind: StudySurface['kind']) {
-  switch (kind) {
-    case 'knowledge':
-      return 'Knowledge';
-    case 'wiki':
-      return 'LLM';
-    case 'upload':
-      return 'Upload';
-    default:
-      return 'Source';
-  }
 }
 
 function timeOfDay(ts: number): string {
