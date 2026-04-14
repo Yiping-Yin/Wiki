@@ -706,9 +706,6 @@ export function KesiView() {
                 Return soon
               </span>
               <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-              <span className="t-caption2" style={{ color: 'var(--tint-orange)', letterSpacing: '0.08em', fontWeight: 700 }}>
-                {refreshPanels.length}
-              </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -831,8 +828,6 @@ export function KesiView() {
                       <span>{panel.family}</span>
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.crystallizedAt)}</span>
-                      <span aria-hidden>·</span>
-                      <span>{primaryActionLabel(panel.learning.nextAction)}</span>
                     </div>
                   </div>
 
