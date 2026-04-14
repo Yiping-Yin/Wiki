@@ -264,7 +264,7 @@ export function IngestionPanel({ existingIngested }: Props) {
                             ? 'var(--tint-red)'
                             : 'var(--accent)',
                       fontSize: '0.66rem',
-                    }}
+                      }}
                   >
                     {it.status === 'done'
                       ? '✓'
@@ -273,9 +273,6 @@ export function IngestionPanel({ existingIngested }: Props) {
                         : '◌'}
                   </span>
                   <strong style={{ flex: 1 }}>{it.filename}</strong>
-                  <span style={{ color: 'var(--muted)', fontSize: '0.66rem' }}>
-                    {(it.sizeBytes / 1024).toFixed(0)}KB
-                  </span>
                 </div>
                 {it.summary && (
                   <div
@@ -322,7 +319,7 @@ export function IngestionPanel({ existingIngested }: Props) {
               marginBottom: 6,
             }}
           >
-            Previously ingested ({historyItems.length})
+            Previously ingested
           </div>
           <div
             style={{
