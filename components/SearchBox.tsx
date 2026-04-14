@@ -123,7 +123,7 @@ export function SearchBox() {
                 else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); }
                 else if (e.key === 'Enter') { e.preventDefault(); goto(activeIdx); }
               }}
-              placeholder="Search 501 docs…"
+              placeholder="Search documents…"
               style={{
                 width: '100%',
                 padding: smallScreen ? '1rem 1rem 0.95rem' : '1.1rem 1.3rem',
