@@ -949,7 +949,10 @@ function WideThoughtCard({
 }) {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editBuf, setEditBuf] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editRef = useRef<HTMLTextAreaElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -978,6 +981,29 @@ function WideThoughtCard({
       setSaving(false);
     }
   }, [draft, saving, thought, onAppendVersion]);
+
+  const saveEdit = useCallback(async () => {
+    const text = editBuf.trim();
+    const original = (thought.content || thought.summary).trim();
+    if (!text || text === original || saving) { setEditing(false); return; }
+    setSaving(true);
+    try {
+      await onAppendVersion(thought, text);
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  }, [editBuf, saving, thought, onAppendVersion]);
+
+  const startEditing = useCallback(() => {
+    if (panelCrystallized) return;
+    setEditBuf(thought.content || thought.summary);
+    setEditing(true);
+    requestAnimationFrame(() => {
+      const ta = editRef.current;
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    });
+  }, [thought, panelCrystallized]);
 
   const hasContent = Boolean(thought.content.trim() || thought.summary.trim());
 
@@ -1069,9 +1095,39 @@ function WideThoughtCard({
         </div>
       )}
 
-      {/* Content — latest version */}
-      {hasContent ? (
+      {/* Content — latest version, click to edit */}
+      {hasContent && editing ? (
+        <textarea
+          ref={editRef}
+          value={editBuf}
+          onChange={(e) => setEditBuf(e.target.value)}
+          onBlur={() => void saveEdit()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void saveEdit(); }
+            if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); }
+          }}
+          style={{
+            width: '100%',
+            minHeight: 60,
+            maxHeight: 400,
+            padding: '6px 0',
+            fontFamily: 'var(--display)',
+            fontSize: '0.86rem',
+            lineHeight: 1.55,
+            color: 'var(--fg)',
+            background: 'transparent',
+            border: 0,
+            borderBottom: '0.5px solid var(--accent)',
+            borderRadius: 0,
+            outline: 'none',
+            resize: 'none',
+            // @ts-ignore
+            fieldSizing: 'content',
+          }}
+        />
+      ) : hasContent ? (
         <div
+          onClick={expanded ? startEditing : undefined}
           style={{
             fontSize: '0.86rem',
             lineHeight: 1.55,
@@ -1082,7 +1138,7 @@ function WideThoughtCard({
             WebkitBoxOrient: 'vertical',
             userSelect: 'text',
             WebkitUserSelect: 'text',
-            cursor: 'text',
+            cursor: expanded && !panelCrystallized ? 'text' : 'default',
           }}
           className="note-rendered"
         >
