@@ -72,6 +72,19 @@ export const weaveStore = {
     await tx<IDBValidKey>('readwrite', (s) => s.put(weave));
   },
 
+  async updateStatus(id: string, status: Weave['status']): Promise<Weave | null> {
+    if (!isClient()) return null;
+    const existing = await this.get(id);
+    if (!existing) return null;
+    const next = {
+      ...existing,
+      status,
+      updatedAt: Date.now(),
+    };
+    await this.put(next);
+    return next;
+  },
+
   async delete(id: string): Promise<void> {
     if (!isClient()) return;
     await tx<void>('readwrite', (s) => {

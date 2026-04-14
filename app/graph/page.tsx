@@ -7,7 +7,7 @@ import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { continuePanelLifecycle, openPanelReview } from '../../lib/panel-resume';
 import { useAllPanels } from '../../lib/panel';
-import { buildWeavePreview, useAllWeaves } from '../../lib/weave';
+import { buildWeavePreview, setWeaveStatus, useAllWeaves } from '../../lib/weave';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
@@ -25,9 +25,11 @@ type PanelNode = {
 };
 
 type RelatedPanel = {
+  id: string;
   panel: PanelNode;
   weight: number;
   snippet: string;
+  status: 'suggested' | 'confirmed' | 'rejected';
 };
 
 type DirectedRelatedPanel = RelatedPanel & {
@@ -263,14 +265,18 @@ export default function GraphPage() {
           docId,
           {
             incoming: value.incoming.map((item) => ({
+              id: item.id,
               panel: item.panel,
               weight: item.weight,
               snippet: item.snippets[0] ?? '',
+              status: item.status,
             })),
             outgoing: value.outgoing.map((item) => ({
+              id: item.id,
               panel: item.panel,
               weight: item.weight,
               snippet: item.snippets[0] ?? '',
+              status: item.status,
             })),
           },
         ]),
@@ -319,14 +325,18 @@ export default function GraphPage() {
             const sourcePreview = previewMap.get(panel.docId) ?? { incoming: new Map(), outgoing: new Map() };
             const targetPreview = previewMap.get(targetPanel.docId) ?? { incoming: new Map(), outgoing: new Map() };
             sourcePreview.outgoing.set(targetPanel.docId, {
+              id: key,
               panel: targetPanel,
               weight: edgeWeights.get(key) ?? 1,
               snippet: relationSnippet(summary, content),
+              status: 'suggested',
             });
             targetPreview.incoming.set(panel.docId, {
+              id: key,
               panel,
               weight: edgeWeights.get(key) ?? 1,
               snippet: relationSnippet(summary, content),
+              status: 'suggested',
             });
             previewMap.set(panel.docId, sourcePreview);
             previewMap.set(targetPanel.docId, targetPreview);
@@ -455,6 +465,10 @@ export default function GraphPage() {
   const focusPanelNode = (panel: PanelNode) => {
     setFocusDocId(panel.docId);
     setScopeFilter((prev) => (prev === 'all' ? 'nearby' : prev));
+  };
+
+  const markWeave = async (id: string, status: 'confirmed' | 'rejected') => {
+    await setWeaveStatus(id, status);
   };
 
   const clearFocus = () => {
@@ -647,6 +661,8 @@ export default function GraphPage() {
                         label="Referenced by"
                         items={focusRelated.incoming}
                         onSelect={focusPanelNode}
+                        onConfirm={markWeave}
+                        onReject={markWeave}
                       />
                     )}
                     {focusRelated.outgoing.length > 0 && (
@@ -654,6 +670,8 @@ export default function GraphPage() {
                         label="Points to"
                         items={focusRelated.outgoing}
                         onSelect={focusPanelNode}
+                        onConfirm={markWeave}
+                        onReject={markWeave}
                       />
                     )}
                   </div>
@@ -723,10 +741,14 @@ function RelatedList({
   label,
   items,
   onSelect,
+  onConfirm,
+  onReject,
 }: {
   label: string;
   items: RelatedPanel[];
   onSelect: (panel: PanelNode) => void;
+  onConfirm: (id: string, status: 'confirmed' | 'rejected') => Promise<void>;
+  onReject: (id: string, status: 'confirmed' | 'rejected') => Promise<void>;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -741,47 +763,81 @@ function RelatedList({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.slice(0, 5).map((related) => (
-          <button
+          <div
             key={`${label}-${related.panel.docId}`}
-            type="button"
-            onClick={() => onSelect(related.panel)}
             style={{
-              appearance: 'none',
-              border: 0,
               padding: '0.38rem 0',
-              background: 'transparent',
-              textAlign: 'left',
               borderTop: '0.5px solid var(--mat-border)',
-              cursor: 'pointer',
             }}
           >
-            <div
+            <button
+              type="button"
+              onClick={() => onSelect(related.panel)}
               style={{
+                appearance: 'none',
+                border: 0,
+                padding: 0,
+                background: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                width: '100%',
                 display: 'flex',
-                alignItems: 'baseline',
-                gap: 8,
-                flexWrap: 'wrap',
-                fontSize: '0.78rem',
-                lineHeight: 1.35,
+                flexDirection: 'column',
               }}
             >
-              <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
-                {related.panel.title}
-              </span>
-            </div>
-            {related.snippet ? (
               <div
                 style={{
-                  color: 'var(--fg-secondary)',
-                  fontSize: '0.76rem',
-                  lineHeight: 1.45,
-                  marginTop: 2,
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  fontSize: '0.78rem',
+                  lineHeight: 1.35,
                 }}
               >
-                {related.snippet}
+                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
+                  {related.panel.title}
+                </span>
               </div>
-            ) : null}
-          </button>
+              {related.snippet ? (
+                <div
+                  style={{
+                    color: 'var(--fg-secondary)',
+                    fontSize: '0.76rem',
+                    lineHeight: 1.45,
+                    marginTop: 2,
+                  }}
+                >
+                  {related.snippet}
+                </div>
+              ) : null}
+            </button>
+            <div
+              className="t-caption2"
+              style={{
+                marginTop: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                color: 'var(--muted)',
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {related.status === 'suggested' ? (
+                <>
+                  <button type="button" onClick={() => void onConfirm(related.id, 'confirmed')} style={focusLinkStyle}>
+                    Confirm
+                  </button>
+                  <button type="button" onClick={() => void onReject(related.id, 'rejected')} style={focusLinkStyle}>
+                    Reject
+                  </button>
+                </>
+              ) : (
+                <span>{related.status === 'confirmed' ? 'Confirmed' : 'Rejected'}</span>
+              )}
+            </div>
+          </div>
         ))}
       </div>
     </div>

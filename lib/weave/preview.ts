@@ -3,6 +3,7 @@
 import type { Weave } from './types';
 
 export type WeavePreviewItem<TPanel> = {
+  id: string;
   panel: TPanel;
   weight: number;
   snippets: string[];
@@ -32,6 +33,7 @@ export function buildWeavePreview<TPanel extends { docId: string }>(
     const to = panelById.get(weave.toPanelId);
     if (!from || !to) continue;
     preview.get(from.docId)?.outgoing.push({
+      id: weave.id,
       panel: to,
       weight: Math.max(1, weave.evidence.length),
       snippets: weave.evidence.map((item) => item.snippet).filter(Boolean),
@@ -39,6 +41,7 @@ export function buildWeavePreview<TPanel extends { docId: string }>(
       kind: weave.kind,
     });
     preview.get(to.docId)?.incoming.push({
+      id: weave.id,
       panel: from,
       weight: Math.max(1, weave.evidence.length),
       snippets: weave.evidence.map((item) => item.snippet).filter(Boolean),

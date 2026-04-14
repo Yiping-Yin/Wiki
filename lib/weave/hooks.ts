@@ -32,3 +32,9 @@ export function useAllWeaves(): { weaves: Weave[]; loading: boolean } {
   useChangeSubscription(refresh);
   return { weaves, loading };
 }
+
+export async function setWeaveStatus(id: string, status: Weave['status']) {
+  const updated = await weaveStore.updateStatus(id, status);
+  if (updated) emitWeaveChange();
+  return updated;
+}

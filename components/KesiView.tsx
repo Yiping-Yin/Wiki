@@ -261,6 +261,7 @@ export function KesiView() {
           previews.set(panel.docId, {
             incoming: previews.get(panel.docId)?.incoming ?? [],
             outgoing: [...(previews.get(panel.docId)?.outgoing ?? []), {
+              id: `${panel.docId}=>${target.docId}`,
               panel: target,
               weight: 1,
               snippets: [],
@@ -270,6 +271,7 @@ export function KesiView() {
           });
           previews.set(target.docId, {
             incoming: [...(previews.get(target.docId)?.incoming ?? []), {
+              id: `${panel.docId}=>${target.docId}`,
               panel,
               weight: 1,
               snippets: [],
