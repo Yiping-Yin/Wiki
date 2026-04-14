@@ -183,180 +183,92 @@ export function CategoryLandingClient({
 
       <CategoryHero
         label={category.label}
-        slug={category.slug}
-        count={docs.length}
-        withText={docs.filter((doc) => doc.hasText).length}
         subs={category.subs}
       />
-      <h1 style={{ display: 'none' }}>{category.label}</h1>
 
-      <section
-        style={{
-          marginBottom: '0.7rem',
-          paddingBottom: '0.6rem',
-          borderBottom: '0.5px solid var(--mat-border)',
-        }}
-      >
-        <div
-          className="t-caption2"
-          style={{
-            color: 'var(--muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexWrap: 'wrap',
-            letterSpacing: '0.04em',
-          }}
-        >
-          <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-            Collection
-          </span>
-          <span aria-hidden>·</span>
-          <span>{category.label}</span>
-          <span aria-hidden>·</span>
-          <span>{docs.length} docs</span>
-          {category.subs.length > 0 ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>{category.subs.length} weeks</span>
-            </>
-          ) : null}
-          {continueDoc?.touchedAt ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>{formatWhen(continueDoc.touchedAt)}</span>
-            </>
-          ) : null}
-          <span aria-hidden>·</span>
-          {continueDoc ? (
-            <button
-              type="button"
-              onClick={() => openPrimaryAction(continueDoc)}
-              style={inlineActionStyle(true)}
-            >
-              Continue collection
-            </button>
-          ) : startDoc ? (
-            <button
-              type="button"
-              onClick={() => router.push(startDoc.href)}
-              style={inlineActionStyle(true)}
-            >
-              Open first doc
-            </button>
-          ) : null}
-        </div>
-      </section>
-
-      <Block label="All material" id="materials">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
-          {groups.map((group) => (
-            <section
-              key={group.label || '_root'}
-              id={group.label ? encodeURIComponent(group.label) : undefined}
-              style={{
-                scrollMarginTop: '2rem',
-                paddingTop: group.label ? '0.15rem' : 0,
-              }}
-            >
-              {group.label && (
-                <header
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
+        {groups.map((group) => (
+          <section
+            key={group.label || '_root'}
+            id={group.label ? encodeURIComponent(group.label) : undefined}
+            style={{ scrollMarginTop: '2rem' }}
+          >
+            {group.label && (
+              <header style={{ padding: '0 0 0.5rem' }}>
+                <div
+                  className="t-headline"
                   style={{
-                    padding: '0 0 0.7rem',
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    justifyContent: 'space-between',
-                    gap: 12,
+                    fontFamily: 'var(--display)',
+                    letterSpacing: '-0.014em',
+                    color: 'var(--fg)',
                   }}
                 >
-                  <div
-                    className="t-headline"
+                  {group.label}
+                </div>
+              </header>
+            )}
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {group.docs.map((doc, index) => {
+                const surface = surfaces.find((item) => item.id === doc.id) ?? null;
+                const indicator = surface && surface.state !== 'new'
+                  ? surface.state === 'finished'
+                    ? { label: 'done', color: 'var(--accent)' }
+                    : surface.state === 'woven'
+                      ? { label: `${surface.anchorCount}`, color: 'var(--fg-secondary)' }
+                      : { label: '·', color: 'var(--muted)' }
+                  : null;
+                return (
+                  <li
+                    key={doc.id}
                     style={{
-                      fontFamily: 'var(--display)',
-                      letterSpacing: '-0.014em',
-                      color: 'var(--fg)',
+                      borderBottom: index < group.docs.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
                     }}
                   >
-                    {group.label}
-                  </div>
-                  <div className="t-caption" style={{ color: 'var(--muted)', fontWeight: 600 }}>
-                    {group.docs.length} {group.docs.length === 1 ? 'item' : 'items'}
-                  </div>
-                </header>
-              )}
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {group.docs.map((doc, index) => {
-                  const surface = surfaces.find((item) => item.id === doc.id) ?? null;
-                  return (
-                    <li
-                      key={doc.id}
+                    <Link
+                      href={doc.href}
                       style={{
-                        borderBottom: index < group.docs.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        gap: 10,
+                        padding: '0.7rem 0',
+                        textDecoration: 'none',
+                        color: 'var(--fg)',
                       }}
                     >
-                      <Link
-                        href={doc.href}
+                      <span
+                        className="t-headline"
                         style={{
-                          display: 'block',
-                          padding: '0.85rem 0',
-                          textDecoration: 'none',
-                          color: 'var(--fg)',
+                          flex: 1,
+                          fontFamily: 'var(--display)',
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                          <span className="t-headline" style={{ fontFamily: 'var(--display)' }}>
-                            {doc.title}
-                          </span>
-                          <span
-                            className="t-caption2"
-                            style={{
-                              color: 'var(--muted)',
-                              fontFamily: 'var(--mono)',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.06em',
-                            }}
-                          >
-                            {doc.ext.slice(1)}
-                          </span>
-                          {surface && surface.state !== 'new' && (
-                            <span
-                              className="t-caption2"
-                              style={{
-                                color: surface.state === 'finished' ? 'var(--accent)' : 'var(--muted)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.06em',
-                                fontWeight: 700,
-                              }}
-                            >
-                              {stateLabel(surface)}
-                            </span>
-                          )}
-                        </div>
-                        {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface)) && (
-                          <div
-                            className="t-footnote"
-                            style={{
-                              color: 'var(--muted)',
-                              marginTop: 4,
-                              lineHeight: 1.5,
-                              overflow: 'hidden',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                            }}
-                          >
-                            {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface))}
-                          </div>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
-      </Block>
+                        {doc.title}
+                      </span>
+                      {indicator && (
+                        <span
+                          className="t-caption2"
+                          style={{
+                            color: indicator.color,
+                            flexShrink: 0,
+                            fontWeight: 600,
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {indicator.label}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
