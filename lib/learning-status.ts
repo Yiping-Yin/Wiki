@@ -103,10 +103,9 @@ export function summarizeLearningStatus(
         } else {
           captureCount += 1;
         }
-      } else if (event.kind === 'crystallize' && !event.anchorId) {
-        crystallized = true;
       }
     }
+    if (trace.crystallizedAt) crystallized = true;
   }
 
   const opened = Boolean(viewedAt || traceList.length > 0);
@@ -185,10 +184,9 @@ export function summarizeLearningSurface(
           latestQuote = event.quote ?? '';
           latestAnchorId = event.anchorId;
         }
-      } else if (event.kind === 'crystallize' && !event.anchorId) {
-        finished = true;
       }
     }
+    if (trace.crystallizedAt) finished = true;
   }
 
   return {

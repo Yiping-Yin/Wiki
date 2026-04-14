@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LearningStatusInline } from './LearningStatusInline';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
-import { useAllTraces, useRemoveEvents, type Trace } from '../lib/trace';
+import { useAllTraces, useAppendEvent, type Trace } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { continuePanelLifecycle, openPanelReview } from '../lib/panel-resume';
 import { derivePanelFromTraces, useAllPanels, type Panel as StoredPanel, type PanelSection as StoredPanelSection } from '../lib/panel';
@@ -179,7 +179,7 @@ type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
 export function KesiView() {
   const { traces, loading } = useAllTraces();
   const { panels: storedPanels, loading: panelsLoading } = useAllPanels();
-  const removeEvents = useRemoveEvents();
+  const append = useAppendEvent();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
@@ -984,7 +984,7 @@ export function KesiView() {
                         e.stopPropagation();
                         void Promise.all(
                           panel.traceIds.map((traceId) =>
-                            removeEvents(traceId, (ev) => ev.kind === 'crystallize'),
+                            append(traceId, { kind: 'panel-reopen', at: Date.now() }),
                           ),
                         );
                       }}

@@ -114,7 +114,7 @@ export function HomeClient(_props: unknown) {
     let count = 0;
     for (const trace of traces) {
       if (trace.parentId !== null || !trace.source?.docId) continue;
-      if (trace.events.some((event) => event.kind === 'crystallize')) count += 1;
+      if (trace.crystallizedAt) count += 1;
     }
     return count;
   }, [traces]);

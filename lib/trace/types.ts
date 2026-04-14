@@ -83,6 +83,14 @@ export type TraceEvent =
    *   in the same trace, one per locked container.
    */
   | { kind: 'crystallize'; summary: string; at: number; anchorId?: string; }
+  /**
+   * Re-open a previously crystallized panel-level judgment.
+   *
+   * Unlike deleting the crystallize event, this preserves the fact that the
+   * panel *was* once settled. The current state becomes "in revision" again,
+   * while the historical crystallization remains auditable.
+   */
+  | { kind: 'panel-reopen'; at: number; }
   | { kind: 'prereq-resolved'; concept: string; childTraceId?: string; at: number; }
   | { kind: 'spec-locked'; content: string; at: number; }
   | { kind: 'execute-step'; content: string; verified?: boolean; at: number; }

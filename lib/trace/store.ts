@@ -14,6 +14,7 @@
 
 import type { Trace, TraceCreateInput, TraceEvent } from './types';
 import { newTraceId } from './types';
+import { tracePanelLifecycle } from './panel-lifecycle';
 
 const DB_NAME = 'loom';
 const DB_VERSION = 1;
@@ -69,8 +70,6 @@ function recompute(t: Trace): Trace {
   let updatedAt = t.updatedAt;
   let visitCount = 0;
   let totalDurationMs = 0;
-  let crystallizedSummary: string | undefined;
-  let crystallizedAt: number | undefined;
   let firstEventAt: number | undefined;
   let lastEventAt: number | undefined;
 
@@ -80,14 +79,9 @@ function recompute(t: Trace): Trace {
     if (e.kind === 'visit') {
       visitCount++;
       totalDurationMs += e.durationMs ?? 0;
-    } else if (e.kind === 'crystallize' && !(e as any).anchorId) {
-      // Trace-level crystallize only. Anchor-scoped crystallize events
-      // (with anchorId set) mark individual thought containers, not the
-      // whole trace — they are resolved by thought-anchor-model.ts.
-      crystallizedSummary = e.summary;
-      crystallizedAt = e.at;
     }
   }
+  const { crystallizedSummary, crystallizedAt } = tracePanelLifecycle(t);
   if (firstEventAt !== undefined) createdAt = Math.min(createdAt || firstEventAt, firstEventAt);
   if (lastEventAt !== undefined) updatedAt = Math.max(updatedAt || lastEventAt, lastEventAt);
 

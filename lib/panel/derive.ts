@@ -24,6 +24,7 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
 
   let crystallizedAt = 0;
   let crystallizedSummary = '';
+  let reopenedAt = 0;
   const latestByPosition = new Map<string, PanelSection>();
 
   for (const trace of traces) {
@@ -31,6 +32,9 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
       if (event.kind === 'crystallize' && !event.anchorId && event.at > crystallizedAt) {
         crystallizedAt = event.at;
         crystallizedSummary = event.summary;
+      }
+      if (event.kind === 'panel-reopen' && event.at > reopenedAt) {
+        reopenedAt = event.at;
       }
       if (event.kind !== 'thought-anchor') continue;
       const key = passagePositionKey({
@@ -96,7 +100,7 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
   const status =
     crystallizedAt === 0
       ? 'provisional'
-      : latestSectionAt > crystallizedAt || openTensions.length > 0
+      : reopenedAt > crystallizedAt || latestSectionAt > crystallizedAt || openTensions.length > 0
         ? 'contested'
         : 'settled';
 

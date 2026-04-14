@@ -126,7 +126,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
   // as "the user has woven this." Idempotent — calling on an already-
   // crystallized panel is a no-op (the meta strip hides the button).
   const isCrystallized = readingTrace
-    ? readingTrace.events.some((e) => e.kind === 'crystallize')
+    ? Boolean(readingTrace.crystallizedAt)
     : false;
   const crystallize = async () => {
     if (!readingTrace || isCrystallized) return;
@@ -147,7 +147,10 @@ export function LiveArtifact({ docId }: { docId: string }) {
   };
   const uncrystallize = async () => {
     if (!readingTrace) return;
-    await removeEvents(readingTrace.id, (e) => e.kind === 'crystallize');
+    await append(readingTrace.id, {
+      kind: 'panel-reopen',
+      at: Date.now(),
+    });
   };
 
   const totalVersions = versions.length;

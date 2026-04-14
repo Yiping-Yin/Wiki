@@ -117,14 +117,17 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const hasThoughts = thoughtItems.length > 0;
   const [introVisibility, setIntroVisibility] = useState(1);
   const panelCrystallized = Boolean(
-    primaryReadingTrace?.events.some((event) => event.kind === 'crystallize' && !event.anchorId),
+    primaryReadingTrace?.crystallizedAt,
   );
   const panelDocHref = primaryReadingTrace?.source?.href ?? null;
   const backlinks = useBacklinksForDoc(ctx.isFree ? null : ctx.docId, panelDocHref);
   const uncrystallizePanel = useCallback(async () => {
     if (!primaryReadingTrace) return;
-    await removeEvents(primaryReadingTrace.id, (event) => event.kind === 'crystallize' && !event.anchorId);
-  }, [primaryReadingTrace, removeEvents]);
+    await append(primaryReadingTrace.id, {
+      kind: 'panel-reopen',
+      at: Date.now(),
+    });
+  }, [append, primaryReadingTrace]);
   const panelRelations = useMemo(() => {
     const incoming = new Map<string, RelatedDocPreview>();
     for (const backlink of backlinks) {
