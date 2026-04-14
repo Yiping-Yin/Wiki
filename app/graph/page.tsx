@@ -463,9 +463,6 @@ export default function GraphPage() {
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 650, letterSpacing: '-0.02em' }}>
           Panels and the threads between them
         </h1>
-        <div style={{ fontSize: '0.84rem', color: 'var(--muted)', marginTop: 4 }}>
-          {panelCount} woven panels · {relationCount} cross-document references
-        </div>
         <div
           style={{
             display: 'flex',
@@ -498,17 +495,6 @@ export default function GraphPage() {
               letterSpacing: '-0.01em',
             }}
           />
-          <span
-            className="t-caption2"
-            style={{
-              color: 'var(--muted)',
-              fontFamily: 'var(--mono)',
-              fontVariantNumeric: 'tabular-nums',
-              flexShrink: 0,
-            }}
-          >
-            {visibleNodes.length}
-          </span>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
           {familyOptions.map((family) => {
