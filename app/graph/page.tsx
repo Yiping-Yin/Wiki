@@ -28,7 +28,7 @@ type RelatedPanel = {
   id: string;
   panel: PanelNode;
   weight: number;
-  snippet: string;
+  evidence: Array<{ anchorId?: string; snippet: string; at: number }>;
   status: 'suggested' | 'confirmed' | 'rejected';
 };
 
@@ -268,14 +268,14 @@ export default function GraphPage() {
               id: item.id,
               panel: item.panel,
               weight: item.weight,
-              snippet: item.snippets[0] ?? '',
+              evidence: item.evidence,
               status: item.status,
             })),
             outgoing: value.outgoing.map((item) => ({
               id: item.id,
               panel: item.panel,
               weight: item.weight,
-              snippet: item.snippets[0] ?? '',
+              evidence: item.evidence,
               status: item.status,
             })),
           },
@@ -313,7 +313,8 @@ export default function GraphPage() {
             }
           }
         }
-        for (const { content, summary } of latestByAnchor.values()) {
+        for (const [anchorId, note] of latestByAnchor.entries()) {
+          const { content, summary, at } = note;
           for (const url of extractMarkdownLinkUrls(content)) {
             const targetPanel =
               Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href)) ??
@@ -328,14 +329,14 @@ export default function GraphPage() {
               id: key,
               panel: targetPanel,
               weight: edgeWeights.get(key) ?? 1,
-              snippet: relationSnippet(summary, content),
+              evidence: [{ anchorId, snippet: relationSnippet(summary, content), at }],
               status: 'suggested',
             });
             targetPreview.incoming.set(panel.docId, {
               id: key,
               panel,
               weight: edgeWeights.get(key) ?? 1,
-              snippet: relationSnippet(summary, content),
+              evidence: [{ anchorId, snippet: relationSnippet(summary, content), at }],
               status: 'suggested',
             });
             previewMap.set(panel.docId, sourcePreview);
@@ -483,10 +484,10 @@ export default function GraphPage() {
     window.setTimeout(() => setCopied(false), 1200);
   };
 
-  const openReview = (panel: PanelNode) => {
+  const openReview = (panel: PanelNode, anchorId?: string | null) => {
     openPanelReview(router, {
       href: panel.href,
-      anchorId: panel.latestAnchorId,
+      anchorId: anchorId ?? panel.latestAnchorId,
     });
   };
 
@@ -507,6 +508,23 @@ export default function GraphPage() {
       latestAnchorId: panel.latestAnchorId,
       refreshSource: 'graph',
     });
+  };
+
+  const openRelationEvidence = (
+    direction: 'incoming' | 'outgoing',
+    related: RelatedPanel,
+  ) => {
+    const evidenceAnchorId = related.evidence[0]?.anchorId ?? null;
+    if (!evidenceAnchorId) {
+      return openReview(direction === 'incoming' ? related.panel : (focusPanel ?? related.panel));
+    }
+    if (direction === 'incoming') {
+      return openReview(related.panel, evidenceAnchorId);
+    }
+    if (focusPanel) {
+      return openReview(focusPanel, evidenceAnchorId);
+    }
+    return openReview(related.panel, evidenceAnchorId);
   };
 
   if (loading || panelCount === 0) return null;
@@ -659,8 +677,10 @@ export default function GraphPage() {
                     {focusRelated.incoming.length > 0 && (
                       <RelatedList
                         label="Referenced by"
+                        direction="incoming"
                         items={focusRelated.incoming}
                         onSelect={focusPanelNode}
+                        onOpenEvidence={openRelationEvidence}
                         onConfirm={markWeave}
                         onReject={markWeave}
                       />
@@ -668,8 +688,10 @@ export default function GraphPage() {
                     {focusRelated.outgoing.length > 0 && (
                       <RelatedList
                         label="Points to"
+                        direction="outgoing"
                         items={focusRelated.outgoing}
                         onSelect={focusPanelNode}
+                        onOpenEvidence={openRelationEvidence}
                         onConfirm={markWeave}
                         onReject={markWeave}
                       />
@@ -739,14 +761,18 @@ const focusLinkStyle = {
 
 function RelatedList({
   label,
+  direction,
   items,
   onSelect,
+  onOpenEvidence,
   onConfirm,
   onReject,
 }: {
   label: string;
+  direction: 'incoming' | 'outgoing';
   items: RelatedPanel[];
   onSelect: (panel: PanelNode) => void;
+  onOpenEvidence: (direction: 'incoming' | 'outgoing', related: RelatedPanel) => void;
   onConfirm: (id: string, status: 'confirmed' | 'rejected') => Promise<void>;
   onReject: (id: string, status: 'confirmed' | 'rejected') => Promise<void>;
 }) {
@@ -799,17 +825,28 @@ function RelatedList({
                   {related.panel.title}
                 </span>
               </div>
-              {related.snippet ? (
-                <div
+              {related.evidence[0]?.snippet ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenEvidence(direction, related);
+                  }}
                   style={{
+                    appearance: 'none',
+                    border: 0,
+                    padding: 0,
+                    background: 'transparent',
+                    textAlign: 'left',
+                    cursor: 'pointer',
                     color: 'var(--fg-secondary)',
                     fontSize: '0.76rem',
                     lineHeight: 1.45,
                     marginTop: 2,
                   }}
                 >
-                  {related.snippet}
-                </div>
+                  {related.evidence[0].snippet}
+                </button>
               ) : null}
             </button>
             <div

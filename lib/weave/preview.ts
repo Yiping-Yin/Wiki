@@ -1,12 +1,12 @@
 'use client';
 
-import type { Weave } from './types';
+import type { Weave, WeaveEvidence } from './types';
 
 export type WeavePreviewItem<TPanel> = {
   id: string;
   panel: TPanel;
   weight: number;
-  snippets: string[];
+  evidence: WeaveEvidence[];
   status: Weave['status'];
   kind: Weave['kind'];
 };
@@ -36,7 +36,7 @@ export function buildWeavePreview<TPanel extends { docId: string }>(
       id: weave.id,
       panel: to,
       weight: Math.max(1, weave.evidence.length),
-      snippets: weave.evidence.map((item) => item.snippet).filter(Boolean),
+      evidence: weave.evidence,
       status: weave.status,
       kind: weave.kind,
     });
@@ -44,7 +44,7 @@ export function buildWeavePreview<TPanel extends { docId: string }>(
       id: weave.id,
       panel: from,
       weight: Math.max(1, weave.evidence.length),
-      snippets: weave.evidence.map((item) => item.snippet).filter(Boolean),
+      evidence: weave.evidence,
       status: weave.status,
       kind: weave.kind,
     });
