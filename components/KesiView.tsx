@@ -915,42 +915,42 @@ export function KesiView() {
           <ToolbarChip
             active={sourceFilter === 'all'}
             onClick={() => setSourceFilter('all')}
-            label={`All · ${filterCounts.all}`}
+            label="All"
           />
           <ToolbarChip
             active={sourceFilter === 'knowledge'}
             onClick={() => setSourceFilter('knowledge')}
-            label={`Knowledge · ${filterCounts.knowledge}`}
+            label="Knowledge"
           />
           <ToolbarChip
             active={sourceFilter === 'wiki'}
             onClick={() => setSourceFilter('wiki')}
-            label={`LLM · ${filterCounts.wiki}`}
+            label="LLM"
           />
           <ToolbarChip
             active={sourceFilter === 'upload'}
             onClick={() => setSourceFilter('upload')}
-            label={`Intake · ${filterCounts.upload}`}
+            label="Intake"
           />
           <ToolbarChip
             active={recencyFilter === 'all'}
             onClick={() => setRecencyFilter('all')}
-            label={`Any time · ${filterCounts.all}`}
+            label="Any time"
           />
           <ToolbarChip
             active={recencyFilter === 'fresh'}
             onClick={() => setRecencyFilter('fresh')}
-            label={`Near · ${filterCounts.fresh}`}
+            label="Near"
           />
           <ToolbarChip
             active={recencyFilter === 'cooling'}
             onClick={() => setRecencyFilter('cooling')}
-            label={`Holding · ${filterCounts.cooling}`}
+            label="Holding"
           />
           <ToolbarChip
             active={recencyFilter === 'stale'}
             onClick={() => setRecencyFilter('stale')}
-            label={`Far · ${filterCounts.stale}`}
+            label="Far"
           />
         </div>
 
