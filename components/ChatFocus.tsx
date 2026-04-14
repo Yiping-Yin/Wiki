@@ -26,13 +26,14 @@ import {
   resolveBlockElement,
   stableFragmentAnchorId,
 } from '../lib/passage-locator';
+import { getAiStage } from '../lib/ai/stage-model';
+import { runAiText } from '../lib/ai/runtime';
 import {
   useTracesForDoc,
   useAppendEvent,
   type Trace,
 } from '../lib/trace';
 import { recompileSystemPrompt, commitSystemPrompt, discussionSystemPrompt } from '../lib/ai/system-prompt';
-import { readAiCliPreference } from '../lib/ai-cli';
 import { contextFromPathname } from '../lib/doc-context';
 import { useSmallScreen } from '../lib/use-small-screen';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
@@ -467,60 +468,30 @@ export function ChatFocus() {
     context: string,
     mirrorToArtifact: boolean,
     docIdForMirror: string | null,
+    stage: 'clarify-passage' | 'commit-anchor',
   ): Promise<string> => {
     let assistantBuf = '';
     const ac = new AbortController();
     abortRef.current = ac;
-    let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
-    const resetTimer = () => {
-      if (inactivityTimer) clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => ac.abort(), 60_000);
-    };
     try {
-      const r = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ messages, cli: readAiCliPreference(), context }),
+      assistantBuf = await runAiText({
+        stage: getAiStage(stage).id,
+        messages,
+        context,
         signal: ac.signal,
-      });
-      if (!r.ok || !r.body) throw new Error('chat failed');
-      const reader = r.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
-      resetTimer();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        resetTimer();
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop() ?? '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
-          try {
-            const json = JSON.parse(data);
-            if (json.error) throw new Error(json.error);
-            if (json.delta) {
-              assistantBuf += json.delta;
-              setStreamBuf(assistantBuf);
-              if (mirrorToArtifact && docIdForMirror) {
-                window.dispatchEvent(new CustomEvent('loom:artifact:stream', {
-                  detail: { docId: docIdForMirror, content: assistantBuf },
-                }));
-              }
-            }
-          } catch (e) {
-            if (e instanceof SyntaxError) continue;
-            throw e;
+        onDelta: (_delta, full) => {
+          assistantBuf = full;
+          setStreamBuf(full);
+          if (mirrorToArtifact && docIdForMirror) {
+            window.dispatchEvent(new CustomEvent('loom:artifact:stream', {
+              detail: { docId: docIdForMirror, content: full },
+            }));
           }
-        }
-      }
+        },
+      });
     } catch (e: any) {
       if (e.name !== 'AbortError') assistantBuf = `[error: ${e.message}]`;
     } finally {
-      if (inactivityTimer) clearTimeout(inactivityTimer);
       abortRef.current = null;
     }
     return assistantBuf;
@@ -555,6 +526,7 @@ export function ChatFocus() {
       }),
       false,
       null,
+      'clarify-passage',
     );
 
     setStreaming(false);
@@ -649,6 +621,7 @@ export function ChatFocus() {
       }),
       false, // don't mirror — thought-anchors render via AnchorDot, not LiveArtifact
       null,
+      'commit-anchor',
     );
 
     setStreaming(false);

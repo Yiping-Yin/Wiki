@@ -1,6 +1,6 @@
 'use client';
-import { readAiCliPreference } from '../../lib/ai-cli';
-import { readSseToString } from '../../lib/ai/sse-reader';
+import { getAiStage } from '../../lib/ai/stage-model';
+import { callAiPrompt } from '../../lib/ai/runtime';
 /**
  * RehearsalPanel · editable scratch surface for the Producing learning state.
  *
@@ -122,29 +122,9 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
     if (!selected.trim()) return;
 
     setTransforming(true);
-    setStatus('⌘K shaping…');
-    // Signal notch: AI is working
-    window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-start' } }));
+    setStatus(`${getAiStage('rehearsal-transform').title}…`);
     try {
-      const ac = new AbortController();
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'user',
-              content: buildTransformPrompt(selected),
-            },
-          ],
-          cli: readAiCliPreference(),
-        }),
-        signal: ac.signal,
-      });
-      if (!response.ok || !response.body) {
-        throw new Error(`AI call failed: ${response.status}`);
-      }
-      const result = await readSseToString(response.body, ac.signal);
+      const result = await callAiPrompt('rehearsal-transform', buildTransformPrompt(selected));
       if (!result.trim()) {
         throw new Error('Empty response from AI');
       }
@@ -171,7 +151,6 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
       window.setTimeout(() => setStatus(null), 3000);
     } finally {
       setTransforming(false);
-      window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-end' } }));
     }
   }, [draft]);
 

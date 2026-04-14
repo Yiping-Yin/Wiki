@@ -15,7 +15,8 @@ import { useCallback, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { contextFromPathname } from '../lib/doc-context';
 import { recompileSystemPrompt } from '../lib/ai/system-prompt';
-import { readAiCliPreference } from '../lib/ai-cli';
+import { getAiStage } from '../lib/ai/stage-model';
+import { runAiText } from '../lib/ai/runtime';
 import { useSmallScreen } from '../lib/use-small-screen';
 import { useTracesForDoc, useAppendEvent } from '../lib/trace';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
@@ -72,53 +73,22 @@ export function FreeInput() {
       abortRef.current = ac;
       let buf = '';
 
-      const r = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: text }],
-          cli: readAiCliPreference(),
-          context: recompileSystemPrompt({
-            sourceTitle: ctx.sourceTitle,
-            href: ctx.href,
-            priorArtifact,
-          }),
+      await runAiText({
+        stage: getAiStage('free-recompile').id,
+        messages: [{ role: 'user', content: text }],
+        context: recompileSystemPrompt({
+          sourceTitle: ctx.sourceTitle,
+          href: ctx.href,
+          priorArtifact,
         }),
         signal: ac.signal,
+        onDelta: (_delta, full) => {
+          buf = full;
+          window.dispatchEvent(new CustomEvent('loom:artifact:stream', {
+            detail: { docId: ctx.docId, content: full },
+          }));
+        },
       });
-
-      if (!r.ok || !r.body) {
-        setAiError('AI unreachable — press Enter to retry.');
-      } else if (r.ok && r.body) {
-        const reader = r.body.getReader();
-        const decoder = new TextDecoder();
-        let raw = '';
-        while (true) {
-          const { value: chunk, done } = await reader.read();
-          if (done) break;
-          raw += decoder.decode(chunk, { stream: true });
-          const lines = raw.split('\n');
-          raw = lines.pop() ?? '';
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
-            try {
-              const json = JSON.parse(data);
-              if (json.error) throw new Error(json.error);
-              if (json.delta) {
-                buf += json.delta;
-                window.dispatchEvent(new CustomEvent('loom:artifact:stream', {
-                  detail: { docId: ctx.docId, content: buf },
-                }));
-              }
-            } catch (parseErr) {
-              if (parseErr instanceof SyntaxError) continue;
-              throw parseErr;
-            }
-          }
-        }
-      }
 
       // Commit the recompiled artifact
       if (buf) {

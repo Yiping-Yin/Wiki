@@ -1,6 +1,6 @@
 'use client';
-import { readAiCliPreference } from '../../lib/ai-cli';
-import { readSseToString } from '../../lib/ai/sse-reader';
+import { getAiStage } from '../../lib/ai/stage-model';
+import { callAiPrompt } from '../../lib/ai/runtime';
 /**
  * AIExaminer · Phase 5 (Verifying) component.
  *
@@ -126,10 +126,9 @@ export function AIExaminer({ docId, contextNotes }: Props) {
       return;
     }
     setPhase({ kind: 'generating' });
-    window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-start' } }));
     try {
       const prompt = buildQuestionPrompt(contextNotes, examinerHistory);
-      const question = await callAi(prompt);
+      const question = await callAiPrompt(getAiStage('examiner-question').id, prompt);
       if (!question.trim()) throw new Error('Empty question from AI');
       setPhase({ kind: 'awaiting-answer', question });
       setDraft('');
@@ -141,8 +140,6 @@ export function AIExaminer({ docId, contextNotes }: Props) {
         verdict: 'retry',
         feedback: `Failed to generate question: ${err instanceof Error ? err.message : String(err)}`,
       });
-    } finally {
-      window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-end' } }));
     }
   }, [docId, contextNotes, examinerHistory]);
 
@@ -151,10 +148,9 @@ export function AIExaminer({ docId, contextNotes }: Props) {
     if (!draft.trim()) return;
     const answer = draft.trim();
     setPhase({ kind: 'grading', question: phase.question, answer });
-    window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-start' } }));
     try {
       const gradingPrompt = buildGradingPrompt(phase.question, answer, contextNotes);
-      const raw = await callAi(gradingPrompt);
+      const raw = await callAiPrompt(getAiStage('examiner-grade').id, gradingPrompt);
       const parsed = parseGradingResponse(raw);
       setPhase({
         kind: 'verdict',
@@ -200,8 +196,6 @@ export function AIExaminer({ docId, contextNotes }: Props) {
         verdict: 'retry',
         feedback: `Grading failed: ${err instanceof Error ? err.message : String(err)}`,
       });
-    } finally {
-      window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-end' } }));
     }
   }, [phase, draft, contextNotes, docId]);
 
@@ -708,22 +702,6 @@ function buildRehearsalSeed(question: string, feedback: string) {
   }
   parts.push('', 'Answer again, cleanly and from memory:');
   return parts.join('\n');
-}
-
-async function callAi(prompt: string, signal?: AbortSignal): Promise<string> {
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: [{ role: 'user', content: prompt }],
-      cli: readAiCliPreference(),
-    }),
-    signal,
-  });
-  if (!response.ok || !response.body) {
-    throw new Error(`AI call failed: ${response.status}`);
-  }
-  return readSseToString(response.body, signal);
 }
 
 function docHrefFromDocId(docId: string): string {

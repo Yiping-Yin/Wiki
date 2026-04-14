@@ -1,6 +1,6 @@
 'use client';
-import { readAiCliPreference } from '../../lib/ai-cli';
-import { readSseToString } from '../../lib/ai/sse-reader';
+import { getAiStage } from '../../lib/ai/stage-model';
+import { callAiPrompt } from '../../lib/ai/runtime';
 /**
  * IngestionPanel · Phase 0 drag-drop ingestion for plain text / markdown files.
  *
@@ -69,9 +69,7 @@ export function IngestionPanel({ existingIngested }: Props) {
       if (!text.trim()) {
         throw new Error('File is empty');
       }
-      window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-start' } }));
       const summary = await summarizeWithAi(text, file.name);
-      window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-end' } }));
 
       // Save as a Note with a synthetic "ingested:<name>" target
       const pseudoDocId = `ingested:${file.name}`;
@@ -389,16 +387,5 @@ async function summarizeWithAi(content: string, filename: string): Promise<strin
     content.slice(0, 8000) + (content.length > 8000 ? '\n\n[truncated]' : ''),
   ].join('\n');
 
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: [{ role: 'user', content: prompt }],
-      cli: readAiCliPreference(),
-    }),
-  });
-  if (!response.ok || !response.body) {
-    throw new Error(`AI call failed: ${response.status}`);
-  }
-  return readSseToString(response.body);
+  return callAiPrompt(getAiStage('ingestion-summary').id, prompt);
 }
