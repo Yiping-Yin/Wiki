@@ -12,6 +12,7 @@
  *   - No hidden ordering assumptions; callers explicit about sort
  */
 import type { Note, NoteId, SourceDocId } from './types';
+import { passagePositionKey } from '../passage-locator';
 
 /** Keep only Notes whose anchor target matches. */
 export function filterByAnchorTarget(
@@ -127,15 +128,13 @@ export function groupByAnchorPosition(notes: Note[]): Map<string, Note[]> {
  * when available; falls back to target + blockId.
  */
 export function containerKey(n: Note): string {
-  const text = n.anchor.blockText ?? '';
-  const r = n.anchor.range;
-  if (text && r) {
-    return `pos::${text}::${r.charStart}-${r.charEnd}`;
-  }
-  if (text) return `pos::${text}::block`;
-  const target = n.anchor.target ?? 'untargeted';
-  const blockId = n.anchor.blockId ?? 'noblock';
-  return `id::${target}::${blockId}`;
+  return passagePositionKey({
+    blockId: n.anchor.blockId,
+    blockText: n.anchor.blockText,
+    charStart: n.anchor.range?.charStart,
+    charEnd: n.anchor.range?.charEnd,
+    target: n.anchor.target,
+  });
 }
 
 /**

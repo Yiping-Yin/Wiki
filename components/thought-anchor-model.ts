@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useTracesForDoc } from '../lib/trace';
 import type { Trace } from '../lib/trace';
-import { resolveBlockElement } from '../lib/passage-locator';
+import { passagePositionKey, resolveBlockElement } from '../lib/passage-locator';
 
 /**
  * A single version of a thought inside a ThoughtAnchorView container.
@@ -198,14 +198,13 @@ export function buildThoughtAnchorViewsFromTraces(readingTraces: Trace[]): Thoug
   //
   // Key format: `${anchorBlockText}::${charStart}-${charEnd}`
   // If no block text or char range is available, fall back to anchorId.
-  const containerKey = (e: any): string => {
-    const text = (e.anchorBlockText as string | undefined) ?? '';
-    const cs = (e.anchorCharStart as number | undefined) ?? -1;
-    const ce = (e.anchorCharEnd as number | undefined) ?? -1;
-    if (text && (cs >= 0 || ce >= 0)) return `pos::${text}::${cs}-${ce}`;
-    if (text) return `pos::${text}::block`;
-    return `id::${e.anchorId}`;
-  };
+  const containerKey = (e: any): string => passagePositionKey({
+    anchorId: e.anchorId,
+    blockId: e.anchorBlockId,
+    blockText: e.anchorBlockText,
+    charStart: e.anchorCharStart,
+    charEnd: e.anchorCharEnd,
+  });
 
   // First pass: bucket all thought-anchor events by container key, and
   // collect all anchor-scoped crystallize events (events with anchorId set).

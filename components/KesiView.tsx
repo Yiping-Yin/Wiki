@@ -13,6 +13,7 @@ import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/le
 import { useAllTraces, useRemoveEvents, type Trace } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { continuePanelLifecycle, openPanelReview } from '../lib/panel-resume';
+import { passagePositionKey } from '../lib/passage-locator';
 
 const TINTS = [
   'var(--tint-blue)',   'var(--tint-indigo)', 'var(--tint-purple)',
@@ -90,13 +91,14 @@ function buildPanels(traces: Trace[]): BasePanel[] {
         }
         if (e.kind !== 'thought-anchor') continue;
         stitchCount += 1;
-        const anchorKey = [
-          e.anchorId,
-          e.anchorBlockId ?? '',
-          e.anchorBlockText ?? '',
-          String(e.anchorCharStart ?? ''),
-          String(e.anchorCharEnd ?? ''),
-        ].join('::');
+        const anchorKey = passagePositionKey({
+          anchorId: e.anchorId,
+          blockId: e.anchorBlockId,
+          blockText: e.anchorBlockText,
+          charStart: e.anchorCharStart,
+          charEnd: e.anchorCharEnd,
+          target: docId,
+        });
         const prev = latestByAnchor.get(anchorKey);
         if (!prev || e.at > prev.at) {
           latestByAnchor.set(anchorKey, {

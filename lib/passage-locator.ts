@@ -76,6 +76,30 @@ export function stableFragmentAnchorId(blockId: string, charStart: number, charE
   return `${blockId}::frag:${Math.max(0, charStart)}-${Math.max(charStart, charEnd)}`;
 }
 
+/**
+ * Shared "same passage = same object" key.
+ *
+ * Prefer blockText + char range when available.
+ * Fall back to blockText-only, then to target/block identity.
+ */
+export function passagePositionKey(input: {
+  anchorId?: string;
+  blockId?: string;
+  blockText?: string;
+  charStart?: number | null;
+  charEnd?: number | null;
+  target?: string | null;
+}): string {
+  const text = input.blockText ?? '';
+  const cs = input.charStart ?? -1;
+  const ce = input.charEnd ?? -1;
+  if (text && (cs >= 0 || ce >= 0)) return `pos::${text}::${cs}-${ce}`;
+  if (text) return `pos::${text}::block`;
+  const target = input.target ?? 'untargeted';
+  const blockId = input.blockId ?? input.anchorId ?? 'noblock';
+  return `id::${target}::${blockId}`;
+}
+
 /** Similarity score between two strings (0-1). Uses character bigram overlap. */
 function similarity(a: string, b: string): number {
   if (!a || !b) return 0;

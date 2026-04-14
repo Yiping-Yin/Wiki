@@ -18,6 +18,7 @@
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAppendEvent, useRemoveEvents } from '../lib/trace';
+import { passagePositionKey } from '../lib/passage-locator';
 import type { ThoughtAnchorView } from './thought-anchor-model';
 import { locateAnchorElement } from './thought-anchor-model';
 
@@ -91,18 +92,25 @@ export function VersionedAnchorCard({
   // page reloads.
   const deleteContainer = async () => {
     if (!item.traceId) return;
-    const text = item.anchorBlockText ?? '';
-    const cs = item.anchorCharStart ?? -1;
-    const ce = item.anchorCharEnd ?? -1;
+    const key = passagePositionKey({
+      anchorId: item.anchorId,
+      blockId: item.anchorBlockId,
+      blockText: item.anchorBlockText,
+      charStart: item.anchorCharStart,
+      charEnd: item.anchorCharEnd,
+    });
     await removeEvents(
       item.traceId,
       (e) => {
         if (e.kind !== 'thought-anchor') return false;
         if (e.anchorId === item.anchorId) return true;
-        const etext = e.anchorBlockText ?? '';
-        const ecs = e.anchorCharStart ?? -1;
-        const ece = e.anchorCharEnd ?? -1;
-        return !!text && etext === text && ecs === cs && ece === ce;
+        return passagePositionKey({
+          anchorId: e.anchorId,
+          blockId: e.anchorBlockId,
+          blockText: e.anchorBlockText,
+          charStart: e.anchorCharStart,
+          charEnd: e.anchorCharEnd,
+        }) === key;
       },
     );
     // Also wipe any anchor-scoped crystallize events for this container
