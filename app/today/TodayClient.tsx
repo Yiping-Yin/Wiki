@@ -188,42 +188,12 @@ export function TodayClient({
     });
   }, [docsById, pins, traces, viewedByDocId, pinnedByDocId]);
 
-  const captureNext = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.nextAction === 'capture');
-  }, [surfaces]);
-
-  const rehearseNext = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.nextAction === 'rehearse');
-  }, [surfaces]);
-
-  const weakSpots = useMemo(() => {
-    return surfaces
-      .filter((surface) => surface.learning.weakSpot)
-      .sort((a, b) => {
-        if (b.learning.retryCount !== a.learning.retryCount) {
-          return b.learning.retryCount - a.learning.retryCount;
-        }
-        return a.learning.daysSinceTouch - b.learning.daysSinceTouch;
-      });
-  }, [surfaces]);
-
-  const examineNext = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.nextAction === 'examine');
-  }, [surfaces]);
-
-  const refreshNext = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.nextAction === 'refresh');
-  }, [surfaces]);
-
-  const revisit = useMemo(() => {
-    return surfaces.filter((surface) => surface.learning.nextAction === 'revisit');
-  }, [surfaces]);
-
   if (!mounted) return null;
   if (surfaces.length === 0) return null;
 
   const focusSurface = surfaces[0] ?? null;
   const focusId = focusSurface?.id ?? null;
+  const remainingSurfaces = surfaces.filter((surface) => surface.id !== focusId);
 
   const openNext = (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => {
     if (next === 'source') {
@@ -249,6 +219,26 @@ export function TodayClient({
     router.push(surface.href);
   };
 
+  const openPrimaryAction = (surface: StudySurface) => {
+    if (surface.learning.nextAction === 'refresh') {
+      openRefresh(surface);
+      return;
+    }
+    if (surface.learning.nextAction === 'rehearse') {
+      openNext(surface, 'rehearsal');
+      return;
+    }
+    if (surface.learning.nextAction === 'examine') {
+      openNext(surface, 'examiner');
+      return;
+    }
+    if (surface.learning.nextAction === 'capture') {
+      openNext(surface, 'source');
+      return;
+    }
+    openNext(surface, 'review');
+  };
+
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
       {focusSurface && (
@@ -260,13 +250,7 @@ export function TodayClient({
           actions={[
             {
               label: todayPrimaryActionLabel(focusSurface.learning.nextAction),
-              onClick: () => {
-                if (focusSurface.learning.nextAction === 'refresh') openRefresh(focusSurface);
-                else if (focusSurface.learning.nextAction === 'rehearse') openNext(focusSurface, 'rehearsal');
-                else if (focusSurface.learning.nextAction === 'examine') openNext(focusSurface, 'examiner');
-                else if (focusSurface.learning.nextAction === 'capture') openNext(focusSurface, 'source');
-                else openNext(focusSurface, 'review');
-              },
+              onClick: () => openPrimaryAction(focusSurface),
               primary: true,
             },
             { label: 'Open source', onClick: () => router.push(focusSurface.href) },
@@ -274,40 +258,12 @@ export function TodayClient({
         />
       )}
 
-      {captureNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Start">
-          <ScheduleList items={captureNext.filter((surface) => surface.id !== focusId)} next="source" cta="Open" onOpen={openNext} />
-        </Block>
-      )}
-
-      {rehearseNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Deepen">
-          <ScheduleList items={rehearseNext.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Write" onOpen={openNext} />
-        </Block>
-      )}
-
-      {weakSpots.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Retry">
-          <ScheduleList items={weakSpots.filter((surface) => surface.id !== focusId)} next="rehearsal" cta="Write again" onOpen={openNext} />
-        </Block>
-      )}
-
-      {examineNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Verify">
-          <ScheduleList items={examineNext.filter((surface) => surface.id !== focusId)} next="examiner" cta="Ask" onOpen={openNext} />
-        </Block>
-      )}
-
-      {refreshNext.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Warm">
-          <ScheduleList items={refreshNext.filter((surface) => surface.id !== focusId)} next="review" cta="Return" onOpen={() => {}} onPrimary={openRefresh} />
-        </Block>
-      )}
-
-      {revisit.filter((surface) => surface.id !== focusId).length > 0 && (
-        <Block label="Review">
-          <ScheduleList items={revisit.filter((surface) => surface.id !== focusId)} next="review" cta="Review" onOpen={openNext} />
-        </Block>
+      {remainingSurfaces.length > 0 && (
+        <ResumeList
+          items={remainingSurfaces}
+          onOpenPrimary={openPrimaryAction}
+          onOpenSource={(surface) => router.push(surface.href)}
+        />
       )}
 
       <ReviewCards traces={traces} docsById={docsById} onOpenReview={openNext} />
@@ -315,43 +271,14 @@ export function TodayClient({
   );
 }
 
-function Block({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <section style={{ marginBottom: '1.6rem' }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        marginBottom: 14,
-      }}>
-        <span aria-hidden style={{
-          width: 18, height: 1,
-          background: 'var(--accent)', opacity: 0.55,
-        }} />
-        <span className="t-caption2" style={{
-          color: 'var(--muted)',
-          textTransform: 'uppercase', letterSpacing: '0.10em',
-          fontWeight: 700,
-        }}>{label}</span>
-        <span aria-hidden style={{
-          flex: 1, height: 1, background: 'var(--mat-border)',
-        }} />
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function ScheduleList({
+function ResumeList({
   items,
-  next,
-  cta,
-  onOpen,
-  onPrimary,
+  onOpenPrimary,
+  onOpenSource,
 }: {
   items: StudySurface[];
-  next: 'source' | 'rehearsal' | 'examiner' | 'review';
-  cta: string;
-  onOpen?: (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => void;
-  onPrimary?: (surface: StudySurface) => void;
+  onOpenPrimary: (surface: StudySurface) => void;
+  onOpenSource: (surface: StudySurface) => void;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -407,10 +334,10 @@ function ScheduleList({
             </div>
           )}
 
-          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={() => (onPrimary ? onPrimary(item) : onOpen?.(item, next))}
+              onClick={() => onOpenPrimary(item)}
               style={{
                 padding: '0.42rem 0.72rem',
                 borderRadius: 999,
@@ -423,7 +350,24 @@ function ScheduleList({
                 cursor: 'pointer',
               }}
             >
-              {cta}
+              {todayPrimaryActionLabel(item.learning.nextAction)}
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenSource(item)}
+              style={{
+                padding: '0.42rem 0.72rem',
+                borderRadius: 999,
+                border: '0.5px solid var(--mat-border)',
+                background: 'transparent',
+                color: 'var(--fg-secondary)',
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                cursor: 'pointer',
+              }}
+            >
+              Source
             </button>
           </div>
         </div>
@@ -548,7 +492,24 @@ function ReviewCards({
   };
 
   return (
-    <Block label="Review">
+    <section style={{ marginTop: '1.8rem' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 14,
+      }}>
+        <span aria-hidden style={{
+          width: 18, height: 1,
+          background: 'var(--accent)', opacity: 0.55,
+        }} />
+        <span className="t-caption2" style={{
+          color: 'var(--muted)',
+          textTransform: 'uppercase', letterSpacing: '0.10em',
+          fontWeight: 700,
+        }}>Review</span>
+        <span aria-hidden style={{
+          flex: 1, height: 1, background: 'var(--mat-border)',
+        }} />
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {cards.map((card, i) => (
           <div
@@ -617,6 +578,6 @@ function ReviewCards({
           </div>
         ))}
       </div>
-    </Block>
+    </section>
   );
 }
