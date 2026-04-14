@@ -886,10 +886,6 @@ function WideThoughtHeader({
           letterSpacing: '0.04em',
         }}
       >
-        <span>{thought.versionCount > 1 ? `${thought.versionCount} versions` : 'first weave'}</span>
-        <span aria-hidden>·</span>
-        <span>{panelCrystallized ? 'settled panel' : thought.isCrystallized ? 'crystallized' : 'open'}</span>
-        <span aria-hidden>·</span>
         <button
           type="button"
           onClick={goToSource}
