@@ -6,12 +6,9 @@ export function KnowledgeHomeStatic({
 }: {
   groups: Array<{
     label: string;
-    count: number;
     items: Array<{
       slug: string;
       label: string;
-      count: number;
-      weeks: number;
     }>;
   }>;
 }) {

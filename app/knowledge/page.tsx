@@ -27,10 +27,9 @@ function groupTop(cats: Awaited<ReturnType<typeof getKnowledgeCategories>>) {
   return Array.from(groups.entries())
     .map(([label, items]) => ({
       label,
-      count: items.reduce((s, c) => s + c.count, 0),
       items: items.sort((a, b) => a.label.localeCompare(b.label)),
     }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export default async function KnowledgeHome() {
@@ -40,12 +39,9 @@ export default async function KnowledgeHome() {
 
   const clientGroups = groups.map((group) => ({
     label: group.label,
-    count: group.count,
     items: group.items.map((category) => ({
       slug: category.slug,
       label: category.label.replace(/^[^·]+·\s*/, ''),
-      count: category.count,
-      weeks: category.subs.filter((s) => s.label).length,
     })),
   }));
 

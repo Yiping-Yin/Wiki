@@ -20,12 +20,9 @@ type KnowledgeHomeDoc = {
 
 type KnowledgeHomeGroup = {
   label: string;
-  count: number;
   items: Array<{
     slug: string;
     label: string;
-    count: number;
-    weeks: number;
   }>;
 };
 
@@ -41,11 +38,8 @@ type CollectionSurface = {
   slug: string;
   label: string;
   href: string;
-  count: number;
-  weeks: number;
   touchedAt: number;
   activeDoc: CollectionDocSurface | null;
-  activeCount: number;
 };
 
 function docIdFor(doc: KnowledgeHomeDoc) {
@@ -151,16 +145,13 @@ export function KnowledgeHomeClient({
           slug: collection.slug,
           label: collection.label,
           href: `/knowledge/${collection.slug}`,
-          count: collection.count,
-          weeks: collection.weeks,
           touchedAt: activeDoc?.touchedAt ?? 0,
           activeDoc,
-          activeCount,
         });
       }
     }
 
-    return surfaces.sort((a, b) => b.touchedAt - a.touchedAt || b.activeCount - a.activeCount || a.label.localeCompare(b.label));
+    return surfaces.sort((a, b) => b.touchedAt - a.touchedAt || a.label.localeCompare(b.label));
   }, [docsByCategory, groups, tracesByDocId, viewedByDocId]);
 
   const focusCollection = collectionSurfaces.find((collection) => collection.activeDoc && collection.touchedAt > 0) ?? collectionSurfaces[0] ?? null;
@@ -177,12 +168,6 @@ export function KnowledgeHomeClient({
       latestAnchorId: activeDoc.learning.latestAnchorId,
       refreshSource: 'knowledge',
     });
-  };
-
-  const previewText = (collection: CollectionSurface) => {
-    const activeDoc = collection.activeDoc;
-    if (!activeDoc) return 'Open the collection and begin weaving.';
-    return activeDoc.latestSummary || activeDoc.latestQuote || activeDoc.preview || 'Return to the collection and keep weaving.';
   };
 
   return (
