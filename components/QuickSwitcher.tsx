@@ -358,15 +358,6 @@ export function QuickSwitcher() {
               {renderGroup('Tools', grouped.tools)}
             </>
           )}
-          {!q && (
-            <div className="t-caption2" style={{
-              padding: '10px 18px',
-              borderTop: '0.5px solid var(--mat-border)',
-              color: 'var(--muted)', marginTop: 6,
-            }}>
-              Type to match · ↑↓ move · ↵ open · Esc close
-            </div>
-          )}
         </div>
       </div>
     </div>

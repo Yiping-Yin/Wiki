@@ -514,9 +514,9 @@ export default function GraphPage() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
             {([
               ['all', 'All'],
-              ['nearby', `Nearby · ${scopeCounts.nearby}`],
-              ['incoming', `Incoming · ${scopeCounts.incoming}`],
-              ['outgoing', `Outgoing · ${scopeCounts.outgoing}`],
+              ['nearby', 'Nearby'],
+              ['incoming', 'Incoming'],
+              ['outgoing', 'Outgoing'],
             ] as const).map(([value, label]) => {
               const active = scopeFilter === value;
               return (
