@@ -116,11 +116,9 @@ function formatWhen(ts: number) {
 export function BrowseClient({
   categories,
   llmSections,
-  totalDocs,
 }: {
   categories: Category[];
   llmSections: LLMSection[];
-  totalDocs: number;
 }) {
   const router = useRouter();
   const [history] = useHistory();
@@ -349,11 +347,6 @@ export function BrowseClient({
                     fontWeight: 500,
                     letterSpacing: '-0.012em',
                   }}>{s.section}</span>
-                  <span className="t-caption" style={{
-                    color: 'var(--muted)', flexShrink: 0,
-                    fontVariantNumeric: 'tabular-nums',
-                    fontFamily: 'var(--mono)',
-                  }}>{s.chapters.length}</span>
                 </Link>
                 <div
                   className="t-caption2"

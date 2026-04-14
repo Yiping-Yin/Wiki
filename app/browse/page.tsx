@@ -30,5 +30,5 @@ export default async function BrowsePage() {
     chapters: chapters.filter((c) => c.section === sec).slice(0, 8),
   }));
 
-  return <BrowseClient categories={docsByCategory} llmSections={llmSections} totalDocs={allDocs.length} />;
+  return <BrowseClient categories={docsByCategory} llmSections={llmSections} />;
 }
