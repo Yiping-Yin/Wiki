@@ -324,12 +324,15 @@ export function KesiView() {
   const sortedPanels = useMemo(() => {
     const next = [...visiblePanels];
     next.sort((a, b) => {
+      const lifecycleRank = (panel: Panel) => (panel.status === 'contested' ? 0 : 1);
       if (viewMode === 'dense') {
-        return b.stitches - a.stitches
+        return lifecycleRank(a) - lifecycleRank(b)
+          || b.stitches - a.stitches
           || recencySort(a.learning.recency) - recencySort(b.learning.recency)
           || b.crystallizedAt - a.crystallizedAt;
       }
-      return recencySort(a.learning.recency) - recencySort(b.learning.recency)
+      return lifecycleRank(a) - lifecycleRank(b)
+        || recencySort(a.learning.recency) - recencySort(b.learning.recency)
         || b.crystallizedAt - a.crystallizedAt
         || b.stitches - a.stitches;
     });
@@ -338,7 +341,7 @@ export function KesiView() {
 
   const groupedPanels = useMemo(() => {
     const groups = new Map<string, Panel[]>();
-    for (const panel of sortedPanels) {
+    for (const panel of sortedPanels.filter((item) => item.status === 'settled')) {
       if (!groups.has(panel.family)) groups.set(panel.family, []);
       groups.get(panel.family)!.push(panel);
     }
@@ -360,13 +363,18 @@ export function KesiView() {
   const focusPanel = focusDocId
     ? sortedPanels.find((panel) => panel.docId === focusDocId) ?? null
     : null;
-  const returnPanel = focusPanel ?? sortedPanels[0] ?? null;
+  const firstContested = sortedPanels.find((panel) => panel.status === 'contested') ?? null;
+  const returnPanel = focusPanel ?? firstContested ?? sortedPanels[0] ?? null;
+  const contestedPanels = sortedPanels
+    .filter((panel) => panel.status === 'contested' && panel.docId !== returnPanel?.docId)
+    .slice(0, 4);
   const refreshPanels = sortedPanels
-    .filter((panel) => panel.learning.nextAction === 'refresh' && panel.docId !== returnPanel?.docId)
+    .filter((panel) => panel.status === 'settled' && panel.learning.nextAction === 'refresh' && panel.docId !== returnPanel?.docId)
     .slice(0, 4);
   const continuePanels = sortedPanels
     .filter((panel) => (
-      panel.docId !== returnPanel?.docId
+      panel.status === 'settled'
+      && panel.docId !== returnPanel?.docId
       && panel.learning.nextAction !== 'refresh'
       && panel.learning.nextAction !== 'capture'
     ))
@@ -435,6 +443,9 @@ export function KesiView() {
   };
 
   const openPrimaryAction = (panel: Panel) => {
+    if (panel.status === 'contested') {
+      return openReview(panel, panel.latestAnchorId);
+    }
     if (panel.learning.nextAction === 'revisit') return openReview(panel);
     continuePanelLifecycle(router, {
       href: panel.href,
@@ -579,7 +590,7 @@ export function KesiView() {
                   onClick={() => openPrimaryAction(returnPanel)}
                   style={actionStyle(true)}
                 >
-                  {primaryActionLabel(returnPanel.learning.nextAction)}
+                  {primaryActionLabel(returnPanel)}
                 </button>
                 <button
                   type="button"
@@ -598,6 +609,70 @@ export function KesiView() {
                   </button>
                 )}
               </div>
+            </div>
+          </section>
+        )}
+
+        {contestedPanels.length > 0 && (
+          <section
+            style={{
+              padding: '0.1rem 0 0.2rem',
+              marginBottom: 18,
+              borderBottom: '0.5px solid var(--mat-border)',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {contestedPanels.map((panel, index) => (
+                <div
+                  key={panel.docId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '0.78rem 0',
+                    borderBottom: index < contestedPanels.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: 'var(--display)',
+                        fontSize: '0.98rem',
+                        fontWeight: 600,
+                        letterSpacing: '-0.012em',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {panel.title}
+                    </div>
+                    <div
+                      className="t-caption2"
+                      style={{
+                        marginTop: 5,
+                        color: 'var(--muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span>{panel.family}</span>
+                      <span aria-hidden>·</span>
+                      <span>{formatWhen(panel.updatedAt)}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openReview(panel, panel.latestAnchorId)}
+                    style={actionStyle(true)}
+                  >
+                    Review
+                  </button>
+                </div>
+              ))}
             </div>
           </section>
         )}
@@ -722,7 +797,7 @@ export function KesiView() {
                     onClick={() => openPrimaryAction(panel)}
                     style={actionStyle(true)}
                   >
-                    {primaryActionLabel(panel.learning.nextAction)}
+                    {primaryActionLabel(panel)}
                   </button>
                 </div>
               ))}
@@ -1021,7 +1096,7 @@ export function KesiView() {
                         }}
                         style={actionStyle(true)}
                       >
-                        {primaryActionLabel(panel.learning.nextAction)}
+                        {primaryActionLabel(panel)}
                       </button>
                       <button
                         type="button"
@@ -1255,7 +1330,9 @@ function actionStyle(primary: boolean) {
   } as const;
 }
 
-function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+function primaryActionLabel(panel: Panel) {
+  if (panel.status === 'contested') return 'Review';
+  const nextAction = panel.learning.nextAction;
   switch (nextAction) {
     case 'refresh':
       return 'Return';
