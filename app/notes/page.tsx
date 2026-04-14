@@ -167,26 +167,7 @@ export default function NotesPage() {
           title={focus.title}
           meta={<span>{formatWhen(focus.at)}</span>}
           summary={focus.summary}
-          detail={
-            focus.quote ? (
-              <div
-                style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--muted)',
-                  fontStyle: 'italic',
-                  lineHeight: 1.5,
-                  paddingLeft: 10,
-                  borderLeft: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)',
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {focus.quote}
-              </div>
-            ) : null
-          }
+          mode="inline"
           actions={[
             { label: 'Return to note', onClick: () => openReview(focus), primary: true },
           ]}
