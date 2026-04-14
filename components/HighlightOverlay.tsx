@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 import { useTracesForDoc, useRemoveEvents } from '../lib/trace';
 import { contextFromPathname } from '../lib/doc-context';
 import { rootReadingTraces } from './thought-anchor-model';
+import { resolveBlockElement } from '../lib/passage-locator';
 
 const HL_ATTR = 'data-wiki-hl';
 const HL_EVENT = 'wiki:highlights:changed';
@@ -23,8 +24,14 @@ type Hl = {
   anchor?: {
     paragraphId?: string;
     blockId?: string;
+    blockText?: string;
+    offsetPx?: number;
     charStart?: number;
     charEnd?: number;
+    rangeStartId?: string;
+    rangeStartText?: string;
+    rangeEndId?: string;
+    rangeEndText?: string;
     selection?: string;
   };
 };
@@ -138,37 +145,14 @@ function wrapFirst(root: HTMLElement, hl: Hl): boolean {
   return true;
 }
 
-function filteredChildren(prose: Element) {
-  return Array.from(prose.children).filter((c) => {
-    const node = c as HTMLElement;
-    if (node.hasAttribute('data-loom-system')) return false;
-    if (node.classList.contains('tag-row')) return false;
-    if (node.tagName === 'STYLE' || node.tagName === 'SCRIPT') return false;
-    return true;
-  }) as HTMLElement[];
-}
-
-function resolveBlock(root: HTMLElement, blockId?: string): HTMLElement | null {
-  if (!blockId) return null;
-  const direct = document.getElementById(blockId);
-  if (direct && root.contains(direct)) return direct as HTMLElement;
-
-  const prose = root.querySelector('.loom-source-prose');
-  if (!prose) return null;
-
-  if (blockId.startsWith('loom-block-')) {
-    const idx = parseInt(blockId.slice('loom-block-'.length), 10);
-    return filteredChildren(prose)[idx] ?? null;
-  }
-  if (blockId.startsWith('p-')) {
-    const idx = parseInt(blockId.slice(2), 10);
-    return filteredChildren(prose)[idx] ?? null;
-  }
-  return null;
-}
-
 function wrapByAnchor(root: HTMLElement, hl: Hl): boolean {
-  const block = resolveBlock(root, hl.anchor?.blockId ?? hl.anchor?.paragraphId);
+  const prose = root.querySelector('.loom-source-prose') as HTMLElement | null;
+  const block = resolveBlockElement({
+    anchorId: hl.anchor?.blockId ?? hl.anchor?.paragraphId,
+    anchorBlockId: hl.anchor?.blockId ?? hl.anchor?.paragraphId,
+    anchorBlockText: hl.anchor?.blockText ?? hl.anchor?.rangeStartText,
+    prose,
+  });
   const start = hl.anchor?.charStart;
   const end = hl.anchor?.charEnd;
   if (!block || start == null || end == null || end <= start) return false;
@@ -267,7 +251,13 @@ export function HighlightOverlay() {
         if (!wrapByAnchor(root, hl) && !wrapFirst(root, hl)) {
           // Fallback: if the highlight target is inside a KaTeX block that
           // neither anchor nor text-walk could wrap, try the block overlay.
-          const blockEl = resolveBlock(root, hl.anchor?.blockId ?? hl.anchor?.paragraphId);
+          const prose = root.querySelector('.loom-source-prose') as HTMLElement | null;
+          const blockEl = resolveBlockElement({
+            anchorId: hl.anchor?.blockId ?? hl.anchor?.paragraphId,
+            anchorBlockId: hl.anchor?.blockId ?? hl.anchor?.paragraphId,
+            anchorBlockText: hl.anchor?.blockText ?? hl.anchor?.rangeStartText,
+            prose,
+          });
           if (blockEl && hasKatex(blockEl)) wrapKatexBlock(blockEl, hl);
         }
       }

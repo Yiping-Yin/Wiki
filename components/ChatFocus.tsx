@@ -40,6 +40,8 @@ type Anchor = {
   text: string;
   rect: { top: number; left: number; right: number; bottom: number; height: number };
   localOffsetPx?: number;
+  blockId?: string;
+  blockText?: string;
   charStart?: number;
   charEnd?: number;
 };
@@ -356,6 +358,8 @@ export function ChatFocus() {
           height: rect.height,
         },
         localOffsetPx: detail.localOffsetPx ?? Math.max(4, selectionRect.top - rect.top + 4),
+        blockId: detail.anchorBlockId ?? ensureBlockAnchorId(block as HTMLElement, proseContainer),
+        blockText: detail.anchorBlockText ?? normalizedBlockText(block as HTMLElement),
         charStart: charOffsets?.start,
         charEnd: charOffsets?.end,
       });
@@ -642,7 +646,15 @@ export function ChatFocus() {
         role: 'user',
         content: t.q,
         at: Date.now(),
-        quotedAnchor: { selection: anchor.text },
+        quotedAnchor: {
+          paragraphId: anchor.blockId,
+          blockId: anchor.blockId,
+          blockText: anchor.blockText,
+          offsetPx: anchor.localOffsetPx,
+          charStart: anchor.charStart,
+          charEnd: anchor.charEnd,
+          selection: anchor.text,
+        },
       });
       await append(traceId, {
         kind: 'message',

@@ -48,9 +48,19 @@ export type SourceAnchor = {
   paragraphId?: string;
   /** Stable or reconstructed top-level source block id. */
   blockId?: string;
+  /** Normalized text fingerprint of the base block for re-resolution. */
+  blockText?: string;
+  /** Vertical offset within the base block, in px. */
+  offsetPx?: number;
   /** Character range within the block for fragment-precise restore. */
   charStart?: number;
   charEnd?: number;
+  /** Optional semantic range start for fade/collapse behavior. */
+  rangeStartId?: string;
+  rangeStartText?: string;
+  /** Optional semantic range end for fade/collapse behavior. */
+  rangeEndId?: string;
+  rangeEndText?: string;
   /** The exact text the user selected, if any. */
   selection?: string;
 };

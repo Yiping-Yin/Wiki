@@ -209,8 +209,14 @@ export function SelectionWarp() {
         anchor: {
           paragraphId: blockId,
           blockId,
+          blockText,
+          offsetPx: Math.max(4, anchorY - (block.getBoundingClientRect().top + window.scrollY) + 4),
           charStart: charOffsets.start,
           charEnd: charOffsets.end,
+          rangeStartId: blockId,
+          rangeStartText: blockText,
+          rangeEndId: blockId,
+          rangeEndText: blockText,
           selection: text,
         },
       });
