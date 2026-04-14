@@ -519,21 +519,6 @@ export function LiveArtifact({ docId }: { docId: string }) {
               </div>
             ) : null}
 
-            <div
-              className="t-caption2"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                flexWrap: 'wrap',
-                color: 'var(--muted)',
-                letterSpacing: '0.04em',
-              }}
-            >
-              <span>{focusThought.versionCount > 1 ? `${focusThought.versionCount} versions` : 'first weave'}</span>
-              <span aria-hidden>·</span>
-              <span>{focusThought.isCrystallized ? 'crystallized' : 'open'}</span>
-            </div>
           </div>
         )}
 
