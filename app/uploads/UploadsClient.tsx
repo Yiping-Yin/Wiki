@@ -331,9 +331,6 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
             letterSpacing: '-0.01em',
           }}
         />
-        <span className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-          {surfaces.length}
-        </span>
       </div>
 
       {items.length === 0 && (
