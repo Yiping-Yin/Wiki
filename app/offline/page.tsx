@@ -17,12 +17,7 @@ export default function OfflinePage() {
         <h1 className="t-title2" style={{
           margin: 0, color: 'var(--fg)', padding: 0, border: 0,
         }}>This source isn&rsquo;t cached yet</h1>
-        <p className="t-footnote" style={{
-          marginTop: 8, color: 'var(--fg-secondary)', lineHeight: 1.55,
-        }}>
-          Opened pages can still carry the weave.
-        </p>
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* eslint-disable @next/next/no-html-link-for-pages */}
           <a href="/" className="t-footnote" style={pillStyle}>Continue weaving</a>
           {/* Plain anchors are intentional — this page must work without the JS router. */}
