@@ -1165,32 +1165,29 @@ function KesiShell({ children }: { children: React.ReactNode }) {
 function LoadingKesiShell() {
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-        <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 700 }}>
-          Kesi
-        </span>
-        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 14,
+          marginBottom: 18,
+        }}
+      >
+        <LoadingStroke width={72} />
+        <LoadingStroke width={54} />
       </div>
 
       <div
         style={{
-          padding: '0.1rem 0 1rem',
+          padding: '0.15rem 0 0.9rem',
           marginBottom: 18,
           borderBottom: '0.5px solid var(--mat-border)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.4 }} />
-          <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-            Return to weave
-          </span>
-          <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ width: '42%', height: 16, borderRadius: 999, background: 'var(--surface-2)' }} />
-          <div style={{ width: '78%', height: 12, borderRadius: 999, background: 'var(--surface-2)' }} />
-          <div style={{ width: '64%', height: 12, borderRadius: 999, background: 'var(--surface-2)' }} />
+          <LoadingStroke width="34%" height={16} />
+          <LoadingStroke width="72%" />
+          <LoadingStroke width="58%" />
         </div>
       </div>
 
@@ -1216,8 +1213,43 @@ function LoadingKesiShell() {
         />
       </div>
 
-      <EmptyKesiCanvas />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            style={{
+              padding: '0.9rem 0',
+              borderBottom: index < 3 ? '0.5px solid var(--mat-border)' : 'none',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <LoadingStroke width={index === 0 ? '46%' : index === 1 ? '62%' : index === 2 ? '55%' : '48%'} height={14} />
+              <LoadingStroke width={index === 0 ? '26%' : index === 1 ? '22%' : index === 2 ? '28%' : '24%'} height={11} />
+            </div>
+          </div>
+        ))}
+      </div>
     </>
+  );
+}
+
+function LoadingStroke({
+  width,
+  height = 12,
+}: {
+  width: number | string;
+  height?: number;
+}) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        width,
+        height,
+        borderRadius: 999,
+        background: 'var(--surface-2)',
+      }}
+    />
   );
 }
 
