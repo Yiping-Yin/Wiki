@@ -377,7 +377,7 @@ export function KesiView() {
         }}
       >
         <span>{label}</span>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, flex: 1 }}>
           {items.slice(0, limit).map((relatedPanel) => (
             <div key={relatedPanel.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
               <button
