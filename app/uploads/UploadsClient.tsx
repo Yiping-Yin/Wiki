@@ -1,13 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { QuietGuideCard } from '../../components/QuietGuideCard';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
-import { continuePanelLifecycle } from '../../lib/panel-resume';
 import { UploadButton } from './UploadButton';
 
 export type UploadListItem = {
@@ -101,16 +98,7 @@ function stateOrder(item: UploadSurface) {
   }
 }
 
-function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
-  if (nextAction === 'refresh') return 'Refresh';
-  if (nextAction === 'rehearse') return 'Rehearsal';
-  if (nextAction === 'examine') return 'Examiner';
-  if (nextAction === 'capture') return 'Open';
-  return 'Review';
-}
-
 export function UploadsClient({ items }: { items: UploadListItem[] }) {
-  const router = useRouter();
   const { traces } = useAllTraces();
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
@@ -124,41 +112,11 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       .sort((a, b) => stateOrder(a) - stateOrder(b) || b.touchedAt - a.touchedAt);
   }, [items, traces, normalizedQuery]);
 
-  const focusItem = surfaces[0] ?? null;
-
-  const openPrimaryAction = (item: UploadSurface) => {
-    continuePanelLifecycle(router, {
-      href: item.href,
-      nextAction: item.learning.nextAction,
-      latestAnchorId: item.learning.latestAnchorId,
-      refreshSource: 'upload',
-    });
-  };
-
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <UploadButton variant="button" />
       </div>
-
-      {focusItem && (
-        <QuietGuideCard
-          eyebrow="Return to this source"
-          title={focusItem.title}
-          mode="inline"
-          meta={
-            <>
-              <span>{focusItem.ext.slice(1).toUpperCase()}</span>
-              <span aria-hidden>·</span>
-              <span>{formatWhen(focusItem.touchedAt)}</span>
-            </>
-          }
-          actions={[
-            { label: 'Continue source', onClick: () => openPrimaryAction(focusItem), primary: true },
-            { label: 'Open source', href: focusItem.href },
-          ]}
-        />
-      )}
 
       <div
         style={{
