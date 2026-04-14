@@ -833,16 +833,6 @@ export function KesiView() {
                       <span>{formatWhen(panel.crystallizedAt)}</span>
                       <span aria-hidden>·</span>
                       <span>{primaryActionLabel(panel.learning.nextAction)}</span>
-                      {(() => {
-                        const relation = relationCounts.get(panel.docId);
-                        if (!relation || relation.incoming + relation.outgoing === 0) return null;
-                        return (
-                          <>
-                            <span aria-hidden>·</span>
-                            <span>{relation.incoming + relation.outgoing} threads</span>
-                          </>
-                        );
-                      })()}
                     </div>
                   </div>
 
