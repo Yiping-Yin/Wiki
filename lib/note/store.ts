@@ -66,13 +66,13 @@ export async function appendNote(input: {
     anchorOffsetPx: input.anchor.offsetPx,
     anchorCharStart: input.anchor.range?.charStart,
     anchorCharEnd: input.anchor.range?.charEnd,
-    rangeStartId: input.anchor.blockId,
-    rangeStartText: input.anchor.blockText,
-    rangeEndId: input.anchor.blockId,
-    rangeEndText: input.anchor.blockText,
+    rangeStartId: input.anchor.rangeStartId ?? input.anchor.blockId,
+    rangeStartText: input.anchor.rangeStartText ?? input.anchor.blockText,
+    rangeEndId: input.anchor.rangeEndId ?? input.anchor.blockId,
+    rangeEndText: input.anchor.rangeEndText ?? input.anchor.blockText,
     summary: input.summary ?? deriveSummary(input.content),
     content: input.content,
-    quote: input.anchor.quote,
+    quote: input.anchor.quote ?? input.anchor.selection,
     at,
   };
 
@@ -131,6 +131,10 @@ export async function appendRehearsal(input: {
       target: input.docId,
       blockText: 'rehearsal',
       blockId: 'loom-rehearsal-root',
+      rangeStartId: 'loom-rehearsal-root',
+      rangeStartText: 'rehearsal',
+      rangeEndId: 'loom-rehearsal-root',
+      rangeEndText: 'rehearsal',
     },
   });
 }

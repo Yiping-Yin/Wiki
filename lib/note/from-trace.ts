@@ -60,6 +60,12 @@ function thoughtAnchorToNote(
     blockText: e.anchorBlockText,
     blockId: e.anchorBlockId,
     offsetPx: e.anchorOffsetPx,
+    paragraphId: e.anchorBlockId,
+    rangeStartId: e.rangeStartId,
+    rangeStartText: e.rangeStartText,
+    rangeEndId: e.rangeEndId,
+    rangeEndText: e.rangeEndText,
+    selection: e.quote,
     quote: e.quote,
   };
   if (
@@ -91,7 +97,15 @@ function highlightToNote(e: HighlightEvent, trace: Trace): Note {
   const target = docIdOfTrace(trace);
   const anchor: NoteAnchor = {
     target,
+    paragraphId: e.anchor?.paragraphId,
     blockId: e.anchor?.blockId,
+    blockText: e.anchor?.blockText,
+    offsetPx: e.anchor?.offsetPx,
+    rangeStartId: e.anchor?.rangeStartId,
+    rangeStartText: e.anchor?.rangeStartText,
+    rangeEndId: e.anchor?.rangeEndId,
+    rangeEndText: e.anchor?.rangeEndText,
+    selection: e.anchor?.selection ?? e.text,
     quote: e.text,
   };
   if (

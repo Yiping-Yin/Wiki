@@ -58,18 +58,12 @@ export type SourceDocId = string;
  * if the target's DOM/markdown reindexes. Without this, char ranges become
  * ambiguous across reloads. Mirrors the existing thought-anchor model.
  */
-export type NoteAnchor = {
+export type NoteAnchor = Omit<SourceAnchor, 'page'> & {
   target: SourceDocId | NoteId | null;
-  /** Optional char range within the target. Omit for whole-target anchor. */
-  range?: { charStart: number; charEnd: number };
-  /** Stable text fingerprint of the target block for reindex survival. */
-  blockText?: string;
-  /** Optional block-level id within the target (e.g. `loom-block-3`). */
-  blockId?: string;
-  /** Pixel offset within the block for visual positioning. */
-  offsetPx?: number;
   /** The raw quoted text at the anchor's range, if any. */
   quote?: string;
+  /** Optional char range within the target. Omit for whole-target anchor. */
+  range?: { charStart: number; charEnd: number };
 };
 
 /**
@@ -154,3 +148,4 @@ export function newNoteId(): NoteId {
 export function deriveNoteIdFromTraceEvent(traceId: string, at: number, kindTag: string = 'ta'): NoteId {
   return `nt_${kindTag}_${traceId.slice(2, 10)}_${at.toString(36)}`;
 }
+import type { SourceAnchor } from '../trace/types';
