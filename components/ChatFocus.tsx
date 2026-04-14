@@ -40,6 +40,7 @@ import { ensureReadingTrace } from '../lib/trace/source-bound';
 import { getCurrentDocBody } from './DocBodyProvider';
 import { WeftShuttle } from './DocViewer';
 import { rootReadingTraces } from './thought-anchor-model';
+import { AiInlineHint } from './unified/AiStagePrimitives';
 
 const NoteRenderer = dynamic(() => import('./NoteRenderer').then((m) => m.NoteRenderer), { ssr: false });
 
@@ -124,6 +125,8 @@ function deriveAnchorRange(block: HTMLElement, proseContainer: HTMLElement) {
 
 export function ChatFocus() {
   const pathname = usePathname() ?? '/';
+  const clarifyStage = getAiStage('clarify-passage');
+  const commitStage = getAiStage('commit-anchor');
   const smallScreen = useSmallScreen();
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [focusedEl, setFocusedEl] = useState<HTMLElement | null>(null);
@@ -776,12 +779,7 @@ export function ChatFocus() {
         )}
 
         {committing && (
-          <div style={{
-            fontSize: '0.78rem',
-            color: 'var(--muted)',
-            fontStyle: 'italic',
-            marginBottom: '0.6rem',
-          }}>整理中,织成 anchored note…</div>
+          <AiInlineHint>{commitStage.title}…</AiInlineHint>
         )}
 
         {/* Input — compact row with ✦ + textarea + ✓ + × all close together */}
@@ -823,7 +821,7 @@ export function ChatFocus() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
                 }}
-                placeholder={turns.length > 0 ? 'ask another…' : 'ask about this passage…'}
+                placeholder={turns.length > 0 ? 'Clarify this passage again…' : clarifyStage.title}
                 rows={1}
                 style={{
                   background: 'transparent',
@@ -842,17 +840,9 @@ export function ChatFocus() {
                 }}
               />
               {aiError && (
-                <div
-                  style={{
-                    marginTop: 4,
-                    fontSize: '0.72rem',
-                    color: 'var(--tint-orange)',
-                    letterSpacing: '-0.005em',
-                    lineHeight: 1.4,
-                  }}
-                >
+                <AiInlineHint tone="error">
                   {aiError}
-                </div>
+                </AiInlineHint>
               )}
             </div>
           )}

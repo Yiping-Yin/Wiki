@@ -20,6 +20,7 @@ import { runAiText } from '../lib/ai/runtime';
 import { useSmallScreen } from '../lib/use-small-screen';
 import { useTracesForDoc, useAppendEvent } from '../lib/trace';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
+import { AiInlineHint } from './unified/AiStagePrimitives';
 
 export function FreeInput() {
   const pathname = usePathname() ?? '/';
@@ -246,12 +247,9 @@ export function FreeInput() {
         )}
       </div>
       {aiError && (
-        <div style={{
-          fontSize: '0.72rem',
-          color: 'var(--tint-red)',
-          padding: '0.2rem 0 0 1.2rem',
-          opacity: 0.8,
-        }}>{aiError}</div>
+        <div style={{ padding: '0.2rem 0 0 1.2rem' }}>
+          <AiInlineHint tone="error">{aiError}</AiInlineHint>
+        </div>
       )}
     </div>
   );

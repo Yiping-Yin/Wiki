@@ -167,3 +167,30 @@ export function AiInlineNotice({
     </div>
   );
 }
+
+export function AiInlineHint({
+  tone = 'muted',
+  children,
+}: {
+  tone?: 'muted' | 'error' | 'accent';
+  children: React.ReactNode;
+}) {
+  const color =
+    tone === 'error' ? 'var(--tint-red)'
+      : tone === 'accent' ? 'var(--accent)'
+        : 'var(--muted)';
+  return (
+    <div
+      style={{
+        marginTop: 4,
+        fontSize: '0.72rem',
+        color,
+        letterSpacing: '-0.005em',
+        lineHeight: 1.4,
+        opacity: tone === 'muted' ? 0.8 : 1,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
