@@ -75,28 +75,28 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            gap: '1rem',
+            gap: '1.5rem',
             marginTop: '3rem',
-            borderTop: '1px solid var(--border)',
-            paddingTop: '1.5rem',
+            borderTop: '0.5px solid var(--mat-border)',
+            paddingTop: '1rem',
           }}
         >
           {prev ? (
             <Link
               href={`/knowledge/${categorySlug}/${prev.fileSlug}`}
-              style={{ flex: 1, padding: '0.8rem 1rem', border: '1px solid var(--border)', borderRadius: 8 }}
+              style={{ flex: 1, textDecoration: 'none', color: 'var(--fg)' }}
             >
-              <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Previous</div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{prev.title}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginBottom: 2 }}>Previous</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem', lineHeight: 1.45 }}>{prev.title}</div>
             </Link>
           ) : <div style={{ flex: 1 }} />}
           {next ? (
             <Link
               href={`/knowledge/${categorySlug}/${next.fileSlug}`}
-              style={{ flex: 1, padding: '0.8rem 1rem', border: '1px solid var(--border)', borderRadius: 8, textAlign: 'right' }}
+              style={{ flex: 1, textDecoration: 'none', color: 'var(--fg)', textAlign: 'right' }}
             >
-              <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Next</div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{next.title}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginBottom: 2 }}>Next</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem', lineHeight: 1.45 }}>{next.title}</div>
             </Link>
           ) : <div style={{ flex: 1 }} />}
         </div>
