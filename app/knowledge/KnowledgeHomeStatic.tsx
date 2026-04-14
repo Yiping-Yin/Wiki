@@ -17,23 +17,6 @@ export function KnowledgeHomeStatic({
       {groups.map((g) => (
         <section key={g.label} style={{ marginBottom: '2.6rem' }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            marginBottom: 16,
-          }}>
-            <span aria-hidden style={{
-              width: 18, height: 1,
-              background: 'var(--accent)', opacity: 0.55,
-            }} />
-            <span className="t-caption2" style={{
-              color: 'var(--muted)',
-              textTransform: 'uppercase', letterSpacing: '0.10em',
-              fontWeight: 700,
-            }}>{g.label}</span>
-            <span aria-hidden style={{
-              flex: 1, height: 1, background: 'var(--mat-border)',
-            }} />
-          </div>
-          <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
             gap: '0.85rem',
