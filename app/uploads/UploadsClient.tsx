@@ -137,12 +137,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
 
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-        <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 700 }}>
-          Intake
-        </span>
-        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <UploadButton variant="button" />
       </div>
 
