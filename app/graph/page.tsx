@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { continuePanelLifecycle, openPanelReview } from '../../lib/panel-resume';
+import { useAllPanels } from '../../lib/panel';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
@@ -164,6 +165,7 @@ function syncGraphParams({
 export default function GraphPage() {
   const router = useRouter();
   const { traces } = useAllTraces();
+  const { panels: storedPanels, loading } = useAllPanels();
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [familyFilter, setFamilyFilter] = useState<string>('all');
@@ -193,7 +195,13 @@ export default function GraphPage() {
   }, []);
 
   const { nodes, edges, panelCount, relationCount, panels, relationPreview } = useMemo(() => {
-    const { panels, tracesByDocId } = buildPanels(traces);
+    const fallback = buildPanels(traces);
+    const panels = (storedPanels.length > 0 ? storedPanels : fallback.panels).map((panel) => ({
+      ...panel,
+      family: familyForHref(panel.href),
+      learning: summarizeLearningSurface((fallback.tracesByDocId.get(panel.docId) ?? []), 0),
+    }));
+    const tracesByDocId = fallback.tracesByDocId;
     const panelByDocId = new Map(panels.map((panel) => [panel.docId, panel] as const));
     const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
 
@@ -318,7 +326,7 @@ export default function GraphPage() {
       panels,
       relationPreview: orderedPreview,
     };
-  }, [traces, focusDocId]);
+  }, [storedPanels, traces, focusDocId]);
 
   const panelByDocId = useMemo(
     () => new Map(panels.map((panel) => [panel.docId, panel] as const)),
@@ -449,7 +457,7 @@ export default function GraphPage() {
     });
   };
 
-  if (panelCount === 0) return null;
+  if (loading || panelCount === 0) return null;
 
   return (
     <div style={{ width: '100%', height: '100vh', background: 'var(--bg)' }}>

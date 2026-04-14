@@ -13,7 +13,7 @@ import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/le
 import { useAllTraces, useRemoveEvents, type Trace } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { continuePanelLifecycle, openPanelReview } from '../lib/panel-resume';
-import { passagePositionKey } from '../lib/passage-locator';
+import { derivePanelFromTraces, useAllPanels, type Panel as StoredPanel, type PanelSection as StoredPanelSection } from '../lib/panel';
 
 const TINTS = [
   'var(--tint-blue)',   'var(--tint-indigo)', 'var(--tint-purple)',
@@ -28,27 +28,9 @@ function tintFor(seed: string): string {
   return TINTS[h % TINTS.length];
 }
 
-type PanelSection = {
-  anchorId: string;
-  summary: string;
-  quote?: string;
-  at: number;
-};
-
-type BasePanel = {
-  traceIds: string[];
-  primaryTraceId: string;
-  docId: string;
-  href: string;
-  title: string;
-  summary: string;
-  crystallizedAt: number;
+type Panel = StoredPanel & {
   stitches: number;
   tint: string;
-  sections: PanelSection[];
-};
-
-type Panel = BasePanel & {
   family: string;
   sourceType: 'knowledge' | 'wiki' | 'upload' | 'other';
   collectionLabel: string;
@@ -61,7 +43,7 @@ type DirectedPanelRelations = {
   outgoing: Panel[];
 };
 
-function buildPanels(traces: Trace[]): BasePanel[] {
+function buildPanels(traces: Trace[]): StoredPanel[] {
   const tracesByDocId = new Map<string, Trace[]>();
   for (const trace of traces) {
     if (!trace.source?.docId) continue;
@@ -71,62 +53,10 @@ function buildPanels(traces: Trace[]): BasePanel[] {
     tracesByDocId.set(trace.source.docId, existing);
   }
 
-  const out: BasePanel[] = [];
+  const out: StoredPanel[] = [];
   for (const [docId, traceSet] of tracesByDocId) {
-    const representative = [...traceSet].sort(
-      (a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt,
-    )[0];
-    if (!representative?.source?.docId) continue;
-
-    let cAt = 0;
-    let cSum = '';
-    const latestByAnchor = new Map<string, PanelSection>();
-    let stitchCount = 0;
-
-    for (const trace of traceSet) {
-      for (const e of trace.events) {
-        if (e.kind === 'crystallize' && e.at > cAt) {
-          cAt = e.at;
-          cSum = e.summary;
-        }
-        if (e.kind !== 'thought-anchor') continue;
-        stitchCount += 1;
-        const anchorKey = passagePositionKey({
-          anchorId: e.anchorId,
-          blockId: e.anchorBlockId,
-          blockText: e.anchorBlockText,
-          charStart: e.anchorCharStart,
-          charEnd: e.anchorCharEnd,
-          target: docId,
-        });
-        const prev = latestByAnchor.get(anchorKey);
-        if (!prev || e.at > prev.at) {
-          latestByAnchor.set(anchorKey, {
-            anchorId: e.anchorId,
-            summary: e.summary,
-            quote: e.quote,
-            at: e.at,
-          });
-        }
-      }
-    }
-    if (cAt === 0) continue;
-
-    const sections = Array.from(latestByAnchor.values())
-      .sort((a, b) => a.at - b.at);
-
-    out.push({
-      traceIds: traceSet.map((trace) => trace.id),
-      primaryTraceId: representative.id,
-      docId,
-      href: representative.source.href,
-      title: representative.source.sourceTitle ?? representative.title,
-      summary: cSum,
-      crystallizedAt: cAt,
-      stitches: stitchCount,
-      tint: tintFor(docId),
-      sections,
-    });
+    const panel = derivePanelFromTraces({ docId, traces: traceSet });
+    if (panel) out.push(panel);
   }
 
   out.sort((a, b) => b.crystallizedAt - a.crystallizedAt);
@@ -204,7 +134,7 @@ function panelSourceMeta(
   };
 }
 
-function panelSummary(summary: string, sections: PanelSection[]) {
+function panelSummary(summary: string, sections: StoredPanelSection[]) {
   if (summary.trim()) return summary;
   const first = sections.find((s) => s.summary.trim());
   if (first) return first.summary;
@@ -248,6 +178,7 @@ type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
 
 export function KesiView() {
   const { traces, loading } = useAllTraces();
+  const { panels: storedPanels, loading: panelsLoading } = useAllPanels();
   const removeEvents = useRemoveEvents();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -279,18 +210,24 @@ export function KesiView() {
     return map;
   }, [traces]);
 
-  const panels = useMemo(() => {
-    return buildPanels(traces).map((panel) => {
+  const panels = useMemo<Panel[]>(() => {
+    const basePanels: StoredPanel[] = storedPanels.length > 0
+      ? storedPanels
+      : buildPanels(traces);
+
+    return basePanels.map((panel): Panel => {
       const meta = panelSourceMeta(panel.href, knowledgeCategories);
       return {
         ...panel,
+        stitches: panel.sections.length,
+        tint: tintFor(panel.docId),
         family: familyLabelForHref(panel.href, knowledgeCategories),
         summary: panelSummary(panel.summary, panel.sections),
         ...meta,
         learning: summarizeLearningSurface(tracesByDocId.get(panel.docId) ?? [], 0),
       };
     });
-  }, [traces, knowledgeCategories, tracesByDocId]);
+  }, [storedPanels, traces, knowledgeCategories, tracesByDocId]);
 
   const relationCounts = useMemo(() => {
     const counts = new Map<string, { incoming: number; outgoing: number }>();
@@ -517,7 +454,7 @@ export function KesiView() {
     syncKesiFocusParam(null);
   };
 
-  const content = !mounted || loading
+  const content = !mounted || loading || panelsLoading
     ? <LoadingKesiShell />
     : panels.length === 0
       ? <EmptyKesiCanvas />
