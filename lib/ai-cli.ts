@@ -5,7 +5,7 @@ export type AiCliKind = 'claude' | 'codex';
 export const AI_CLI_STORAGE_KEY = 'loom:ai-cli';
 
 export function normalizeAiCli(value: unknown): AiCliKind {
-  return value === 'codex' ? 'codex' : 'claude';
+  return value === 'claude' ? 'claude' : 'codex';
 }
 
 export function readAiCliPreference(): AiCliKind {

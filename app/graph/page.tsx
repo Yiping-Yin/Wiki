@@ -706,7 +706,7 @@ function RelatedList({
           letterSpacing: '0.04em',
         }}
       >
-        {label} · {items.length}
+        {label}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.slice(0, 5).map((related) => (

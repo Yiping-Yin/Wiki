@@ -27,6 +27,7 @@ export function FreeInput() {
   const [value, setValue] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { traces } = useTracesForDoc(ctx.isFree ? ctx.docId : null);
@@ -42,6 +43,7 @@ export function FreeInput() {
     if (!text || streaming) return;
     setValue('');
     setStreaming(true);
+    setAiError(null);
 
     try {
       // Ensure a reading trace exists for today's free mode
@@ -85,7 +87,9 @@ export function FreeInput() {
         signal: ac.signal,
       });
 
-      if (r.ok && r.body) {
+      if (!r.ok || !r.body) {
+        setAiError('AI unreachable — press Enter to retry.');
+      } else if (r.ok && r.body) {
         const reader = r.body.getReader();
         const decoder = new TextDecoder();
         let raw = '';
@@ -101,6 +105,7 @@ export function FreeInput() {
             if (data === '[DONE]') continue;
             try {
               const json = JSON.parse(data);
+              if (json.error) throw new Error(json.error);
               if (json.delta) {
                 buf += json.delta;
                 // Mirror to LiveArtifact via event
@@ -108,7 +113,10 @@ export function FreeInput() {
                   detail: { docId: ctx.docId, content: buf },
                 }));
               }
-            } catch {}
+            } catch (parseErr) {
+              if (parseErr instanceof SyntaxError) continue;
+              throw parseErr;
+            }
           }
         }
       }
@@ -128,7 +136,9 @@ export function FreeInput() {
         });
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') console.error(e);
+      if (e.name !== 'AbortError') {
+        setAiError('AI error — press Enter to retry.');
+      }
     } finally {
       setStreaming(false);
       abortRef.current = null;
@@ -235,6 +245,7 @@ export function FreeInput() {
               el.style.height = Math.min(120, el.scrollHeight) + 'px';
             }}
             onKeyDown={(e) => {
+              if (aiError) setAiError(null);
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 send();
@@ -264,6 +275,14 @@ export function FreeInput() {
           />
         )}
       </div>
+      {aiError && (
+        <div style={{
+          fontSize: '0.72rem',
+          color: 'var(--tint-red)',
+          padding: '0.2rem 0 0 1.2rem',
+          opacity: 0.8,
+        }}>{aiError}</div>
+      )}
     </div>
   );
 }

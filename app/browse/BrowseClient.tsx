@@ -244,12 +244,6 @@ export function BrowseClient({
           borderBottom: '0.5px solid var(--mat-border)',
         }}
       >
-        <span
-          aria-hidden
-          style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
-        >
-          Reference
-        </span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

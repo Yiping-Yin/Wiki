@@ -9,6 +9,7 @@
  * Client caches the result for the day (localStorage key includes the date).
  */
 import { runCli, pickCli } from '../../../lib/claude-cli';
+import { extractJson } from '../../../lib/ai/extract-json';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,14 +55,8 @@ Begin JSON:`;
 
   try {
     const text = await runCli(prompt, { cli, timeoutMs: 60000 });
-    const cleaned = text.trim().replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
-    let parsed: any;
-    try { parsed = JSON.parse(cleaned); }
-    catch {
-      const m = cleaned.match(/\{[\s\S]*\}/);
-      if (m) parsed = JSON.parse(m[0]);
-      else throw new Error('non-JSON');
-    }
+    const parsed = extractJson(text);
+    if (!parsed) throw new Error('non-JSON');
     const items = Array.isArray(parsed.items) ? parsed.items.slice(0, 3).map((it: any) => ({
       title: String(it.title ?? '').slice(0, 60),
       why: String(it.why ?? '').slice(0, 200),

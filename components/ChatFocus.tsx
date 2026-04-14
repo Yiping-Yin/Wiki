@@ -500,6 +500,12 @@ export function ChatFocus() {
     let assistantBuf = '';
     const ac = new AbortController();
     abortRef.current = ac;
+    // Inactivity timeout: abort if no data arrives for 60s
+    let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+    const resetTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => ac.abort(), 60_000);
+    };
     try {
       const r = await fetch('/api/chat', {
         method: 'POST',
@@ -511,9 +517,11 @@ export function ChatFocus() {
       const reader = r.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
+      resetTimer();
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+        resetTimer();
         buf += decoder.decode(value, { stream: true });
         const lines = buf.split('\n');
         buf = lines.pop() ?? '';
@@ -523,6 +531,7 @@ export function ChatFocus() {
           if (data === '[DONE]') continue;
           try {
             const json = JSON.parse(data);
+            if (json.error) throw new Error(json.error);
             if (json.delta) {
               assistantBuf += json.delta;
               setStreamBuf(assistantBuf);
@@ -532,12 +541,16 @@ export function ChatFocus() {
                 }));
               }
             }
-          } catch {}
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
         }
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') assistantBuf = `[error: ${e.message}]`;
     } finally {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
       abortRef.current = null;
     }
     return assistantBuf;
@@ -579,18 +592,21 @@ export function ChatFocus() {
       setTurns((prev) => [...prev, { q: text, a: answer }]);
       setStreamBuf('');
       setTimeout(() => inputRef.current?.focus(), 30);
-    } else if (answer && answer.startsWith('[error:')) {
-      // AI unreachable. Put the user's text back into the draft so they don't
-      // lose it, and show a quiet inline hint so they know what happened.
-      // Tier-3 actionable but non-modal: self-clears on next keystroke.
+    } else {
+      // AI returned empty or error. Restore the user's text so they
+      // don't lose it, and show a quiet inline hint.
       setDraft(text);
       setStreamBuf('');
-      const rawMsg = answer.slice(7, -1); // strip "[error: " and "]"
-      setAiError(
-        rawMsg.toLowerCase().includes('fetch') || rawMsg.toLowerCase().includes('network')
-          ? 'AI unreachable — check connection and press Enter to retry.'
-          : `AI returned an error — press Enter to retry. (${rawMsg.slice(0, 80)})`
-      );
+      if (answer && answer.startsWith('[error:')) {
+        const rawMsg = answer.slice(7, -1);
+        setAiError(
+          rawMsg.toLowerCase().includes('fetch') || rawMsg.toLowerCase().includes('network')
+            ? 'AI unreachable — check connection and press Enter to retry.'
+            : `AI returned an error — press Enter to retry. (${rawMsg.slice(0, 80)})`
+        );
+      } else {
+        setAiError('No response from AI — press Enter to retry.');
+      }
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [draft, streaming, ctx, turns, anchor, streamChat, existingNotes, priorVersionsOnThisPassage]);

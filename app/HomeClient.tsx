@@ -153,23 +153,6 @@ export function HomeClient(_props: unknown) {
         />
       )}
 
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        marginBottom: 18,
-      }}>
-        <span aria-hidden style={{
-          width: 18, height: 1,
-          background: 'var(--accent)', opacity: 0.55,
-        }} />
-        <span className="t-caption2" style={{
-          color: 'var(--muted)',
-          textTransform: 'uppercase', letterSpacing: '0.10em',
-          fontWeight: 700,
-        }}>Recent</span>
-        <span aria-hidden style={{
-          flex: 1, height: 1, background: 'var(--mat-border)',
-        }} />
-      </div>
       <ul style={{
         listStyle: 'none', padding: 0, margin: 0,
         display: 'flex', flexDirection: 'column', gap: 2,

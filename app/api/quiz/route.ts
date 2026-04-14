@@ -8,6 +8,7 @@ import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { runCli, pickCli } from '../../../lib/claude-cli';
+import { extractJson } from '../../../lib/ai/extract-json';
 import { legacyPublicCachePath, runtimeCacheDir, runtimeCachePath } from '../../../lib/generated-cache';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
 
@@ -86,14 +87,8 @@ ${doc.body.slice(0, 12000)}
 
   try {
     const text = await runCli(prompt, { cli, timeoutMs: 180000 });
-    const cleaned = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
-    let parsed: any;
-    try { parsed = JSON.parse(cleaned); }
-    catch {
-      const m = cleaned.match(/\{[\s\S]*\}/);
-      if (m) parsed = JSON.parse(m[0]);
-      else throw new Error('non-JSON response');
-    }
+    const parsed = extractJson(text);
+    if (!parsed) throw new Error('non-JSON response');
     const result = {
       id: safe,
       questions: (parsed.questions ?? []).slice(0, 5).map((q: any) => ({
