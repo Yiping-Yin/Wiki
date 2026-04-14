@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { QuietGuideCard } from '../../../../components/QuietGuideCard';
 import { useHistory } from '../../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../../lib/trace';
 import type { KnowledgeCategory } from '../../../../lib/knowledge-types';
@@ -78,21 +77,6 @@ function stateRank(surface: CollectionSurface) {
     default:
       return 3;
   }
-}
-
-function docSummary(surface: CollectionSurface) {
-  if (surface.latestSummary) return surface.latestSummary;
-  if (surface.latestQuote) return surface.latestQuote;
-  if (surface.preview) return surface.preview.slice(0, 220);
-  return '';
-}
-
-function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
-  if (nextAction === 'refresh') return 'Refresh';
-  if (nextAction === 'rehearse') return 'Rehearsal';
-  if (nextAction === 'examine') return 'Examiner';
-  if (nextAction === 'capture') return 'Open';
-  return 'Review';
 }
 
 export function CollectionContextClient({
@@ -188,33 +172,74 @@ export function CollectionContextClient({
   };
 
   return (
-    <QuietGuideCard
-      eyebrow="Collection"
-      title={currentGroup?.label || category.label}
-      meta={
-        <>
-          <Link href={`/knowledge/${category.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-            {category.label}
+    <section
+      style={{
+        marginTop: '0.35rem',
+        marginBottom: '0.55rem',
+        paddingBottom: '0.55rem',
+        borderBottom: '0.5px solid var(--mat-border)',
+      }}
+    >
+      <div
+        className="t-caption2"
+        style={{
+          color: 'var(--muted)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flexWrap: 'wrap',
+          letterSpacing: '0.04em',
+        }}
+      >
+        <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+          Collection
+        </span>
+        <span aria-hidden>·</span>
+        <Link href={`/knowledge/${category.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+          {category.label}
+        </Link>
+        <span aria-hidden>·</span>
+        <span>{currentGroup?.label || 'All material'}</span>
+        <span aria-hidden>·</span>
+        <span>{currentIndex + 1} / {docs.length}</span>
+        {currentSurface?.touchedAt && currentSurface.state !== 'new' ? (
+          <>
+            <span aria-hidden>·</span>
+            <span>{formatWhen(currentSurface.touchedAt)}</span>
+          </>
+        ) : null}
+        <span aria-hidden>·</span>
+        {continueDoc ? (
+          <button
+            type="button"
+            onClick={() => openPrimaryAction(actionDoc)}
+            style={{
+              appearance: 'none',
+              border: 0,
+              background: 'transparent',
+              color: 'var(--accent)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+              padding: 0,
+              cursor: 'pointer',
+            }}
+          >
+            Continue collection
+          </button>
+        ) : (
+          <Link
+            href={mapHref}
+            style={{
+              color: 'var(--accent)',
+              textDecoration: 'none',
+              fontWeight: 700,
+            }}
+          >
+            All material
           </Link>
-          <span aria-hidden>·</span>
-          <span>{currentIndex + 1} / {docs.length}</span>
-          {currentSurface?.touchedAt && currentSurface.state !== 'new' ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>{formatWhen(currentSurface.touchedAt)}</span>
-            </>
-          ) : null}
-        </>
-      }
-      summary={continueDoc ? docSummary(continueDoc) : currentSurface ? docSummary(currentSurface) : ''}
-      actions={[
-        {
-          label: continueDoc ? 'Continue collection' : 'All material',
-          onClick: () => openPrimaryAction(actionDoc),
-          primary: true,
-        },
-        ...(continueDoc ? [{ label: 'All material', href: mapHref }] : []),
-      ]}
-    />
+        )}
+      </div>
+    </section>
   );
 }
