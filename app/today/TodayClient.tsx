@@ -256,13 +256,7 @@ export function TodayClient({
           eyebrow="Keep the thread warm"
           title={focusSurface.title}
           mode="inline"
-          meta={
-            <>
-              <span>{kindLabel(focusSurface.kind)}</span>
-              <span aria-hidden>·</span>
-              <span>{timeOfDay(focusSurface.touchedAt)}</span>
-            </>
-          }
+          meta={<span>{timeOfDay(focusSurface.touchedAt)}</span>}
           actions={[
             {
               label: todayPrimaryActionLabel(focusSurface.learning.nextAction),

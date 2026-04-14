@@ -289,8 +289,6 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
             <>
               <span>{focusItem.ext.slice(1).toUpperCase()}</span>
               <span aria-hidden>·</span>
-              <span>{formatSize(focusItem.size)}</span>
-              <span aria-hidden>·</span>
               <span>{formatWhen(focusItem.touchedAt)}</span>
             </>
           }

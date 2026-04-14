@@ -192,23 +192,7 @@ export function KnowledgeHomeClient({
           eyebrow="Continue collection"
           title={focusCollection.label}
           mode="inline"
-          meta={
-            <>
-              <span>{focusCollection.count} docs</span>
-              {focusCollection.weeks > 0 ? (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{focusCollection.weeks} weeks</span>
-                </>
-              ) : null}
-              {focusCollection.touchedAt > 0 ? (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{formatWhen(focusCollection.touchedAt)}</span>
-                </>
-              ) : null}
-            </>
-          }
+          meta={focusCollection.touchedAt > 0 ? <span>{formatWhen(focusCollection.touchedAt)}</span> : undefined}
           actions={[
             { label: 'Continue collection', onClick: () => openPrimaryAction(focusCollection), primary: true },
             { label: 'All material', href: focusCollection.href },
