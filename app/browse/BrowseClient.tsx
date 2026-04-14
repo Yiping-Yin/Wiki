@@ -299,21 +299,6 @@ export function BrowseClient({
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>{c.label.replace(/^[^·]+·\s*/, '')}</span>
                 </Link>
-                <div
-                  className="t-caption2"
-                  style={{
-                    color: 'var(--muted)',
-                    marginTop: -4,
-                    marginBottom: 10,
-                    marginLeft: 2,
-                    lineHeight: 1.5,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {categoryPreview(c)}
-                </div>
               </li>
             ))}
           </ul>
@@ -342,21 +327,6 @@ export function BrowseClient({
                     letterSpacing: '-0.012em',
                   }}>{s.section}</span>
                 </Link>
-                <div
-                  className="t-caption2"
-                  style={{
-                    color: 'var(--muted)',
-                    marginTop: -4,
-                    marginBottom: 10,
-                    marginLeft: 2,
-                    lineHeight: 1.5,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {llmPreview(s)}
-                </div>
               </li>
             ))}
           </ul>

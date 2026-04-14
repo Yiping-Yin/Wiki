@@ -177,16 +177,6 @@ export function HomeClient(_props: unknown) {
                   letterSpacing: '-0.012em',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{item.title}</span>
-                {item.latestSummary ? (
-                  <span style={{
-                    display: 'block',
-                    color: 'var(--fg-secondary)',
-                    fontSize: '0.83rem',
-                    lineHeight: 1.5,
-                    marginTop: 4,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{item.latestSummary}</span>
-                ) : null}
               </span>
               <span suppressHydrationWarning className="t-caption" style={{
                 color: 'var(--muted)',
