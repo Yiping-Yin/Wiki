@@ -196,7 +196,10 @@ export default function GraphPage() {
 
   const { nodes, edges, panelCount, relationCount, panels, relationPreview } = useMemo(() => {
     const fallback = buildPanels(traces);
-    const panels = (storedPanels.length > 0 ? storedPanels : fallback.panels).map((panel) => ({
+    const basePanels = storedPanels.length > 0
+      ? storedPanels.filter((panel) => panel.status !== 'provisional' && panel.status !== 'superseded')
+      : fallback.panels;
+    const panels = basePanels.map((panel) => ({
       ...panel,
       family: familyForHref(panel.href),
       learning: summarizeLearningSurface((fallback.tracesByDocId.get(panel.docId) ?? []), 0),

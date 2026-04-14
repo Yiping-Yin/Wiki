@@ -55,9 +55,8 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
     }
   }
 
-  if (!crystallizedAt) return null;
-
   const sections = Array.from(latestByPosition.values()).sort((a, b) => a.at - b.at);
+  if (sections.length === 0) return null;
   const latestAnchorId = sections.at(-1)?.anchorId ?? null;
   const sourceDocIds = [docId];
   const anchorIds = sections.map((section) => section.anchorId);
@@ -90,8 +89,16 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
   );
   const updatedAt = Math.max(
     ...traces.map((trace) => trace.updatedAt),
-    crystallizedAt,
+    crystallizedAt || 0,
   );
+
+  const latestSectionAt = Math.max(...sections.map((section) => section.at));
+  const status =
+    crystallizedAt === 0
+      ? 'provisional'
+      : latestSectionAt > crystallizedAt || openTensions.length > 0
+        ? 'contested'
+        : 'settled';
 
   return {
     id: newPanelId(docId, crystallizedAt),
@@ -106,7 +113,7 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
     centralClaim: summary,
     keyDistinctions,
     openTensions,
-    status: 'settled',
+    status,
     createdAt,
     updatedAt,
     crystallizedAt,

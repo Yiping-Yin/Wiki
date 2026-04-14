@@ -8,8 +8,8 @@ import { derivePanelFromTraces, emitPanelChange, panelStore } from '../lib/panel
  * Mirrors trace-level crystallize state into first-class panel objects.
  *
  * Minimal Phase C bridge:
- * - if a root reading trace set is crystallized, upsert a settled panel
- * - if it is no longer crystallized, remove the panel for that doc
+ * - if a root reading trace set has anchors, upsert a panel
+ * - if it has no anchors, remove the panel for that doc
  */
 export function PanelSync() {
   const { traces, loading } = useAllTraces();

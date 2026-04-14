@@ -212,7 +212,7 @@ export function KesiView() {
 
   const panels = useMemo<Panel[]>(() => {
     const basePanels: StoredPanel[] = storedPanels.length > 0
-      ? storedPanels
+      ? storedPanels.filter((panel) => panel.status !== 'provisional' && panel.status !== 'superseded')
       : buildPanels(traces);
 
     return basePanels.map((panel): Panel => {
