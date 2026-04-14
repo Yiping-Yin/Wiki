@@ -12,25 +12,22 @@ export function KnowledgeHomeStatic({
     }>;
   }>;
 }) {
+  const items = groups.flatMap((group) => group.items);
   return (
     <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      {groups.map((g) => (
-        <section key={g.label} style={{ marginBottom: '2.6rem' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: '0.85rem',
-          }}>
-            {g.items.map((c) => (
-              <CollectionCard
-                key={c.slug}
-                slug={c.slug}
-                label={c.label}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: '0.85rem',
+      }}>
+        {items.map((c) => (
+          <CollectionCard
+            key={c.slug}
+            slug={c.slug}
+            label={c.label}
+          />
+        ))}
+      </div>
     </div>
   );
 }
