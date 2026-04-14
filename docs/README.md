@@ -8,6 +8,7 @@
 - [Design Memory Operating Model](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_MEMORY_OPERATING_MODEL.md)
 - [Design Memory Index](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_MEMORY_INDEX.md)
 - [Design Review Checklist](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_REVIEW_CHECKLIST.md)
+- [Loom Visual Grammar](/Users/yinyiping/Desktop/Wiki/docs/design/LOOM_VISUAL_GRAMMAR.md)
 - [Capture Spec](/Users/yinyiping/Desktop/Wiki/docs/design/CAPTURE_SPEC.md)
 - [Canvas Spec (Historical)](/Users/yinyiping/Desktop/Wiki/docs/design/CANVAS_SPEC.md)
 - [Logo Brief](/Users/yinyiping/Desktop/Wiki/docs/design/LOGO_BRIEF.md)
