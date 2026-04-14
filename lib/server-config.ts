@@ -24,7 +24,7 @@ export const CODEX_BIN =
   || 'codex';
 
 export const DEFAULT_CLI: CliKind =
-  process.env.LOOM_AI_CLI_DEFAULT === 'codex' ? 'codex' : 'claude';
+  process.env.LOOM_AI_CLI_DEFAULT === 'claude' ? 'claude' : 'codex';
 
 const KNOWLEDGE_ROOT_BASENAME = path.basename(KNOWLEDGE_ROOT);
 
