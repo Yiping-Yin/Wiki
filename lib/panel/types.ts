@@ -26,6 +26,8 @@ export type Panel = {
   centralClaim: string;
   keyDistinctions: string[];
   openTensions: string[];
+  contractSource: 'derived' | 'crystallized';
+  contractUpdatedAt: number;
   status: PanelStatus;
   createdAt: number;
   updatedAt: number;
@@ -36,6 +38,7 @@ export type Panel = {
 export type PanelSnapshotInput = {
   docId: string;
   traces: Trace[];
+  existing?: Panel | null;
 };
 
 export function newPanelId(docId: string): string {

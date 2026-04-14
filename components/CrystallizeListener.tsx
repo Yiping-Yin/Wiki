@@ -10,6 +10,8 @@
 import { useEffect } from 'react';
 import { appendEventForDoc } from '../lib/trace/source-bound';
 import { dispatchCrystallized } from '../lib/crystallize-events';
+import { derivePanelFromTraces, emitPanelChange, panelStore } from '../lib/panel';
+import { traceStore } from '../lib/trace';
 
 const LS_KEY = 'loom:crystallized';
 
@@ -49,6 +51,14 @@ export function CrystallizeListener() {
               at: Date.now(),
             },
           );
+          const traceSet = (await traceStore.getByDoc(docId))
+            .filter((trace) => trace.kind === 'reading' && !trace.parentId);
+          const existing = (await panelStore.getByDoc(docId))[0] ?? null;
+          const derived = derivePanelFromTraces({ docId, traces: traceSet, existing });
+          if (derived) {
+            await panelStore.put(derived);
+            emitPanelChange();
+          }
 
           window.dispatchEvent(new CustomEvent('loom:trace:changed'));
           dispatchCrystallized({

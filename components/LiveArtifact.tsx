@@ -17,9 +17,10 @@
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRemoveEvents, useAppendEvent, useBacklinksForDoc, useAllTraces } from '../lib/trace';
+import { useRemoveEvents, useAppendEvent, useBacklinksForDoc, useAllTraces, type TraceEvent } from '../lib/trace';
 import { LOOM_CRYSTALLIZED_EVENT, type CrystallizedDetail, dispatchCrystallized } from '../lib/crystallize-events';
 import { openPanelReview } from '../lib/panel-resume';
+import { applyCrystallizedContract, buildPanelContract, derivePanelFromTraces, emitPanelChange, panelStore } from '../lib/panel';
 import { useReadingThoughtAnchors } from './thought-anchor-model';
 import { VersionedAnchorCard } from './VersionedAnchorCard';
 
@@ -130,15 +131,37 @@ export function LiveArtifact({ docId }: { docId: string }) {
     : false;
   const crystallize = async () => {
     if (!readingTrace || isCrystallized) return;
+    const at = Date.now();
     const latest = thoughtItems.length > 0
       ? thoughtItems.map((it) => it.summary).join(' · ')
       : versions[versions.length - 1]?.content ?? '';
     const summary = deriveSummary(latest) ?? readingTrace.title;
-    await append(readingTrace.id, {
+    const crystallizeEvent: TraceEvent = {
       kind: 'crystallize',
       summary,
-      at: Date.now(),
-    });
+      at,
+    };
+    await append(readingTrace.id, crystallizeEvent);
+    const nextTraceSet = readingTraces.map((trace) => (
+      trace.id === readingTrace.id
+        ? { ...trace, events: [...trace.events, crystallizeEvent] }
+        : trace
+    ));
+    const existing = (await panelStore.getByDoc(docId))[0] ?? null;
+    const derived = derivePanelFromTraces({ docId, traces: nextTraceSet, existing });
+    if (derived) {
+      const contract = buildPanelContract({
+        title: derived.title,
+        latestArtifact: latestArtifact || latest,
+        sections: thoughtItems.map((thought) => ({
+          summary: thought.summary,
+          quote: thought.quote,
+          thoughtType: thought.thoughtType,
+        })),
+      });
+      await panelStore.put(applyCrystallizedContract(derived, contract, at));
+      emitPanelChange();
+    }
     dispatchCrystallized({
       docId,
       href: readingTrace.source?.href,

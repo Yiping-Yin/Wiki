@@ -27,17 +27,17 @@ export function PanelSync() {
         byDoc.set(trace.source.docId, existing);
       }
 
-      const desired = new Map<string, ReturnType<typeof derivePanelFromTraces>>();
-      for (const [docId, traceSet] of byDoc) {
-        desired.set(docId, derivePanelFromTraces({ docId, traces: traceSet }));
-      }
-
       const existingPanels = await panelStore.getAll();
       const existingByDoc = new Map<string, typeof existingPanels>();
       for (const panel of existingPanels) {
         const current = existingByDoc.get(panel.docId) ?? [];
         current.push(panel);
         existingByDoc.set(panel.docId, current);
+      }
+      const desired = new Map<string, ReturnType<typeof derivePanelFromTraces>>();
+      for (const [docId, traceSet] of byDoc) {
+        const existing = (existingByDoc.get(docId) ?? [])[0] ?? null;
+        desired.set(docId, derivePanelFromTraces({ docId, traces: traceSet, existing }));
       }
 
       for (const [docId, maybePanel] of desired) {
