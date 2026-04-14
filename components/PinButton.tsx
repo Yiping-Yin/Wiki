@@ -29,7 +29,7 @@ export function PinButton({ id, title, href, size = 'sm' }: { id: string; title:
     <button
       ref={ref}
       onClick={onClick}
-      title={pinned ? 'Unpin from /today + sidebar' : 'Pin to /today + sidebar'}
+      title={pinned ? 'Unpin' : 'Pin'}
       aria-label={pinned ? 'Unpin' : 'Pin'}
       aria-pressed={pinned}
       style={{
