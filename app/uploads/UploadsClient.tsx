@@ -88,19 +88,6 @@ function uploadSurface(item: UploadListItem, traces: Trace[]): UploadSurface {
   };
 }
 
-function stateLabel(item: UploadSurface) {
-  switch (item.state) {
-    case 'finished':
-      return 'Finished';
-    case 'woven':
-      return `${item.anchorCount} stitch${item.anchorCount > 1 ? 'es' : ''}`;
-    case 'opened':
-      return 'Opened';
-    default:
-      return 'New';
-  }
-}
-
 function stateOrder(item: UploadSurface) {
   switch (item.state) {
     case 'woven':
@@ -155,18 +142,6 @@ function UploadBlock({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-              <span
-                className="t-caption2"
-                style={{
-                  color: item.state === 'finished' ? 'var(--accent)' : 'var(--muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}
-              >
-                {stateLabel(item)}
-              </span>
               <span
                 style={{
                   flex: 1,
