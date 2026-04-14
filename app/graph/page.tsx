@@ -551,18 +551,6 @@ export default function GraphPage() {
               borderTop: '0.5px solid var(--mat-border)',
             }}
           >
-            <div
-              className="t-caption2"
-              style={{
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
-                marginBottom: 6,
-              }}
-            >
-              Focused panel
-            </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 260 }}>
                 <div
@@ -648,9 +636,6 @@ export default function GraphPage() {
             </div>
           </div>
         )}
-        <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 6 }}>
-          Click any panel to inspect its relations.
-        </div>
       </div>
       <div style={{ height: 'calc(100vh - 84px)' }}>
         <ReactFlow
@@ -706,7 +691,7 @@ function RelatedList({
           letterSpacing: '0.04em',
         }}
       >
-        {label} · {items.length}
+        {label}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.slice(0, 5).map((related) => (
