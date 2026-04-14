@@ -27,6 +27,23 @@ Loom is a **loom** for thought:
 
 If a design decision makes Loom feel like a floating AI chat tool or a generic PKM dashboard, the decision is wrong.
 
+Strategic boundary:
+
+- Loom should not try to compete head-on with Heptabase as a general visual knowledge base
+- Loom should not try to compete head-on with Readwise as reading-chat middleware
+- Loom should not try to compete head-on with Obsidian as an infinite personal canvas
+
+The correct entry point is narrower and stronger:
+
+- read one document
+- ask around one passage
+- commit one anchor
+- review one evolving map
+- crystallize one panel
+- let real kesi emerge later from many such panels
+
+Sharing, collaboration, ecosystem, and broader network effects are all secondary to this.
+
 ## 2. The Five Active Rules
 
 These are the current top-level filters.
@@ -65,6 +82,8 @@ This means:
 - **Capture-first** is the active model
 - **Wide ReviewThoughtMap** is the active elaboration surface
 - **Canvas as a free 2D workspace is not current product direction**
+- **Single-document completion is the immediate product priority**
+- **Cross-panel fabric is allowed to emerge later; it is not the first battle**
 
 ## 4. Valid Surfaces
 

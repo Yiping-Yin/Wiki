@@ -40,6 +40,24 @@ But it still lacks:
 
 This means Loom has a constitution, but not yet a full procedure.
 
+Strategic focus:
+
+- Loom wins by making the single-document loop dense and trustworthy
+- not by becoming a general visual PKM system
+- not by becoming reading-chat middleware
+- not by becoming an infinite thought canvas
+
+Therefore the first battle remains:
+
+`source -> passage -> thread -> anchor -> thought map -> panel`
+
+not:
+
+- collaboration
+- broad issue-space workspaces
+- expansive graph products
+- ecosystem surfaces
+
 ## 2. Current Reality
 
 The actual codebase is closest to this shape:
