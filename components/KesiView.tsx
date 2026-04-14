@@ -8,12 +8,11 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LearningStatusInline } from './LearningStatusInline';
-import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
-import { useAllTraces, useAppendEvent, type Trace } from '../lib/trace';
+import type { LearningRecency } from '../lib/learning-status';
+import { useAppendEvent } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { continuePanelLifecycle, openPanelReview } from '../lib/panel-resume';
-import { derivePanelFromTraces, useAllPanels, type Panel as StoredPanel, type PanelSection as StoredPanelSection } from '../lib/panel';
+import { useAllPanels, type Panel as StoredPanel, type PanelSection as StoredPanelSection } from '../lib/panel';
 import { buildWeavePreview, useAllWeaves, type DirectedWeavePreview, type WeavePreviewItem } from '../lib/weave';
 
 const TINTS = [
@@ -36,28 +35,7 @@ type Panel = StoredPanel & {
   sourceType: 'knowledge' | 'wiki' | 'upload' | 'other';
   collectionLabel: string;
   collectionHref?: string;
-  learning: LearningSurfaceSummary;
 };
-
-function buildPanels(traces: Trace[]): StoredPanel[] {
-  const tracesByDocId = new Map<string, Trace[]>();
-  for (const trace of traces) {
-    if (!trace.source?.docId) continue;
-    if (trace.parentId !== null) continue;
-    const existing = tracesByDocId.get(trace.source.docId) ?? [];
-    existing.push(trace);
-    tracesByDocId.set(trace.source.docId, existing);
-  }
-
-  const out: StoredPanel[] = [];
-  for (const [docId, traceSet] of tracesByDocId) {
-    const panel = derivePanelFromTraces({ docId, traces: traceSet });
-    if (panel) out.push(panel);
-  }
-
-  out.sort((a, b) => b.crystallizedAt - a.crystallizedAt);
-  return out;
-}
 
 function matchesQuery(panel: Panel, q: string) {
   const hay = [
@@ -177,7 +155,6 @@ type SourceFilter = 'all' | 'knowledge' | 'wiki' | 'upload';
 type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
 
 export function KesiView() {
-  const { traces, loading } = useAllTraces();
   const { panels: storedPanels, loading: panelsLoading } = useAllPanels();
   const { weaves, loading: weavesLoading } = useAllWeaves();
   const append = useAppendEvent();
@@ -200,21 +177,8 @@ export function KesiView() {
     }
   }, []);
 
-  const tracesByDocId = useMemo(() => {
-    const map = new Map<string, Trace[]>();
-    for (const trace of traces) {
-      if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
-      const existing = map.get(trace.source.docId) ?? [];
-      existing.push(trace);
-      map.set(trace.source.docId, existing);
-    }
-    return map;
-  }, [traces]);
-
   const panels = useMemo<Panel[]>(() => {
-    const basePanels: StoredPanel[] = storedPanels.length > 0
-      ? storedPanels.filter((panel) => panel.status !== 'provisional' && panel.status !== 'superseded')
-      : buildPanels(traces);
+    const basePanels: StoredPanel[] = storedPanels.filter((panel) => panel.status !== 'provisional' && panel.status !== 'superseded');
 
     return basePanels.map((panel): Panel => {
       const meta = panelSourceMeta(panel.href, knowledgeCategories);
@@ -225,71 +189,13 @@ export function KesiView() {
         family: familyLabelForHref(panel.href, knowledgeCategories),
         summary: panelSummary(panel.summary, panel.sections),
         ...meta,
-        learning: summarizeLearningSurface(tracesByDocId.get(panel.docId) ?? [], 0),
       };
     });
-  }, [storedPanels, traces, knowledgeCategories, tracesByDocId]);
+  }, [storedPanels, knowledgeCategories]);
 
   const relationPreview = useMemo(() => {
-    if (!weavesLoading) {
-      return buildWeavePreview(panels, weaves);
-    }
-    const previews = new Map<string, DirectedWeavePreview<Panel>>();
-    const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
-    const seen = new Set<string>();
-
-    for (const panel of panels) {
-      previews.set(panel.docId, { incoming: [], outgoing: [] });
-    }
-
-    for (const panel of panels) {
-      const traceSet = tracesByDocId.get(panel.docId) ?? [];
-      const latestByAnchor = new Map<string, { content: string; at: number }>();
-      for (const trace of traceSet) {
-        for (const event of trace.events) {
-          if (event.kind !== 'thought-anchor') continue;
-          const prev = latestByAnchor.get(event.anchorId);
-          if (!prev || event.at > prev.at) {
-            latestByAnchor.set(event.anchorId, { content: event.content, at: event.at });
-          }
-        }
-      }
-
-      for (const { content } of latestByAnchor.values()) {
-        for (const url of extractMarkdownLinkUrls(content)) {
-          const target = Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
-          if (!target || target.docId === panel.docId) continue;
-          const key = `${panel.docId}=>${target.docId}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          previews.set(panel.docId, {
-            incoming: previews.get(panel.docId)?.incoming ?? [],
-            outgoing: [...(previews.get(panel.docId)?.outgoing ?? []), {
-              id: `${panel.docId}=>${target.docId}`,
-              panel: target,
-              weight: 1,
-              evidence: [],
-              status: 'suggested',
-              kind: 'references',
-            }],
-          });
-          previews.set(target.docId, {
-            incoming: [...(previews.get(target.docId)?.incoming ?? []), {
-              id: `${panel.docId}=>${target.docId}`,
-              panel,
-              weight: 1,
-              evidence: [],
-              status: 'suggested',
-              kind: 'references',
-            }],
-            outgoing: previews.get(target.docId)?.outgoing ?? [],
-          });
-        }
-      }
-    }
-
-    return previews;
-  }, [panels, tracesByDocId, weaves, weavesLoading]);
+    return buildWeavePreview(panels, weaves);
+  }, [panels, weaves]);
 
   const visiblePanels = useMemo(() => {
     const q = query.trim();
@@ -471,7 +377,7 @@ export function KesiView() {
     syncKesiFocusParam(null);
   };
 
-  const content = !mounted || loading || panelsLoading
+  const content = !mounted || panelsLoading || weavesLoading
     ? <LoadingKesiShell />
     : panels.length === 0
       ? <EmptyKesiCanvas />
@@ -1378,7 +1284,7 @@ function primaryActionLabel(panel: Panel) {
   }
 }
 
-function recencySort(recency: LearningSurfaceSummary['recency']) {
+function recencySort(recency: LearningRecency) {
   return recency === 'stale' ? 0 : recency === 'cooling' ? 1 : 2;
 }
 

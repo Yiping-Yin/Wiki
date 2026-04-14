@@ -3,25 +3,17 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { summarizeLearningSurface } from '../../lib/learning-status';
-import { useAllTraces, type Trace } from '../../lib/trace';
+import type { LearningNextAction } from '../../lib/learning-status';
 import { continuePanelLifecycle, openPanelReview } from '../../lib/panel-resume';
-import { useAllPanels } from '../../lib/panel';
+import { useAllPanels, type Panel as StoredPanel } from '../../lib/panel';
 import { buildWeavePreview, setWeaveStatus, useAllWeaves } from '../../lib/weave';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
 const Background = dynamic(() => import('reactflow').then((m) => m.Background), { ssr: false });
 
-type PanelNode = {
-  docId: string;
-  href: string;
-  title: string;
+type PanelNode = StoredPanel & {
   family: string;
-  summary: string;
-  latestAnchorId: string | null;
-  crystallizedAt: number;
-  learning: ReturnType<typeof summarizeLearningSurface>;
 };
 
 type RelatedPanel = {
@@ -36,32 +28,11 @@ type DirectedRelatedPanel = RelatedPanel & {
   direction: 'incoming' | 'outgoing';
 };
 
-function primaryActionLabel(nextAction: ReturnType<typeof summarizeLearningSurface>['nextAction']) {
+function primaryActionLabel(nextAction: LearningNextAction) {
   if (nextAction === 'refresh') return 'Refresh';
   if (nextAction === 'rehearse') return 'Rehearsal';
   if (nextAction === 'examine') return 'Examiner';
   return 'Review';
-}
-
-function extractMarkdownLinkUrls(content: string): string[] {
-  if (!content) return [];
-  const urls: string[] = [];
-  const re = /\[[^\]]*\]\(([^)]+)\)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(content)) !== null) {
-    const url = m[1].trim().split(/\s+/)[0];
-    if (url) urls.push(url);
-  }
-  return urls;
-}
-
-function urlReferencesDoc(url: string, docHref: string): boolean {
-  if (!url || !docHref) return false;
-  const cleanUrl = url.split('#')[0].split('?')[0];
-  if (cleanUrl === docHref) return true;
-  if (cleanUrl.endsWith(docHref)) return true;
-  if (cleanUrl.endsWith(docHref.replace(/^\//, ''))) return true;
-  return false;
 }
 
 function familyForHref(href: string): string {
@@ -70,73 +41,6 @@ function familyForHref(href: string): string {
   if (know) return know[1];
   if (href.startsWith('/uploads/')) return 'Uploads';
   return 'Other';
-}
-
-function latestPanelSummary(traces: Trace[]) {
-  let latestSummary = '';
-  let latestAnchorId: string | null = null;
-  let latestAt = 0;
-  for (const trace of traces) {
-    for (const event of trace.events) {
-      if (event.kind !== 'thought-anchor') continue;
-      if (event.at >= latestAt) {
-        latestAt = event.at;
-        latestSummary = event.summary || event.content;
-        latestAnchorId = event.anchorId;
-      }
-    }
-  }
-  return { latestSummary, latestAnchorId };
-}
-
-function relationSnippet(summary: string, content: string) {
-  const base = summary.trim() || content.trim();
-  if (!base) return '';
-  const single = base.replace(/\s+/g, ' ').trim();
-  return single.length > 96 ? `${single.slice(0, 96)}…` : single;
-}
-
-function buildPanels(traces: Trace[]) {
-  const tracesByDocId = new Map<string, Trace[]>();
-  for (const trace of traces) {
-    if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
-    const existing = tracesByDocId.get(trace.source.docId) ?? [];
-    existing.push(trace);
-    tracesByDocId.set(trace.source.docId, existing);
-  }
-
-  const panels: PanelNode[] = [];
-  for (const [docId, traceSet] of tracesByDocId) {
-    const representative = [...traceSet].sort(
-      (a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt,
-    )[0];
-    if (!representative?.source?.href) continue;
-
-    let crystallizedAt = 0;
-    for (const trace of traceSet) {
-      for (const event of trace.events) {
-        if (event.kind === 'crystallize' && !event.anchorId && event.at > crystallizedAt) {
-          crystallizedAt = event.at;
-        }
-      }
-    }
-    if (!crystallizedAt) continue;
-
-    const { latestSummary, latestAnchorId } = latestPanelSummary(traceSet);
-    panels.push({
-      docId,
-      href: representative.source.href,
-      title: representative.source.sourceTitle ?? representative.title,
-      family: familyForHref(representative.source.href),
-      summary: latestSummary,
-      latestAnchorId,
-      crystallizedAt,
-      learning: summarizeLearningSurface(traceSet, 0),
-    });
-  }
-
-  panels.sort((a, b) => b.crystallizedAt - a.crystallizedAt);
-  return { panels, tracesByDocId };
 }
 
 type ScopeFilter = 'all' | 'nearby' | 'incoming' | 'outgoing';
@@ -167,7 +71,6 @@ function syncGraphParams({
 
 export default function GraphPage() {
   const router = useRouter();
-  const { traces } = useAllTraces();
   const { panels: storedPanels, loading } = useAllPanels();
   const { weaves, loading: weavesLoading } = useAllWeaves();
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
@@ -199,18 +102,12 @@ export default function GraphPage() {
   }, []);
 
   const { nodes, edges, panelCount, relationCount, panels, relationPreview } = useMemo(() => {
-    const fallback = buildPanels(traces);
-    const basePanels = storedPanels.length > 0
-      ? storedPanels.filter((panel) => panel.status !== 'provisional' && panel.status !== 'superseded')
-      : fallback.panels;
+    const basePanels = storedPanels.filter((panel) => panel.status !== 'provisional' && panel.status !== 'superseded');
     const panels = basePanels.map((panel) => ({
       ...panel,
       family: familyForHref(panel.href),
-      learning: summarizeLearningSurface((fallback.tracesByDocId.get(panel.docId) ?? []), 0),
     }));
-    const tracesByDocId = fallback.tracesByDocId;
     const panelByDocId = new Map(panels.map((panel) => [panel.docId, panel] as const));
-    const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
 
     const grouped = new Map<string, PanelNode[]>();
     for (const panel of panels) {
@@ -257,114 +154,38 @@ export default function GraphPage() {
       animated: boolean;
       style: { stroke: string; strokeWidth: number };
     }> = [];
-    let orderedPreview = new Map<string, { incoming: RelatedPanel[]; outgoing: RelatedPanel[] }>();
-    if (!weavesLoading) {
-      const preview = buildWeavePreview(panels, weaves);
-      orderedPreview = new Map(
-        Array.from(preview.entries()).map(([docId, value]) => [
-          docId,
-          {
-            incoming: value.incoming.map((item) => ({
-              id: item.id,
-              panel: item.panel,
-              weight: item.weight,
-              evidence: item.evidence,
-              status: item.status,
-            })),
-            outgoing: value.outgoing.map((item) => ({
-              id: item.id,
-              panel: item.panel,
-              weight: item.weight,
-              evidence: item.evidence,
-              status: item.status,
-            })),
-          },
-        ]),
-      );
-      for (const weave of weaves) {
-        if (weave.status === 'rejected') continue;
-        if (!panelByDocId.has(weave.fromPanelId) || !panelByDocId.has(weave.toPanelId)) continue;
-        flowEdges.push({
-          id: weave.id,
-          source: weave.fromPanelId,
-          target: weave.toPanelId,
-          animated: false,
-          style: { stroke: 'var(--accent)', strokeWidth: 0.9 + Math.min(weave.evidence.length || 1, 4) * 0.3 },
-        });
-      }
-    } else {
-      const edgeWeights = new Map<string, number>();
-      const previewMap = new Map<string, { incoming: Map<string, RelatedPanel>; outgoing: Map<string, RelatedPanel> }>();
-
-      for (const panel of panels) {
-        previewMap.set(panel.docId, { incoming: new Map(), outgoing: new Map() });
-        const traceSet = tracesByDocId.get(panel.docId) ?? [];
-        const latestByAnchor = new Map<string, { content: string; summary: string; at: number }>();
-        for (const trace of traceSet) {
-          for (const event of trace.events) {
-            if (event.kind !== 'thought-anchor') continue;
-            const prev = latestByAnchor.get(event.anchorId);
-            if (!prev || event.at > prev.at) {
-              latestByAnchor.set(event.anchorId, {
-                content: event.content,
-                summary: event.summary,
-                at: event.at,
-              });
-            }
-          }
-        }
-        for (const [anchorId, note] of latestByAnchor.entries()) {
-          const { content, summary, at } = note;
-          for (const url of extractMarkdownLinkUrls(content)) {
-            const targetPanel =
-              Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href)) ??
-              Array.from(panelByDocId.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
-            if (!targetPanel || targetPanel.docId === panel.docId) continue;
-            const key = `${panel.docId}=>${targetPanel.docId}`;
-            edgeWeights.set(key, (edgeWeights.get(key) ?? 0) + 1);
-
-            const sourcePreview = previewMap.get(panel.docId) ?? { incoming: new Map(), outgoing: new Map() };
-            const targetPreview = previewMap.get(targetPanel.docId) ?? { incoming: new Map(), outgoing: new Map() };
-            sourcePreview.outgoing.set(targetPanel.docId, {
-              id: key,
-              panel: targetPanel,
-              weight: edgeWeights.get(key) ?? 1,
-              evidence: [{ anchorId, snippet: relationSnippet(summary, content), at }],
-              status: 'suggested',
-            });
-            targetPreview.incoming.set(panel.docId, {
-              id: key,
-              panel,
-              weight: edgeWeights.get(key) ?? 1,
-              evidence: [{ anchorId, snippet: relationSnippet(summary, content), at }],
-              status: 'suggested',
-            });
-            previewMap.set(panel.docId, sourcePreview);
-            previewMap.set(targetPanel.docId, targetPreview);
-          }
-        }
-      }
-
-      for (const [key, weight] of edgeWeights) {
-        const [source, target] = key.split('=>');
-        flowEdges.push({
-          id: key,
-          source,
-          target,
-          animated: false,
-          style: { stroke: 'var(--accent)', strokeWidth: 0.9 + Math.min(weight, 4) * 0.3 },
-        });
-      }
-
-      orderedPreview = new Map();
-      for (const [docId, value] of previewMap) {
-        const sortByWeight = (items: Iterable<RelatedPanel>) =>
-          Array.from(items).sort((a, b) => b.weight - a.weight || a.panel.title.localeCompare(b.panel.title));
-        orderedPreview.set(docId, {
-          incoming: sortByWeight(value.incoming.values()),
-          outgoing: sortByWeight(value.outgoing.values()),
-        });
-      }
+    const preview = buildWeavePreview(panels, weaves);
+    const orderedPreview = new Map(
+      Array.from(preview.entries()).map(([docId, value]) => [
+        docId,
+        {
+          incoming: value.incoming.map((item) => ({
+            id: item.id,
+            panel: item.panel,
+            weight: item.weight,
+            evidence: item.evidence,
+            status: item.status,
+          })),
+          outgoing: value.outgoing.map((item) => ({
+            id: item.id,
+            panel: item.panel,
+            weight: item.weight,
+            evidence: item.evidence,
+            status: item.status,
+          })),
+        },
+      ]),
+    );
+    for (const weave of weaves) {
+      if (weave.status === 'rejected') continue;
+      if (!panelByDocId.has(weave.fromPanelId) || !panelByDocId.has(weave.toPanelId)) continue;
+      flowEdges.push({
+        id: weave.id,
+        source: weave.fromPanelId,
+        target: weave.toPanelId,
+        animated: false,
+        style: { stroke: 'var(--accent)', strokeWidth: 0.9 + Math.min(weave.evidence.length || 1, 4) * 0.3 },
+      });
     }
 
     return {
@@ -375,7 +196,7 @@ export default function GraphPage() {
       panels,
       relationPreview: orderedPreview,
     };
-  }, [storedPanels, traces, focusDocId, weaves, weavesLoading]);
+  }, [storedPanels, focusDocId, weaves]);
 
   const panelByDocId = useMemo(
     () => new Map(panels.map((panel) => [panel.docId, panel] as const)),
@@ -527,7 +348,7 @@ export default function GraphPage() {
     return openReview(related.panel, evidenceAnchorId);
   };
 
-  if (loading || panelCount === 0) return null;
+  if (loading || weavesLoading || panelCount === 0) return null;
 
   return (
     <div style={{ width: '100%', height: '100vh', background: 'var(--bg)' }}>

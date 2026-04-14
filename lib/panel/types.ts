@@ -1,5 +1,6 @@
 'use client';
 
+import type { LearningNextAction, LearningRecency } from '../learning-status';
 import type { ThoughtType, Trace } from '../trace/types';
 
 export type PanelStatus = 'settled' | 'provisional' | 'contested' | 'superseded';
@@ -37,6 +38,12 @@ export type Panel = {
   contractSource: 'derived' | 'crystallized';
   contractUpdatedAt: number;
   revisions: PanelRevision[];
+  learning: {
+    nextAction: LearningNextAction;
+    recency: LearningRecency;
+    touchedAt: number;
+    anchorCount: number;
+  };
   status: PanelStatus;
   createdAt: number;
   updatedAt: number;

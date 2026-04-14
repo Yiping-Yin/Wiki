@@ -1,5 +1,6 @@
 'use client';
 
+import { summarizeLearningSurface } from '../learning-status';
 import { passagePositionKey } from '../passage-locator';
 import type { Trace } from '../trace/types';
 import { buildPanelContract } from './contract';
@@ -86,6 +87,7 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
   );
 
   const latestSectionAt = Math.max(...sections.map((section) => section.at));
+  const learning = summarizeLearningSurface(traces, 0);
   const status =
     crystallizedAt === 0
       ? 'provisional'
@@ -109,6 +111,12 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
     contractSource: crystallizedContract?.contractSource ?? 'derived',
     contractUpdatedAt: crystallizedContract?.contractUpdatedAt ?? (crystallizedAt || updatedAt),
     revisions: crystallizedContract?.revisions ?? existing?.revisions ?? [],
+    learning: {
+      nextAction: learning.nextAction,
+      recency: learning.recency,
+      touchedAt: learning.touchedAt,
+      anchorCount: learning.anchorCount,
+    },
     status,
     createdAt,
     updatedAt,
