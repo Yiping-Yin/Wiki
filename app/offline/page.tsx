@@ -14,28 +14,13 @@ export default function OfflinePage() {
         borderTop: '0.5px solid var(--mat-border)',
         borderBottom: '0.5px solid var(--mat-border)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-          <span
-            className="t-caption2"
-            style={{
-              color: 'var(--muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
-            }}
-          >
-            Keep weaving offline
-          </span>
-          <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-        </div>
         <h1 className="t-title2" style={{
           margin: 0, color: 'var(--fg)', padding: 0, border: 0,
         }}>This source isn&rsquo;t cached yet</h1>
         <p className="t-footnote" style={{
           marginTop: 8, color: 'var(--fg-secondary)', lineHeight: 1.55,
         }}>
-          Pages you&rsquo;ve already opened can keep carrying the weave. Try the surfaces that still hold your current context.
+          Opened pages can still carry the weave.
         </p>
         <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* eslint-disable @next/next/no-html-link-for-pages */}
