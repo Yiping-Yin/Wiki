@@ -228,17 +228,7 @@ export function BrowseClient({
           eyebrow="Continue collection"
           title={focusCollection.label}
           mode="inline"
-          meta={
-            <>
-              <span>{focusCollection.count} docs</span>
-              {focusCollection.touchedAt > 0 ? (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{formatWhen(focusCollection.touchedAt)}</span>
-                </>
-              ) : null}
-            </>
-          }
+          meta={focusCollection.touchedAt > 0 ? <span>{formatWhen(focusCollection.touchedAt)}</span> : undefined}
           actions={[
             { label: 'Continue collection', onClick: () => openPrimaryAction(focusCollection), primary: true },
             { label: 'Open collection', href: focusCollection.href },
@@ -278,17 +268,6 @@ export function BrowseClient({
             letterSpacing: '-0.01em',
           }}
         />
-        <span
-          className="t-caption2"
-          style={{
-            color: 'var(--muted)',
-            fontFamily: 'var(--mono)',
-            fontVariantNumeric: 'tabular-nums',
-            flexShrink: 0,
-          }}
-        >
-          {normalizedQuery ? `${filteredCategories.length + filteredSections.length}` : totalDocs}
-        </span>
       </div>
 
       {!hasResults && (
@@ -327,11 +306,6 @@ export function BrowseClient({
                     letterSpacing: '-0.012em',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>{c.label.replace(/^[^·]+·\s*/, '')}</span>
-                  <span className="t-caption" style={{
-                    color: 'var(--muted)', flexShrink: 0,
-                    fontVariantNumeric: 'tabular-nums',
-                    fontFamily: 'var(--mono)',
-                  }}>{c.count}</span>
                 </Link>
                 <div
                   className="t-caption2"
