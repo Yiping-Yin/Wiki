@@ -454,14 +454,8 @@ export default function GraphPage() {
   return (
     <div style={{ width: '100%', height: '100vh', background: 'var(--bg)' }}>
       <div style={{ padding: '1rem 1.5rem 0.9rem', borderBottom: '0.5px solid var(--mat-border)' }}>
-        <div
-          className="t-caption2"
-          style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 6 }}
-        >
-          Kesi relations
-        </div>
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 650, letterSpacing: '-0.02em' }}>
-          Panels and the threads between them
+          Relations
         </h1>
         <div
           style={{
@@ -473,12 +467,6 @@ export default function GraphPage() {
             borderTop: '0.5px solid var(--mat-border)',
           }}
         >
-          <span
-            aria-hidden
-            style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
-          >
-            Graph
-          </span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
