@@ -493,23 +493,6 @@ function ReviewCards({
 
   return (
     <section style={{ marginTop: '1.8rem' }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        marginBottom: 14,
-      }}>
-        <span aria-hidden style={{
-          width: 18, height: 1,
-          background: 'var(--accent)', opacity: 0.55,
-        }} />
-        <span className="t-caption2" style={{
-          color: 'var(--muted)',
-          textTransform: 'uppercase', letterSpacing: '0.10em',
-          fontWeight: 700,
-        }}>Review</span>
-        <span aria-hidden style={{
-          flex: 1, height: 1, background: 'var(--mat-border)',
-        }} />
-      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {cards.map((card, i) => (
           <div
