@@ -521,12 +521,7 @@ export function KesiView() {
       ? <EmptyKesiCanvas />
       : (
         <>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-          <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 700 }}>
-            Kesi
-          </span>
-          <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginBottom: 18 }}>
           <button
             type="button"
             onClick={() => router.push(returnPanel ? `/graph?focus=${encodeURIComponent(returnPanel.docId)}` : '/graph')}
