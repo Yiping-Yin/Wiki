@@ -570,22 +570,6 @@ export function KesiView() {
               borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <span aria-hidden style={{ width: 14, height: 1, background: returnPanel.tint, opacity: 0.65 }} />
-              <span
-                className="t-caption2"
-                style={{
-                  color: 'var(--muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 700,
-                }}
-              >
-                {focusPanel ? 'Focused panel' : 'Return to weave'}
-              </span>
-              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            </div>
-
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 260 }}>
                 <div
@@ -687,22 +671,6 @@ export function KesiView() {
               borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <span aria-hidden style={{ width: 14, height: 1, background: 'var(--tint-orange)', opacity: 0.65 }} />
-              <span
-                className="t-caption2"
-                style={{
-                  color: 'var(--muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 700,
-                }}
-              >
-                Return soon
-              </span>
-              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {refreshPanels.map((panel, index) => (
                 <div
@@ -767,22 +735,6 @@ export function KesiView() {
               borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-              <span
-                className="t-caption2"
-                style={{
-                  color: 'var(--muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 700,
-                }}
-              >
-                Keep weaving
-              </span>
-              <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-            </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {continuePanels.map((panel, index) => (
                 <div
