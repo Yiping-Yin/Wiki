@@ -722,12 +722,6 @@ function RelatedList({
               <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
                 {related.panel.title}
               </span>
-              <span
-                className="t-caption2"
-                style={{ color: 'var(--muted)', letterSpacing: '0.04em' }}
-              >
-                ×{related.weight}
-              </span>
             </div>
             {related.snippet ? (
               <div
