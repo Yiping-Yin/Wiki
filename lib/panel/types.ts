@@ -13,6 +13,14 @@ export type PanelSection = {
   at: number;
 };
 
+export type PanelRevision = {
+  at: number;
+  summary: string;
+  centralClaim: string;
+  keyDistinctions: string[];
+  openTensions: string[];
+};
+
 export type Panel = {
   id: string;
   docId: string;
@@ -28,6 +36,7 @@ export type Panel = {
   openTensions: string[];
   contractSource: 'derived' | 'crystallized';
   contractUpdatedAt: number;
+  revisions: PanelRevision[];
   status: PanelStatus;
   createdAt: number;
   updatedAt: number;

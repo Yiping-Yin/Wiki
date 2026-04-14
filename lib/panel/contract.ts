@@ -1,7 +1,7 @@
 'use client';
 
 import type { ThoughtType } from '../trace/types';
-import type { Panel } from './types';
+import type { Panel, PanelRevision } from './types';
 
 type PanelContractInput = {
   title: string;
@@ -51,15 +51,35 @@ export function buildPanelContract(input: PanelContractInput) {
   };
 }
 
+function sameRevision(a: PanelRevision, b: PanelRevision) {
+  return a.summary === b.summary
+    && a.centralClaim === b.centralClaim
+    && JSON.stringify(a.keyDistinctions) === JSON.stringify(b.keyDistinctions)
+    && JSON.stringify(a.openTensions) === JSON.stringify(b.openTensions);
+}
+
 export function applyCrystallizedContract(
   panel: Panel,
   contract: ReturnType<typeof buildPanelContract>,
   at: number,
 ): Panel {
+  const nextRevision: PanelRevision = {
+    at,
+    summary: contract.summary,
+    centralClaim: contract.centralClaim,
+    keyDistinctions: contract.keyDistinctions,
+    openTensions: contract.openTensions,
+  };
+  const revisions = [...(panel.revisions ?? [])];
+  const lastRevision = revisions.at(-1);
+  if (!lastRevision || !sameRevision(lastRevision, nextRevision)) {
+    revisions.push(nextRevision);
+  }
   return {
     ...panel,
     ...contract,
     contractSource: 'crystallized',
     contractUpdatedAt: at,
+    revisions,
   };
 }

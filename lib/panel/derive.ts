@@ -71,6 +71,7 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
         openTensions: existing.openTensions,
         contractSource: existing.contractSource,
         contractUpdatedAt: existing.contractUpdatedAt,
+        revisions: existing.revisions,
       }
     : null;
 
@@ -107,6 +108,7 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
     openTensions: crystallizedContract?.openTensions ?? derivedContract.openTensions,
     contractSource: crystallizedContract?.contractSource ?? 'derived',
     contractUpdatedAt: crystallizedContract?.contractUpdatedAt ?? (crystallizedAt || updatedAt),
+    revisions: crystallizedContract?.revisions ?? existing?.revisions ?? [],
     status,
     createdAt,
     updatedAt,
