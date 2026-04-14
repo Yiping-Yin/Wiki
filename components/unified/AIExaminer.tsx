@@ -88,6 +88,8 @@ function clearSession(docId: string | null) {
 
 export function AIExaminer({ docId, contextNotes }: Props) {
   const router = useRouter();
+  const questionStage = getAiStage('examiner-question');
+  const gradeStage = getAiStage('examiner-grade');
   const [phase, setPhase] = useState<Phase>(() => loadSession(docId).phase);
   const [draft, setDraft] = useState(() => loadSession(docId).draft);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -248,7 +250,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           fontSize: '0.85rem',
         }}
       >
-        Pick a doc from the toolbar above to start the examiner.
+        Pick a doc above to begin one verifying question.
       </div>
     );
   }
@@ -290,7 +292,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           }}
         >
           <div style={{ fontSize: '0.82rem', textAlign: 'center', maxWidth: 320 }}>
-            Stay with the unfinished edge of this doc.
+            Stay with the unfinished edge of this panel.
           </div>
           <button
             type="button"
@@ -300,7 +302,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
           >
             {contextNotes.length === 0
               ? 'Capture first'
-              : 'Ask one'}
+              : questionStage.title}
           </button>
         </div>
       )}
@@ -334,7 +336,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                 void submitAnswer();
               }
             }}
-            placeholder="Your answer… (⌘↩ to send)"
+            placeholder="Answer this question… (⌘↩ to send)"
             style={{
               flex: 1,
               minHeight: 0,

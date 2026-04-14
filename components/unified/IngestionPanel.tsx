@@ -46,6 +46,7 @@ const ACCEPT = '.md,.mdx,.txt,.markdown';
 const MAX_BYTES = 1_000_000; // 1 MB per file
 
 export function IngestionPanel({ existingIngested }: Props) {
+  const ingestionStage = getAiStage('ingestion-summary');
   const [items, setItems] = useState<IngestionItem[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -183,7 +184,7 @@ export function IngestionPanel({ existingIngested }: Props) {
         }}
       >
         <div style={{ marginBottom: 10, fontWeight: 500 }}>
-          {isDraggingOver ? 'Drop to ingest' : 'Drag .md / .mdx / .txt here'}
+          {isDraggingOver ? ingestionStage.title : 'Drop one source here'}
         </div>
         <label
           style={{

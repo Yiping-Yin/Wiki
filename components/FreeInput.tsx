@@ -24,6 +24,7 @@ import { ensureReadingTrace } from '../lib/trace/source-bound';
 export function FreeInput() {
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
+  const freeStage = getAiStage('free-recompile');
   const smallScreen = useSmallScreen();
   const [value, setValue] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -224,7 +225,7 @@ export function FreeInput() {
               }
             }}
             onBlur={() => { if (!value && !streaming) setExpanded(false); }}
-            placeholder="think…"
+            placeholder={`${freeStage.title.toLowerCase()}…`}
             rows={1}
             style={{
               flex: 1,

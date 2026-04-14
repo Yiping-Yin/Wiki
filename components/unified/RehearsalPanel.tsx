@@ -44,6 +44,7 @@ type Props = {
 
 export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' }: Props) {
   const router = useRouter();
+  const rehearsalStage = getAiStage('rehearsal-transform');
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [transforming, setTransforming] = useState(false);
@@ -60,7 +61,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
   const persistDraft = useCallback(async (next: 'stay' | 'examine') => {
     if (!docId || !draft.trim() || saving) return;
     setSaving(true);
-    setStatus(next === 'examine' ? 'Saving + opening the next pass…' : 'Saving…');
+    setStatus(next === 'examine' ? 'Saving + moving to verification…' : 'Saving…');
     try {
       const saved = await appendRehearsal({
         docId,
@@ -187,7 +188,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
           fontSize: '0.85rem',
         }}
       >
-        Pick a doc above and start writing from memory.
+        Pick a doc above and begin the next memory pass.
       </div>
     );
   }
@@ -217,7 +218,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
         }}
       >
         <span style={{ flex: 1 }}>
-          <strong style={{ color: 'var(--accent)' }}>Write from memory</strong>
+          <strong style={{ color: 'var(--accent)' }}>{rehearsalStage.title}</strong>
           {' · '}
           <span style={{ fontFamily: 'var(--mono)' }}>
             ⌘K shape · ⌘S save · Save & ask
@@ -258,9 +259,9 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={
-          'Write what still holds in memory.\n\n' +
+          'Write what still holds from memory.\n\n' +
           '⌘K on a selection shapes it into a cleaner form.\n' +
-          '⌘S saves it back to this doc.'
+          '⌘S saves it back into this panel.'
         }
         disabled={transforming}
         style={{
