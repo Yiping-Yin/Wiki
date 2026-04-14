@@ -379,22 +379,23 @@ export function KesiView() {
         <span>{label}</span>
         {items.slice(0, limit).map((relatedPanel, index) => (
           <button
-            key={relatedPanel.panel.docId}
+            key={relatedPanel.id}
             type="button"
             onClick={() => focusPanelInKesi(relatedPanel.panel)}
             style={{
               appearance: 'none',
               border: 0,
               background: 'transparent',
-              color: 'var(--accent)',
+              color: relatedPanel.status === 'confirmed' ? 'var(--accent)' : 'var(--fg-secondary)',
               fontSize: '0.72rem',
-              fontWeight: 700,
+              fontWeight: relatedPanel.status === 'confirmed' ? 700 : 600,
               letterSpacing: '0.02em',
               padding: 0,
               cursor: 'pointer',
             }}
           >
             {relatedPanel.panel.title}
+            {relatedPanel.status === 'confirmed' ? <span style={{ color: 'var(--muted)' }}> · held</span> : null}
             {index < Math.min(items.length, limit) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
           </button>
         ))}
