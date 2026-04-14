@@ -14,6 +14,7 @@ import { useAllTraces, useAppendEvent, type Trace } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { continuePanelLifecycle, openPanelReview } from '../lib/panel-resume';
 import { derivePanelFromTraces, useAllPanels, type Panel as StoredPanel, type PanelSection as StoredPanelSection } from '../lib/panel';
+import { buildWeavePreview, useAllWeaves, type DirectedWeavePreview, type WeavePreviewItem } from '../lib/weave';
 
 const TINTS = [
   'var(--tint-blue)',   'var(--tint-indigo)', 'var(--tint-purple)',
@@ -36,11 +37,6 @@ type Panel = StoredPanel & {
   collectionLabel: string;
   collectionHref?: string;
   learning: LearningSurfaceSummary;
-};
-
-type DirectedPanelRelations = {
-  incoming: Panel[];
-  outgoing: Panel[];
 };
 
 function buildPanels(traces: Trace[]): StoredPanel[] {
@@ -179,6 +175,7 @@ type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
 export function KesiView() {
   const { traces, loading } = useAllTraces();
   const { panels: storedPanels, loading: panelsLoading } = useAllPanels();
+  const { weaves, loading: weavesLoading } = useAllWeaves();
   const append = useAppendEvent();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -229,46 +226,11 @@ export function KesiView() {
     });
   }, [storedPanels, traces, knowledgeCategories, tracesByDocId]);
 
-  const relationCounts = useMemo(() => {
-    const counts = new Map<string, { incoming: number; outgoing: number }>();
-    const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
-    const seen = new Set<string>();
-
-    for (const panel of panels) {
-      counts.set(panel.docId, { incoming: 0, outgoing: 0 });
-    }
-
-    for (const panel of panels) {
-      const traceSet = tracesByDocId.get(panel.docId) ?? [];
-      const latestByAnchor = new Map<string, { content: string; at: number }>();
-      for (const trace of traceSet) {
-        for (const event of trace.events) {
-          if (event.kind !== 'thought-anchor') continue;
-          const prev = latestByAnchor.get(event.anchorId);
-          if (!prev || event.at > prev.at) {
-            latestByAnchor.set(event.anchorId, { content: event.content, at: event.at });
-          }
-        }
-      }
-
-      for (const { content } of latestByAnchor.values()) {
-        for (const url of extractMarkdownLinkUrls(content)) {
-          const target = Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
-          if (!target || target.docId === panel.docId) continue;
-          const key = `${panel.docId}=>${target.docId}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          counts.get(panel.docId)!.outgoing += 1;
-          counts.get(target.docId)!.incoming += 1;
-        }
-      }
-    }
-
-    return counts;
-  }, [panels, tracesByDocId]);
-
   const relationPreview = useMemo(() => {
-    const previews = new Map<string, DirectedPanelRelations>();
+    if (!weavesLoading) {
+      return buildWeavePreview(panels, weaves);
+    }
+    const previews = new Map<string, DirectedWeavePreview<Panel>>();
     const panelByHref = new Map(panels.map((panel) => [panel.href, panel] as const));
     const seen = new Set<string>();
 
@@ -298,10 +260,22 @@ export function KesiView() {
           seen.add(key);
           previews.set(panel.docId, {
             incoming: previews.get(panel.docId)?.incoming ?? [],
-            outgoing: [...(previews.get(panel.docId)?.outgoing ?? []), target],
+            outgoing: [...(previews.get(panel.docId)?.outgoing ?? []), {
+              panel: target,
+              weight: 1,
+              snippets: [],
+              status: 'suggested',
+              kind: 'references',
+            }],
           });
           previews.set(target.docId, {
-            incoming: [...(previews.get(target.docId)?.incoming ?? []), panel],
+            incoming: [...(previews.get(target.docId)?.incoming ?? []), {
+              panel,
+              weight: 1,
+              snippets: [],
+              status: 'suggested',
+              kind: 'references',
+            }],
             outgoing: previews.get(target.docId)?.outgoing ?? [],
           });
         }
@@ -309,7 +283,7 @@ export function KesiView() {
     }
 
     return previews;
-  }, [panels, tracesByDocId]);
+  }, [panels, tracesByDocId, weaves, weavesLoading]);
 
   const visiblePanels = useMemo(() => {
     const q = query.trim();
@@ -382,7 +356,7 @@ export function KesiView() {
 
   const renderRelationButtons = (
     label: string,
-    items: Panel[],
+    items: WeavePreviewItem<Panel>[],
     limit: number,
     opts?: { marginTop?: number },
   ) => {
@@ -403,9 +377,9 @@ export function KesiView() {
         <span>{label}</span>
         {items.slice(0, limit).map((relatedPanel, index) => (
           <button
-            key={relatedPanel.docId}
+            key={relatedPanel.panel.docId}
             type="button"
-            onClick={() => focusPanelInKesi(relatedPanel)}
+            onClick={() => focusPanelInKesi(relatedPanel.panel)}
             style={{
               appearance: 'none',
               border: 0,
@@ -418,7 +392,7 @@ export function KesiView() {
               cursor: 'pointer',
             }}
           >
-            {relatedPanel.title}
+            {relatedPanel.panel.title}
             {index < Math.min(items.length, limit) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
           </button>
         ))}

@@ -7,6 +7,7 @@ import { summarizeLearningSurface } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { continuePanelLifecycle, openPanelReview } from '../../lib/panel-resume';
 import { useAllPanels } from '../../lib/panel';
+import { buildWeavePreview, useAllWeaves } from '../../lib/weave';
 import 'reactflow/dist/style.css';
 
 const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false });
@@ -166,6 +167,7 @@ export default function GraphPage() {
   const router = useRouter();
   const { traces } = useAllTraces();
   const { panels: storedPanels, loading } = useAllPanels();
+  const { weaves, loading: weavesLoading } = useAllWeaves();
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [familyFilter, setFamilyFilter] = useState<string>('all');
@@ -246,8 +248,6 @@ export default function GraphPage() {
       }));
     });
 
-    const edgeWeights = new Map<string, number>();
-    const previewMap = new Map<string, { incoming: Map<string, RelatedPanel>; outgoing: Map<string, RelatedPanel> }>();
     const flowEdges: Array<{
       id: string;
       source: string;
@@ -255,70 +255,105 @@ export default function GraphPage() {
       animated: boolean;
       style: { stroke: string; strokeWidth: number };
     }> = [];
+    let orderedPreview = new Map<string, { incoming: RelatedPanel[]; outgoing: RelatedPanel[] }>();
+    if (!weavesLoading) {
+      const preview = buildWeavePreview(panels, weaves);
+      orderedPreview = new Map(
+        Array.from(preview.entries()).map(([docId, value]) => [
+          docId,
+          {
+            incoming: value.incoming.map((item) => ({
+              panel: item.panel,
+              weight: item.weight,
+              snippet: item.snippets[0] ?? '',
+            })),
+            outgoing: value.outgoing.map((item) => ({
+              panel: item.panel,
+              weight: item.weight,
+              snippet: item.snippets[0] ?? '',
+            })),
+          },
+        ]),
+      );
+      for (const weave of weaves) {
+        if (weave.status === 'rejected') continue;
+        if (!panelByDocId.has(weave.fromPanelId) || !panelByDocId.has(weave.toPanelId)) continue;
+        flowEdges.push({
+          id: weave.id,
+          source: weave.fromPanelId,
+          target: weave.toPanelId,
+          animated: false,
+          style: { stroke: 'var(--accent)', strokeWidth: 0.9 + Math.min(weave.evidence.length || 1, 4) * 0.3 },
+        });
+      }
+    } else {
+      const edgeWeights = new Map<string, number>();
+      const previewMap = new Map<string, { incoming: Map<string, RelatedPanel>; outgoing: Map<string, RelatedPanel> }>();
 
-    for (const panel of panels) {
-      previewMap.set(panel.docId, { incoming: new Map(), outgoing: new Map() });
-      const traceSet = tracesByDocId.get(panel.docId) ?? [];
-      const latestByAnchor = new Map<string, { content: string; summary: string; at: number }>();
-      for (const trace of traceSet) {
-        for (const event of trace.events) {
-          if (event.kind !== 'thought-anchor') continue;
-          const prev = latestByAnchor.get(event.anchorId);
-          if (!prev || event.at > prev.at) {
-            latestByAnchor.set(event.anchorId, {
-              content: event.content,
-              summary: event.summary,
-              at: event.at,
+      for (const panel of panels) {
+        previewMap.set(panel.docId, { incoming: new Map(), outgoing: new Map() });
+        const traceSet = tracesByDocId.get(panel.docId) ?? [];
+        const latestByAnchor = new Map<string, { content: string; summary: string; at: number }>();
+        for (const trace of traceSet) {
+          for (const event of trace.events) {
+            if (event.kind !== 'thought-anchor') continue;
+            const prev = latestByAnchor.get(event.anchorId);
+            if (!prev || event.at > prev.at) {
+              latestByAnchor.set(event.anchorId, {
+                content: event.content,
+                summary: event.summary,
+                at: event.at,
+              });
+            }
+          }
+        }
+        for (const { content, summary } of latestByAnchor.values()) {
+          for (const url of extractMarkdownLinkUrls(content)) {
+            const targetPanel =
+              Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href)) ??
+              Array.from(panelByDocId.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
+            if (!targetPanel || targetPanel.docId === panel.docId) continue;
+            const key = `${panel.docId}=>${targetPanel.docId}`;
+            edgeWeights.set(key, (edgeWeights.get(key) ?? 0) + 1);
+
+            const sourcePreview = previewMap.get(panel.docId) ?? { incoming: new Map(), outgoing: new Map() };
+            const targetPreview = previewMap.get(targetPanel.docId) ?? { incoming: new Map(), outgoing: new Map() };
+            sourcePreview.outgoing.set(targetPanel.docId, {
+              panel: targetPanel,
+              weight: edgeWeights.get(key) ?? 1,
+              snippet: relationSnippet(summary, content),
             });
+            targetPreview.incoming.set(panel.docId, {
+              panel,
+              weight: edgeWeights.get(key) ?? 1,
+              snippet: relationSnippet(summary, content),
+            });
+            previewMap.set(panel.docId, sourcePreview);
+            previewMap.set(targetPanel.docId, targetPreview);
           }
         }
       }
-      for (const { content, summary } of latestByAnchor.values()) {
-        for (const url of extractMarkdownLinkUrls(content)) {
-          const targetPanel =
-            Array.from(panelByHref.values()).find((candidate) => urlReferencesDoc(url, candidate.href)) ??
-            Array.from(panelByDocId.values()).find((candidate) => urlReferencesDoc(url, candidate.href));
-          if (!targetPanel || targetPanel.docId === panel.docId) continue;
-          const key = `${panel.docId}=>${targetPanel.docId}`;
-          edgeWeights.set(key, (edgeWeights.get(key) ?? 0) + 1);
 
-          const sourcePreview = previewMap.get(panel.docId) ?? { incoming: new Map(), outgoing: new Map() };
-          const targetPreview = previewMap.get(targetPanel.docId) ?? { incoming: new Map(), outgoing: new Map() };
-          sourcePreview.outgoing.set(targetPanel.docId, {
-            panel: targetPanel,
-            weight: edgeWeights.get(key) ?? 1,
-            snippet: relationSnippet(summary, content),
-          });
-          targetPreview.incoming.set(panel.docId, {
-            panel,
-            weight: edgeWeights.get(key) ?? 1,
-            snippet: relationSnippet(summary, content),
-          });
-          previewMap.set(panel.docId, sourcePreview);
-          previewMap.set(targetPanel.docId, targetPreview);
-        }
+      for (const [key, weight] of edgeWeights) {
+        const [source, target] = key.split('=>');
+        flowEdges.push({
+          id: key,
+          source,
+          target,
+          animated: false,
+          style: { stroke: 'var(--accent)', strokeWidth: 0.9 + Math.min(weight, 4) * 0.3 },
+        });
       }
-    }
 
-    for (const [key, weight] of edgeWeights) {
-      const [source, target] = key.split('=>');
-      flowEdges.push({
-        id: key,
-        source,
-        target,
-        animated: false,
-        style: { stroke: 'var(--accent)', strokeWidth: 0.9 + Math.min(weight, 4) * 0.3 },
-      });
-    }
-
-    const orderedPreview = new Map<string, { incoming: RelatedPanel[]; outgoing: RelatedPanel[] }>();
-    for (const [docId, value] of previewMap) {
-      const sortByWeight = (items: Iterable<RelatedPanel>) =>
-        Array.from(items).sort((a, b) => b.weight - a.weight || a.panel.title.localeCompare(b.panel.title));
-      orderedPreview.set(docId, {
-        incoming: sortByWeight(value.incoming.values()),
-        outgoing: sortByWeight(value.outgoing.values()),
-      });
+      orderedPreview = new Map();
+      for (const [docId, value] of previewMap) {
+        const sortByWeight = (items: Iterable<RelatedPanel>) =>
+          Array.from(items).sort((a, b) => b.weight - a.weight || a.panel.title.localeCompare(b.panel.title));
+        orderedPreview.set(docId, {
+          incoming: sortByWeight(value.incoming.values()),
+          outgoing: sortByWeight(value.outgoing.values()),
+        });
+      }
     }
 
     return {
@@ -329,7 +364,7 @@ export default function GraphPage() {
       panels,
       relationPreview: orderedPreview,
     };
-  }, [storedPanels, traces, focusDocId]);
+  }, [storedPanels, traces, focusDocId, weaves, weavesLoading]);
 
   const panelByDocId = useMemo(
     () => new Map(panels.map((panel) => [panel.docId, panel] as const)),

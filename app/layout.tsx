@@ -19,6 +19,7 @@ import { KeyboardHelpOverlay } from '../components/unified/KeyboardHelpOverlay';
 import { ExportAction } from '../components/ExportAction';
 import { CrystallizeListener } from '../components/CrystallizeListener';
 import { PanelSync } from '../components/PanelSync';
+import { WeaveSync } from '../components/WeaveSync';
 import { PageScopedChrome } from '../components/PageScopedChrome';
 
 
@@ -86,6 +87,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ExportAction />
         <CrystallizeListener />
         <PanelSync />
+        <WeaveSync />
       </body>
     </html>
   );
