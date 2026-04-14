@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
+import { resolveBlockElement } from '../lib/passage-locator';
 import {
   useTracesForDoc,
   useAppendEvent,
@@ -95,24 +96,8 @@ function ensureBlockAnchorId(block: HTMLElement, proseContainer: HTMLElement) {
   return stableId;
 }
 
-function resolveOpenTarget(anchorId: string): HTMLElement | null {
-  const direct = document.getElementById(anchorId) as HTMLElement | null;
-  if (direct) return direct;
-
-  const prose = document.querySelector('main .loom-source-prose') as HTMLElement | null;
-  if (!prose) return null;
-  const children = meaningfulChildren(prose);
-  const blockId = anchorId.includes('::frag:') ? anchorId.split('::frag:')[0] : anchorId;
-
-  if (blockId.startsWith('loom-block-')) {
-    const idx = parseInt(blockId.slice('loom-block-'.length), 10);
-    return children[idx] ?? null;
-  }
-  if (blockId.startsWith('p-')) {
-    const idx = parseInt(blockId.slice(2), 10);
-    return children[idx] ?? null;
-  }
-  return null;
+function resolveOpenTarget(anchorId: string, anchorBlockId?: string, anchorBlockText?: string): HTMLElement | null {
+  return resolveBlockElement({ anchorId, anchorBlockId, anchorBlockText });
 }
 
 function isDisplayMathBlock(el: HTMLElement) {
@@ -288,7 +273,7 @@ export function ChatFocus() {
       let selectionRange: Range | null = null;
 
       if (detail.anchorId) {
-        const target = resolveOpenTarget(detail.anchorBlockId ?? detail.anchorId);
+        const target = resolveOpenTarget(detail.anchorId, detail.anchorBlockId, detail.anchorBlockText);
         if (!target) return;
         proseContainer = target.closest('.loom-source-prose') as HTMLElement | null;
         if (!proseContainer) return;

@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useSmallScreen } from '../lib/use-small-screen';
+import { resolveBlockElement } from '../lib/passage-locator';
 import { AnchorCard } from './AnchorCard';
 
 export type AnchorDotProps = {
@@ -37,57 +38,8 @@ const NOTE_ENGAGED_MS = 1800;
 const PIN_EVENT = 'loom:anchor:pin';
 const PINNED_STATE_EVENT = 'loom:anchor:pinned-state';
 
-function filteredChildren(prose: Element) {
-  return Array.from(prose.children).filter((c) => {
-    const node = c as HTMLElement;
-    if (node.hasAttribute('data-loom-system')) return false;
-    if (node.classList.contains('tag-row')) return false;
-    if (node.tagName === 'STYLE' || node.tagName === 'SCRIPT') return false;
-    return true;
-  }) as HTMLElement[];
-}
-
-function normalizeBlockText(text: string) {
-  return text.replace(/\s+/g, ' ').trim().slice(0, 280);
-}
-
-function resolveProseBlock(id: string, blockText?: string): HTMLElement | null {
-  const prose = document.querySelector('main .loom-source-prose');
-  if (!prose) return null;
-
-  const blockId = id.includes('::frag:') ? id.split('::frag:')[0] : id;
-
-  if (blockId.startsWith('p-')) {
-    const idx = parseInt(blockId.slice(2), 10);
-    return filteredChildren(prose)[idx] ?? null;
-  }
-
-  if (blockId.startsWith('loom-block-')) {
-    const idx = parseInt(blockId.slice('loom-block-'.length), 10);
-    return filteredChildren(prose)[idx] ?? null;
-  }
-
-  if (blockText) {
-    const target = normalizeBlockText(blockText);
-    const found = filteredChildren(prose).find((child) => normalizeBlockText(child.innerText || child.textContent || '') === target);
-    if (found) return found;
-  }
-
-  return null;
-}
-
 function locateAnchorEl(anchorId: string, anchorBlockId?: string, anchorBlockText?: string): HTMLElement | null {
-  if (anchorBlockId) {
-    const blockEl = document.getElementById(anchorBlockId);
-    if (blockEl) return blockEl as HTMLElement;
-    const resolvedBlock = resolveProseBlock(anchorBlockId, anchorBlockText);
-    if (resolvedBlock) return resolvedBlock;
-  }
-
-  let el = document.getElementById(anchorId);
-  if (el) return el;
-
-  return resolveProseBlock(anchorId, anchorBlockText);
+  return resolveBlockElement({ anchorId, anchorBlockId, anchorBlockText });
 }
 
 export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffsetPx, rangeStartId, rangeStartText, rangeEndId, rangeEndText, summary, content, quote, clusterIndex = 0 }: AnchorDotProps) {
