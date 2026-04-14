@@ -379,10 +379,6 @@ export function LiveArtifact({ docId }: { docId: string }) {
                     letterSpacing: '0.04em',
                   }}
                 >
-                  {incomingDocThreads > 0 && <span>{incomingDocThreads} incoming threads</span>}
-                  {incomingDocThreads > 0 && outgoingDocThreads > 0 && <span aria-hidden>·</span>}
-                  {outgoingDocThreads > 0 && <span>{outgoingDocThreads} outgoing threads</span>}
-                  <span aria-hidden>·</span>
                   <button
                     type="button"
                     onClick={() => router.push(`/graph?focus=${encodeURIComponent(docId)}`)}
