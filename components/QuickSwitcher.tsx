@@ -65,12 +65,6 @@ function fuzzy(needle: string, hay: string): number {
   return score;
 }
 
-const KIND_META = {
-  doc:        { label: 'Document',   tint: 'var(--tint-blue)'   },
-  collection: { label: 'Collection', tint: 'var(--tint-purple)' },
-  week:       { label: 'Week',       tint: 'var(--tint-indigo)' },
-} as const;
-
 export function QuickSwitcher() {
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
@@ -240,7 +234,6 @@ export function QuickSwitcher() {
         }}>{label}</div>
         {rows.map((r, j) => {
           const i = startIdx + j;
-          const meta = KIND_META[r.kind];
           const isActive = i === active;
           return (
             <div
@@ -256,19 +249,6 @@ export function QuickSwitcher() {
                 borderLeft: '1px solid ' + (isActive ? 'var(--accent)' : 'transparent'),
               }}
             >
-              <span
-                className="t-caption2"
-                style={{
-                  color: meta.tint,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 700,
-                  minWidth: 70,
-                  flexShrink: 0,
-                }}
-              >
-                {meta.label}
-              </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="t-subhead" style={{
                   fontWeight: isActive ? 700 : 600, color: 'var(--fg)',
