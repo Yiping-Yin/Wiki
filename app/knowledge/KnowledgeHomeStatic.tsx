@@ -46,8 +46,6 @@ export function KnowledgeHomeStatic({
                 key={c.slug}
                 slug={c.slug}
                 label={c.label}
-                count={c.count}
-                weeks={c.weeks}
               />
             ))}
           </div>
@@ -58,9 +56,9 @@ export function KnowledgeHomeStatic({
 }
 
 function CollectionCard({
-  slug, label, count, weeks,
+  slug, label,
 }: {
-  slug: string; label: string; count: number; weeks: number;
+  slug: string; label: string;
 }) {
   return (
     <Link
@@ -83,13 +81,6 @@ function CollectionCard({
           letterSpacing: '-0.012em',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{label}</div>
-        <div className="t-caption" style={{
-          color: 'var(--muted)', marginTop: 2,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {count} {count === 1 ? 'doc' : 'docs'}
-          {weeks > 0 && ` · ${weeks} weeks`}
-        </div>
       </div>
     </Link>
   );
