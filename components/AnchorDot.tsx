@@ -25,6 +25,7 @@ export type AnchorDotProps = {
   summary: string;
   content: string;
   quote?: string;
+  thoughtType?: import('../lib/trace/types').ThoughtType;
   at: number;
   clusterIndex?: number;
   clusterCount?: number;
@@ -42,7 +43,18 @@ function locateAnchorEl(anchorId: string, anchorBlockId?: string, anchorBlockTex
   return resolveBlockElement({ anchorId, anchorBlockId, anchorBlockText });
 }
 
-export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffsetPx, rangeStartId, rangeStartText, rangeEndId, rangeEndText, summary, content, quote, clusterIndex = 0 }: AnchorDotProps) {
+function dotColor(type?: import('../lib/trace/types').ThoughtType): string {
+  switch (type) {
+    case 'objection': return 'var(--tint-red)';
+    case 'hypothesis': return 'var(--tint-orange)';
+    case 'question': return 'var(--tint-yellow)';
+    case 'inference': return 'var(--tint-purple)';
+    case 'conclusion': return 'var(--tint-green)';
+    default: return 'var(--accent)';
+  }
+}
+
+export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffsetPx, rangeStartId, rangeStartText, rangeEndId, rangeEndText, summary, content, quote, thoughtType, clusterIndex = 0 }: AnchorDotProps) {
   const smallScreen = useSmallScreen();
   const [pos, setPos] = useState<{ relativeTop: number; viewportTop: number; fixedRight: number; outAbove: boolean } | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -274,10 +286,10 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
             width: pinned ? 7 : previewOpen ? 6 : studyMode ? 5 : 4,
             height: pinned ? 7 : previewOpen ? 6 : studyMode ? 5 : 4,
             borderRadius: '50%',
-            background: 'var(--accent)',
+            background: dotColor(thoughtType),
             opacity: pinned ? 1 : previewOpen ? 0.92 : studyMode ? 0.7 : scrollPulse ? 0.75 : 0.4,
             transition: 'width 0.18s var(--ease), height 0.18s var(--ease), opacity 0.18s var(--ease)',
-            boxShadow: pinned ? '0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent)' : 'none',
+            boxShadow: pinned ? `0 0 0 4px color-mix(in srgb, ${dotColor(thoughtType)} 12%, transparent)` : 'none',
           }}
         />
       </button>

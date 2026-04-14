@@ -57,6 +57,20 @@ function thoughtTypeLabel(type: import('../lib/trace/types').ThoughtType | undef
   }
 }
 
+/** Color for each thought type — epistemic identity made visible. */
+function thoughtTypeColor(type: import('../lib/trace/types').ThoughtType | undefined): string {
+  switch (type) {
+    case 'citation': return 'var(--muted)';
+    case 'explanation': return 'var(--accent)';
+    case 'inference': return 'var(--tint-purple)';
+    case 'hypothesis': return 'var(--tint-orange)';
+    case 'objection': return 'var(--tint-red)';
+    case 'question': return 'var(--tint-yellow)';
+    case 'conclusion': return 'var(--tint-green)';
+    default: return 'var(--fg-secondary)';
+  }
+}
+
 const REVIEW_SCROLL_EVENT = 'loom:review:scroll-to-anchor';
 const REVIEW_FOCUS_THOUGHT_EVENT = 'loom:review:focus-thought';
 
@@ -1056,7 +1070,7 @@ function WideThoughtCard({
         <span
           className="t-caption2"
           style={{
-            color: emphasized ? 'var(--accent)' : hasContent ? 'var(--fg-secondary)' : 'var(--muted)',
+            color: emphasized ? 'var(--accent)' : thoughtTypeColor(thought.thoughtType),
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
             fontWeight: 700,

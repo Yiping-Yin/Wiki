@@ -32,6 +32,7 @@ export function AnchorLayer({ docId }: { docId: string }) {
     summary: e.summary,
     content: e.content,
     quote: e.quote,
+    thoughtType: e.thoughtType,
     at: e.at,
   }));
 
