@@ -567,7 +567,6 @@ function HomeLoom({ kesiCount }: { kesiCount: number }) {
             <span className="t-caption2" style={{ color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
               Kesi
             </span>
-            <span style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{kesiCount}</span>
           </Link>
         )}
         <Link
