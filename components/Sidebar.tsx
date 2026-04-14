@@ -18,9 +18,7 @@ export function Sidebar() {
   const [mode, setMode] = useState<SbMode>('hidden');
   const [llmOpen, setLlmOpen] = useState(false);
   const [knowOpen, setKnowOpen] = useState(false);
-  const [elsewhereOpen, setElsewhereOpen] = useState(false);
-  const [metaOpen, setMetaOpen] = useState(false);
-  const { knowledgeCategories, knowledgeTotal } = useKnowledgeNav();
+  const { knowledgeCategories } = useKnowledgeNav();
 
   // Restore preference + edge-hover peek (only when hidden)
   useEffect(() => {
@@ -95,8 +93,6 @@ export function Sidebar() {
   useEffect(() => {
     if (pathname.startsWith('/knowledge')) setKnowOpen(true);
     if (pathname.startsWith('/wiki/')) setLlmOpen(true);
-    if (pathname === '/browse') setElsewhereOpen(true);
-    if (pathname === '/about' || pathname === '/help') setMetaOpen(true);
   }, [pathname]);
 
   // Auto-close on reading pages so content gets full width
@@ -220,7 +216,7 @@ export function Sidebar() {
         </div>
 
         {/* Personal knowledge */}
-        <Section title={`Collections · ${knowledgeTotal}`} open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
+        <Section title="Collections" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
           trailing={<NewTopicButton onCreated={(href) => { setOpen(false); router.push(href); }} />}
         >
           {knowledgeCategories.map((c) => (
@@ -233,12 +229,8 @@ export function Sidebar() {
           ))}
         </Section>
 
-        <Section title="Elsewhere" open={elsewhereOpen} onToggle={() => setElsewhereOpen((o) => !o)}>
-          <SubtleLink href="/browse" active={isActive('/browse')} onNav={() => setOpen(false)}>Reference</SubtleLink>
-        </Section>
-
         {/* LLM reference wiki */}
-        <Section title={`LLM Reference · ${chapters.length}`} open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
+        <Section title="LLM Reference" open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
           {sections.map((sec) => (
             <div key={sec} style={{ marginTop: '0.5rem' }}>
               <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '0.2rem' }}>
@@ -281,10 +273,11 @@ export function Sidebar() {
           ))}
         </Section>
 
-        <Section title="Meta" open={metaOpen} onToggle={() => setMetaOpen((o) => !o)}>
+        <div style={{ marginTop: '1.2rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <SubtleLink href="/browse" active={isActive('/browse')} onNav={() => setOpen(false)}>Browse</SubtleLink>
           <SubtleLink href="/about" active={isActive('/about')} onNav={() => setOpen(false)}>About</SubtleLink>
           <SubtleLink href="/help" active={isActive('/help')} onNav={() => setOpen(false)}>Help</SubtleLink>
-        </Section>
+        </div>
 
         {/* §11, §31 — no footer chrome. The sidebar's job is navigation,
             not telling the user how many docs they've visited. */}
@@ -337,13 +330,6 @@ function CategoryRow({
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
             {cat.label}
           </span>
-          <span style={{
-            color: 'var(--muted)', fontSize: '0.68rem',
-            fontVariantNumeric: 'tabular-nums',
-            whiteSpace: 'nowrap', flexShrink: 0,
-          }}>
-            {cat.count}
-          </span>
         </Link>
       </div>
       {expanded && hasSubs && (
@@ -363,10 +349,6 @@ function CategoryRow({
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                 {s.label}
               </span>
-              <span style={{
-                color: 'var(--muted)', fontSize: '0.66rem',
-                fontVariantNumeric: 'tabular-nums', flexShrink: 0,
-              }}>{s.count}</span>
             </Link>
           ))}
         </div>

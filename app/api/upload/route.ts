@@ -55,10 +55,16 @@ export async function POST(req: Request) {
   if (categoryName) {
     // Map category label back to directory path
     // "UNSW · COMM 3030" → "UNSW/COMM 3030", "C++" → "C++"
+    if (/\.\./.test(categoryName)) {
+      return new Response('Invalid category', { status: 400 });
+    }
     const dirName = categoryName.includes(' · ')
       ? categoryName.replace(' · ', path.sep)
       : categoryName;
     const catDir = path.join(KNOWLEDGE_ROOT, dirName);
+    if (!catDir.startsWith(KNOWLEDGE_ROOT)) {
+      return new Response('Invalid category path', { status: 400 });
+    }
     await fs.mkdir(catDir, { recursive: true });
 
     const safe = safeName(file.name);

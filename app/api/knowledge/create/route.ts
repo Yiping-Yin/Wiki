@@ -30,6 +30,9 @@ export async function POST(req: Request) {
     }
 
     const trimmed = name.trim();
+    if (/[\/\\]|\.\./.test(trimmed)) {
+      return Response.json({ error: 'Invalid category name' }, { status: 400 });
+    }
     const dirPath = path.join(KNOWLEDGE_ROOT, trimmed);
 
     // Create directory with a placeholder so ingest registers it
