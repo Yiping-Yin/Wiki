@@ -377,28 +377,53 @@ export function KesiView() {
         }}
       >
         <span>{label}</span>
-        {items.slice(0, limit).map((relatedPanel, index) => (
-          <button
-            key={relatedPanel.id}
-            type="button"
-            onClick={() => focusPanelInKesi(relatedPanel.panel)}
-            style={{
-              appearance: 'none',
-              border: 0,
-              background: 'transparent',
-              color: relatedPanel.status === 'confirmed' ? 'var(--accent)' : 'var(--fg-secondary)',
-              fontSize: '0.72rem',
-              fontWeight: relatedPanel.status === 'confirmed' ? 700 : 600,
-              letterSpacing: '0.02em',
-              padding: 0,
-              cursor: 'pointer',
-            }}
-          >
-            {relatedPanel.panel.title}
-            {relatedPanel.status === 'confirmed' ? <span style={{ color: 'var(--muted)' }}> · held</span> : null}
-            {index < Math.min(items.length, limit) - 1 ? <span style={{ color: 'var(--muted)' }}> · </span> : null}
-          </button>
-        ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+          {items.slice(0, limit).map((relatedPanel) => (
+            <div key={relatedPanel.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <button
+                type="button"
+                onClick={() => focusPanelInKesi(relatedPanel.panel)}
+                style={{
+                  appearance: 'none',
+                  border: 0,
+                  background: 'transparent',
+                  color: relatedPanel.status === 'confirmed' ? 'var(--accent)' : 'var(--fg-secondary)',
+                  fontSize: '0.72rem',
+                  fontWeight: relatedPanel.status === 'confirmed' ? 700 : 600,
+                  letterSpacing: '0.02em',
+                  padding: 0,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                {relatedPanel.panel.title}
+                {relatedPanel.status === 'confirmed' ? <span style={{ color: 'var(--muted)' }}> · held</span> : null}
+              </button>
+              {relatedPanel.evidence[0]?.snippet ? (
+                <button
+                  type="button"
+                  onClick={() => openReview(
+                    label === 'Referenced by' ? relatedPanel.panel : (focusPanel ?? relatedPanel.panel),
+                    relatedPanel.evidence[0]?.anchorId ?? null,
+                  )}
+                  style={{
+                    appearance: 'none',
+                    border: 0,
+                    background: 'transparent',
+                    color: 'var(--fg-secondary)',
+                    fontSize: '0.72rem',
+                    lineHeight: 1.4,
+                    padding: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {relatedPanel.evidence[0].snippet}
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
