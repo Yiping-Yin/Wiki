@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { CategoryHero } from '../../../components/CategoryHero';
+import { QuietGuideCard } from '../../../components/QuietGuideCard';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
 import type { KnowledgeCategory } from '../../../lib/knowledge-types';
@@ -54,27 +54,6 @@ function formatWhen(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function stateLabel(surface: CategorySurface) {
-  switch (surface.state) {
-    case 'finished':
-      return 'Finished';
-    case 'woven':
-      return `${surface.anchorCount} stitch${surface.anchorCount > 1 ? 'es' : ''}`;
-    case 'opened':
-      return 'Opened';
-    default:
-      return 'New';
-  }
-}
-
-function docSummary(surface: CategorySurface) {
-  if (surface.latestSummary) return surface.latestSummary;
-  if (surface.preview) return surface.preview.slice(0, 220);
-  if (surface.latestQuote) return surface.latestQuote;
-  if (surface.subcategory) return surface.subcategory;
-  return '';
-}
-
 function stateRank(surface: CategorySurface) {
   switch (surface.state) {
     case 'woven':
@@ -86,14 +65,6 @@ function stateRank(surface: CategorySurface) {
     default:
       return 3;
   }
-}
-
-function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
-  if (nextAction === 'refresh') return 'Refresh';
-  if (nextAction === 'rehearse') return 'Rehearsal';
-  if (nextAction === 'examine') return 'Examiner';
-  if (nextAction === 'capture') return 'Open';
-  return 'Review';
 }
 
 export function CategoryLandingClient({
@@ -165,6 +136,7 @@ export function CategoryLandingClient({
   const continueDocs = surfaces.filter((surface) => surface.state === 'woven' || surface.state === 'opened').slice(0, 4);
   const startDoc = docs[0] ?? null;
   const continueDoc = continueDocs[0] ?? null;
+  const focusDoc = continueDoc ?? startDoc;
 
   const openPrimaryAction = (surface: CategorySurface) => {
     continuePanelLifecycle(router, {
@@ -177,30 +149,44 @@ export function CategoryLandingClient({
 
   return (
     <div className="prose-notion">
-      <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.8rem' }}>
-        <Link href="/knowledge">Knowledge</Link>
+      <div
+        className="t-caption2"
+        style={{ color: 'var(--muted)', marginBottom: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+      >
+        <Link href="/knowledge" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Knowledge</Link>
+        <span aria-hidden>›</span>
+        <span>{category.label}</span>
       </div>
 
-      <CategoryHero
-        label={category.label}
-        subs={category.subs}
+      <QuietGuideCard
+        eyebrow="Collection"
+        title={category.label}
+        mode="inline"
+        meta={continueDoc?.touchedAt ? <span>{formatWhen(continueDoc.touchedAt)}</span> : undefined}
+        actions={focusDoc ? [
+          {
+            label: continueDoc ? 'Continue collection' : 'Open first doc',
+            onClick: () => openPrimaryAction(continueDoc ?? ({ ...startDoc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface)),
+            primary: true,
+          },
+          { label: 'All material', href: `#${encodeURIComponent(groups[0]?.label || '_all')}` },
+        ] : undefined}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
         {groups.map((group) => (
           <section
             key={group.label || '_root'}
-            id={group.label ? encodeURIComponent(group.label) : undefined}
+            id={encodeURIComponent(group.label || '_all')}
             style={{ scrollMarginTop: '2rem' }}
           >
             {group.label && (
-              <header style={{ padding: '0 0 0.5rem' }}>
+              <header style={{ padding: '0 0 0.35rem' }}>
                 <div
-                  className="t-headline"
+                  className="t-caption2"
                   style={{
-                    fontFamily: 'var(--display)',
-                    letterSpacing: '-0.014em',
-                    color: 'var(--fg)',
+                    color: 'var(--muted)',
+                    letterSpacing: '0.04em',
                   }}
                 >
                   {group.label}
@@ -209,14 +195,6 @@ export function CategoryLandingClient({
             )}
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {group.docs.map((doc, index) => {
-                const surface = surfaces.find((item) => item.id === doc.id) ?? null;
-                const indicator = surface && surface.state !== 'new'
-                  ? surface.state === 'finished'
-                    ? { label: 'done', color: 'var(--accent)' }
-                    : surface.state === 'woven'
-                      ? { label: `${surface.anchorCount}`, color: 'var(--fg-secondary)' }
-                      : { label: '·', color: 'var(--muted)' }
-                  : null;
                 return (
                   <li
                     key={doc.id}
@@ -240,151 +218,22 @@ export function CategoryLandingClient({
                         style={{
                           flex: 1,
                           fontFamily: 'var(--display)',
-                          minWidth: 0,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {doc.title}
-                      </span>
-                      {indicator && (
-                        <span
-                          className="t-caption2"
-                          style={{
-                            color: indicator.color,
-                            flexShrink: 0,
-                            fontWeight: 600,
-                            letterSpacing: '0.04em',
-                          }}
-                        >
-                          {indicator.label}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {doc.title}
+                    </span>
+                  </Link>
+                </li>
+              );
               })}
             </ul>
           </section>
         ))}
       </div>
-    </div>
-  );
-}
-
-
-function Block({
-  label,
-  children,
-  id,
-}: {
-  label: string;
-  children: React.ReactNode;
-  id?: string;
-}) {
-  return (
-    <section id={id} style={{ marginBottom: '1.8rem', scrollMarginTop: '2rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-        <span
-          className="t-caption2"
-          style={{
-            color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.10em',
-            fontWeight: 700,
-          }}
-        >
-          {label}
-        </span>
-        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function inlineActionStyle(primary: boolean) {
-  return {
-    appearance: 'none' as const,
-    border: 0,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.02em',
-    padding: 0,
-    cursor: 'pointer',
-  };
-}
-
-function SurfaceList({ items }: { items: CategorySurface[] }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {items.map((surface, index) => (
-        <Link
-          key={surface.id}
-          href={surface.href}
-          style={{
-            display: 'block',
-            textDecoration: 'none',
-            color: 'var(--fg)',
-            padding: '0.78rem 0',
-            borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span
-              className="t-caption2"
-              style={{
-                color: surface.state === 'finished' ? 'var(--accent)' : 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
-                flexShrink: 0,
-              }}
-            >
-              {stateLabel(surface)}
-            </span>
-            <span
-              style={{
-                flex: 1,
-                minWidth: 0,
-                fontFamily: 'var(--display)',
-                fontSize: '1rem',
-                fontWeight: 550,
-                letterSpacing: '-0.012em',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {surface.title}
-            </span>
-            <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-              {formatWhen(surface.touchedAt)}
-            </span>
-          </div>
-
-          {docSummary(surface) && (
-            <div
-              style={{
-                marginTop: 6,
-                color: 'var(--fg-secondary)',
-                fontSize: '0.9rem',
-                lineHeight: 1.55,
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-              }}
-            >
-              {docSummary(surface)}
-            </div>
-          )}
-        </Link>
-      ))}
     </div>
   );
 }
