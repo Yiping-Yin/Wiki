@@ -321,9 +321,6 @@ export function QuickSwitcher() {
               letterSpacing: '-0.005em',
             }}
           />
-          <span className="t-caption2" style={{
-            color: 'var(--muted)', fontFamily: 'var(--mono)',
-          }}>esc</span>
         </div>
         <div ref={listRef} style={{ maxHeight: smallScreen ? 'none' : '60vh', flex: smallScreen ? 1 : 'none', overflowY: 'auto', padding: '4px 0 8px' }}>
           {flat.length === 0 && q ? (
