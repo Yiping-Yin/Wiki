@@ -108,7 +108,7 @@ export function QuickSwitcher() {
   const collections: Result[] = useMemo(
     () => knowledgeCategories.map((c) => ({
       kind: 'collection', key: `c:${c.slug}`,
-      title: c.label, sub: `${c.count} docs`,
+      title: c.label, sub: 'Collection',
       href: `/knowledge/${c.slug}`,
     })),
     [knowledgeCategories],
@@ -123,7 +123,7 @@ export function QuickSwitcher() {
           kind: 'week',
           key: `w:${c.slug}:${s.label}`,
           title: s.label,
-          sub: `${c.label} · ${s.count} ${s.count === 1 ? 'doc' : 'docs'}`,
+          sub: c.label,
           href: `/knowledge/${c.slug}#${encodeURIComponent(s.label)}`,
         });
       }
