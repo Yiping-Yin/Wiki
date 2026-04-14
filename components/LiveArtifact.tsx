@@ -555,7 +555,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                 marginBottom: 8,
               }}
             >
-              Referenced by · {backlinks.length}
+              Referenced by
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
               {backlinks.slice(0, 10).map((b) => (
@@ -600,19 +600,6 @@ export function LiveArtifact({ docId }: { docId: string }) {
                   </button>
                 </li>
               ))}
-              {backlinks.length > 10 && (
-                <li
-                  className="t-caption2"
-                  style={{
-                    color: 'var(--muted)',
-                    padding: '4px 6px',
-                    fontFamily: 'var(--mono)',
-                    fontSize: '0.68rem',
-                  }}
-                >
-                  + {backlinks.length - 10} more
-                </li>
-              )}
             </ul>
           </div>
         )}
