@@ -33,14 +33,27 @@ export function PanelSync() {
       }
 
       const existingPanels = await panelStore.getAll();
-      const existingByDoc = new Map(existingPanels.map((panel) => [panel.docId, panel] as const));
+      const existingByDoc = new Map<string, typeof existingPanels>();
+      for (const panel of existingPanels) {
+        const current = existingByDoc.get(panel.docId) ?? [];
+        current.push(panel);
+        existingByDoc.set(panel.docId, current);
+      }
 
       for (const [docId, maybePanel] of desired) {
         if (cancelled) return;
+        const existingForDoc = existingByDoc.get(docId) ?? [];
         if (maybePanel) {
+          for (const existing of existingForDoc) {
+            if (existing.id !== maybePanel.id) {
+              await panelStore.delete(existing.id);
+            }
+          }
           await panelStore.put(maybePanel);
-        } else if (existingByDoc.has(docId)) {
-          await panelStore.delete(existingByDoc.get(docId)!.id);
+        } else if (existingForDoc.length > 0) {
+          for (const existing of existingForDoc) {
+            await panelStore.delete(existing.id);
+          }
         }
       }
 

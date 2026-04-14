@@ -38,6 +38,6 @@ export type PanelSnapshotInput = {
   traces: Trace[];
 };
 
-export function newPanelId(docId: string, crystallizedAt: number): string {
-  return `pl_${docId.replace(/[^\w-]+/g, '_')}_${crystallizedAt.toString(36)}`;
+export function newPanelId(docId: string): string {
+  return `pl_${docId.replace(/[^\w-]+/g, '_')}`;
 }

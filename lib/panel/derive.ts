@@ -101,7 +101,7 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
         : 'settled';
 
   return {
-    id: newPanelId(docId, crystallizedAt),
+    id: newPanelId(docId),
     docId,
     href: representative.source.href,
     title: representative.source.sourceTitle ?? representative.title,
