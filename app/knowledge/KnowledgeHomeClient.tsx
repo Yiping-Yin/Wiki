@@ -191,6 +191,7 @@ export function KnowledgeHomeClient({
         <QuietGuideCard
           eyebrow="Continue collection"
           title={focusCollection.label}
+          mode="inline"
           meta={
             <>
               <span>{focusCollection.count} docs</span>

@@ -17,6 +17,7 @@ export function QuietGuideCard({
   summary,
   detail,
   actions,
+  mode = 'block',
 }: {
   eyebrow: string;
   title: string;
@@ -24,7 +25,86 @@ export function QuietGuideCard({
   summary?: ReactNode;
   detail?: ReactNode;
   actions?: QuietGuideAction[];
+  mode?: 'block' | 'inline';
 }) {
+  if (mode === 'inline') {
+    return (
+      <section
+        style={{
+          marginBottom: 20,
+          paddingBottom: '0.6rem',
+          borderBottom: '0.5px solid var(--mat-border)',
+        }}
+      >
+        <div
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexWrap: 'wrap',
+            letterSpacing: '0.04em',
+          }}
+        >
+          <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+            {eyebrow}
+          </span>
+          <span aria-hidden>·</span>
+          <span>{title}</span>
+          {meta ? (
+            <>
+              <span aria-hidden>·</span>
+              {meta}
+            </>
+          ) : null}
+          {actions && actions.length > 0 ? (
+            <>
+              <span aria-hidden>·</span>
+              {actions.map((action, index) => {
+                const style = quietGuideInlineActionStyle(Boolean(action.primary));
+                const child = action.href ? (
+                  <Link key={action.label} href={action.href} style={{ ...style, textDecoration: 'none' }}>
+                    {action.label}
+                  </Link>
+                ) : (
+                  <button key={action.label} type="button" onClick={action.onClick} style={style}>
+                    {action.label}
+                  </button>
+                );
+                return (
+                  <span key={action.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {index > 0 ? <span aria-hidden>·</span> : null}
+                    {child}
+                  </span>
+                );
+              })}
+            </>
+          ) : null}
+        </div>
+
+        {summary ? (
+          <div
+            style={{
+              color: 'var(--fg-secondary)',
+              fontSize: '0.86rem',
+              lineHeight: 1.55,
+              marginTop: 6,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            }}
+          >
+            {summary}
+          </div>
+        ) : null}
+
+        {detail}
+      </section>
+    );
+  }
+
   return (
     <section
       style={{
@@ -140,6 +220,24 @@ function quietGuideActionStyle(primary: boolean) {
     fontSize: '0.82rem',
     fontWeight: 650,
     letterSpacing: '-0.01em',
+    lineHeight: 1,
+    cursor: 'pointer',
+  };
+}
+
+function quietGuideInlineActionStyle(primary: boolean) {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    padding: 0,
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.02em',
     lineHeight: 1,
     cursor: 'pointer',
   };
