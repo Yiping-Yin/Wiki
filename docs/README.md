@@ -19,6 +19,7 @@
 
 - [Commit Plan](/Users/yinyiping/Desktop/Wiki/docs/process/COMMIT_PLAN.md)
 - [Commit Messages](/Users/yinyiping/Desktop/Wiki/docs/process/COMMIT_MESSAGES.md)
+- [Loom Stage Review · 2026-04-15](/Users/yinyiping/Desktop/Wiki/docs/process/LOOM_STAGE_REVIEW_2026-04-15.md)
 - [Design Memory Drift Audit Template](/Users/yinyiping/Desktop/Wiki/docs/process/DESIGN_MEMORY_DRIFT_AUDIT_TEMPLATE.md)
 - [Design Memory Drift Audit · 2026-04-13](/Users/yinyiping/Desktop/Wiki/docs/process/DESIGN_MEMORY_DRIFT_AUDIT_2026-04-13.md)
 - [Design Memory Drift Audit Follow-up · 2026-04-13](/Users/yinyiping/Desktop/Wiki/docs/process/DESIGN_MEMORY_DRIFT_AUDIT_2026-04-13_FOLLOWUP.md)
