@@ -142,7 +142,6 @@ export default function HighlightsPage() {
           eyebrow="Return to this passage"
           title={focus.title}
           meta={<span>{formatWhen(focus.highlights[0]?.at ?? 0)}</span>}
-          summary={focus.highlights[0]?.text}
           mode="inline"
           actions={[
             { label: 'Return to source', href: focus.href, primary: true },

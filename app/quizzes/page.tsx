@@ -116,11 +116,6 @@ export default function QuizzesPage() {
               <span>{formatWhen(focus.attemptedAt)}</span>
             </>
           }
-          summary={
-            focus.weak
-              ? 'The last verification attempt did not settle cleanly. Return to the source and tighten the weave before testing again.'
-              : 'You have already tested this material once. Return to the source if you want to verify that the understanding still holds.'
-          }
           mode="inline"
           actions={[
             { label: 'Return to source', onClick: () => router.push(focus.href), primary: true },

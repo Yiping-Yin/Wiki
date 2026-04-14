@@ -166,7 +166,6 @@ export default function NotesPage() {
           eyebrow="Return to this note"
           title={focus.title}
           meta={<span>{formatWhen(focus.at)}</span>}
-          summary={focus.summary}
           mode="inline"
           actions={[
             { label: 'Return to note', onClick: () => openReview(focus), primary: true },
