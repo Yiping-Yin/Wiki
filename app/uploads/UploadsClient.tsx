@@ -109,110 +109,6 @@ function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
   return 'Review';
 }
 
-function UploadBlock({
-  label,
-  items,
-}: {
-  label: string;
-  items: UploadSurface[];
-}) {
-  if (items.length === 0) return null;
-
-  return (
-    <section style={{ marginBottom: '1.9rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-        <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 700 }}>
-          {label}
-        </span>
-        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        {items.map((item, index) => (
-          <Link
-            key={item.name}
-            href={item.href}
-            style={{
-              display: 'block',
-              textDecoration: 'none',
-              color: 'var(--fg)',
-              padding: '0.78rem 0',
-              borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-              <span
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  fontFamily: 'var(--display)',
-                  fontSize: '1rem',
-                  fontWeight: 550,
-                  letterSpacing: '-0.012em',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {item.title}
-              </span>
-              <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                {formatWhen(item.touchedAt)}
-              </span>
-            </div>
-
-            <div
-              style={{
-                marginTop: 6,
-                color: 'var(--fg-secondary)',
-                fontSize: '0.9rem',
-                lineHeight: 1.55,
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-              }}
-            >
-              {item.latestSummary || item.preview || item.latestQuote || 'Open this source to start weaving against it.'}
-            </div>
-            <div
-              className="t-caption2"
-              style={{
-                marginTop: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                color: 'var(--muted)',
-                letterSpacing: '0.04em',
-                flexWrap: 'wrap',
-              }}
-            >
-              <span>{item.ext.slice(1).toUpperCase()}</span>
-              {item.latestQuote && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span
-                    style={{
-                      maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontStyle: 'italic',
-                    }}
-                  >
-                    {item.latestQuote.length > 90 ? `${item.latestQuote.slice(0, 90)}…` : item.latestQuote}
-                  </span>
-                </>
-              )}
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 export function UploadsClient({ items }: { items: UploadListItem[] }) {
   const router = useRouter();
   const { traces } = useAllTraces();
@@ -228,10 +124,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
       .sort((a, b) => stateOrder(a) - stateOrder(b) || b.touchedAt - a.touchedAt);
   }, [items, traces, normalizedQuery]);
 
-  const openItems = surfaces.filter((item) => item.state === 'woven' || item.state === 'opened');
-  const finishedItems = surfaces.filter((item) => item.state === 'finished');
-  const newItems = surfaces.filter((item) => item.state === 'new');
-  const focusItem = openItems[0] ?? finishedItems[0] ?? newItems[0] ?? null;
+  const focusItem = surfaces[0] ?? null;
 
   const openPrimaryAction = (item: UploadSurface) => {
     continuePanelLifecycle(router, {
@@ -333,9 +226,89 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
         </div>
       )}
 
-      <UploadBlock label="Continue" items={openItems} />
-      <UploadBlock label="Finished" items={finishedItems} />
-      <UploadBlock label="Recently landed" items={newItems} />
+      {surfaces.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {surfaces.map((item, index) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              style={{
+                display: 'block',
+                textDecoration: 'none',
+                color: 'var(--fg)',
+                padding: '0.78rem 0',
+                borderBottom: index < surfaces.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontFamily: 'var(--display)',
+                    fontSize: '1rem',
+                    fontWeight: 550,
+                    letterSpacing: '-0.012em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {item.title}
+                </span>
+                <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {formatWhen(item.touchedAt)}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 6,
+                  color: 'var(--fg-secondary)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.55,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {item.latestSummary || item.preview || item.latestQuote || 'Open this source to start weaving against it.'}
+              </div>
+              <div
+                className="t-caption2"
+                style={{
+                  marginTop: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  color: 'var(--muted)',
+                  letterSpacing: '0.04em',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span>{item.ext.slice(1).toUpperCase()}</span>
+                {item.latestQuote && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span
+                      style={{
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {item.latestQuote.length > 90 ? `${item.latestQuote.slice(0, 90)}…` : item.latestQuote}
+                    </span>
+                  </>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
