@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { CategoryHero } from '../../../components/CategoryHero';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
 import type { KnowledgeCategory } from '../../../lib/knowledge-types';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../../lib/learning-status';
+import { continuePanelLifecycle } from '../../../lib/panel-resume';
 
 export type CategoryDocCard = {
   id: string;
@@ -32,23 +34,66 @@ type CategorySurface = CategoryDocCard & {
   state: 'new' | 'opened' | 'woven' | 'finished';
   touchedAt: number;
   anchorCount: number;
+  latestSummary: string;
+  latestQuote?: string;
+  learning: LearningSurfaceSummary;
 };
 
 function docIdFor(doc: CategoryDocCard) {
   return `know/${doc.id}`;
 }
 
-function stateIndicator(surface: CategorySurface) {
+function formatWhen(ts: number) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const day = 86_400_000;
+  if (diff < day) return 'today';
+  if (diff < day * 2) return 'yesterday';
+  if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
+  if (diff < day * 30) return `${Math.floor(diff / day / 7)}w ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function stateLabel(surface: CategorySurface) {
   switch (surface.state) {
     case 'finished':
-      return { label: 'done', color: 'var(--accent)' };
+      return 'Finished';
     case 'woven':
-      return { label: `${surface.anchorCount}`, color: 'var(--fg-secondary)' };
+      return `${surface.anchorCount} stitch${surface.anchorCount > 1 ? 'es' : ''}`;
     case 'opened':
-      return { label: '·', color: 'var(--muted)' };
+      return 'Opened';
     default:
-      return null;
+      return 'New';
   }
+}
+
+function docSummary(surface: CategorySurface) {
+  if (surface.latestSummary) return surface.latestSummary;
+  if (surface.preview) return surface.preview.slice(0, 220);
+  if (surface.latestQuote) return surface.latestQuote;
+  if (surface.subcategory) return surface.subcategory;
+  return '';
+}
+
+function stateRank(surface: CategorySurface) {
+  switch (surface.state) {
+    case 'woven':
+      return 0;
+    case 'opened':
+      return 1;
+    case 'finished':
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function primaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
+  if (nextAction === 'refresh') return 'Refresh';
+  if (nextAction === 'rehearse') return 'Rehearsal';
+  if (nextAction === 'examine') return 'Examiner';
+  if (nextAction === 'capture') return 'Open';
+  return 'Review';
 }
 
 export function CategoryLandingClient({
@@ -60,6 +105,7 @@ export function CategoryLandingClient({
   docs: CategoryDocCard[];
   groups: CategoryGroupCard[];
 }) {
+  const router = useRouter();
   const [history] = useHistory();
   const { traces } = useAllTraces();
 
@@ -84,24 +130,50 @@ export function CategoryLandingClient({
     return map;
   }, [traces, category.slug]);
 
-  const surfaceMap = useMemo(() => {
-    const map = new Map<string, CategorySurface>();
-    for (const doc of docs) {
-      const docId = docIdFor(doc);
-      const viewedAt = viewedByDocId.get(docId) ?? 0;
-      const traceSet = tracesByDocId.get(docId) ?? [];
-      const summary = summarizeLearningSurface(traceSet, viewedAt);
-      map.set(doc.id, {
-        ...doc,
-        state: traceSet.length === 0
-          ? (viewedAt > 0 ? 'opened' : 'new')
-          : (summary.finished ? 'finished' : summary.anchorCount > 0 ? 'woven' : 'opened'),
-        touchedAt: Math.max(summary.touchedAt, viewedAt),
-        anchorCount: summary.anchorCount,
-      });
-    }
-    return map;
+  const surfaces = useMemo(() => {
+    return docs
+      .map((doc) => {
+        const docId = docIdFor(doc);
+        const viewedAt = viewedByDocId.get(docId) ?? 0;
+        const traceSet = tracesByDocId.get(docId) ?? [];
+
+        if (traceSet.length === 0) {
+          return {
+            ...doc,
+            state: viewedAt > 0 ? 'opened' : 'new',
+            touchedAt: viewedAt,
+            anchorCount: 0,
+            latestSummary: '',
+            learning: summarizeLearningSurface([], viewedAt),
+          } satisfies CategorySurface;
+        }
+
+        const summary = summarizeLearningSurface(traceSet, viewedAt);
+        return {
+          ...doc,
+          state: summary.finished ? 'finished' : summary.anchorCount > 0 ? 'woven' : 'opened',
+          touchedAt: Math.max(summary.touchedAt, viewedAt),
+          anchorCount: summary.anchorCount,
+          latestSummary: summary.latestSummary,
+          latestQuote: summary.latestQuote,
+          learning: summarizeLearningSurface(traceSet, viewedAt),
+        } satisfies CategorySurface;
+      })
+      .sort((a, b) => stateRank(a) - stateRank(b) || b.touchedAt - a.touchedAt || a.subOrder - b.subOrder);
   }, [docs, tracesByDocId, viewedByDocId]);
+
+  const continueDocs = surfaces.filter((surface) => surface.state === 'woven' || surface.state === 'opened').slice(0, 4);
+  const startDoc = docs[0] ?? null;
+  const continueDoc = continueDocs[0] ?? null;
+
+  const openPrimaryAction = (surface: CategorySurface) => {
+    continuePanelLifecycle(router, {
+      href: surface.href,
+      nextAction: surface.learning.nextAction,
+      latestAnchorId: surface.learning.latestAnchorId,
+      refreshSource: 'knowledge',
+    });
+  };
 
   return (
     <div className="prose-notion">
@@ -116,84 +188,291 @@ export function CategoryLandingClient({
         withText={docs.filter((doc) => doc.hasText).length}
         subs={category.subs}
       />
+      <h1 style={{ display: 'none' }}>{category.label}</h1>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
-        {groups.map((group) => (
-          <section
-            key={group.label || '_root'}
-            id={group.label ? encodeURIComponent(group.label) : undefined}
-            style={{ scrollMarginTop: '2rem' }}
-          >
-            {group.label && (
-              <header style={{ padding: '0 0 0.5rem' }}>
-                <div
-                  className="t-headline"
+      <section
+        style={{
+          marginBottom: '0.7rem',
+          paddingBottom: '0.6rem',
+          borderBottom: '0.5px solid var(--mat-border)',
+        }}
+      >
+        <div
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexWrap: 'wrap',
+            letterSpacing: '0.04em',
+          }}
+        >
+          <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+            Collection
+          </span>
+          <span aria-hidden>·</span>
+          <span>{category.label}</span>
+          <span aria-hidden>·</span>
+          <span>{docs.length} docs</span>
+          {category.subs.length > 0 ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{category.subs.length} weeks</span>
+            </>
+          ) : null}
+          {continueDoc?.touchedAt ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{formatWhen(continueDoc.touchedAt)}</span>
+            </>
+          ) : null}
+          <span aria-hidden>·</span>
+          {continueDoc ? (
+            <button
+              type="button"
+              onClick={() => openPrimaryAction(continueDoc)}
+              style={inlineActionStyle(true)}
+            >
+              Continue collection
+            </button>
+          ) : startDoc ? (
+            <button
+              type="button"
+              onClick={() => router.push(startDoc.href)}
+              style={inlineActionStyle(true)}
+            >
+              Open first doc
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      <Block label="All material" id="materials">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
+          {groups.map((group) => (
+            <section
+              key={group.label || '_root'}
+              id={group.label ? encodeURIComponent(group.label) : undefined}
+              style={{
+                scrollMarginTop: '2rem',
+                paddingTop: group.label ? '0.15rem' : 0,
+              }}
+            >
+              {group.label && (
+                <header
                   style={{
-                    fontFamily: 'var(--display)',
-                    letterSpacing: '-0.014em',
-                    color: 'var(--fg)',
+                    padding: '0 0 0.7rem',
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                    gap: 12,
                   }}
                 >
-                  {group.label}
-                </div>
-              </header>
-            )}
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {group.docs.map((doc, index) => {
-                const surface = surfaceMap.get(doc.id) ?? null;
-                const indicator = surface ? stateIndicator(surface) : null;
-                return (
-                  <li
-                    key={doc.id}
+                  <div
+                    className="t-headline"
                     style={{
-                      borderBottom: index < group.docs.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                      fontFamily: 'var(--display)',
+                      letterSpacing: '-0.014em',
+                      color: 'var(--fg)',
                     }}
                   >
-                    <Link
-                      href={doc.href}
+                    {group.label}
+                  </div>
+                  <div className="t-caption" style={{ color: 'var(--muted)', fontWeight: 600 }}>
+                    {group.docs.length} {group.docs.length === 1 ? 'item' : 'items'}
+                  </div>
+                </header>
+              )}
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {group.docs.map((doc, index) => {
+                  const surface = surfaces.find((item) => item.id === doc.id) ?? null;
+                  return (
+                    <li
+                      key={doc.id}
                       style={{
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: 10,
-                        padding: '0.7rem 0',
-                        textDecoration: 'none',
-                        color: 'var(--fg)',
+                        borderBottom: index < group.docs.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
                       }}
                     >
-                      <span
-                        className="t-headline"
+                      <Link
+                        href={doc.href}
                         style={{
-                          flex: 1,
-                          fontFamily: 'var(--display)',
-                          minWidth: 0,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          display: 'block',
+                          padding: '0.85rem 0',
+                          textDecoration: 'none',
+                          color: 'var(--fg)',
                         }}
                       >
-                        {doc.title}
-                      </span>
-                      {indicator && (
-                        <span
-                          className="t-caption2"
-                          style={{
-                            color: indicator.color,
-                            flexShrink: 0,
-                            fontWeight: 600,
-                            letterSpacing: '0.04em',
-                          }}
-                        >
-                          {indicator.label}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                          <span className="t-headline" style={{ fontFamily: 'var(--display)' }}>
+                            {doc.title}
+                          </span>
+                          <span
+                            className="t-caption2"
+                            style={{
+                              color: 'var(--muted)',
+                              fontFamily: 'var(--mono)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.06em',
+                            }}
+                          >
+                            {doc.ext.slice(1)}
+                          </span>
+                          {surface && surface.state !== 'new' && (
+                            <span
+                              className="t-caption2"
+                              style={{
+                                color: surface.state === 'finished' ? 'var(--accent)' : 'var(--muted)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.06em',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {stateLabel(surface)}
+                            </span>
+                          )}
+                        </div>
+                        {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface)) && (
+                          <div
+                            className="t-footnote"
+                            style={{
+                              color: 'var(--muted)',
+                              marginTop: 4,
+                              lineHeight: 1.5,
+                              overflow: 'hidden',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}
+                          >
+                            {docSummary(surface ?? ({ ...doc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface))}
+                          </div>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </Block>
+    </div>
+  );
+}
+
+
+function Block({
+  label,
+  children,
+  id,
+}: {
+  label: string;
+  children: React.ReactNode;
+  id?: string;
+}) {
+  return (
+    <section id={id} style={{ marginBottom: '1.8rem', scrollMarginTop: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
+        <span
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.10em',
+            fontWeight: 700,
+          }}
+        >
+          {label}
+        </span>
+        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
       </div>
+      {children}
+    </section>
+  );
+}
+
+function inlineActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.02em',
+    padding: 0,
+    cursor: 'pointer',
+  };
+}
+
+function SurfaceList({ items }: { items: CategorySurface[] }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {items.map((surface, index) => (
+        <Link
+          key={surface.id}
+          href={surface.href}
+          style={{
+            display: 'block',
+            textDecoration: 'none',
+            color: 'var(--fg)',
+            padding: '0.78rem 0',
+            borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span
+              className="t-caption2"
+              style={{
+                color: surface.state === 'finished' ? 'var(--accent)' : 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {stateLabel(surface)}
+            </span>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: 'var(--display)',
+                fontSize: '1rem',
+                fontWeight: 550,
+                letterSpacing: '-0.012em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {surface.title}
+            </span>
+            <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+              {formatWhen(surface.touchedAt)}
+            </span>
+          </div>
+
+          {docSummary(surface) && (
+            <div
+              style={{
+                marginTop: 6,
+                color: 'var(--fg-secondary)',
+                fontSize: '0.9rem',
+                lineHeight: 1.55,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {docSummary(surface)}
+            </div>
+          )}
+        </Link>
+      ))}
     </div>
   );
 }

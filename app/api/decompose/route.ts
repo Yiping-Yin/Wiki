@@ -8,7 +8,6 @@
  * Non-streaming. Spawns the selected local CLI, captures stdout, parses JSON.
  */
 import { runCli, pickCli } from '../../../lib/claude-cli';
-import { extractJson } from '../../../lib/ai/extract-json';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,6 +55,18 @@ function buildPrompt(source: { title: string; body?: string }, focus?: string): 
   return parts.join('\n');
 }
 
+function extractJson(text: string): any | null {
+  // Find first { and last } and try to parse
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  const candidate = text.slice(start, end + 1);
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: Request) {
   let body: { source: { title: string; body?: string }; focus?: string; cli?: 'claude' | 'codex' };

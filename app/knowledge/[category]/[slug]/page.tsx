@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { docsByCategory, findDoc, getKnowledgeCategories, neighborsInCategory, relatedDocs } from '../../../../lib/knowledge-store';
+import { docsByCategory, findDoc, getKnowledgeCategories, groupBySubcategory, neighborsInCategory, relatedDocs } from '../../../../lib/knowledge-store';
 import { TrackView } from '../../../../components/TrackView';
 import { DocViewer } from '../../../../components/DocViewer';
 import { DocBodyProvider } from '../../../../components/DocBodyProvider';
@@ -9,6 +9,7 @@ import { PinButton } from '../../../../components/PinButton';
 import { LiveArtifact } from '../../../../components/LiveArtifact';
 import { AnchorLayer } from '../../../../components/AnchorLayer';
 import { readKnowledgeDocBody } from '../../../../lib/knowledge-doc-cache';
+import { CollectionContextClient, type CollectionDocCard, type CollectionGroupCard } from './CollectionContextClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,19 +25,45 @@ async function loadBody(id: string): Promise<string> {
   return (await readKnowledgeDocBody(id))?.body ?? '';
 }
 
+function toDocCard(doc: Awaited<ReturnType<typeof docsByCategory>>[number]): CollectionDocCard {
+  return {
+    id: doc.id,
+    title: doc.title,
+    href: `/knowledge/${doc.categorySlug}/${doc.fileSlug}`,
+    categorySlug: doc.categorySlug,
+    fileSlug: doc.fileSlug,
+    ext: doc.ext,
+    preview: doc.preview,
+    subcategory: doc.subcategory ?? '',
+    subOrder: doc.subOrder ?? 9999,
+    hasText: doc.hasText,
+    size: doc.size,
+  };
+}
+
+function toGroupCard(group: ReturnType<typeof groupBySubcategory>[number]): CollectionGroupCard {
+  return {
+    label: group.label,
+    order: group.order,
+    docs: group.docs.map(toDocCard),
+  };
+}
+
 export default async function DocPage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   const { category, slug } = await params;
   const categorySlug = decodeURIComponent(category);
   const fileSlug = decodeURIComponent(slug);
-  const [doc, knowledgeCategories] = await Promise.all([
+  const [doc, knowledgeCategories, categoryDocs] = await Promise.all([
     findDoc(categorySlug, fileSlug),
     getKnowledgeCategories(),
+    docsByCategory(categorySlug),
   ]);
   if (!doc) notFound();
 
   const body = await loadBody(doc.id);
   const cat = knowledgeCategories.find((c) => c.slug === categorySlug);
   const { prev, next } = await neighborsInCategory(categorySlug, fileSlug);
+  const groups = groupBySubcategory(categoryDocs);
   const sourceUrl = `/api/source?p=${encodeURIComponent(doc.sourcePath)}`;
 
   return (
@@ -48,13 +75,23 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
           <TrackView id={`know/${doc.id}`} title={doc.title} href={`/knowledge/${doc.categorySlug}/${doc.fileSlug}`} />
 
           <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
+            <Link href="/knowledge">Knowledge</Link> ›{' '}
             <Link href={`/knowledge/${categorySlug}`}>{cat?.label}</Link>
             {doc.subcategory && <> › <span style={{ color: 'var(--fg-secondary)' }}>{doc.subcategory}</span></>}
           </div>
 
+          {cat && (
+            <CollectionContextClient
+              category={cat}
+              docs={categoryDocs.map(toDocCard)}
+              groups={groups.map(toGroupCard)}
+              currentDocId={doc.id}
+            />
+          )}
+
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <h1 style={{ flex: 1, margin: '0.6rem 0 1.4rem' }}>{doc.title}</h1>
-            <div style={{ marginTop: '1rem' }}>
+            <h1 style={{ flex: 1, margin: '1.2rem 0 1.4rem' }}>{doc.title}</h1>
+            <div style={{ marginTop: '1.6rem' }}>
               <PinButton
                 id={`know/${doc.id}`}
                 title={doc.title}
@@ -62,6 +99,23 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
                 size="md"
               />
             </div>
+          </div>
+
+          <div
+            style={{
+              fontSize: '0.78rem',
+              color: 'var(--muted)',
+              marginBottom: '1rem',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.6rem',
+            }}
+          >
+            <span>{doc.ext.slice(1).toUpperCase()}</span>
+            <span>·</span>
+            <span>{(doc.size / 1024).toFixed(0)} KB</span>
+            <span>·</span>
+            <a href={sourceUrl} target="_blank" rel="noreferrer">open original</a>
           </div>
 
           <DocBodyProvider body={body} title={doc.title} />

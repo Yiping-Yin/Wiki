@@ -224,78 +224,8 @@ export function SelectionWarp() {
       // cause a re-render that interferes with the click handler.
       const target = e.target as Node | null;
       if (target && warpRef.current && warpRef.current.contains(target)) return;
-      // Atlas-style: plain selection auto-opens ChatFocus immediately.
-      // Modifier keys (⌘/⌥) still show ✦ for capture/highlight.
-      const currentIntent = intentFromInput(e);
-      if (currentIntent === 'ask') {
-        defer(() => {
-          compute();
-          // After compute sets spot, auto-fire ask in next tick
-          window.setTimeout(() => {
-            const sel = window.getSelection();
-            if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
-            const text = sel.toString().trim();
-            if (text.length < MIN_LEN) return;
-            // Check if ChatFocus is already active — don't re-open
-            if (document.body.classList.contains('loom-chat-focus-active')) return;
-
-            const range = sel.getRangeAt(0);
-            const main = document.querySelector('main');
-            if (!main || !main.contains(range.commonAncestorContainer)) return;
-
-            const rect = range.getBoundingClientRect();
-            if (rect.height < 4 || rect.width < 2) return;
-
-            let node: Node | null = range.commonAncestorContainer;
-            while (node && node.nodeType !== Node.ELEMENT_NODE) node = node.parentNode;
-            if (!node) return;
-            let block: HTMLElement | null = node as HTMLElement;
-            const proseContainer = block.closest('.loom-source-prose') as HTMLElement | null;
-            if (!proseContainer) return;
-            while (block && block.parentElement !== proseContainer) {
-              block = block.parentElement;
-              if (!block) return;
-            }
-            if (!block) return;
-
-            const blockId = ensureBlockAnchorId(block, proseContainer);
-            const blockText = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 280);
-            const charOffsets = rangeTextOffsets(block, range);
-            const anchorId = block.tagName.match(/^H[1-6]$/)
-              ? blockId
-              : stableFragmentAnchorId(blockId, charOffsets.start, charOffsets.end);
-
-            const endRange = document.createRange();
-            endRange.setStart(range.endContainer, range.endOffset);
-            endRange.collapse(true);
-            const er = endRange.getBoundingClientRect();
-            const localY = Math.max(4, (er.height > 0 ? er.top : rect.top) - block.getBoundingClientRect().top + 4);
-
-            window.dispatchEvent(new CustomEvent('loom:chat:focus', {
-              detail: {
-                text,
-                anchorId,
-                anchorBlockId: blockId,
-                anchorBlockText: blockText,
-                charStart: charOffsets.start,
-                charEnd: charOffsets.end,
-                localOffsetPx: localY,
-              },
-            }));
-            // Auto-highlight the selection
-            const ctx = contextFromPathname(window.location.pathname);
-            void appendEventForDoc(
-              { docId: ctx.docId, href: ctx.href, sourceTitle: ctx.sourceTitle },
-              { kind: 'highlight', text, tint, anchor: { paragraphId: blockId, blockId, charStart: charOffsets.start, charEnd: charOffsets.end, selection: text }, at: Date.now() },
-            ).then(() => {
-              window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
-            });
-          }, 10);
-        });
-      } else {
-        // Modifier held — show ✦ for capture/highlight as before
-        defer(compute);
-      }
+      // Wait one tick for the browser to settle the selection state.
+      defer(compute);
     };
 
     const onTouchEnd = () => {

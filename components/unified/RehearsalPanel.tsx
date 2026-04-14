@@ -1,6 +1,4 @@
 'use client';
-import { readAiCliPreference } from '../../lib/ai-cli';
-import { readSseToString } from '../../lib/ai/sse-reader';
 /**
  * RehearsalPanel · editable scratch surface for the Producing learning state.
  *
@@ -125,7 +123,6 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
     setStatus('⌘K shaping…');
     // Signal notch: AI is working
     window.dispatchEvent(new CustomEvent('loom:island', { detail: { type: 'ai-start' } }));
-    const ac = new AbortController();
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -137,14 +134,12 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
               content: buildTransformPrompt(selected),
             },
           ],
-          cli: readAiCliPreference(),
         }),
-        signal: ac.signal,
       });
       if (!response.ok || !response.body) {
         throw new Error(`AI call failed: ${response.status}`);
       }
-      const result = await readSseToString(response.body, ac.signal);
+      const result = await readSseToString(response.body);
       if (!result.trim()) {
         throw new Error('Empty response from AI');
       }
@@ -406,6 +401,42 @@ function buildTransformPrompt(selection: string): string {
     '',
     selection,
   ].join('\n');
+}
+
+/**
+ * Read the /api/chat SSE stream into a single string. Accumulates all
+ * `data: {delta: "..."}` chunks until `data: [DONE]`.
+ */
+async function readSseToString(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // Parse complete SSE messages (separated by blank line)
+    let boundary: number;
+    while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+      const chunk = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      // Each chunk is like "data: {...}"
+      for (const line of chunk.split('\n')) {
+        if (line.startsWith('data: ')) {
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') return result;
+          try {
+            const obj = JSON.parse(payload);
+            if (typeof obj.delta === 'string') result += obj.delta;
+          } catch {
+            // ignore non-JSON data lines
+          }
+        }
+      }
+    }
+  }
+  return result;
 }
 
 function docHrefFromDocId(docId: string): string {
