@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { CategoryHero } from '../../../components/CategoryHero';
-import { QuietGuideCard } from '../../../components/QuietGuideCard';
 import { useHistory } from '../../../lib/use-history';
 import { useAllTraces, type Trace } from '../../../lib/trace';
 import type { KnowledgeCategory } from '../../../lib/knowledge-types';
@@ -191,42 +190,63 @@ export function CategoryLandingClient({
       />
       <h1 style={{ display: 'none' }}>{category.label}</h1>
 
-      <QuietGuideCard
-        eyebrow="Continue collection"
-        title={category.label}
-        meta={
-          <>
-            <span>{docs.length} docs</span>
-            {category.subs.length > 0 ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{category.subs.length} weeks</span>
-              </>
-            ) : null}
-            {continueDoc?.touchedAt ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{formatWhen(continueDoc.touchedAt)}</span>
-              </>
-            ) : null}
-          </>
-        }
-        summary={continueDoc ? docSummary(continueDoc) : startDoc?.preview?.slice(0, 220) || 'Open the collection and begin weaving.'}
-        actions={[
-          {
-            label: 'Continue collection',
-            onClick: () => continueDoc ? openPrimaryAction(continueDoc) : startDoc ? router.push(startDoc.href) : null,
-            primary: true,
-          },
-          { label: 'All material', href: `/knowledge/${category.slug}` },
-        ]}
-      />
-
-      {continueDocs.length > 0 && (
-        <Block label="Continue">
-          <SurfaceList items={continueDocs} />
-        </Block>
-      )}
+      <section
+        style={{
+          marginBottom: '0.7rem',
+          paddingBottom: '0.6rem',
+          borderBottom: '0.5px solid var(--mat-border)',
+        }}
+      >
+        <div
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexWrap: 'wrap',
+            letterSpacing: '0.04em',
+          }}
+        >
+          <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+            Collection
+          </span>
+          <span aria-hidden>·</span>
+          <span>{category.label}</span>
+          <span aria-hidden>·</span>
+          <span>{docs.length} docs</span>
+          {category.subs.length > 0 ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{category.subs.length} weeks</span>
+            </>
+          ) : null}
+          {continueDoc?.touchedAt ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{formatWhen(continueDoc.touchedAt)}</span>
+            </>
+          ) : null}
+          <span aria-hidden>·</span>
+          {continueDoc ? (
+            <button
+              type="button"
+              onClick={() => openPrimaryAction(continueDoc)}
+              style={inlineActionStyle(true)}
+            >
+              Continue collection
+            </button>
+          ) : startDoc ? (
+            <button
+              type="button"
+              onClick={() => router.push(startDoc.href)}
+              style={inlineActionStyle(true)}
+            >
+              Open first doc
+            </button>
+          ) : null}
+        </div>
+      </section>
 
       <Block label="All material" id="materials">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
@@ -371,6 +391,20 @@ function Block({
       {children}
     </section>
   );
+}
+
+function inlineActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.02em',
+    padding: 0,
+    cursor: 'pointer',
+  };
 }
 
 function SurfaceList({ items }: { items: CategorySurface[] }) {
