@@ -10,6 +10,7 @@
 - [Design Review Checklist](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_REVIEW_CHECKLIST.md)
 - [Loom Visual Grammar](/Users/yinyiping/Desktop/Wiki/docs/design/LOOM_VISUAL_GRAMMAR.md)
 - [Loom Epistemic Grammar](/Users/yinyiping/Desktop/Wiki/docs/design/LOOM_EPISTEMIC_GRAMMAR.md)
+- [Loom Panel System Plan](/Users/yinyiping/Desktop/Wiki/docs/design/LOOM_PANEL_SYSTEM_PLAN.md)
 - [Capture Spec](/Users/yinyiping/Desktop/Wiki/docs/design/CAPTURE_SPEC.md)
 - [Canvas Spec (Historical)](/Users/yinyiping/Desktop/Wiki/docs/design/CANVAS_SPEC.md)
 - [Logo Brief](/Users/yinyiping/Desktop/Wiki/docs/design/LOGO_BRIEF.md)
