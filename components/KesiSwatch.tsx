@@ -2,16 +2,17 @@
 /**
  * KesiSwatch · a tiny woven tile representing one collection (course / wiki section).
  *
- * Reads all traces tied to docs in the given category and renders a small
- * tapestry showing weeks of activity. Same physics as KesiView, but compressed
- * to a card-sized swatch.
+ * Reads panels and weaves tied to the given knowledge collection and renders a
+ * small tapestry showing what has actually settled there. Same physics as
+ * KesiView, but compressed to a card-sized swatch.
  *
  * Used as the replacement for "App Store style" CollectionCard on /knowledge,
  * /browse, etc. Each card is the actual texture of your engagement, not a
  * decorative tinted box.
  */
-import { useEffect, useState } from 'react';
-import { traceStore, type Trace } from '../lib/trace';
+import { useMemo } from 'react';
+import { useAllPanels } from '../lib/panel';
+import { useAllWeaves } from '../lib/weave';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const VISIBLE_WEEKS = 12;
@@ -22,7 +23,22 @@ type CellInfo = {
   crystallized: boolean;
 };
 
-function buildSwatchCells(traces: Trace[], categorySlug: string): CellInfo[] {
+function buildSwatchCells(
+  panels: Array<{
+    docId: string;
+    href: string;
+    status: 'settled' | 'provisional' | 'contested' | 'superseded';
+    crystallizedAt: number;
+    revisions: Array<{ at: number }>;
+  }>,
+  weaves: Array<{
+    fromPanelId: string;
+    toPanelId: string;
+    status: 'suggested' | 'confirmed' | 'rejected';
+    updatedAt: number;
+  }>,
+  categorySlug: string,
+): CellInfo[] {
   // Anchor "now" to start of current week
   const now = new Date();
   const dayOfWeek = (now.getDay() + 6) % 7;
@@ -35,26 +51,48 @@ function buildSwatchCells(traces: Trace[], categorySlug: string): CellInfo[] {
     intensity: 0, mastery: 0, crystallized: false,
   }));
 
-  for (const t of traces) {
-    if (t.parentId !== null) continue;
-    if (!t.source?.docId) continue;
-    // Match by docId starting with the category slug
-    const docId = t.source.docId;
-    if (!docId.startsWith('know/') && !docId.startsWith('wiki/')) continue;
-    if (docId.startsWith('know/') && !docId.includes(categorySlug)) continue;
+  const collectionPanels = panels.filter((panel) => panel.href.startsWith(`/knowledge/${categorySlug}/`));
+  const collectionPanelIds = new Set(collectionPanels.map((panel) => panel.docId));
 
-    for (const e of t.events) {
-      const ageWeeks = Math.floor((nowMs - e.at) / WEEK_MS);
+  for (const panel of collectionPanels) {
+    const panelEvents = [panel.crystallizedAt, ...panel.revisions.map((revision) => revision.at)];
+    for (const at of panelEvents) {
+      if (!at) continue;
+      const ageWeeks = Math.floor((nowMs - at) / WEEK_MS);
       const idx = VISIBLE_WEEKS - 1 - ageWeeks;
       if (idx < 0 || idx >= VISIBLE_WEEKS) continue;
-      const weight =
-        e.kind === 'message' ? 1 :
-        e.kind === 'highlight' ? 0.5 :
-        e.kind === 'note' ? 0.7 :
-        e.kind === 'visit' ? 0.3 : 0.2;
-      cells[idx].intensity += weight;
-      cells[idx].mastery = Math.max(cells[idx].mastery, t.mastery);
-      if (e.kind === 'crystallize') cells[idx].crystallized = true;
+      cells[idx].intensity += at === panel.crystallizedAt ? 1 : 0.55;
+      const mastery =
+        panel.status === 'settled'
+          ? 0.9
+          : panel.status === 'contested'
+            ? 0.58
+            : 0.35;
+      cells[idx].mastery = Math.max(cells[idx].mastery, mastery);
+      if (panel.status === 'settled' && at === panel.crystallizedAt) {
+        cells[idx].crystallized = true;
+      }
+    }
+  }
+
+  for (const weave of weaves) {
+    if (weave.status !== 'confirmed') continue;
+    if (!collectionPanelIds.has(weave.fromPanelId) && !collectionPanelIds.has(weave.toPanelId)) continue;
+    const ageWeeks = Math.floor((nowMs - weave.updatedAt) / WEEK_MS);
+    const idx = VISIBLE_WEEKS - 1 - ageWeeks;
+    if (idx < 0 || idx >= VISIBLE_WEEKS) continue;
+    cells[idx].intensity += 0.35;
+    cells[idx].mastery = Math.max(cells[idx].mastery, 0.95);
+    cells[idx].crystallized = true;
+  }
+
+  if (collectionPanels.length === 0) {
+    return cells;
+  }
+
+  for (const cell of cells) {
+    if (cell.intensity < 0.05) {
+      cell.mastery = 0;
     }
   }
 
@@ -85,25 +123,12 @@ export function KesiSwatch({
   width?: number;
   height?: number;
 }) {
-  const [cells, setCells] = useState<CellInfo[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    traceStore.getAll().then((all) => {
-      if (cancelled) return;
-      setCells(buildSwatchCells(all, categorySlug));
-    });
-    const onChange = () => {
-      traceStore.getAll().then((all) => {
-        if (!cancelled) setCells(buildSwatchCells(all, categorySlug));
-      });
-    };
-    window.addEventListener('loom:trace:changed', onChange);
-    return () => {
-      cancelled = true;
-      window.removeEventListener('loom:trace:changed', onChange);
-    };
-  }, [categorySlug]);
+  const { panels, loading: panelsLoading } = useAllPanels();
+  const { weaves, loading: weavesLoading } = useAllWeaves();
+  const cells = useMemo(() => {
+    if (panelsLoading || weavesLoading) return null;
+    return buildSwatchCells(panels, weaves, categorySlug);
+  }, [categorySlug, panels, panelsLoading, weaves, weavesLoading]);
 
   // Render warp lines + cells
   const rendered = cells ?? Array.from({ length: VISIBLE_WEEKS }, () => ({ intensity: 0, mastery: 0, crystallized: false }));
