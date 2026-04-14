@@ -814,12 +814,12 @@ html { scroll-behavior: smooth; }
 /* Immersion: hide page chrome when scrolling down (reading).
    Show when scrolling up (navigating) or near page top.
    Controlled by ScrollDirection.tsx → body.scrolled-down. */
-.prose-notion > div:first-child,
+.loom-source-prose > div:first-child,
 button[title*="Pin"],
 button[aria-label="Pin"] {
   transition: opacity 0.3s ease;
 }
-body.scrolled-down .prose-notion > div:first-child,
+body.scrolled-down .loom-source-prose > div:first-child,
 body.scrolled-down button[title*="Pin"],
 body.scrolled-down button[aria-label="Pin"] {
   opacity: 0;

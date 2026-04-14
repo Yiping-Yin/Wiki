@@ -50,6 +50,14 @@ export function NoteRenderer({ source, addIds = false }: { source: string; addId
     return () => { cancelled = true; };
   }, [source, addIds]);
 
+  if (!html && source) {
+    return (
+      <div className="note-rendered prose-rendered" style={{ whiteSpace: 'pre-wrap' }}>
+        {source}
+      </div>
+    );
+  }
+
   return (
     <div
       className="note-rendered prose-rendered"
