@@ -16,63 +16,16 @@
  * newer version, not a parallel lane.
  */
 import { contextFromPathname } from '../doc-context';
+import {
+  ensureBlockAnchorId,
+  filteredChildren,
+  normalizeBlockText,
+  rangeTextOffsets,
+} from '../passage-locator';
 import { appendEventForDoc } from '../trace/source-bound';
 import type { TraceEvent } from '../trace/types';
 
 const MIN_LEN = 2;
-
-function filteredChildren(prose: Element): HTMLElement[] {
-  return Array.from(prose.children).filter((c) => {
-    const node = c as HTMLElement;
-    if (node.hasAttribute('data-loom-system')) return false;
-    if (node.classList.contains('tag-row')) return false;
-    if (node.tagName === 'STYLE' || node.tagName === 'SCRIPT') return false;
-    return true;
-  }) as HTMLElement[];
-}
-
-function ensureBlockAnchorId(
-  block: HTMLElement,
-  proseContainer: HTMLElement,
-): string {
-  if (block.id) return block.id;
-  const children = filteredChildren(proseContainer);
-  const index = children.indexOf(block);
-  const stableId = `loom-block-${Math.max(0, index)}`;
-  block.id = stableId;
-  return stableId;
-}
-
-function rangeTextOffsets(block: HTMLElement, range: Range) {
-  let start = 0;
-  let end = 0;
-  try {
-    const startRange = document.createRange();
-    startRange.selectNodeContents(block);
-    startRange.setEnd(range.startContainer, range.startOffset);
-    start = startRange.toString().length;
-
-    const endRange = document.createRange();
-    endRange.selectNodeContents(block);
-    endRange.setEnd(range.endContainer, range.endOffset);
-    end = endRange.toString().length;
-  } catch {
-    const text = range.toString();
-    start = 0;
-    end = text.length;
-  }
-  return {
-    start: Math.max(0, Math.min(start, end)),
-    end: Math.max(start, end),
-  };
-}
-
-function normalizedBlockText(el: HTMLElement): string {
-  return (el.innerText || el.textContent || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 280);
-}
 
 /**
  * Read the current window selection and build a thought-anchor event.
@@ -112,7 +65,7 @@ export function buildAnchorFromCurrentSelection():
   if (!block) return null;
 
   const blockId = ensureBlockAnchorId(block, proseContainer);
-  const blockText = normalizedBlockText(block);
+  const blockText = normalizeBlockText(block);
   const { start: charStart, end: charEnd } = rangeTextOffsets(block, range);
   const blockRect = block.getBoundingClientRect();
   const localOffsetPx = Math.max(4, rect.top - blockRect.top + 4);

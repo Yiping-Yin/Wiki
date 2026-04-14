@@ -20,6 +20,13 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { contextFromPathname } from '../lib/doc-context';
+import {
+  ensureBlockAnchorId,
+  filteredChildren,
+  normalizeBlockText,
+  rangeTextOffsets,
+  stableFragmentAnchorId,
+} from '../lib/passage-locator';
 import { useSmallScreen } from '../lib/use-small-screen';
 import { appendEventForDoc } from '../lib/trace/source-bound';
 import { captureCurrentSelection } from '../lib/capture/from-selection';
@@ -65,53 +72,6 @@ function intentFromInput({
   if (altKey || button === 2) return 'highlight';
   if (metaKey || ctrlKey) return 'capture';
   return 'ask';
-}
-
-function filteredChildren(prose: Element) {
-  return Array.from(prose.children).filter((c) => {
-    const node = c as HTMLElement;
-    if (node.hasAttribute('data-loom-system')) return false;
-    if (node.classList.contains('tag-row')) return false;
-    if (node.tagName === 'STYLE' || node.tagName === 'SCRIPT') return false;
-    return true;
-  }) as HTMLElement[];
-}
-
-function ensureBlockAnchorId(block: HTMLElement, proseContainer: HTMLElement) {
-  if (block.id) return block.id;
-  const children = filteredChildren(proseContainer);
-  const index = children.indexOf(block);
-  const stableId = `loom-block-${Math.max(0, index)}`;
-  block.id = stableId;
-  return stableId;
-}
-
-function rangeTextOffsets(block: HTMLElement, range: Range) {
-  let start = 0;
-  let end = 0;
-  try {
-    const startRange = document.createRange();
-    startRange.selectNodeContents(block);
-    startRange.setEnd(range.startContainer, range.startOffset);
-    start = startRange.toString().length;
-
-    const endRange = document.createRange();
-    endRange.selectNodeContents(block);
-    endRange.setEnd(range.endContainer, range.endOffset);
-    end = endRange.toString().length;
-  } catch {
-    const text = range.toString();
-    start = 0;
-    end = text.length;
-  }
-  return {
-    start: Math.max(0, Math.min(start, end)),
-    end: Math.max(start, end),
-  };
-}
-
-function stableFragmentAnchorId(blockId: string, charStart: number, charEnd: number) {
-  return `${blockId}::frag:${Math.max(0, charStart)}-${Math.max(charStart, charEnd)}`;
 }
 
 export function SelectionWarp() {
@@ -170,7 +130,7 @@ export function SelectionWarp() {
       if (!block) { setSpot(null); return; }
 
       const blockId = ensureBlockAnchorId(block, proseContainer);
-      const blockText = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 280);
+      const blockText = normalizeBlockText(block);
       const charOffsets = rangeTextOffsets(block, range);
       const anchorId = block.tagName.match(/^H[1-6]$/)
         ? blockId

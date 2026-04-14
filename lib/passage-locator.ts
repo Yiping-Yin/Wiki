@@ -33,6 +33,49 @@ export function filteredChildren(prose: Element): HTMLElement[] {
   }) as HTMLElement[];
 }
 
+/** Ensure a direct child block has a stable fallback id. */
+export function ensureBlockAnchorId(
+  block: HTMLElement,
+  proseContainer: HTMLElement,
+): string {
+  if (block.id) return block.id;
+  const children = filteredChildren(proseContainer);
+  const index = children.indexOf(block);
+  const stableId = `loom-block-${Math.max(0, index)}`;
+  block.id = stableId;
+  return stableId;
+}
+
+/** Character offsets of a DOM range inside a block's text content. */
+export function rangeTextOffsets(block: HTMLElement, range: Range) {
+  let start = 0;
+  let end = 0;
+  try {
+    const startRange = document.createRange();
+    startRange.selectNodeContents(block);
+    startRange.setEnd(range.startContainer, range.startOffset);
+    start = startRange.toString().length;
+
+    const endRange = document.createRange();
+    endRange.selectNodeContents(block);
+    endRange.setEnd(range.endContainer, range.endOffset);
+    end = endRange.toString().length;
+  } catch {
+    const text = range.toString();
+    start = 0;
+    end = text.length;
+  }
+  return {
+    start: Math.max(0, Math.min(start, end)),
+    end: Math.max(start, end),
+  };
+}
+
+/** Stable fragment anchor id format shared across selection + chat flows. */
+export function stableFragmentAnchorId(blockId: string, charStart: number, charEnd: number) {
+  return `${blockId}::frag:${Math.max(0, charStart)}-${Math.max(charStart, charEnd)}`;
+}
+
 /** Similarity score between two strings (0-1). Uses character bigram overlap. */
 function similarity(a: string, b: string): number {
   if (!a || !b) return 0;

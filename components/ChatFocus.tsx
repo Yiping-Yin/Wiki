@@ -19,7 +19,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { resolveBlockElement } from '../lib/passage-locator';
+import {
+  ensureBlockAnchorId,
+  normalizeBlockText,
+  rangeTextOffsets,
+  resolveBlockElement,
+  stableFragmentAnchorId,
+} from '../lib/passage-locator';
 import {
   useTracesForDoc,
   useAppendEvent,
@@ -73,54 +79,6 @@ function inferThoughtType(turns: Turn[]): ThoughtType {
 }
 
 const MAIN_FOCUS_CLASS = 'loom-chat-focus-active';
-
-function stableFragmentAnchorId(blockId: string, charStart: number, charEnd: number) {
-  return `${blockId}::frag:${Math.max(0, charStart)}-${Math.max(charStart, charEnd)}`;
-}
-
-function normalizedBlockText(el: HTMLElement | null) {
-  if (!el) return '';
-  return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 280);
-}
-
-function rangeTextOffsets(block: HTMLElement, range: Range) {
-  let start = 0;
-  let end = 0;
-  try {
-    const startRange = document.createRange();
-    startRange.selectNodeContents(block);
-    startRange.setEnd(range.startContainer, range.startOffset);
-    start = startRange.toString().length;
-
-    const endRange = document.createRange();
-    endRange.selectNodeContents(block);
-    endRange.setEnd(range.endContainer, range.endOffset);
-    end = endRange.toString().length;
-  } catch {
-    const text = range.toString();
-    start = 0;
-    end = text.length;
-  }
-  return {
-    start: Math.max(0, Math.min(start, end)),
-    end: Math.max(start, end),
-  };
-}
-
-function ensureBlockAnchorId(block: HTMLElement, proseContainer: HTMLElement) {
-  if (block.id) return block.id;
-  const children = Array.from(proseContainer.children).filter((c) => {
-    const el = c as HTMLElement;
-    if (el.hasAttribute('data-loom-system')) return false;
-    if (el.classList.contains('tag-row')) return false;
-    if (el.tagName === 'STYLE' || el.tagName === 'SCRIPT') return false;
-    return true;
-  });
-  const index = children.indexOf(block);
-  const stableId = `loom-block-${Math.max(0, index)}`;
-  block.id = stableId;
-  return stableId;
-}
 
 function resolveOpenTarget(anchorId: string, anchorBlockId?: string, anchorBlockText?: string): HTMLElement | null {
   return resolveBlockElement({ anchorId, anchorBlockId, anchorBlockText });
@@ -229,7 +187,7 @@ export function ChatFocus() {
    */
   const priorVersionsOnThisPassage = useMemo(() => {
     if (!anchor || !activeTrace || !focusedEl) return [];
-    const currentBlockText = normalizedBlockText(focusedEl);
+    const currentBlockText = normalizeBlockText(focusedEl);
     if (!currentBlockText) return [];
     const cs = anchor.charStart ?? 0;
     const ce = anchor.charEnd ?? Math.max(0, anchor.text.length);
@@ -259,7 +217,7 @@ export function ChatFocus() {
    */
   const isCurrentContainerLocked = useMemo(() => {
     if (!anchor || !activeTrace || !focusedEl) return false;
-    const currentBlockText = normalizedBlockText(focusedEl);
+    const currentBlockText = normalizeBlockText(focusedEl);
     if (!currentBlockText) return false;
     const cs = anchor.charStart ?? 0;
     const ce = anchor.charEnd ?? Math.max(0, anchor.text.length);
@@ -359,7 +317,7 @@ export function ChatFocus() {
         },
         localOffsetPx: detail.localOffsetPx ?? Math.max(4, selectionRect.top - rect.top + 4),
         blockId: detail.anchorBlockId ?? ensureBlockAnchorId(block as HTMLElement, proseContainer),
-        blockText: detail.anchorBlockText ?? normalizedBlockText(block as HTMLElement),
+        blockText: detail.anchorBlockText ?? normalizeBlockText(block as HTMLElement),
         charStart: charOffsets?.start,
         charEnd: charOffsets?.end,
       });
@@ -725,15 +683,15 @@ export function ChatFocus() {
       const anchorBlockId = focusedEl && proseContainer
         ? ensureBlockAnchorId(focusedEl, proseContainer)
         : focusedEl?.id ?? 'loom-block-0';
-      const anchorBlockText = normalizedBlockText(focusedEl);
+      const anchorBlockText = normalizeBlockText(focusedEl);
       const rangeStartId = proseContainer && rangeStartElRef.current
         ? ensureBlockAnchorId(rangeStartElRef.current, proseContainer)
         : anchorId;
-      const rangeStartText = normalizedBlockText(rangeStartElRef.current);
+      const rangeStartText = normalizeBlockText(rangeStartElRef.current);
       const rangeEndId = proseContainer && rangeEndElRef.current
         ? ensureBlockAnchorId(rangeEndElRef.current, proseContainer)
         : anchorId;
-      const rangeEndText = normalizedBlockText(rangeEndElRef.current);
+      const rangeEndText = normalizeBlockText(rangeEndElRef.current);
       const anchorType: 'heading' | 'paragraph' = focusedEl?.tagName.match(/^H[1-6]$/)
         ? 'heading' : 'paragraph';
 
