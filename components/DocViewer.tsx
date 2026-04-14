@@ -85,8 +85,8 @@ function BinaryEmbed({
           }}>{title}</div>
           <div className="t-footnote" style={{ marginTop: 8, color: 'var(--muted)' }}>
             {hasExtracted
-              ? 'Original stays intact. Extracted text sits below for selection and review.'
-              : 'Original stays intact. Open it in the native app when you need the full surface.'}
+              ? 'Original above. Extracted text below.'
+              : 'Open the original when you need the full surface.'}
           </div>
           <div style={{ marginTop: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href={sourceUrl} target="_blank" rel="noreferrer" style={{
@@ -95,12 +95,6 @@ function BinaryEmbed({
               fontSize: '0.82rem',
               fontWeight: 600,
             }}>Open original</a>
-            <a href={sourceUrl} download style={{
-              color: 'var(--fg-secondary)',
-              textDecoration: 'none',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-            }}>Download</a>
           </div>
         </div>
       </div>
