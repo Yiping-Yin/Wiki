@@ -79,6 +79,13 @@ function saveSession(docId: string | null, phase: Phase, draft: string) {
   } catch {}
 }
 
+function clearSession(docId: string | null) {
+  if (!docId) return;
+  try {
+    window.localStorage.removeItem(`${LS_EXAMINER_KEY}:${docId}`);
+  } catch {}
+}
+
 export function AIExaminer({ docId, contextNotes }: Props) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>(() => loadSession(docId).phase);
@@ -114,7 +121,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
         answer: '',
         verdict: 'retry',
         feedback:
-          'Nothing is marked here yet. Capture one edge, then come back.',
+          'Nothing is marked here yet. Select a passage and ask about it first.',
       });
       return;
     }
@@ -162,6 +169,8 @@ export function AIExaminer({ docId, contextNotes }: Props) {
         window.dispatchEvent(new CustomEvent('loom:crystallize', {
           detail: { docId },
         }));
+        // Clear session so examiner starts fresh next time
+        clearSession(docId);
       }
       // Save the Q&A as a Note
       if (docId) {
@@ -211,6 +220,9 @@ export function AIExaminer({ docId, contextNotes }: Props) {
       phase.kind === 'verdict' ? phase.question : examinerHistory.lastFailedQuestion ?? '',
       phase.kind === 'verdict' ? phase.feedback : examinerHistory.lastFailedFeedback ?? '',
     );
+    // Clear examiner session so it starts fresh when user returns
+    setPhase({ kind: 'idle' });
+    setDraft('');
     setOverlayResume({
       href: docHrefFromDocId(docId ?? ''),
       overlay: 'rehearsal',
@@ -429,28 +441,43 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                 marginBottom: 6,
               }}
               >
-              {phase.verdict === 'pass' ? 'Held' : 'Not yet'}
+              {phase.verdict === 'pass' ? 'Held — crystallized ◈' : 'Not yet'}
             </div>
             {phase.feedback}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
-              Close
-            </button>
             {phase.verdict === 'pass' ? (
               <>
+                <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
+                  Close
+                </button>
                 <button type="button" onClick={reviewNotes} style={buttonStyle(true, 'muted')}>
                   Review
                 </button>
+                <button type="button" onClick={next} style={buttonStyle(true)}>
+                  Ask another
+                </button>
               </>
-            ) : (
-              <button type="button" onClick={returnToRehearsal} style={buttonStyle(true, 'muted')}>
-                Write again
+            ) : !phase.question ? (
+              <button type="button" onClick={() => {
+                stop();
+                if (docId) router.push(docHrefFromDocId(docId));
+              }} style={buttonStyle(true)}>
+                Go read
               </button>
+            ) : (
+              <>
+                <button type="button" onClick={stop} style={buttonStyle(true, 'muted')}>
+                  Close
+                </button>
+                <button type="button" onClick={returnToRehearsal} style={buttonStyle(true, 'muted')}>
+                  Write again
+                </button>
+                <button type="button" onClick={next} style={buttonStyle(true)}>
+                  Ask another
+                </button>
+              </>
             )}
-            <button type="button" onClick={next} style={buttonStyle(true)}>
-              Ask another
-            </button>
           </div>
         </>
       )}
