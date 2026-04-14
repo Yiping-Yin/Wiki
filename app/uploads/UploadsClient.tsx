@@ -214,8 +214,6 @@ function UploadBlock({
               }}
             >
               <span>{item.ext.slice(1).toUpperCase()}</span>
-              <span aria-hidden>·</span>
-              <span>{formatSize(item.size)}</span>
               {item.latestQuote && (
                 <>
                   <span aria-hidden>·</span>
