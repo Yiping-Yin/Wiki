@@ -80,6 +80,10 @@ function formatWhen(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function panelRevisionLabel(panel: { revisions: Array<unknown> }) {
+  return panel.revisions.length > 1 ? 'revised' : null;
+}
+
 function familyLabelForHref(
   href: string,
   knowledgeCategories: Array<{ slug: string; label: string }>,
@@ -552,6 +556,12 @@ export function KesiView() {
                   <span>{returnPanel.family}</span>
                   <span aria-hidden>·</span>
                   <span>{formatWhen(returnPanel.crystallizedAt)}</span>
+                  {panelRevisionLabel(returnPanel) && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{panelRevisionLabel(returnPanel)}</span>
+                    </>
+                  )}
                   {returnPanel.collectionLabel && returnPanel.collectionLabel !== returnPanel.family && (
                     <>
                       <span aria-hidden>·</span>
@@ -663,6 +673,12 @@ export function KesiView() {
                       <span>{panel.family}</span>
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.updatedAt)}</span>
+                      {panelRevisionLabel(panel) && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>{panelRevisionLabel(panel)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -727,6 +743,12 @@ export function KesiView() {
                       <span>{panel.family}</span>
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.crystallizedAt)}</span>
+                      {panelRevisionLabel(panel) && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>{panelRevisionLabel(panel)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -1048,6 +1070,12 @@ export function KesiView() {
                       <span>{panel.family}</span>
                       <span aria-hidden>·</span>
                       <span>{formatWhen(panel.crystallizedAt)}</span>
+                      {panelRevisionLabel(panel) && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>{panelRevisionLabel(panel)}</span>
+                        </>
+                      )}
                       {panel.collectionLabel && panel.collectionLabel !== panel.family && (
                         <>
                           <span aria-hidden>·</span>
