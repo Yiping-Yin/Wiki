@@ -138,6 +138,8 @@ export function buildAnchorFromCurrentSelection():
     summary: '',
     content: '',
     quote: text,
+    thoughtType: 'citation',
+    attribution: 'user',
     at: Date.now(),
   };
 

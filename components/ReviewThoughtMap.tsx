@@ -43,6 +43,20 @@ const NoteRenderer = dynamic(
   { ssr: false },
 );
 
+function thoughtTypeLabel(type: import('../lib/trace/types').ThoughtType | undefined, hasContent: boolean): string {
+  if (!type) return hasContent ? 'woven' : 'captured';
+  switch (type) {
+    case 'citation': return 'citation';
+    case 'explanation': return 'explanation';
+    case 'inference': return 'inference';
+    case 'hypothesis': return 'hypothesis';
+    case 'objection': return 'objection';
+    case 'question': return 'question';
+    case 'conclusion': return 'conclusion';
+    default: return hasContent ? 'woven' : 'captured';
+  }
+}
+
 const REVIEW_SCROLL_EVENT = 'loom:review:scroll-to-anchor';
 const REVIEW_FOCUS_THOUGHT_EVENT = 'loom:review:focus-thought';
 
@@ -313,6 +327,8 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
         summary,
         content: newContent,
         quote: thought.quote,
+        thoughtType: thought.thoughtType ?? 'explanation',
+        attribution: 'user',
         at: Date.now(),
       });
     },
@@ -1046,7 +1062,7 @@ function WideThoughtCard({
             fontWeight: 700,
           }}
         >
-          ◆ {hasContent ? 'woven' : 'captured'}
+          ◆ {thoughtTypeLabel(thought.thoughtType, hasContent)}
         </span>
         {thought.versionCount > 1 && (
           <span

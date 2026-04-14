@@ -56,6 +56,10 @@ export type ThoughtAnchorView = {
   content: string;
   /** Quoted passage from the source that anchors this container */
   quote?: string;
+  /** Epistemic type of the LATEST version */
+  thoughtType?: import('../lib/trace/types').ThoughtType;
+  /** Who produced the latest version's content */
+  attribution?: 'user' | 'ai' | 'mixed';
   top: number;
   /** Timestamp of the LATEST version (alias: versions[versions.length - 1].at) */
   at: number;
@@ -299,6 +303,8 @@ export function buildThoughtAnchorViewsFromTraces(readingTraces: Trace[]): Thoug
       summary: latest.summary,
       content: latest.content,
       quote: latest.quote,
+      thoughtType: latest.thoughtType,
+      attribution: latest.attribution,
       top,
       at: latest.at,
       // New version fields

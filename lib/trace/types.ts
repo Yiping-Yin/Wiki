@@ -14,6 +14,30 @@
  * The persistence layer (lib/trace/store) is IndexedDB.
  */
 
+/**
+ * Epistemic type of a thought-anchor.
+ *
+ * Every anchor in Loom has an identity — not just content, but what KIND
+ * of thought it is. This determines how it renders in the thought map,
+ * how it should be challenged, and whether it can serve as evidence.
+ *
+ *   citation    — direct quote or close paraphrase of source
+ *   explanation — unpacking what the source means
+ *   inference   — a conclusion drawn from the source
+ *   hypothesis  — speculative, not yet supported
+ *   objection   — disagreement with or challenge to the source
+ *   question    — an open question, not yet resolved
+ *   conclusion  — a settled judgment (may still be revised)
+ */
+export type ThoughtType =
+  | 'citation'
+  | 'explanation'
+  | 'inference'
+  | 'hypothesis'
+  | 'objection'
+  | 'question'
+  | 'conclusion';
+
 export type TraceKind = 'reading' | 'problem' | 'concept' | 'free';
 
 /** Where in the source material an event is anchored. */
@@ -99,6 +123,10 @@ export type TraceEvent =
       content: string;
       /** The original quoted text from the source that triggered this thought */
       quote?: string;
+      /** Epistemic type — what kind of thought is this? */
+      thoughtType?: ThoughtType;
+      /** Who produced this content? */
+      attribution?: 'user' | 'ai' | 'mixed';
       at: number;
     };
 
