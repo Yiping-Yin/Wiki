@@ -7,6 +7,8 @@ import {
   type HomeIndexDoc,
 } from './homeWorkbenchModel';
 
+export type { HomeIndexDoc } from './homeWorkbenchModel';
+
 let docsCache: HomeIndexDoc[] | null = null;
 
 export async function loadCachedHomeDocs(
