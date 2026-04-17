@@ -37,6 +37,7 @@ import { isRenderablePanel, useAllPanels } from '../lib/panel';
 import { openShuttle } from '../lib/shuttle';
 import { useAllWeaves } from '../lib/weave';
 import { useWorkSession } from '../lib/work-session';
+import { assembleDeskFocusTargetActions } from '../lib/shared/desk-actions';
 import {
   deriveDeskLearningState,
   deriveDeskQueue,
@@ -118,32 +119,31 @@ export function HomeClient() {
           {draft.detail}
         </div>
       ),
-      actions: foregroundActions.map((action) => {
-        switch (action.kind) {
-          case 'focus-primary':
-            return {
-              label: action.label,
-              onClick: () => openLearningTarget(router, focusTarget!),
-              primary: true,
-            };
-          case 'focus-secondary':
-            return {
-              label: action.label,
-              onClick: () => openLearningTargetSource(router, focusTarget!),
-            };
-          case 'open-atlas':
-            return { label: action.label, href: '/knowledge' };
-          case 'open-today':
-            return { label: action.label, href: '/today' };
-          case 'open-shuttle':
-          default:
-            return {
-              label: action.label,
-              onClick: () => openShuttle(),
-              primary: action.primary,
-            };
-        }
-      }),
+      actions: focusTarget
+        ? [
+            ...assembleDeskFocusTargetActions({
+              primaryLabel: learningTargetActionLabel(focusTarget.action),
+              onPrimary: () => openLearningTarget(router, focusTarget),
+              secondaryLabel: learningTargetSecondaryLabel(focusTarget),
+              onSecondary: () => openLearningTargetSource(router, focusTarget),
+            }),
+            { label: 'Open Shuttle', onClick: () => openShuttle() },
+          ]
+        : foregroundActions.map((action) => {
+            switch (action.kind) {
+              case 'open-atlas':
+                return { label: action.label, href: '/knowledge' };
+              case 'open-today':
+                return { label: action.label, href: '/today' };
+              case 'open-shuttle':
+              default:
+                return {
+                  label: action.label,
+                  onClick: () => openShuttle(),
+                  primary: action.kind === 'open-shuttle' ? action.primary : undefined,
+                };
+            }
+          }),
     };
   }, [focusTarget, foregroundActions, guideMeta, router, targetState.state]);
 
