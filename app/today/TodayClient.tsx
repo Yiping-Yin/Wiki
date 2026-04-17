@@ -28,14 +28,12 @@ import {
   buildLearningTargets,
   learningTargetActionLabel,
   learningTargetSecondaryLabel,
-  learningTargetWhyNow,
   openLearningTarget,
   openLearningTargetSource,
   type LearningTarget,
 } from '../../lib/learning-targets';
 import {
   isLearningTargetPinned,
-  learningTargetReturnLabel,
   useLearningTargetState,
 } from '../../lib/learning-target-state';
 import { useHistory } from '../../lib/use-history';
@@ -49,7 +47,6 @@ import { latestVisitAt } from '../../lib/trace/source-bound';
 import { useAllWeaves } from '../../lib/weave';
 import {
   countTargetsChangedSinceSession,
-  resolutionKindLabel,
   resolveWorkSession,
   summarizeChangesSinceSession,
   useWorkSession,
@@ -61,7 +58,12 @@ import {
   hasDeskQueue,
 } from '../../lib/shared/desk-derive';
 import { assembleDeskFocusTargetActions } from '../../lib/shared/desk-actions';
-import { buildDeskEmptyPresenter, buildDeskFocusTargetPresenter } from '../../lib/shared/desk-presenters';
+import {
+  buildDeskEmptyPresenter,
+  buildDeskFocusTargetPresenter,
+  buildDeskLearningTargetPresenter,
+  buildDeskResolvedOutcomePresenter,
+} from '../../lib/shared/desk-presenters';
 
 type DocLite = {
   id: string;
@@ -419,6 +421,7 @@ export function TodayClient({
           {focusTarget && remainingTargets.length > 0 ? (
             <TargetResumeList
               items={remainingTargets}
+              learningTargetState={targetState.state}
               onOpenPrimary={(target) => openLearningTarget(router, target)}
               onOpenSecondary={(target) => openLearningTargetSource(router, target)}
               onPin={(target) => targetState.togglePinned(target)}
@@ -426,7 +429,6 @@ export function TodayClient({
               onHideToday={(target) => targetState.hideToday(target)}
               onDone={(target) => targetState.markDone(target)}
               isPinned={(target) => isLearningTargetPinned(target, targetState.state)}
-              getReturnLabel={(target) => learningTargetReturnLabel(target, targetState.state)}
             />
           ) : null}
 
@@ -870,6 +872,7 @@ function sessionTextActionStyle(primary: boolean) {
 
 function TargetResumeList({
   items,
+  learningTargetState,
   onOpenPrimary,
   onOpenSecondary,
   onPin,
@@ -877,9 +880,9 @@ function TargetResumeList({
   onHideToday,
   onDone,
   isPinned,
-  getReturnLabel,
 }: {
   items: LearningTarget[];
+  learningTargetState: import('../../lib/learning-target-state').LearningTargetState;
   onOpenPrimary: (target: LearningTarget) => void;
   onOpenSecondary: (target: LearningTarget) => void;
   onPin: (target: LearningTarget) => void;
@@ -887,79 +890,86 @@ function TargetResumeList({
   onHideToday: (target: LearningTarget) => void;
   onDone: (target: LearningTarget) => void;
   isPinned: (target: LearningTarget) => boolean;
-  getReturnLabel: (target: LearningTarget) => string | null;
 }) {
   return (
     <WorkSurface tone="quiet" density="compact" style={{ marginTop: '1.2rem' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <WorkEyebrow subtle>Remaining returns</WorkEyebrow>
-      {items.map((item, index) => (
-        <div
-          key={item.id}
-          style={{
-            color: 'var(--fg)',
-            padding: '1.1rem',
-            borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-            transition: 'background 0.2s var(--ease)',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span
+        {items.map((item, index) => {
+          const presenter = buildDeskLearningTargetPresenter({
+            target: item,
+            learningTargetState,
+            isPinned: isPinned(item),
+          });
+
+          return (
+            <div
+              key={item.id}
               style={{
-                flex: 1,
-                minWidth: 0,
-                fontFamily: 'var(--display)',
-                fontSize: '1rem',
-                fontWeight: 550,
-                letterSpacing: '-0.012em',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                color: 'var(--fg)',
+                padding: '1.1rem',
+                borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                transition: 'background 0.2s var(--ease)',
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              {item.title}
-            </span>
-            <span suppressHydrationWarning className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-              {timeOfDay(item.touchedAt)}
-            </span>
-          </div>
-          <div style={{ marginTop: 6, color: 'var(--fg-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
-            {item.preview || item.reason}
-          </div>
-          {(item.preview || item.reason) && (
-            <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
-              Why now · {learningTargetWhyNow(item)}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontFamily: 'var(--display)',
+                    fontSize: '1rem',
+                    fontWeight: 550,
+                    letterSpacing: '-0.012em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {presenter.title}
+                </span>
+                <span suppressHydrationWarning className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {timeOfDay(item.touchedAt)}
+                </span>
+              </div>
+              <div style={{ marginTop: 6, color: 'var(--fg-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
+                {presenter.summary}
+              </div>
+              {presenter.whyNow && (
+                <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
+                  {presenter.whyNow}
+                </div>
+              )}
+              {presenter.returnLabel && (
+                <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
+                  {presenter.returnLabel}
+                </div>
+              )}
+              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => onOpenPrimary(item)} style={resumeActionStyle(true)}>
+                  {presenter.primaryActionLabel}
+                </button>
+                <button type="button" onClick={() => onOpenSecondary(item)} style={resumeTextActionStyle}>
+                  {presenter.secondaryActionLabel}
+                </button>
+                <button type="button" onClick={() => onPin(item)} style={resumeTextActionStyle}>
+                  {presenter.pinLabel}
+                </button>
+                <button type="button" onClick={() => onNotNow(item)} style={resumeTextActionStyle}>
+                  Not now
+                </button>
+                <button type="button" onClick={() => onHideToday(item)} style={resumeTextActionStyle}>
+                  Hide today
+                </button>
+                <button type="button" onClick={() => onDone(item)} style={resumeTextActionStyle}>
+                  Done
+                </button>
+              </div>
             </div>
-          )}
-          {getReturnLabel(item) && (
-            <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
-              Returned · {getReturnLabel(item)}
-            </div>
-          )}
-          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => onOpenPrimary(item)} style={resumeActionStyle(true)}>
-              {learningTargetActionLabel(item.action)}
-            </button>
-            <button type="button" onClick={() => onOpenSecondary(item)} style={resumeTextActionStyle}>
-              {learningTargetSecondaryLabel(item)}
-            </button>
-            <button type="button" onClick={() => onPin(item)} style={resumeTextActionStyle}>
-              {isPinned(item) ? 'Unpin' : 'Pin'}
-            </button>
-            <button type="button" onClick={() => onNotNow(item)} style={resumeTextActionStyle}>
-              Not now
-            </button>
-            <button type="button" onClick={() => onHideToday(item)} style={resumeTextActionStyle}>
-              Hide today
-            </button>
-            <button type="button" onClick={() => onDone(item)} style={resumeTextActionStyle}>
-              Done
-            </button>
-          </div>
-        </div>
-      ))}
+          );
+        })}
       </div>
     </WorkSurface>
   );
@@ -981,45 +991,49 @@ function ResolvedOutcomeList({
     <WorkSurface tone="quiet" density="compact">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <WorkEyebrow subtle>Resolved in that session</WorkEyebrow>
-      {items.map((item, index) => (
-        <div
-          key={`${item.targetSnapshot.id}:${item.handledAt}`}
-          style={{
-            color: 'var(--fg)',
-            padding: '0.9rem 1.1rem',
-            borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span
+        {items.map((item, index) => {
+          const presenter = buildDeskResolvedOutcomePresenter(item);
+
+          return (
+            <div
+              key={`${item.targetSnapshot.id}:${item.handledAt}`}
               style={{
-                flex: 1,
-                minWidth: 0,
-                fontFamily: 'var(--display)',
-                fontSize: '0.98rem',
-                fontWeight: 550,
-                letterSpacing: '-0.012em',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                color: 'var(--fg)',
+                padding: '0.9rem 1.1rem',
+                borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
               }}
             >
-              {item.targetSnapshot.title}
-            </span>
-            <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-              {timeOfDay(item.handledAt)}
-            </span>
-          </div>
-          <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
-            {item.resolvedLabel} · {resolutionKindLabel(item.resolutionKind)} · Resolved for this change
-          </div>
-          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => onOpen(item.targetSnapshot)} style={resumeTextActionStyle}>
-              Reopen
-            </button>
-          </div>
-        </div>
-      ))}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontFamily: 'var(--display)',
+                    fontSize: '0.98rem',
+                    fontWeight: 550,
+                    letterSpacing: '-0.012em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {presenter.title}
+                </span>
+                <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {timeOfDay(item.handledAt)}
+                </span>
+              </div>
+              <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
+                {presenter.meta}
+              </div>
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => onOpen(item.targetSnapshot)} style={resumeTextActionStyle}>
+                  {presenter.actionLabel}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </WorkSurface>
   );

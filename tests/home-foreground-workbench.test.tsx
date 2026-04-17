@@ -119,3 +119,13 @@ test('home and today share the desk focus presenter helper', () => {
   assert.match(todaySource, /buildDeskFocusTargetPresenter/);
   assert.match(todaySource, /buildDeskEmptyPresenter/);
 });
+
+test('today route-local list presenters use shared desk presenter helpers', () => {
+  const todaySource = fs.readFileSync(path.join(repoRoot, 'app/today/TodayClient.tsx'), 'utf8');
+  const presenterSource = fs.readFileSync(path.join(repoRoot, 'lib/shared/desk-presenters.ts'), 'utf8');
+
+  assert.match(presenterSource, /buildDeskLearningTargetPresenter/);
+  assert.match(presenterSource, /buildDeskResolvedOutcomePresenter/);
+  assert.match(todaySource, /buildDeskLearningTargetPresenter/);
+  assert.match(todaySource, /buildDeskResolvedOutcomePresenter/);
+});

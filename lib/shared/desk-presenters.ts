@@ -1,5 +1,7 @@
 import {
+  learningTargetActionLabel,
   learningTargetEyebrow,
+  learningTargetSecondaryLabel,
   learningTargetWhyNow,
   type LearningTarget,
 } from '../learning-targets';
@@ -7,6 +9,10 @@ import {
   learningTargetReturnLabel,
   type LearningTargetState,
 } from '../learning-target-state';
+import {
+  resolutionKindLabel,
+  type WorkSessionOutcome,
+} from '../work-session';
 
 export type DeskFocusTargetPresenter = {
   eyebrow: string;
@@ -21,6 +27,22 @@ export type DeskEmptyPresenter = {
   title: string;
   summary: string;
   detail: string | null;
+};
+
+export type DeskLearningTargetPresenter = {
+  title: string;
+  summary: string;
+  whyNow: string | null;
+  returnLabel: string | null;
+  primaryActionLabel: string;
+  secondaryActionLabel: string;
+  pinLabel: string;
+};
+
+export type DeskResolvedOutcomePresenter = {
+  title: string;
+  meta: string;
+  actionLabel: string;
 };
 
 export function buildDeskFocusTargetPresenter({
@@ -66,5 +88,41 @@ export function buildDeskEmptyPresenter({
     title,
     summary,
     detail: detail ?? null,
+  };
+}
+
+export function buildDeskLearningTargetPresenter({
+  target,
+  learningTargetState,
+  isPinned = false,
+  now,
+}: {
+  target: LearningTarget;
+  learningTargetState: LearningTargetState;
+  isPinned?: boolean;
+  now?: number;
+}): DeskLearningTargetPresenter {
+  const summary = target.preview || target.reason;
+  const whyNow = learningTargetWhyNow(target);
+  const returnLabel = learningTargetReturnLabel(target, learningTargetState, now);
+
+  return {
+    title: target.title,
+    summary,
+    whyNow: whyNow ? `Why now · ${whyNow}` : null,
+    returnLabel: returnLabel ? `Returned · ${returnLabel}` : null,
+    primaryActionLabel: learningTargetActionLabel(target.action),
+    secondaryActionLabel: learningTargetSecondaryLabel(target),
+    pinLabel: isPinned ? 'Unpin' : 'Pin',
+  };
+}
+
+export function buildDeskResolvedOutcomePresenter(
+  item: Pick<WorkSessionOutcome, 'resolvedLabel' | 'resolutionKind' | 'targetSnapshot'>,
+): DeskResolvedOutcomePresenter {
+  return {
+    title: item.targetSnapshot.title,
+    meta: `${item.resolvedLabel} · ${resolutionKindLabel(item.resolutionKind)} · Resolved for this change`,
+    actionLabel: 'Reopen',
   };
 }
