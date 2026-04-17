@@ -23,3 +23,15 @@ test('quiet scene supports a home tone and dedicated workbench width classes', (
   assert.match(css, /\.loom-home-workbench__column\b/);
   assert.match(css, /\.loom-home-support-stack\b/);
 });
+
+test('home workbench keeps the foreground object and queue layer out of generic card wrappers', () => {
+  const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
+  const helpersSource = fs.readFileSync(path.join(repoRoot, 'components/home/HomeWorkbenchSections.tsx'), 'utf8');
+  const css = fs.readFileSync(path.join(repoRoot, 'app/globals.css'), 'utf8');
+
+  assert.doesNotMatch(homeSource, /LearningTargetQueueState/);
+  assert.match(helpersSource, /HomeQueueStateList/);
+  assert.doesNotMatch(helpersSource, /QuietGuideCard/);
+  assert.match(css, /\.loom-home-foreground\b/);
+  assert.match(css, /\.loom-home-support-row__action\b/);
+});

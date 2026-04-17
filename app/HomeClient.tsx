@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LearningTargetQueueState } from '../components/LearningTargetQueueState';
 import { QuietScene, QuietSceneColumn } from '../components/QuietScene';
 import { QuietSceneIntro } from '../components/QuietSceneIntro';
 import { StageShell } from '../components/StageShell';
 import {
   HomeForegroundObject,
+  HomeQueueStateList,
   HomeRecentThreadsList,
   HomeResolvedList,
   HomeSupportSection,
@@ -37,7 +37,7 @@ import {
 } from '../lib/work-session';
 
 type IndexDoc = { id: string; title: string; href: string; category: string };
-type ResumeItem = { id: string; title: string; href: string; viewedAt: number; category: string };
+type ResumeItem = { id: string; title: string; href: string; category: string };
 
 let indexCache: IndexDoc[] | null = null;
 
@@ -122,7 +122,6 @@ export function HomeClient() {
         id: entry.id,
         title: meta?.title ?? entry.title,
         href: meta?.href ?? entry.href,
-        viewedAt: entry.viewedAt,
         category: meta?.category ?? '',
       });
     }
@@ -215,7 +214,7 @@ export function HomeClient() {
                 eyebrow="Queue state"
                 title="Deferred work stays below the foreground object."
               >
-                <LearningTargetQueueState
+                <HomeQueueStateList
                   queue={queue}
                   onRestore={(target) => targetState.restore(target)}
                   onTogglePinned={(target) => targetState.togglePinned(target)}

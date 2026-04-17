@@ -93,7 +93,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not(.light):not(.dark) {
     /* Surfaces — The Cosmic Void (From IMG_3671) */
     --bg: #0A0A0C;
     --bg-elevated: #141416;
@@ -146,6 +146,14 @@
   animation: grain-drift 15s steps(20) infinite;
 }
 
+@keyframes grain-drift {
+  from { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(2%, -1%, 0); }
+  50% { transform: translate3d(-1%, 2%, 0); }
+  75% { transform: translate3d(1%, 1%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
 .loom-vignette {
   position: fixed;
   inset: 0;
@@ -160,6 +168,14 @@
 .material-thin, .material-reg, .material-thick {
   box-shadow: var(--mat-hi);
   transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.material-thick {
+  background: var(--mat-thick-bg);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  border: 0.5px solid var(--mat-border);
+  box-shadow: var(--shadow-3), var(--mat-hi);
 }
 
 .material-reg:hover {
@@ -349,10 +365,65 @@ html.user-tabbing .skip-link:focus-visible {
   width: min(100%, var(--home-workbench-width));
 }
 
+.loom-home-foreground {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 1rem 0 1.25rem;
+  border-top: 0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent);
+}
+
+.loom-home-foreground__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.loom-home-foreground__title {
+  max-width: 14ch;
+  color: var(--fg);
+  font-family: var(--display);
+  font-size: clamp(2rem, 2.8vw, 2.7rem);
+  font-weight: 620;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.loom-home-foreground__meta {
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.loom-home-foreground__summary {
+  max-width: 30ch;
+  color: var(--fg-secondary);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.loom-home-foreground__detail {
+  max-width: 38ch;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.loom-home-foreground__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  padding-top: 2px;
+}
+
 .loom-home-support-stack {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 .loom-home-support-section {
@@ -383,13 +454,46 @@ html.user-tabbing .skip-link:focus-visible {
   gap: 8px;
 }
 
+.loom-home-support-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.loom-home-support-group__label {
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.loom-home-support-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .loom-home-support-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0.92rem 0;
+  padding: 0.82rem 0;
   text-decoration: none;
   border-bottom: 0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent);
+}
+
+.loom-home-support-row--actionable {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.loom-home-support-row__copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .loom-home-support-row__title {
@@ -404,6 +508,20 @@ html.user-tabbing .skip-link:focus-visible {
   color: var(--muted);
   font-size: 0.75rem;
   letter-spacing: 0.03em;
+}
+
+.loom-home-support-row__action {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--fg-secondary);
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .prose-notion {
@@ -632,6 +750,24 @@ html.user-tabbing .skip-link:focus-visible {
   .loom-quiet-scene__intro-summary {
     max-width: none;
     font-size: 0.95rem;
+  }
+
+  .loom-home-foreground {
+    gap: 16px;
+  }
+
+  .loom-home-foreground__title {
+    max-width: 10ch;
+    font-size: clamp(1.8rem, 10vw, 2.35rem);
+  }
+
+  .loom-home-foreground__summary,
+  .loom-home-foreground__detail {
+    max-width: none;
+  }
+
+  .loom-home-foreground__actions {
+    justify-content: flex-start;
   }
 }
 
