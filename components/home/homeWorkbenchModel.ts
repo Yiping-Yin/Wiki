@@ -23,6 +23,12 @@ export type HomeForegroundDraft = {
   detail: string;
 };
 
+export type HomeForegroundActionDraft = {
+  kind: 'focus-primary' | 'focus-secondary' | 'open-shuttle' | 'open-atlas' | 'open-today';
+  label: string;
+  primary?: boolean;
+};
+
 export function parseHomeSearchIndexPayload(payload: any): HomeIndexDoc[] {
   const stored = payload?.index?.storedFields ?? {};
   const docIds = payload?.index?.documentIds ?? {};
@@ -125,4 +131,28 @@ export function buildHomeForegroundDraft({
     summary: 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.',
     detail: 'The empty state is still a desk: enough structure to begin, without pretending work already exists.',
   };
+}
+
+export function buildHomeForegroundActions({
+  hasFocusTarget,
+  primaryLabel,
+  secondaryLabel,
+}: {
+  hasFocusTarget: boolean;
+  primaryLabel: string | null;
+  secondaryLabel: string | null;
+}): HomeForegroundActionDraft[] {
+  if (hasFocusTarget && primaryLabel && secondaryLabel) {
+    return [
+      { kind: 'focus-primary', label: primaryLabel, primary: true },
+      { kind: 'focus-secondary', label: secondaryLabel },
+      { kind: 'open-shuttle', label: 'Open Shuttle' },
+    ];
+  }
+
+  return [
+    { kind: 'open-shuttle', label: 'Open Shuttle', primary: true },
+    { kind: 'open-atlas', label: 'Open Atlas' },
+    { kind: 'open-today', label: 'Open Today' },
+  ];
 }

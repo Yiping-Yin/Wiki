@@ -52,11 +52,14 @@ test('home support lists share a single row primitive', () => {
 test('home foreground content is assembled before render and passed as one object', () => {
   const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
   const helpersSource = fs.readFileSync(path.join(repoRoot, 'components/home/HomeWorkbenchSections.tsx'), 'utf8');
+  const modelSource = fs.readFileSync(path.join(repoRoot, 'components/home/homeWorkbenchModel.ts'), 'utf8');
 
   assert.match(helpersSource, /export type HomeForegroundContent/);
   assert.match(homeSource, /const foreground = useMemo<HomeForegroundContent>\(/);
+  assert.match(modelSource, /buildHomeForegroundActions/);
+  assert.match(homeSource, /const foregroundActions = useMemo\(/);
   assert.match(homeSource, /<HomeForegroundObject \{\.\.\.foreground\} \/>/);
-  assert.doesNotMatch(homeSource, /<HomeForegroundObject[\s\S]*eyebrow=\{/);
+  assert.doesNotMatch(homeSource, /<HomeForegroundObject[\s\S]*actions=\{/);
 });
 
 test('home support sections share a header primitive', () => {

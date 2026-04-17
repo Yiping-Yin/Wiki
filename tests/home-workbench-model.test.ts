@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildHomeForegroundActions,
   buildHomeForegroundDraft,
   buildHomeGuideMeta,
   buildHomeRecentThreads,
@@ -91,4 +92,32 @@ test('buildHomeForegroundDraft assembles focus and empty states', () => {
     summary: 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.',
     detail: 'The empty state is still a desk: enough structure to begin, without pretending work already exists.',
   });
+});
+
+test('buildHomeForegroundActions assembles focused and empty action drafts', () => {
+  assert.deepEqual(
+    buildHomeForegroundActions({
+      hasFocusTarget: true,
+      primaryLabel: 'Ask',
+      secondaryLabel: 'Open source',
+    }),
+    [
+      { kind: 'focus-primary', label: 'Ask', primary: true },
+      { kind: 'focus-secondary', label: 'Open source' },
+      { kind: 'open-shuttle', label: 'Open Shuttle' },
+    ],
+  );
+
+  assert.deepEqual(
+    buildHomeForegroundActions({
+      hasFocusTarget: false,
+      primaryLabel: null,
+      secondaryLabel: null,
+    }),
+    [
+      { kind: 'open-shuttle', label: 'Open Shuttle', primary: true },
+      { kind: 'open-atlas', label: 'Open Atlas' },
+      { kind: 'open-today', label: 'Open Today' },
+    ],
+  );
 });

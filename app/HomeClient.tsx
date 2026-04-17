@@ -15,6 +15,7 @@ import {
 } from '../components/home/HomeWorkbenchSections';
 import {
   buildHomeDocsById,
+  buildHomeForegroundActions,
   buildHomeForegroundDraft,
   buildHomeGuideMeta,
   buildHomeRecentThreads,
@@ -115,6 +116,12 @@ export function HomeClient() {
     queueCount,
   }), [queueCount, recentThreads.length, resolvedOutcomes.length]);
 
+  const foregroundActions = useMemo(() => buildHomeForegroundActions({
+    hasFocusTarget: Boolean(focusTarget),
+    primaryLabel: focusTarget ? learningTargetActionLabel(focusTarget.action) : null,
+    secondaryLabel: focusTarget ? learningTargetSecondaryLabel(focusTarget) : null,
+  }), [focusTarget]);
+
   const foreground = useMemo<HomeForegroundContent>(() => {
     const draft = buildHomeForegroundDraft({
       guideMeta,
@@ -135,26 +142,34 @@ export function HomeClient() {
           {draft.detail}
         </div>
       ),
-      actions: focusTarget
-        ? [
-            {
-              label: learningTargetActionLabel(focusTarget.action),
-              onClick: () => openLearningTarget(router, focusTarget),
+      actions: foregroundActions.map((action) => {
+        switch (action.kind) {
+          case 'focus-primary':
+            return {
+              label: action.label,
+              onClick: () => openLearningTarget(router, focusTarget!),
               primary: true,
-            },
-            {
-              label: learningTargetSecondaryLabel(focusTarget),
-              onClick: () => openLearningTargetSource(router, focusTarget),
-            },
-            { label: 'Open Shuttle', onClick: () => openShuttle() },
-          ]
-        : [
-            { label: 'Open Shuttle', onClick: () => openShuttle(), primary: true },
-            { label: 'Open Atlas', href: '/knowledge' },
-            { label: 'Open Today', href: '/today' },
-          ],
+            };
+          case 'focus-secondary':
+            return {
+              label: action.label,
+              onClick: () => openLearningTargetSource(router, focusTarget!),
+            };
+          case 'open-atlas':
+            return { label: action.label, href: '/knowledge' };
+          case 'open-today':
+            return { label: action.label, href: '/today' };
+          case 'open-shuttle':
+          default:
+            return {
+              label: action.label,
+              onClick: () => openShuttle(),
+              primary: action.primary,
+            };
+        }
+      }),
     };
-  }, [focusTarget, guideMeta, router, targetState.state]);
+  }, [focusTarget, foregroundActions, guideMeta, router, targetState.state]);
 
   return (
     <StageShell
