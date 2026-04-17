@@ -51,6 +51,7 @@ import { useAllWeaves } from '../../lib/weave';
 import {
   countTargetsChangedSinceSession,
   resolutionKindLabel,
+  resolveWorkSession,
   summarizeChangesSinceSession,
   useWorkSession,
 } from '../../lib/work-session';
@@ -60,7 +61,7 @@ import {
   deriveDeskResolvedOutcomeItems,
   hasDeskQueue,
 } from '../../lib/shared/desk-derive';
-import { buildDeskFocusTargetActions } from '../../lib/shared/desk-actions';
+import { assembleDeskFocusTargetActions } from '../../lib/shared/desk-actions';
 
 type DocLite = {
   id: string;
@@ -367,46 +368,17 @@ export function TodayClient({
                   Why now · {[focusTargetReturnLabel, learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}
                 </div>
               ) : undefined}
-              actions={buildDeskFocusTargetActions({
+              actions={assembleDeskFocusTargetActions({
                 primaryLabel: learningTargetActionLabel(focusTarget.action),
+                onPrimary: () => openLearningTarget(router, focusTarget),
                 secondaryLabel: learningTargetSecondaryLabel(focusTarget),
+                onSecondary: () => openLearningTargetSource(router, focusTarget),
                 includeManagementActions: true,
                 pinLabel: isLearningTargetPinned(focusTarget, targetState.state) ? 'Unpin' : 'Pin',
-              }).map((action) => {
-                switch (action.kind) {
-                  case 'focus-primary':
-                    return {
-                      label: action.label,
-                      onClick: () => openLearningTarget(router, focusTarget),
-                      primary: true,
-                    };
-                  case 'focus-secondary':
-                    return {
-                      label: action.label,
-                      onClick: () => openLearningTargetSource(router, focusTarget),
-                    };
-                  case 'pin-toggle':
-                    return {
-                      label: action.label,
-                      onClick: () => targetState.togglePinned(focusTarget),
-                    };
-                  case 'not-now':
-                    return {
-                      label: action.label,
-                      onClick: () => targetState.notNow(focusTarget),
-                    };
-                  case 'hide-today':
-                    return {
-                      label: action.label,
-                      onClick: () => targetState.hideToday(focusTarget),
-                    };
-                  case 'done':
-                  default:
-                    return {
-                      label: action.label,
-                      onClick: () => targetState.markDone(focusTarget),
-                    };
-                }
+                onPinToggle: () => targetState.togglePinned(focusTarget),
+                onNotNow: () => targetState.notNow(focusTarget),
+                onHideToday: () => targetState.hideToday(focusTarget),
+                onDone: () => targetState.markDone(focusTarget),
               })}
             />
           ) : focusSurface && (

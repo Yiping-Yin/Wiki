@@ -53,11 +53,14 @@ test('home foreground content is assembled before render and passed as one objec
   const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
   const helpersSource = fs.readFileSync(path.join(repoRoot, 'components/home/HomeWorkbenchSections.tsx'), 'utf8');
   const modelSource = fs.readFileSync(path.join(repoRoot, 'components/home/homeWorkbenchModel.ts'), 'utf8');
+  const actionSource = fs.readFileSync(path.join(repoRoot, 'lib/shared/desk-actions.ts'), 'utf8');
 
   assert.match(helpersSource, /export type HomeForegroundContent/);
   assert.match(homeSource, /const foreground = useMemo<HomeForegroundContent>\(/);
   assert.match(modelSource, /buildHomeForegroundActions/);
   assert.match(homeSource, /const foregroundActions = useMemo\(/);
+  assert.match(actionSource, /assembleDeskFocusTargetActions/);
+  assert.match(homeSource, /assembleDeskFocusTargetActions/);
   assert.match(homeSource, /<HomeForegroundObject \{\.\.\.foreground\} \/>/);
   assert.doesNotMatch(homeSource, /<HomeForegroundObject[\s\S]*actions=\{/);
 });
@@ -92,4 +95,14 @@ test('home and today share the desk derive module', () => {
   assert.match(homeSource, /deriveDeskQueue/);
   assert.match(todaySource, /deriveDeskLearningState/);
   assert.match(todaySource, /deriveDeskQueue/);
+});
+
+test('home and today share the desk action assembly helper', () => {
+  const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
+  const todaySource = fs.readFileSync(path.join(repoRoot, 'app/today/TodayClient.tsx'), 'utf8');
+  const deskActionsSource = fs.readFileSync(path.join(repoRoot, 'lib/shared/desk-actions.ts'), 'utf8');
+
+  assert.match(deskActionsSource, /assembleDeskFocusTargetActions/);
+  assert.match(homeSource, /assembleDeskFocusTargetActions/);
+  assert.match(todaySource, /assembleDeskFocusTargetActions/);
 });
