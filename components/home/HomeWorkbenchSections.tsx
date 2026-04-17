@@ -15,6 +15,15 @@ export type HomeResumeItem = {
   category: string;
 };
 
+export type HomeForegroundContent = {
+  eyebrow: string;
+  title: ReactNode;
+  meta?: ReactNode;
+  summary: ReactNode;
+  detail?: ReactNode;
+  actions: QuietSceneAction[];
+};
+
 export function HomeForegroundObject({
   eyebrow,
   title,
@@ -22,14 +31,7 @@ export function HomeForegroundObject({
   summary,
   detail,
   actions,
-}: {
-  eyebrow: string;
-  title: ReactNode;
-  meta?: ReactNode;
-  summary: ReactNode;
-  detail?: ReactNode;
-  actions: QuietSceneAction[];
-}) {
+}: HomeForegroundContent) {
   return (
     <section className="loom-home-foreground">
       <div className="loom-home-foreground__copy">

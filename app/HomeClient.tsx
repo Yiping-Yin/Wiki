@@ -6,6 +6,7 @@ import { QuietScene, QuietSceneColumn } from '../components/QuietScene';
 import { QuietSceneIntro } from '../components/QuietSceneIntro';
 import { StageShell } from '../components/StageShell';
 import {
+  type HomeForegroundContent,
   HomeForegroundObject,
   HomeQueueStateList,
   HomeRecentThreadsList,
@@ -143,6 +144,51 @@ export function HomeClient() {
     hasQueue ? `${queueCount} in queue` : null,
   ].filter(Boolean).join(' · ');
 
+  const foreground = useMemo<HomeForegroundContent>(() => {
+    if (focusTarget) {
+      return {
+        eyebrow: 'Current return',
+        title: focusTarget.title,
+        meta: <span>{guideMeta}</span>,
+        summary: focusTarget.preview || focusTarget.reason,
+        detail: (
+          <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+            {`Why now · ${[learningTargetReturnLabel(focusTarget, targetState.state), learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}`}
+          </div>
+        ),
+        actions: [
+          {
+            label: learningTargetActionLabel(focusTarget.action),
+            onClick: () => openLearningTarget(router, focusTarget),
+            primary: true,
+          },
+          {
+            label: learningTargetSecondaryLabel(focusTarget),
+            onClick: () => openLearningTargetSource(router, focusTarget),
+          },
+          { label: 'Open Shuttle', onClick: () => openShuttle() },
+        ],
+      };
+    }
+
+    return {
+      eyebrow: 'Quiet surface',
+      title: 'Nothing urgent is asking for attention.',
+      meta: <span>{guideMeta}</span>,
+      summary: 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.',
+      detail: (
+        <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+          The empty state is still a desk: enough structure to begin, without pretending work already exists.
+        </div>
+      ),
+      actions: [
+        { label: 'Open Shuttle', onClick: () => openShuttle(), primary: true },
+        { label: 'Open Atlas', href: '/knowledge' },
+        { label: 'Open Today', href: '/today' },
+      ],
+    };
+  }, [focusTarget, guideMeta, router, targetState.state]);
+
   return (
     <StageShell
       variant="working"
@@ -159,43 +205,7 @@ export function HomeClient() {
         </QuietSceneColumn>
 
         <QuietSceneColumn className="loom-home-workbench__column">
-          <HomeForegroundObject
-            eyebrow={focusTarget ? 'Current return' : 'Quiet surface'}
-            title={focusTarget ? focusTarget.title : 'Nothing urgent is asking for attention.'}
-            meta={<span>{guideMeta}</span>}
-            summary={
-              focusTarget
-                ? focusTarget.preview || focusTarget.reason
-                : 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.'
-            }
-            detail={
-              <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
-                {focusTarget
-                  ? `Why now · ${[learningTargetReturnLabel(focusTarget, targetState.state), learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}`
-                  : 'The empty state is still a desk: enough structure to begin, without pretending work already exists.'}
-              </div>
-            }
-            actions={
-              focusTarget
-                ? [
-                    {
-                      label: learningTargetActionLabel(focusTarget.action),
-                      onClick: () => openLearningTarget(router, focusTarget),
-                      primary: true,
-                    },
-                    {
-                      label: learningTargetSecondaryLabel(focusTarget),
-                      onClick: () => openLearningTargetSource(router, focusTarget),
-                    },
-                    { label: 'Open Shuttle', onClick: () => openShuttle() },
-                  ]
-                : [
-                    { label: 'Open Shuttle', onClick: () => openShuttle(), primary: true },
-                    { label: 'Open Atlas', href: '/knowledge' },
-                    { label: 'Open Today', href: '/today' },
-                  ]
-            }
-          />
+          <HomeForegroundObject {...foreground} />
         </QuietSceneColumn>
 
         <QuietSceneColumn className="loom-home-workbench__column">

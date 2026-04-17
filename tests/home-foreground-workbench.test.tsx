@@ -48,3 +48,13 @@ test('home support lists share a single row primitive', () => {
   assert.match(helpersSource, /<HomeSupportRow[\s\S]*meta=\{item\.resolvedLabel\}/);
   assert.match(helpersSource, /<HomeSupportRow[\s\S]*actionLabel=\{actionLabel\}/);
 });
+
+test('home foreground content is assembled before render and passed as one object', () => {
+  const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
+  const helpersSource = fs.readFileSync(path.join(repoRoot, 'components/home/HomeWorkbenchSections.tsx'), 'utf8');
+
+  assert.match(helpersSource, /export type HomeForegroundContent/);
+  assert.match(homeSource, /const foreground = useMemo<HomeForegroundContent>\(/);
+  assert.match(homeSource, /<HomeForegroundObject \{\.\.\.foreground\} \/>/);
+  assert.doesNotMatch(homeSource, /<HomeForegroundObject[\s\S]*eyebrow=\{/);
+});
