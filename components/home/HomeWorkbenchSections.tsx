@@ -87,10 +87,12 @@ export function HomeRecentThreadsList({ items }: { items: HomeResumeItem[] }) {
   return (
     <div className="loom-home-support-list">
       {items.map((item) => (
-        <Link key={item.id} href={item.href} className="loom-home-support-row">
-          <span className="loom-home-support-row__title">{item.title}</span>
-          <span className="loom-home-support-row__meta">{item.category || 'Recent source'}</span>
-        </Link>
+        <HomeSupportRow
+          key={item.id}
+          href={item.href}
+          title={item.title}
+          meta={item.category || 'Recent source'}
+        />
       ))}
     </div>
   );
@@ -147,10 +149,11 @@ export function HomeResolvedList({ items }: { items: WorkSessionOutcome[] }) {
   return (
     <div className="loom-home-support-list">
       {items.map((item) => (
-        <div key={`${item.targetId}:${item.handledAt}`} className="loom-home-support-row">
-          <span className="loom-home-support-row__title">{item.targetSnapshot.title}</span>
-          <span className="loom-home-support-row__meta">{item.resolvedLabel}</span>
-        </div>
+        <HomeSupportRow
+          key={`${item.targetId}:${item.handledAt}`}
+          title={item.targetSnapshot.title}
+          meta={item.resolvedLabel}
+        />
       ))}
     </div>
   );
@@ -172,17 +175,54 @@ function HomeQueueGroup({
       <div className="loom-home-support-group__label t-caption2">{label}</div>
       <div className="loom-home-support-group__items">
         {items.map((item) => (
-          <div key={`${label}:${item.target.id}`} className="loom-home-support-row loom-home-support-row--actionable">
-            <div className="loom-home-support-row__copy">
-              <span className="loom-home-support-row__title">{item.target.title}</span>
-              <span className="loom-home-support-row__meta">{item.label}</span>
-            </div>
-            <button type="button" className="loom-home-support-row__action" onClick={() => onAction(item)}>
-              {actionLabel}
-            </button>
-          </div>
+          <HomeSupportRow
+            key={`${label}:${item.target.id}`}
+            title={item.target.title}
+            meta={item.label}
+            actionLabel={actionLabel}
+            onAction={() => onAction(item)}
+          />
         ))}
       </div>
+    </div>
+  );
+}
+
+function HomeSupportRow({
+  title,
+  meta,
+  href,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  meta: string;
+  href?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const actionable = Boolean(actionLabel && onAction);
+
+  if (href) {
+    return (
+      <Link href={href} className="loom-home-support-row">
+        <span className="loom-home-support-row__title">{title}</span>
+        <span className="loom-home-support-row__meta">{meta}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className={actionable ? 'loom-home-support-row loom-home-support-row--actionable' : 'loom-home-support-row'}>
+      <div className={actionable ? 'loom-home-support-row__copy' : undefined}>
+        <span className="loom-home-support-row__title">{title}</span>
+        <span className="loom-home-support-row__meta">{meta}</span>
+      </div>
+      {actionable ? (
+        <button type="button" className="loom-home-support-row__action" onClick={onAction}>
+          {actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -39,3 +39,12 @@ test('home workbench keeps the foreground object and queue layer out of generic 
   assert.match(css, /\.loom-home-foreground\b/);
   assert.match(css, /\.loom-home-support-row__action\b/);
 });
+
+test('home support lists share a single row primitive', () => {
+  const helpersSource = fs.readFileSync(path.join(repoRoot, 'components/home/HomeWorkbenchSections.tsx'), 'utf8');
+
+  assert.match(helpersSource, /function HomeSupportRow/);
+  assert.match(helpersSource, /<HomeSupportRow[\s\S]*href=\{item\.href\}/);
+  assert.match(helpersSource, /<HomeSupportRow[\s\S]*meta=\{item\.resolvedLabel\}/);
+  assert.match(helpersSource, /<HomeSupportRow[\s\S]*actionLabel=\{actionLabel\}/);
+});
