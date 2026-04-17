@@ -58,3 +58,12 @@ test('home foreground content is assembled before render and passed as one objec
   assert.match(homeSource, /<HomeForegroundObject \{\.\.\.foreground\} \/>/);
   assert.doesNotMatch(homeSource, /<HomeForegroundObject[\s\S]*eyebrow=\{/);
 });
+
+test('home support sections share a header primitive', () => {
+  const helpersSource = fs.readFileSync(path.join(repoRoot, 'components/home/HomeWorkbenchSections.tsx'), 'utf8');
+  const headerMatches = helpersSource.match(/<div className="loom-home-support-section__header">/g) ?? [];
+
+  assert.match(helpersSource, /function HomeSupportHeader/);
+  assert.match(helpersSource, /<HomeSupportHeader[\s\S]*eyebrow=\{eyebrow\}/);
+  assert.equal(headerMatches.length, 1);
+});

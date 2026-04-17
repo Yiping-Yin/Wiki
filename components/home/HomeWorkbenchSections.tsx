@@ -69,17 +69,7 @@ export function HomeSupportSection({
 }) {
   return (
     <section className="loom-home-support-section">
-      <div className="loom-home-support-section__header">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <WorkEyebrow subtle>{eyebrow}</WorkEyebrow>
-          <div className="loom-home-support-section__title">{title}</div>
-        </div>
-        {aside ? (
-          <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-            {aside}
-          </div>
-        ) : null}
-      </div>
+      <HomeSupportHeader eyebrow={eyebrow} title={title} aside={aside} />
       {children}
     </section>
   );
@@ -224,6 +214,30 @@ function HomeSupportRow({
         <button type="button" className="loom-home-support-row__action" onClick={onAction}>
           {actionLabel}
         </button>
+      ) : null}
+    </div>
+  );
+}
+
+function HomeSupportHeader({
+  eyebrow,
+  title,
+  aside,
+}: {
+  eyebrow: string;
+  title: string;
+  aside?: ReactNode;
+}) {
+  return (
+    <div className="loom-home-support-section__header">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <WorkEyebrow subtle>{eyebrow}</WorkEyebrow>
+        <div className="loom-home-support-section__title">{title}</div>
+      </div>
+      {aside ? (
+        <div className="t-caption2" style={{ color: 'var(--muted)' }}>
+          {aside}
+        </div>
       ) : null}
     </div>
   );
