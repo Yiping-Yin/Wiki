@@ -1,5 +1,9 @@
 import type { LearningTarget } from '../../lib/learning-targets';
 import type { HistoryEntry } from '../../lib/use-history';
+import {
+  buildDeskFocusTargetActions,
+  type DeskFocusTargetActionDraft,
+} from '../../lib/shared/desk-actions';
 
 export type HomeIndexDoc = {
   id: string;
@@ -23,11 +27,11 @@ export type HomeForegroundDraft = {
   detail: string;
 };
 
-export type HomeForegroundActionDraft = {
-  kind: 'focus-primary' | 'focus-secondary' | 'open-shuttle' | 'open-atlas' | 'open-today';
-  label: string;
-  primary?: boolean;
-};
+export type HomeForegroundActionDraft =
+  | DeskFocusTargetActionDraft
+  | { kind: 'open-shuttle'; label: 'Open Shuttle'; primary?: boolean }
+  | { kind: 'open-atlas'; label: 'Open Atlas' }
+  | { kind: 'open-today'; label: 'Open Today' };
 
 export function parseHomeSearchIndexPayload(payload: any): HomeIndexDoc[] {
   const stored = payload?.index?.storedFields ?? {};
@@ -133,8 +137,10 @@ export function buildHomeForegroundActions({
 }): HomeForegroundActionDraft[] {
   if (hasFocusTarget && primaryLabel && secondaryLabel) {
     return [
-      { kind: 'focus-primary', label: primaryLabel, primary: true },
-      { kind: 'focus-secondary', label: secondaryLabel },
+      ...buildDeskFocusTargetActions({
+        primaryLabel,
+        secondaryLabel,
+      }),
       { kind: 'open-shuttle', label: 'Open Shuttle' },
     ];
   }

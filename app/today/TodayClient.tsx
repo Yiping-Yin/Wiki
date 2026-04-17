@@ -60,6 +60,7 @@ import {
   deriveDeskResolvedOutcomeItems,
   hasDeskQueue,
 } from '../../lib/shared/desk-derive';
+import { buildDeskFocusTargetActions } from '../../lib/shared/desk-actions';
 
 type DocLite = {
   id: string;
@@ -366,33 +367,47 @@ export function TodayClient({
                   Why now · {[focusTargetReturnLabel, learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}
                 </div>
               ) : undefined}
-              actions={[
-                {
-                  label: learningTargetActionLabel(focusTarget.action),
-                  onClick: () => openLearningTarget(router, focusTarget),
-                  primary: true,
-                },
-                {
-                  label: learningTargetSecondaryLabel(focusTarget),
-                  onClick: () => openLearningTargetSource(router, focusTarget),
-                },
-                {
-                  label: isLearningTargetPinned(focusTarget, targetState.state) ? 'Unpin' : 'Pin',
-                  onClick: () => targetState.togglePinned(focusTarget),
-                },
-                {
-                  label: 'Not now',
-                  onClick: () => targetState.notNow(focusTarget),
-                },
-                {
-                  label: 'Hide today',
-                  onClick: () => targetState.hideToday(focusTarget),
-                },
-                {
-                  label: 'Done',
-                  onClick: () => targetState.markDone(focusTarget),
-                },
-              ]}
+              actions={buildDeskFocusTargetActions({
+                primaryLabel: learningTargetActionLabel(focusTarget.action),
+                secondaryLabel: learningTargetSecondaryLabel(focusTarget),
+                includeManagementActions: true,
+                pinLabel: isLearningTargetPinned(focusTarget, targetState.state) ? 'Unpin' : 'Pin',
+              }).map((action) => {
+                switch (action.kind) {
+                  case 'focus-primary':
+                    return {
+                      label: action.label,
+                      onClick: () => openLearningTarget(router, focusTarget),
+                      primary: true,
+                    };
+                  case 'focus-secondary':
+                    return {
+                      label: action.label,
+                      onClick: () => openLearningTargetSource(router, focusTarget),
+                    };
+                  case 'pin-toggle':
+                    return {
+                      label: action.label,
+                      onClick: () => targetState.togglePinned(focusTarget),
+                    };
+                  case 'not-now':
+                    return {
+                      label: action.label,
+                      onClick: () => targetState.notNow(focusTarget),
+                    };
+                  case 'hide-today':
+                    return {
+                      label: action.label,
+                      onClick: () => targetState.hideToday(focusTarget),
+                    };
+                  case 'done':
+                  default:
+                    return {
+                      label: action.label,
+                      onClick: () => targetState.markDone(focusTarget),
+                    };
+                }
+              })}
             />
           ) : focusSurface && (
             <QuietGuideCard
