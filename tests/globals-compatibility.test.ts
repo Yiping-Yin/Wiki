@@ -8,6 +8,15 @@ const globalsCss = fs.readFileSync(path.join(repoRoot, 'app/globals.css'), 'utf8
 
 test('global CSS preserves shared compatibility contracts outside the home route', () => {
   const requiredContracts: Array<[label: string, pattern: RegExp]> = [
+    ['overlay fade-in animation', /@keyframes\s+loom-overlay-fade-in\s*\{/],
+    ['modal exit animation', /@keyframes\s+loom-modal-exit\s*\{/],
+    ['pulse animation', /@keyframes\s+loomPulse\s*\{/],
+    ['pin burst animation', /@keyframes\s+pinBurst\s*\{/],
+    ['pin halo animation', /@keyframes\s+pinHalo\s*\{/],
+    ['highlight passage utility', /\.loom-highlight-passage\s*\{/],
+    ['highlight passage animation', /@keyframes\s+loom-highlight-passage\s*\{/],
+    ['note-rendered KaTeX contract', /\.note-rendered\s+\.katex-display\s*\{/],
+    ['note-rendered markdown contract', /\.note-rendered\s+h1\s*\{/],
     ['manual dark theme contract', /\.dark\s*\{[\s\S]*--bg:/],
     ['layout shell main contract', /\.layout-shell__main\s*\{[\s\S]*min-height:\s*100vh/],
     ['pinned sidebar layout offset', /body\.sidebar-pinned\s+\.layout-shell__main\s*\{[\s\S]*margin-left:\s*var\(--sidebar-shell-width\)/],
