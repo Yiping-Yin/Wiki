@@ -27,7 +27,6 @@ import { WorkEyebrow, WorkSurface } from '../../components/WorkSurface';
 import {
   buildLearningTargets,
   learningTargetActionLabel,
-  learningTargetEyebrow,
   learningTargetSecondaryLabel,
   learningTargetWhyNow,
   openLearningTarget,
@@ -62,6 +61,7 @@ import {
   hasDeskQueue,
 } from '../../lib/shared/desk-derive';
 import { assembleDeskFocusTargetActions } from '../../lib/shared/desk-actions';
+import { buildDeskFocusTargetPresenter } from '../../lib/shared/desk-presenters';
 
 type DocLite = {
   id: string;
@@ -292,7 +292,6 @@ export function TodayClient({
   const remainingTargets = resolvedSession.active
     ? resolvedSession.remainingTargets.slice(1, 6)
     : displayedTargets.slice(1, 6);
-  const focusTargetReturnLabel = focusTarget ? learningTargetReturnLabel(focusTarget, targetState.state) : null;
   const focusSurface = !focusTarget ? surfaces[0] ?? null : null;
   const focusId = focusSurface?.id ?? null;
   const remainingSurfaces = focusSurface ? surfaces.filter((surface) => surface.id !== focusId) : [];
@@ -352,22 +351,27 @@ export function TodayClient({
           <TodayHeader />
           {focusTarget ? (
             <QuietGuideCard
-              eyebrow={learningTargetEyebrow(focusTarget)}
-              title={focusTarget.title}
-              tone="primary"
-              density="roomy"
-              meta={
-                <span>
-                  {timeOfDay(focusTarget.touchedAt)}
-                  {workTargets.length > 0 ? ` · ${workTargets.length} ready` : ''}
-                </span>
-              }
-              summary={focusTarget.preview || focusTarget.reason}
-              detail={(focusTarget.preview || focusTarget.reason) ? (
-                <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
-                  Why now · {[focusTargetReturnLabel, learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}
-                </div>
-              ) : undefined}
+              {...(() => {
+                const presenter = buildDeskFocusTargetPresenter({
+                  target: focusTarget,
+                  learningTargetState: targetState.state,
+                  meta: `${timeOfDay(focusTarget.touchedAt)}${workTargets.length > 0 ? ` · ${workTargets.length} ready` : ''}`,
+                });
+
+                return {
+                  eyebrow: presenter.eyebrow,
+                  title: presenter.title,
+                  tone: 'primary' as const,
+                  density: 'roomy' as const,
+                  meta: <span>{presenter.meta}</span>,
+                  summary: presenter.summary,
+                  detail: presenter.detail ? (
+                    <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+                      {presenter.detail}
+                    </div>
+                  ) : undefined,
+                };
+              })()}
               actions={assembleDeskFocusTargetActions({
                 primaryLabel: learningTargetActionLabel(focusTarget.action),
                 onPrimary: () => openLearningTarget(router, focusTarget),

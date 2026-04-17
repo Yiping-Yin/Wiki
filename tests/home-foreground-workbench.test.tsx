@@ -106,3 +106,13 @@ test('home and today share the desk action assembly helper', () => {
   assert.match(homeSource, /assembleDeskFocusTargetActions/);
   assert.match(todaySource, /assembleDeskFocusTargetActions/);
 });
+
+test('home and today share the desk focus presenter helper', () => {
+  const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
+  const todaySource = fs.readFileSync(path.join(repoRoot, 'app/today/TodayClient.tsx'), 'utf8');
+  const presenterSource = fs.readFileSync(path.join(repoRoot, 'lib/shared/desk-presenters.ts'), 'utf8');
+
+  assert.match(presenterSource, /buildDeskFocusTargetPresenter/);
+  assert.match(homeSource, /buildDeskFocusTargetPresenter/);
+  assert.match(todaySource, /buildDeskFocusTargetPresenter/);
+});

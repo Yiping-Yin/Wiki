@@ -21,15 +21,11 @@ import {
 } from '../components/home/homeWorkbenchModel';
 import { useHomeWorkbenchData } from '../components/home/useHomeWorkbenchData';
 import { useHistory } from '../lib/use-history';
-import {
-  learningTargetReturnLabel,
-  useLearningTargetState,
-} from '../lib/learning-target-state';
+import { useLearningTargetState } from '../lib/learning-target-state';
 import {
   buildLearningTargets,
   learningTargetActionLabel,
   learningTargetSecondaryLabel,
-  learningTargetWhyNow,
   openLearningTarget,
   openLearningTargetSource,
 } from '../lib/learning-targets';
@@ -44,6 +40,7 @@ import {
   deriveDeskResolvedOutcomeItems,
   hasDeskQueue,
 } from '../lib/shared/desk-derive';
+import { buildDeskFocusTargetPresenter } from '../lib/shared/desk-presenters';
 
 export function HomeClient() {
   const router = useRouter();
@@ -100,14 +97,19 @@ export function HomeClient() {
   }), [focusTarget]);
 
   const foreground = useMemo<HomeForegroundContent>(() => {
-    const draft = buildHomeForegroundDraft({
-      guideMeta,
-      focusTitle: focusTarget?.title ?? null,
-      focusSummary: focusTarget ? (focusTarget.preview || focusTarget.reason) : null,
-      whyNowDetail: focusTarget
-        ? `Why now · ${[learningTargetReturnLabel(focusTarget, targetState.state), learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}`
-        : null,
-    });
+    const draft = focusTarget
+      ? buildDeskFocusTargetPresenter({
+          target: focusTarget,
+          learningTargetState: targetState.state,
+          meta: guideMeta,
+          eyebrow: 'Current return',
+        })
+      : buildHomeForegroundDraft({
+          guideMeta,
+          focusTitle: null,
+          focusSummary: null,
+          whyNowDetail: null,
+        });
 
     return {
       eyebrow: draft.eyebrow,
