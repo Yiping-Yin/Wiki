@@ -15,7 +15,6 @@ import {
 } from '../components/home/HomeWorkbenchSections';
 import {
   buildHomeForegroundActions,
-  buildHomeForegroundDraft,
   buildHomeGuideMeta,
   buildHomeRecentThreads,
 } from '../components/home/homeWorkbenchModel';
@@ -40,7 +39,7 @@ import {
   deriveDeskResolvedOutcomeItems,
   hasDeskQueue,
 } from '../lib/shared/desk-derive';
-import { buildDeskFocusTargetPresenter } from '../lib/shared/desk-presenters';
+import { buildDeskEmptyPresenter, buildDeskFocusTargetPresenter } from '../lib/shared/desk-presenters';
 
 export function HomeClient() {
   const router = useRouter();
@@ -104,11 +103,11 @@ export function HomeClient() {
           meta: guideMeta,
           eyebrow: 'Current return',
         })
-      : buildHomeForegroundDraft({
-          guideMeta,
-          focusTitle: null,
-          focusSummary: null,
-          whyNowDetail: null,
+      : buildDeskEmptyPresenter({
+          eyebrow: 'Quiet surface',
+          title: 'Nothing urgent is asking for attention.',
+          summary: 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.',
+          detail: 'The empty state is still a desk: enough structure to begin, without pretending work already exists.',
         });
 
     return {

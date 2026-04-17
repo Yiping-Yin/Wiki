@@ -61,7 +61,7 @@ import {
   hasDeskQueue,
 } from '../../lib/shared/desk-derive';
 import { assembleDeskFocusTargetActions } from '../../lib/shared/desk-actions';
-import { buildDeskFocusTargetPresenter } from '../../lib/shared/desk-presenters';
+import { buildDeskEmptyPresenter, buildDeskFocusTargetPresenter } from '../../lib/shared/desk-presenters';
 
 type DocLite = {
   id: string;
@@ -607,6 +607,13 @@ function QuietEmptyState({
   secondaryLabel: string;
   onSecondary: () => void;
 }) {
+  const presenter = buildDeskEmptyPresenter({
+    eyebrow,
+    title,
+    summary,
+    detail: 'Today stays quiet until a source actually changes.',
+  });
+
   return (
     <div
       style={{
@@ -616,14 +623,16 @@ function QuietEmptyState({
       }}
     >
       <QuietSceneIntro
-        eyebrow={eyebrow}
-        title={title}
+        eyebrow={presenter.eyebrow}
+        title={presenter.title}
         summary={
           <>
-            {summary}
-            <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
-              Today stays quiet until a source actually changes.
-            </div>
+            {presenter.summary}
+            {presenter.detail ? (
+              <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+                {presenter.detail}
+              </div>
+            ) : null}
           </>
         }
         actions={[

@@ -16,6 +16,13 @@ export type DeskFocusTargetPresenter = {
   detail: string | null;
 };
 
+export type DeskEmptyPresenter = {
+  eyebrow: string;
+  title: string;
+  summary: string;
+  detail: string | null;
+};
+
 export function buildDeskFocusTargetPresenter({
   target,
   learningTargetState,
@@ -40,5 +47,24 @@ export function buildDeskFocusTargetPresenter({
     meta,
     summary,
     detail: summary ? `Why now · ${whyNow}` : null,
+  };
+}
+
+export function buildDeskEmptyPresenter({
+  eyebrow,
+  title,
+  summary,
+  detail,
+}: {
+  eyebrow: string;
+  title: string;
+  summary: string;
+  detail?: string | null;
+}): DeskEmptyPresenter {
+  return {
+    eyebrow,
+    title,
+    summary,
+    detail: detail ?? null,
   };
 }

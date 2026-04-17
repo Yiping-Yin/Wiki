@@ -113,6 +113,9 @@ test('home and today share the desk focus presenter helper', () => {
   const presenterSource = fs.readFileSync(path.join(repoRoot, 'lib/shared/desk-presenters.ts'), 'utf8');
 
   assert.match(presenterSource, /buildDeskFocusTargetPresenter/);
+  assert.match(presenterSource, /buildDeskEmptyPresenter/);
   assert.match(homeSource, /buildDeskFocusTargetPresenter/);
+  assert.match(homeSource, /buildDeskEmptyPresenter/);
   assert.match(todaySource, /buildDeskFocusTargetPresenter/);
+  assert.match(todaySource, /buildDeskEmptyPresenter/);
 });

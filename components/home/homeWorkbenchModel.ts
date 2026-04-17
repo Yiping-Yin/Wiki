@@ -4,7 +4,6 @@ import {
   buildDeskFocusTargetActions,
   type DeskFocusTargetActionDraft,
 } from '../../lib/shared/desk-actions';
-
 export type HomeIndexDoc = {
   id: string;
   title: string;
@@ -17,14 +16,6 @@ export type HomeRecentThread = {
   title: string;
   href: string;
   category: string;
-};
-
-export type HomeForegroundDraft = {
-  eyebrow: string;
-  title: string;
-  meta: string;
-  summary: string;
-  detail: string;
 };
 
 export type HomeForegroundActionDraft =
@@ -94,36 +85,6 @@ export function buildHomeGuideMeta({
     resolvedCount > 0 ? `${resolvedCount} resolved` : null,
     queueCount > 0 ? `${queueCount} in queue` : null,
   ].filter(Boolean).join(' · ');
-}
-
-export function buildHomeForegroundDraft({
-  guideMeta,
-  focusTitle,
-  focusSummary,
-  whyNowDetail,
-}: {
-  guideMeta: string;
-  focusTitle: LearningTarget['title'] | null;
-  focusSummary: string | null;
-  whyNowDetail: string | null;
-}): HomeForegroundDraft {
-  if (focusTitle && focusSummary && whyNowDetail) {
-    return {
-      eyebrow: 'Current return',
-      title: focusTitle,
-      meta: guideMeta,
-      summary: focusSummary,
-      detail: whyNowDetail,
-    };
-  }
-
-  return {
-    eyebrow: 'Quiet surface',
-    title: 'Nothing urgent is asking for attention.',
-    meta: guideMeta,
-    summary: 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.',
-    detail: 'The empty state is still a desk: enough structure to begin, without pretending work already exists.',
-  };
 }
 
 export function buildHomeForegroundActions({

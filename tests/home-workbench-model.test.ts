@@ -3,7 +3,6 @@ import test from 'node:test';
 
 import {
   buildHomeForegroundActions,
-  buildHomeForegroundDraft,
   buildHomeGuideMeta,
   buildHomeRecentThreads,
   parseHomeSearchIndexPayload,
@@ -60,38 +59,6 @@ test('buildHomeGuideMeta summarizes recent, resolved, and queue counts', () => {
     buildHomeGuideMeta({ recentCount: 2, resolvedCount: 1, queueCount: 3 }),
     '2 recent threads · 1 resolved · 3 in queue',
   );
-});
-
-test('buildHomeForegroundDraft assembles focus and empty states', () => {
-  const focused = buildHomeForegroundDraft({
-    guideMeta: '2 recent threads · 1 resolved',
-    focusTitle: 'RoPE',
-    focusSummary: 'Rotary embeddings encode position by rotation.',
-    whyNowDetail: 'Why now · Returned after a new change appeared · Panel is ready to verify',
-  });
-
-  assert.deepEqual(focused, {
-    eyebrow: 'Current return',
-    title: 'RoPE',
-    meta: '2 recent threads · 1 resolved',
-    summary: 'Rotary embeddings encode position by rotation.',
-    detail: 'Why now · Returned after a new change appeared · Panel is ready to verify',
-  });
-
-  const empty = buildHomeForegroundDraft({
-    guideMeta: 'Desk is quiet',
-    focusTitle: null,
-    focusSummary: null,
-    whyNowDetail: null,
-  });
-
-  assert.deepEqual(empty, {
-    eyebrow: 'Quiet surface',
-    title: 'Nothing urgent is asking for attention.',
-    meta: 'Desk is quiet',
-    summary: 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.',
-    detail: 'The empty state is still a desk: enough structure to begin, without pretending work already exists.',
-  });
 });
 
 test('buildHomeForegroundActions assembles focused and empty action drafts', () => {

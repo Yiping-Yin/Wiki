@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildDeskFocusTargetPresenter } from '../lib/shared/desk-presenters';
+import { buildDeskEmptyPresenter, buildDeskFocusTargetPresenter } from '../lib/shared/desk-presenters';
 import type { LearningTarget } from '../lib/learning-targets';
 import type { LearningTargetState } from '../lib/learning-target-state';
 
@@ -50,4 +50,21 @@ test('buildDeskFocusTargetPresenter assembles the shared focus presenter content
     summary: 'Preview',
     detail: 'Why now · Returned after a new change appeared · Panel has gone cold',
   });
+});
+
+test('buildDeskEmptyPresenter assembles shared empty presenter content', () => {
+  assert.deepEqual(
+    buildDeskEmptyPresenter({
+      eyebrow: 'Today',
+      title: 'Nothing is asking for attention yet.',
+      summary: 'Enter a source from the Sidebar or open the Shuttle.',
+      detail: 'Today stays quiet until a source actually changes.',
+    }),
+    {
+      eyebrow: 'Today',
+      title: 'Nothing is asking for attention yet.',
+      summary: 'Enter a source from the Sidebar or open the Shuttle.',
+      detail: 'Today stays quiet until a source actually changes.',
+    },
+  );
 });
