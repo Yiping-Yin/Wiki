@@ -13,6 +13,14 @@ import {
   HomeResolvedList,
   HomeSupportSection,
 } from '../components/home/HomeWorkbenchSections';
+import {
+  buildHomeDocsById,
+  buildHomeForegroundDraft,
+  buildHomeGuideMeta,
+  buildHomeRecentThreads,
+  loadHomeDocs,
+  type HomeIndexDoc,
+} from '../components/home/homeWorkbenchModel';
 import { useHistory } from '../lib/use-history';
 import {
   applyLearningTargetState,
@@ -37,54 +45,32 @@ import {
   useWorkSession,
 } from '../lib/work-session';
 
-type IndexDoc = { id: string; title: string; href: string; category: string };
-type ResumeItem = { id: string; title: string; href: string; category: string };
-
-let indexCache: IndexDoc[] | null = null;
-
-async function loadDocs(): Promise<IndexDoc[]> {
-  if (indexCache) return indexCache;
-  try {
-    const response = await fetch('/api/search-index');
-    if (!response.ok) return [];
-    const payload = await response.json();
-    const stored = payload.index?.storedFields ?? {};
-    const docIds = payload.index?.documentIds ?? {};
-    const docs: IndexDoc[] = [];
-    for (const [internal, fields] of Object.entries<any>(stored)) {
-      if (!fields?.title || !fields?.href) continue;
-      docs.push({
-        id: String(docIds[internal] ?? internal),
-        title: fields.title,
-        href: fields.href,
-        category: fields.category ?? '',
-      });
-    }
-    indexCache = docs;
-    return docs;
-  } catch {
-    return [];
-  }
-}
+let indexCache: HomeIndexDoc[] | null = null;
 
 export function HomeClient() {
   const router = useRouter();
   const [history] = useHistory();
-  const [docs, setDocs] = useState<IndexDoc[]>([]);
+  const [docs, setDocs] = useState<HomeIndexDoc[]>([]);
   const { panels } = useAllPanels();
   const { weaves } = useAllWeaves();
   const targetState = useLearningTargetState();
   const workSession = useWorkSession();
 
   useEffect(() => {
-    loadDocs().then(setDocs);
+    const load = async () => {
+      if (indexCache) {
+        setDocs(indexCache);
+        return;
+      }
+      const nextDocs = await loadHomeDocs();
+      indexCache = nextDocs;
+      setDocs(nextDocs);
+    };
+
+    load();
   }, []);
 
-  const docsById = useMemo(() => {
-    const map = new Map<string, IndexDoc>();
-    for (const doc of docs) map.set(doc.id, doc);
-    return map;
-  }, [docs]);
+  const docsById = useMemo(() => buildHomeDocsById(docs), [docs]);
 
   const baseTargets = useMemo(
     () => buildLearningTargets({ panels: panels.filter(isRenderablePanel), weaves }),
@@ -112,22 +98,7 @@ export function HomeClient() {
     [workSession.lastCompletedSession],
   );
 
-  const recentThreads = useMemo(() => {
-    const seen = new Set<string>();
-    const items: ResumeItem[] = [];
-    for (const entry of history) {
-      if (seen.has(entry.id) || items.length >= 4) continue;
-      seen.add(entry.id);
-      const meta = docsById.get(entry.id);
-      items.push({
-        id: entry.id,
-        title: meta?.title ?? entry.title,
-        href: meta?.href ?? entry.href,
-        category: meta?.category ?? '',
-      });
-    }
-    return items;
-  }, [docsById, history]);
+  const recentThreads = useMemo(() => buildHomeRecentThreads(history, docsById, 4), [docsById, history]);
 
   const queueCount =
     queue.pinned.length
@@ -138,54 +109,50 @@ export function HomeClient() {
   const hasResolved = resolvedOutcomes.length > 0;
   const hasRecentThreads = recentThreads.length > 0;
 
-  const guideMeta = [
-    hasRecentThreads ? `${recentThreads.length} recent thread${recentThreads.length === 1 ? '' : 's'}` : 'Desk is quiet',
-    hasResolved ? `${resolvedOutcomes.length} resolved` : null,
-    hasQueue ? `${queueCount} in queue` : null,
-  ].filter(Boolean).join(' · ');
+  const guideMeta = useMemo(() => buildHomeGuideMeta({
+    recentCount: recentThreads.length,
+    resolvedCount: resolvedOutcomes.length,
+    queueCount,
+  }), [queueCount, recentThreads.length, resolvedOutcomes.length]);
 
   const foreground = useMemo<HomeForegroundContent>(() => {
-    if (focusTarget) {
-      return {
-        eyebrow: 'Current return',
-        title: focusTarget.title,
-        meta: <span>{guideMeta}</span>,
-        summary: focusTarget.preview || focusTarget.reason,
-        detail: (
-          <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
-            {`Why now · ${[learningTargetReturnLabel(focusTarget, targetState.state), learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}`}
-          </div>
-        ),
-        actions: [
-          {
-            label: learningTargetActionLabel(focusTarget.action),
-            onClick: () => openLearningTarget(router, focusTarget),
-            primary: true,
-          },
-          {
-            label: learningTargetSecondaryLabel(focusTarget),
-            onClick: () => openLearningTargetSource(router, focusTarget),
-          },
-          { label: 'Open Shuttle', onClick: () => openShuttle() },
-        ],
-      };
-    }
+    const draft = buildHomeForegroundDraft({
+      guideMeta,
+      focusTitle: focusTarget?.title ?? null,
+      focusSummary: focusTarget ? (focusTarget.preview || focusTarget.reason) : null,
+      whyNowDetail: focusTarget
+        ? `Why now · ${[learningTargetReturnLabel(focusTarget, targetState.state), learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}`
+        : null,
+    });
 
     return {
-      eyebrow: 'Quiet surface',
-      title: 'Nothing urgent is asking for attention.',
+      eyebrow: draft.eyebrow,
+      title: draft.title,
       meta: <span>{guideMeta}</span>,
-      summary: 'Open the Shuttle to move anywhere, or enter the Atlas from the Sidebar. Once a source changes, the return appears here.',
+      summary: draft.summary,
       detail: (
         <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
-          The empty state is still a desk: enough structure to begin, without pretending work already exists.
+          {draft.detail}
         </div>
       ),
-      actions: [
-        { label: 'Open Shuttle', onClick: () => openShuttle(), primary: true },
-        { label: 'Open Atlas', href: '/knowledge' },
-        { label: 'Open Today', href: '/today' },
-      ],
+      actions: focusTarget
+        ? [
+            {
+              label: learningTargetActionLabel(focusTarget.action),
+              onClick: () => openLearningTarget(router, focusTarget),
+              primary: true,
+            },
+            {
+              label: learningTargetSecondaryLabel(focusTarget),
+              onClick: () => openLearningTargetSource(router, focusTarget),
+            },
+            { label: 'Open Shuttle', onClick: () => openShuttle() },
+          ]
+        : [
+            { label: 'Open Shuttle', onClick: () => openShuttle(), primary: true },
+            { label: 'Open Atlas', href: '/knowledge' },
+            { label: 'Open Today', href: '/today' },
+          ],
     };
   }, [focusTarget, guideMeta, router, targetState.state]);
 
