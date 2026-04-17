@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuietScene, QuietSceneColumn } from '../components/QuietScene';
 import { QuietSceneIntro } from '../components/QuietSceneIntro';
@@ -14,14 +14,12 @@ import {
   HomeSupportSection,
 } from '../components/home/HomeWorkbenchSections';
 import {
-  buildHomeDocsById,
   buildHomeForegroundActions,
   buildHomeForegroundDraft,
   buildHomeGuideMeta,
   buildHomeRecentThreads,
-  loadHomeDocs,
-  type HomeIndexDoc,
 } from '../components/home/homeWorkbenchModel';
+import { useHomeWorkbenchData } from '../components/home/useHomeWorkbenchData';
 import { useHistory } from '../lib/use-history';
 import {
   applyLearningTargetState,
@@ -46,32 +44,14 @@ import {
   useWorkSession,
 } from '../lib/work-session';
 
-let indexCache: HomeIndexDoc[] | null = null;
-
 export function HomeClient() {
   const router = useRouter();
   const [history] = useHistory();
-  const [docs, setDocs] = useState<HomeIndexDoc[]>([]);
+  const { docsById } = useHomeWorkbenchData();
   const { panels } = useAllPanels();
   const { weaves } = useAllWeaves();
   const targetState = useLearningTargetState();
   const workSession = useWorkSession();
-
-  useEffect(() => {
-    const load = async () => {
-      if (indexCache) {
-        setDocs(indexCache);
-        return;
-      }
-      const nextDocs = await loadHomeDocs();
-      indexCache = nextDocs;
-      setDocs(nextDocs);
-    };
-
-    load();
-  }, []);
-
-  const docsById = useMemo(() => buildHomeDocsById(docs), [docs]);
 
   const baseTargets = useMemo(
     () => buildLearningTargets({ panels: panels.filter(isRenderablePanel), weaves }),

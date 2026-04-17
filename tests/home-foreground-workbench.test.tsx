@@ -70,3 +70,12 @@ test('home support sections share a header primitive', () => {
   assert.match(helpersSource, /<HomeSupportHeader[\s\S]*eyebrow=\{eyebrow\}/);
   assert.equal(headerMatches.length, 1);
 });
+
+test('home client delegates docs loading to a dedicated hook', () => {
+  const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
+
+  assert.match(homeSource, /useHomeWorkbenchData/);
+  assert.doesNotMatch(homeSource, /let indexCache:/);
+  assert.doesNotMatch(homeSource, /useState<HomeIndexDoc\[]>/);
+  assert.doesNotMatch(homeSource, /const load = async \(\) =>/);
+});
