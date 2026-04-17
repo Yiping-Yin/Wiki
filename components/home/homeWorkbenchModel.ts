@@ -47,17 +47,6 @@ export function parseHomeSearchIndexPayload(payload: any): HomeIndexDoc[] {
   return docs;
 }
 
-export async function loadHomeDocs(): Promise<HomeIndexDoc[]> {
-  try {
-    const response = await fetch('/api/search-index');
-    if (!response.ok) return [];
-    const payload = await response.json();
-    return parseHomeSearchIndexPayload(payload);
-  } catch {
-    return [];
-  }
-}
-
 export function buildHomeDocsById(docs: HomeIndexDoc[]) {
   const map = new Map<string, HomeIndexDoc>();
   for (const doc of docs) map.set(doc.id, doc);

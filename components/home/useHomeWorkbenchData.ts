@@ -3,13 +3,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   buildHomeDocsById,
-  loadHomeDocs,
+  parseHomeSearchIndexPayload,
   type HomeIndexDoc,
 } from './homeWorkbenchModel';
 
 export type { HomeIndexDoc } from './homeWorkbenchModel';
 
 let docsCache: HomeIndexDoc[] | null = null;
+
+export async function loadHomeDocs(): Promise<HomeIndexDoc[]> {
+  try {
+    const response = await fetch('/api/search-index');
+    if (!response.ok) return [];
+    const payload = await response.json();
+    return parseHomeSearchIndexPayload(payload);
+  } catch {
+    return [];
+  }
+}
 
 export async function loadCachedHomeDocs(
   loader: () => Promise<HomeIndexDoc[]> = loadHomeDocs,
