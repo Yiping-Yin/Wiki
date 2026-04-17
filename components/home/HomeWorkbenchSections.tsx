@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { LearningTarget } from '../../lib/learning-targets';
 import type { LearningTargetQueue, LearningTargetQueueItem } from '../../lib/learning-target-state';
+import type { QuietSceneAction } from '../QuietSceneIntro';
 import { WorkAction, WorkEyebrow } from '../WorkSurface';
 import type { WorkSessionOutcome } from '../../lib/work-session';
 
@@ -12,13 +13,6 @@ export type HomeResumeItem = {
   title: string;
   href: string;
   category: string;
-};
-
-type HomeAction = {
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  primary?: boolean;
 };
 
 export function HomeForegroundObject({
@@ -34,7 +28,7 @@ export function HomeForegroundObject({
   meta?: ReactNode;
   summary: ReactNode;
   detail?: ReactNode;
-  actions: HomeAction[];
+  actions: QuietSceneAction[];
 }) {
   return (
     <section className="loom-home-foreground">

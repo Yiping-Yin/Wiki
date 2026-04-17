@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { WorkAction, WorkEyebrow } from './WorkSurface';
 
-type QuietSceneIntroAction = {
+export type QuietSceneAction = {
   label: string;
   href?: string;
   onClick?: () => void;
@@ -21,7 +21,7 @@ export function QuietSceneIntro({
   title: ReactNode;
   meta?: ReactNode;
   summary?: ReactNode;
-  actions?: QuietSceneIntroAction[];
+  actions?: QuietSceneAction[];
 }) {
   return (
     <section className="loom-quiet-scene__intro">
