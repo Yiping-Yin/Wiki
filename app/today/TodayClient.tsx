@@ -19,13 +19,47 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../../components/QuietGuideCard';
+import { QuietScene, QuietSceneColumn } from '../../components/QuietScene';
+import { QuietSceneIntro } from '../../components/QuietSceneIntro';
+import { LearningTargetQueueState } from '../../components/LearningTargetQueueState';
+import { StageShell } from '../../components/StageShell';
+import { WorkEyebrow, WorkSurface } from '../../components/WorkSurface';
+import {
+  buildLearningTargets,
+  learningTargetActionLabel,
+  learningTargetEyebrow,
+  learningTargetSecondaryLabel,
+  learningTargetWhyNow,
+  openLearningTarget,
+  openLearningTargetSource,
+  type LearningTarget,
+} from '../../lib/learning-targets';
+import {
+  isLearningTargetPinned,
+  learningTargetReturnLabel,
+  useLearningTargetState,
+} from '../../lib/learning-target-state';
 import { useHistory } from '../../lib/use-history';
 import { usePins } from '../../lib/use-pins';
-import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../../lib/refresh-resume';
+import type { RefreshResumePayload } from '../../lib/refresh-resume';
 import { openPanelReview, setOverlayResume, setRefreshResume } from '../../lib/panel-resume';
+import { isRenderablePanel, useAllPanels } from '../../lib/panel';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
+import { useAllWeaves } from '../../lib/weave';
+import {
+  countTargetsChangedSinceSession,
+  resolutionKindLabel,
+  summarizeChangesSinceSession,
+  useWorkSession,
+} from '../../lib/work-session';
+import {
+  deriveDeskLearningState,
+  deriveDeskQueue,
+  deriveDeskResolvedOutcomeItems,
+  hasDeskQueue,
+} from '../../lib/shared/desk-derive';
 
 type DocLite = {
   id: string;
@@ -66,6 +100,10 @@ export function TodayClient({
   const [history] = useHistory();
   const { pins } = usePins();
   const { traces } = useAllTraces();
+  const { panels } = useAllPanels();
+  const { weaves } = useAllWeaves();
+  const targetState = useLearningTargetState();
+  const workSession = useWorkSession();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -188,12 +226,74 @@ export function TodayClient({
     });
   }, [docsById, pins, traces, viewedByDocId, pinnedByDocId]);
 
-  if (!mounted) return null;
-  if (surfaces.length === 0) return null;
+  const baseTargets = useMemo(() => buildLearningTargets({
+    panels: panels.filter(isRenderablePanel),
+    weaves,
+  }), [panels, weaves]);
+  const deskState = useMemo(() => deriveDeskLearningState({
+    baseTargets,
+    learningTargetState: targetState.state,
+    lastCompletedSession: workSession.lastCompletedSession,
+    session: workSession.session,
+  }), [baseTargets, targetState.state, workSession.lastCompletedSession, workSession.session]);
+  const targets = deskState.visibleTargets;
+  const workTargets = deskState.workTargets;
+  const resolvedSession = deskState.resolvedSession;
+  const displayedTargets = targets.slice(0, 6);
+  const targetQueue = useMemo(() => deriveDeskQueue({
+    rawTargets: deskState.rawTargets,
+    learningTargetState: targetState.state,
+    excludeIds: new Set(displayedTargets.map((target) => target.id)),
+  }), [deskState.rawTargets, displayedTargets, targetState.state]);
 
-  const focusSurface = surfaces[0] ?? null;
+  const hasTargetQueue = hasDeskQueue(targetQueue);
+  const changedSinceLastSession = useMemo(
+    () => countTargetsChangedSinceSession(baseTargets, workSession.lastCompletedSession),
+    [baseTargets, workSession.lastCompletedSession],
+  );
+  const changeSummarySinceLastSession = useMemo(
+    () => summarizeChangesSinceSession(baseTargets, workSession.lastCompletedSession),
+    [baseTargets, workSession.lastCompletedSession],
+  );
+  const resolvedOutcomeItems = useMemo(
+    () => deriveDeskResolvedOutcomeItems(workSession.lastCompletedSession, 5),
+    [workSession.lastCompletedSession],
+  );
+
+  if (!mounted) return null;
+  if (surfaces.length === 0 && displayedTargets.length === 0 && !hasTargetQueue) {
+    return (
+      <StageShell
+        variant="working"
+        contentVariant="working"
+        innerStyle={{ minHeight: '100vh', paddingTop: '4.75rem', paddingBottom: '2.5rem' }}
+      >
+        <QuietScene tone="today">
+          <QuietSceneColumn>
+            <TodayHeader />
+            <QuietEmptyState
+              eyebrow="Today"
+              title="Nothing is asking for attention yet."
+              summary="Enter a source from the Sidebar or open the Shuttle. Once you read, capture, or weave, today’s returns settle back onto this desk."
+              primaryLabel="Open Shuttle"
+              onPrimary={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+              secondaryLabel="Open Atlas"
+              onSecondary={() => router.push('/knowledge')}
+            />
+          </QuietSceneColumn>
+        </QuietScene>
+      </StageShell>
+    );
+  }
+
+  const focusTarget = resolvedSession.currentTarget ?? displayedTargets[0] ?? null;
+  const remainingTargets = resolvedSession.active
+    ? resolvedSession.remainingTargets.slice(1, 6)
+    : displayedTargets.slice(1, 6);
+  const focusTargetReturnLabel = focusTarget ? learningTargetReturnLabel(focusTarget, targetState.state) : null;
+  const focusSurface = !focusTarget ? surfaces[0] ?? null : null;
   const focusId = focusSurface?.id ?? null;
-  const remainingSurfaces = surfaces.filter((surface) => surface.id !== focusId);
+  const remainingSurfaces = focusSurface ? surfaces.filter((surface) => surface.id !== focusId) : [];
 
   const openNext = (surface: StudySurface, next: 'source' | 'rehearsal' | 'examiner' | 'review') => {
     if (next === 'source') {
@@ -240,36 +340,383 @@ export function TodayClient({
   };
 
   return (
-    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '1rem' }}>
-      {focusSurface && (
-        <QuietGuideCard
-          eyebrow="Keep the thread warm"
-          title={focusSurface.title}
-          mode="inline"
-          meta={<span>{timeOfDay(focusSurface.touchedAt)}</span>}
-          actions={[
-            {
-              label: todayPrimaryActionLabel(focusSurface.learning.nextAction),
-              onClick: () => openPrimaryAction(focusSurface),
-              primary: true,
-            },
-            { label: 'Open source', onClick: () => router.push(focusSurface.href) },
-          ]}
-        />
-      )}
+    <StageShell
+      variant="working"
+      contentVariant="working"
+      innerStyle={{ minHeight: '100vh', paddingTop: '4.75rem', paddingBottom: '2.2rem' }}
+    >
+      <QuietScene tone="today">
+        <QuietSceneColumn>
+          <TodayHeader />
+          {focusTarget ? (
+            <QuietGuideCard
+              eyebrow={learningTargetEyebrow(focusTarget)}
+              title={focusTarget.title}
+              tone="primary"
+              density="roomy"
+              meta={
+                <span>
+                  {timeOfDay(focusTarget.touchedAt)}
+                  {workTargets.length > 0 ? ` · ${workTargets.length} ready` : ''}
+                </span>
+              }
+              summary={focusTarget.preview || focusTarget.reason}
+              detail={(focusTarget.preview || focusTarget.reason) ? (
+                <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+                  Why now · {[focusTargetReturnLabel, learningTargetWhyNow(focusTarget)].filter(Boolean).join(' · ')}
+                </div>
+              ) : undefined}
+              actions={[
+                {
+                  label: learningTargetActionLabel(focusTarget.action),
+                  onClick: () => openLearningTarget(router, focusTarget),
+                  primary: true,
+                },
+                {
+                  label: learningTargetSecondaryLabel(focusTarget),
+                  onClick: () => openLearningTargetSource(router, focusTarget),
+                },
+                {
+                  label: isLearningTargetPinned(focusTarget, targetState.state) ? 'Unpin' : 'Pin',
+                  onClick: () => targetState.togglePinned(focusTarget),
+                },
+                {
+                  label: 'Not now',
+                  onClick: () => targetState.notNow(focusTarget),
+                },
+                {
+                  label: 'Hide today',
+                  onClick: () => targetState.hideToday(focusTarget),
+                },
+                {
+                  label: 'Done',
+                  onClick: () => targetState.markDone(focusTarget),
+                },
+              ]}
+            />
+          ) : focusSurface && (
+            <QuietGuideCard
+              eyebrow="Keep this thread warm"
+              title={focusSurface.title}
+              tone="primary"
+              density="roomy"
+              meta={<span>{timeOfDay(focusSurface.touchedAt)}</span>}
+              summary={focusSurface.latestSummary || focusSurface.latestQuote || focusSurface.preview}
+              actions={[
+                {
+                  label: todayPrimaryActionLabel(focusSurface.learning.nextAction),
+                  onClick: () => openPrimaryAction(focusSurface),
+                  primary: true,
+                },
+                { label: 'Open source', onClick: () => router.push(focusSurface.href) },
+              ]}
+            />
+          )}
 
-      {remainingSurfaces.length > 0 && (
-        <ResumeList
-          items={remainingSurfaces}
-          onOpenPrimary={openPrimaryAction}
-          onOpenSource={(surface) => router.push(surface.href)}
-        />
-      )}
+          {(workTargets.length > 0 || resolvedSession.active) && (
+            <SessionStatusStrip
+              resolvedSession={resolvedSession}
+              readyCount={workTargets.length}
+              onStart={() => workSession.start(workTargets)}
+              onOpenCurrent={() => {
+                if (resolvedSession.currentTarget) openLearningTarget(router, resolvedSession.currentTarget);
+              }}
+              onEnd={() => workSession.clear()}
+            />
+          )}
 
-      <ReviewCards traces={traces} docsById={docsById} onOpenReview={openNext} />
+          {focusTarget && remainingTargets.length > 0 ? (
+            <TargetResumeList
+              items={remainingTargets}
+              onOpenPrimary={(target) => openLearningTarget(router, target)}
+              onOpenSecondary={(target) => openLearningTargetSource(router, target)}
+              onPin={(target) => targetState.togglePinned(target)}
+              onNotNow={(target) => targetState.notNow(target)}
+              onHideToday={(target) => targetState.hideToday(target)}
+              onDone={(target) => targetState.markDone(target)}
+              isPinned={(target) => isLearningTargetPinned(target, targetState.state)}
+              getReturnLabel={(target) => learningTargetReturnLabel(target, targetState.state)}
+            />
+          ) : null}
+
+          {hasTargetQueue && (
+            <LearningTargetQueueState
+              queue={targetQueue}
+              onRestore={(target) => targetState.restore(target)}
+              onTogglePinned={(target) => targetState.togglePinned(target)}
+            />
+          )}
+
+          {!resolvedSession.active && workSession.lastCompletedSession && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: '1.2rem' }}>
+              <QuietGuideCard
+                eyebrow="Since last session"
+                title={workSession.lastCompletedSession.recap ?? 'Recent work'}
+                mode="inline"
+                summary={changedSinceLastSession > 0
+                  ? `${changedSinceLastSession} target${changedSinceLastSession === 1 ? '' : 's'} changed since that session.`
+                  : 'Nothing new has changed since that session.'}
+                detail={changedSinceLastSession > 0 && changeSummarySinceLastSession ? (
+                  <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+                    {changeSummarySinceLastSession}
+                  </div>
+                ) : undefined}
+              />
+              {resolvedOutcomeItems.length > 0 && (
+                <ResolvedOutcomeList
+                  items={resolvedOutcomeItems}
+                  onOpen={(target) => openLearningTarget(router, target)}
+                />
+              )}
+            </div>
+          )}
+
+          {!focusTarget && remainingSurfaces.length > 0 && (
+            <ResumeList
+              items={remainingSurfaces}
+              onOpenPrimary={openPrimaryAction}
+              onOpenSource={(surface) => router.push(surface.href)}
+            />
+          )}
+
+          {!focusTarget && !resolvedSession.active ? (
+            <>
+              <ReviewCards traces={traces} docsById={docsById} onOpenReview={openNext} />
+              <DailyWeaveReflection traces={traces} history={history} />
+            </>
+          ) : null}
+        </QuietSceneColumn>
+      </QuietScene>
+    </StageShell>
+  );
+}
+
+function TodayHeader() {
+  return (
+    <header
+      style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        gap: 16,
+        flexWrap: 'wrap',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <WorkEyebrow subtle>Today</WorkEyebrow>
+        <div
+          style={{
+            fontFamily: 'var(--display)',
+            fontSize: '1.42rem',
+            fontWeight: 620,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.12,
+            color: 'var(--fg)',
+          }}
+        >
+          The next return should be obvious at a glance.
+        </div>
+      </div>
+      <div className="t-caption2" style={{ color: 'var(--muted)', maxWidth: 420 }}>
+        No rings, no scoreboards, no dashboard theater. Just the thread that changed and the work that belongs to it.
+      </div>
+    </header>
+  );
+}
+
+function DailyWeaveReflection({ traces, history }: { traces: Trace[], history: any[] }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const threadsWarmed = useMemo(() => {
+    const uniqueDocs = new Set<string>();
+    for (const entry of history) {
+      if (entry.viewedAt >= todayTs) uniqueDocs.add(entry.id);
+    }
+    for (const t of traces) {
+      if (t.updatedAt >= todayTs && t.source?.docId) uniqueDocs.add(t.source.docId);
+    }
+    return uniqueDocs.size;
+  }, [history, traces, todayTs]);
+
+  const weftsWoven = useMemo(() => {
+    let count = 0;
+    for (const t of traces) {
+      for (const e of t.events) {
+        if (e.kind === 'thought-anchor' && e.at >= todayTs) count++;
+      }
+    }
+    return count;
+  }, [traces, todayTs]);
+
+  if (threadsWarmed === 0 && weftsWoven === 0) return null;
+
+  return (
+    <section style={{
+      marginTop: '3.5rem',
+    }}>
+      <WorkSurface
+        tone="quiet"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          animation: 'loom-overlay-fade-in 0.6s var(--ease) both',
+        }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <line key={i} x1={20 + i * 18} y1="0" x2={20 + i * 18} y2="40" stroke="var(--mat-border)" strokeWidth="0.5" opacity="0.4" />
+            ))}
+            {Array.from({ length: Math.min(weftsWoven, 12) }).map((_, i) => {
+              const y = 8 + (i * 24 / Math.min(weftsWoven, 12));
+              return (
+                <line
+                  key={i}
+                  x1="10" y1={y} x2="150" y2={y}
+                  stroke="var(--accent)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  opacity={0.3 + (i * 0.5 / weftsWoven)}
+                  style={{ animation: `lpFade 1s var(--ease) ${i * 0.1}s both` }}
+                />
+              );
+            })}
+            {Array.from({ length: Math.min(threadsWarmed, 8) }).map((_, i) => (
+              <circle key={i} cx={20 + i * 18} cy="20" r="2" fill="var(--accent)" opacity="0.6" />
+            ))}
+          </svg>
+        </div>
+        <WorkEyebrow subtle style={{ marginBottom: 4 }}>Today&apos;s weave</WorkEyebrow>
+        <div style={{ fontFamily: 'var(--display)', fontSize: '0.95rem', color: 'var(--fg)', fontWeight: 500 }}>
+          {threadsWarmed} thread{threadsWarmed === 1 ? '' : 's'} warmed, {weftsWoven} new weft{weftsWoven === 1 ? '' : 's'} woven today.
+        </div>
+      </WorkSurface>
+    </section>
+  );
+}
+
+function QuietEmptyState({
+  eyebrow,
+  title,
+  summary,
+  primaryLabel,
+  onPrimary,
+  secondaryLabel,
+  onSecondary,
+}: {
+  eyebrow: string;
+  title: string;
+  summary: string;
+  primaryLabel: string;
+  onPrimary: () => void;
+  secondaryLabel: string;
+  onSecondary: () => void;
+}) {
+  return (
+    <div
+      style={{
+        minHeight: 'calc(100vh - 14rem)',
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      <QuietSceneIntro
+        eyebrow={eyebrow}
+        title={title}
+        summary={
+          <>
+            {summary}
+            <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+              Today stays quiet until a source actually changes.
+            </div>
+          </>
+        }
+        actions={[
+          { label: primaryLabel, onClick: onPrimary, primary: true },
+          { label: secondaryLabel, onClick: onSecondary },
+        ]}
+      />
     </div>
   );
 }
+
+function SessionStatusStrip({
+  resolvedSession,
+  readyCount,
+  onStart,
+  onOpenCurrent,
+  onEnd,
+}: {
+  resolvedSession: ReturnType<typeof resolveWorkSession>;
+  readyCount: number;
+  onStart: () => void;
+  onOpenCurrent: () => void;
+  onEnd: () => void;
+}) {
+  if (!resolvedSession.active && readyCount === 0) return null;
+
+  return (
+    <WorkSurface tone="quiet" density="compact" style={{ marginTop: '0.35rem', marginBottom: '0.1rem' }}>
+      <div
+        className="t-caption2"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          color: 'var(--muted)',
+          letterSpacing: '0.04em',
+        }}
+      >
+        <WorkEyebrow subtle>Work session</WorkEyebrow>
+        <span aria-hidden style={{ opacity: 0.35 }}>·</span>
+        <span style={{ color: 'var(--fg)' }}>
+          {resolvedSession.active
+            ? (resolvedSession.finished ? 'Session complete' : `${resolvedSession.completedCount + 1} of ${resolvedSession.totalCount}`)
+            : `${readyCount} targets ready`}
+        </span>
+        {resolvedSession.active && !resolvedSession.finished && resolvedSession.nextTarget ? (
+          <>
+            <span aria-hidden style={{ opacity: 0.35 }}>·</span>
+            <span>Next up · {resolvedSession.nextTarget.title}</span>
+          </>
+        ) : null}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {resolvedSession.finished ? (
+            <button type="button" onClick={onEnd} style={sessionTextActionStyle(true)}>
+              End session
+            </button>
+          ) : resolvedSession.active && resolvedSession.currentTarget ? (
+            <>
+              <button type="button" onClick={onOpenCurrent} style={sessionTextActionStyle(true)}>
+                Open current
+              </button>
+              <button type="button" onClick={onEnd} style={sessionTextActionStyle(false)}>
+                End session
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={onStart} style={sessionTextActionStyle(true)}>
+                Start work session
+              </button>
+              {readyCount > 0 ? (
+                <span className="t-caption2" style={{ color: 'var(--muted)' }}>
+                  One quiet round at a time.
+                </span>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+    </WorkSurface>
+  );
+}
+
 
 function ResumeList({
   items,
@@ -281,15 +728,20 @@ function ResumeList({
   onOpenSource: (surface: StudySurface) => void;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <WorkSurface tone="quiet" density="compact" style={{ marginTop: '1.2rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <WorkEyebrow subtle>Warm threads</WorkEyebrow>
       {items.map((item, index) => (
         <div
           key={item.id}
           style={{
             color: 'var(--fg)',
-            padding: '0.8rem 0',
+            padding: '1.1rem',
             borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+            transition: 'background 0.2s var(--ease)',
           }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span
@@ -320,7 +772,6 @@ function ResumeList({
             <div
               style={{
                 marginTop: 6,
-                marginLeft: 2,
                 color: 'var(--fg-secondary)',
                 fontSize: '0.9rem',
                 lineHeight: 1.55,
@@ -334,45 +785,22 @@ function ResumeList({
             </div>
           )}
 
-          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => onOpenPrimary(item)}
-              style={{
-                padding: '0.42rem 0.72rem',
-                borderRadius: 999,
-                border: '0.5px solid var(--mat-border)',
-                background: 'transparent',
-                color: 'var(--fg)',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                cursor: 'pointer',
-              }}
+              style={resumeActionStyle(true)}
             >
               {todayPrimaryActionLabel(item.learning.nextAction)}
             </button>
-            <button
-              type="button"
-              onClick={() => onOpenSource(item)}
-              style={{
-                padding: '0.42rem 0.72rem',
-                borderRadius: 999,
-                border: '0.5px solid var(--mat-border)',
-                background: 'transparent',
-                color: 'var(--fg-secondary)',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={() => onOpenSource(item)} style={resumeTextActionStyle}>
               Source
             </button>
           </div>
         </div>
       ))}
-    </div>
+      </div>
+    </WorkSurface>
   );
 }
 
@@ -397,6 +825,206 @@ function todayPrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction'
       return 'Review';
   }
 }
+
+function resumeActionStyle(primary: boolean) {
+  return {
+    padding: '0.38rem 0.76rem',
+    borderRadius: 999,
+    border: primary ? '0.5px solid color-mix(in srgb, var(--accent) 22%, var(--mat-border))' : '0.5px solid var(--mat-border)',
+    background: primary ? 'color-mix(in srgb, var(--accent-soft) 74%, transparent)' : 'transparent',
+    color: primary ? 'var(--fg)' : 'var(--fg-secondary)',
+    fontSize: '0.74rem',
+    fontWeight: 650,
+    letterSpacing: '0.025em',
+    cursor: 'pointer',
+    boxShadow: 'none',
+    transition: 'all 0.2s var(--ease)',
+  } as const;
+}
+
+const resumeTextActionStyle = {
+  appearance: 'none' as const,
+  border: 0,
+  background: 'transparent',
+  color: 'var(--fg-secondary)',
+  fontSize: '0.71rem',
+  fontWeight: 650,
+  letterSpacing: '0.03em',
+  padding: 0,
+  cursor: 'pointer',
+};
+
+function sessionTextActionStyle(primary: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: primary ? 'var(--fg)' : 'var(--fg-secondary)',
+    fontSize: '0.71rem',
+    fontWeight: 650,
+    letterSpacing: '0.03em',
+    padding: 0,
+    cursor: 'pointer',
+  };
+}
+
+function TargetResumeList({
+  items,
+  onOpenPrimary,
+  onOpenSecondary,
+  onPin,
+  onNotNow,
+  onHideToday,
+  onDone,
+  isPinned,
+  getReturnLabel,
+}: {
+  items: LearningTarget[];
+  onOpenPrimary: (target: LearningTarget) => void;
+  onOpenSecondary: (target: LearningTarget) => void;
+  onPin: (target: LearningTarget) => void;
+  onNotNow: (target: LearningTarget) => void;
+  onHideToday: (target: LearningTarget) => void;
+  onDone: (target: LearningTarget) => void;
+  isPinned: (target: LearningTarget) => boolean;
+  getReturnLabel: (target: LearningTarget) => string | null;
+}) {
+  return (
+    <WorkSurface tone="quiet" density="compact" style={{ marginTop: '1.2rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <WorkEyebrow subtle>Remaining returns</WorkEyebrow>
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          style={{
+            color: 'var(--fg)',
+            padding: '1.1rem',
+            borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+            transition: 'background 0.2s var(--ease)',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: 'var(--display)',
+                fontSize: '1rem',
+                fontWeight: 550,
+                letterSpacing: '-0.012em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {item.title}
+            </span>
+            <span suppressHydrationWarning className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+              {timeOfDay(item.touchedAt)}
+            </span>
+          </div>
+          <div style={{ marginTop: 6, color: 'var(--fg-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
+            {item.preview || item.reason}
+          </div>
+          {(item.preview || item.reason) && (
+            <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
+              Why now · {learningTargetWhyNow(item)}
+            </div>
+          )}
+          {getReturnLabel(item) && (
+            <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
+              Returned · {getReturnLabel(item)}
+            </div>
+          )}
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => onOpenPrimary(item)} style={resumeActionStyle(true)}>
+              {learningTargetActionLabel(item.action)}
+            </button>
+            <button type="button" onClick={() => onOpenSecondary(item)} style={resumeTextActionStyle}>
+              {learningTargetSecondaryLabel(item)}
+            </button>
+            <button type="button" onClick={() => onPin(item)} style={resumeTextActionStyle}>
+              {isPinned(item) ? 'Unpin' : 'Pin'}
+            </button>
+            <button type="button" onClick={() => onNotNow(item)} style={resumeTextActionStyle}>
+              Not now
+            </button>
+            <button type="button" onClick={() => onHideToday(item)} style={resumeTextActionStyle}>
+              Hide today
+            </button>
+            <button type="button" onClick={() => onDone(item)} style={resumeTextActionStyle}>
+              Done
+            </button>
+          </div>
+        </div>
+      ))}
+      </div>
+    </WorkSurface>
+  );
+}
+
+function ResolvedOutcomeList({
+  items,
+  onOpen,
+}: {
+  items: Array<{
+    handledAt: number;
+    resolvedLabel: string;
+    resolutionKind: import('../../lib/work-session').WorkSessionResolutionKind;
+    targetSnapshot: LearningTarget;
+  }>;
+  onOpen: (target: LearningTarget) => void;
+}) {
+  return (
+    <WorkSurface tone="quiet" density="compact">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <WorkEyebrow subtle>Resolved in that session</WorkEyebrow>
+      {items.map((item, index) => (
+        <div
+          key={`${item.targetSnapshot.id}:${item.handledAt}`}
+          style={{
+            color: 'var(--fg)',
+            padding: '0.9rem 1.1rem',
+            borderBottom: index < items.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: 'var(--display)',
+                fontSize: '0.98rem',
+                fontWeight: 550,
+                letterSpacing: '-0.012em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {item.targetSnapshot.title}
+            </span>
+            <span className="t-caption" style={{ color: 'var(--muted)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+              {timeOfDay(item.handledAt)}
+            </span>
+          </div>
+          <div className="t-caption2" style={{ marginTop: 4, color: 'var(--muted)' }}>
+            {item.resolvedLabel} · {resolutionKindLabel(item.resolutionKind)} · Resolved for this change
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => onOpen(item.targetSnapshot)} style={resumeTextActionStyle}>
+              Reopen
+            </button>
+          </div>
+        </div>
+      ))}
+      </div>
+    </WorkSurface>
+  );
+}
+
 
 /**
  * ReviewCards — flashcard-style review from recent anchored notes.
@@ -492,38 +1120,48 @@ function ReviewCards({
   };
 
   return (
-    <section style={{ marginTop: '1.8rem' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <section style={{ marginTop: '2.5rem' }}>
+      <div className="t-caption2" style={{ color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 12 }}>
+        Review recent thoughts
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {cards.map((card, i) => (
           <div
             key={i}
             onClick={() => toggle(i)}
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 10,
+              padding: '1.1rem 1.25rem',
+              borderRadius: 'var(--r-3)',
               border: '0.5px solid var(--mat-border)',
-              background: revealed.has(i) ? 'var(--accent-soft)' : 'transparent',
+              background: revealed.has(i) ? 'var(--mat-thick-bg)' : 'var(--mat-thin-bg)',
+              backdropFilter: 'var(--mat-blur)',
+              WebkitBackdropFilter: 'var(--mat-blur)',
+              boxShadow: revealed.has(i) ? 'var(--shadow-2)' : 'var(--shadow-1)',
               cursor: 'pointer',
-              transition: 'background 0.18s var(--ease)',
+              transition: 'all 0.3s var(--ease-spring)',
+              transform: revealed.has(i) ? 'scale(1.01)' : 'scale(1)',
             }}
           >
             <div style={{
-              fontSize: '0.9rem', lineHeight: 1.55,
+              fontSize: '0.94rem', lineHeight: 1.6,
               color: 'var(--fg)',
               fontStyle: 'italic',
+              opacity: revealed.has(i) ? 0.6 : 1,
+              transition: 'opacity 0.3s var(--ease)',
             }}>
-              &ldquo;{card.quote.length > 120 ? card.quote.slice(0, 117) + '…' : card.quote}&rdquo;
+              &ldquo;{card.quote.length > 150 ? card.quote.slice(0, 147) + '…' : card.quote}&rdquo;
             </div>
             {revealed.has(i) && (
-              <div style={{ marginTop: 8, animation: 'lpFade 0.18s var(--ease)' }}>
+              <div style={{ marginTop: 12, animation: 'loom-overlay-fade-in 0.3s var(--ease) both' }}>
                 <div style={{
-                  fontSize: '0.88rem', lineHeight: 1.5,
+                  fontSize: '1rem', lineHeight: 1.5,
                   color: 'var(--fg)', fontWeight: 600,
-                  marginBottom: 4,
+                  marginBottom: 8,
+                  letterSpacing: '-0.01em',
                 }}>
                   {card.summary}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -533,27 +1171,30 @@ function ReviewCards({
                     }}
                     style={{
                       appearance: 'none',
-                      border: 0,
-                      background: 'transparent',
+                      border: '0.5px solid var(--mat-border)',
+                      background: 'var(--accent-soft)',
                       color: 'var(--accent)',
+                      borderRadius: 999,
+                      padding: '0.35rem 0.75rem',
                       fontSize: '0.75rem',
                       fontWeight: 700,
                       letterSpacing: '0.04em',
-                      padding: 0,
                       cursor: 'pointer',
+                      transition: 'all 0.2s var(--ease)',
                     }}
                   >
-                    Review
+                    Deep Review
                   </button>
                   <Link
                     href={card.href}
                     onClick={(e) => e.stopPropagation()}
                     style={{
-                      fontSize: '0.75rem', color: 'var(--fg-secondary)',
+                      fontSize: '0.75rem', color: 'var(--muted)',
                       textDecoration: 'none',
+                      fontWeight: 500,
                     }}
                   >
-                    {card.docTitle}
+                    from {card.docTitle}
                   </Link>
                 </div>
               </div>

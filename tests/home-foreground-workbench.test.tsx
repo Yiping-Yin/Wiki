@@ -79,3 +79,17 @@ test('home client delegates docs loading to a dedicated hook', () => {
   assert.doesNotMatch(homeSource, /useState<HomeIndexDoc\[]>/);
   assert.doesNotMatch(homeSource, /const load = async \(\) =>/);
 });
+
+test('home and today share the desk derive module', () => {
+  const homeSource = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
+  const todaySource = fs.readFileSync(path.join(repoRoot, 'app/today/TodayClient.tsx'), 'utf8');
+  const deskSource = fs.readFileSync(path.join(repoRoot, 'lib/shared/desk-derive.ts'), 'utf8');
+
+  assert.match(deskSource, /deriveDeskLearningState/);
+  assert.match(deskSource, /deriveDeskQueue/);
+  assert.match(deskSource, /deriveDeskResolvedOutcomeItems/);
+  assert.match(homeSource, /deriveDeskLearningState/);
+  assert.match(homeSource, /deriveDeskQueue/);
+  assert.match(todaySource, /deriveDeskLearningState/);
+  assert.match(todaySource, /deriveDeskQueue/);
+});

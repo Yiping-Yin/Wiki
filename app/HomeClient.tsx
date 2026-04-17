@@ -22,8 +22,6 @@ import {
 import { useHomeWorkbenchData } from '../components/home/useHomeWorkbenchData';
 import { useHistory } from '../lib/use-history';
 import {
-  applyLearningTargetState,
-  collectLearningTargetQueue,
   learningTargetReturnLabel,
   useLearningTargetState,
 } from '../lib/learning-target-state';
@@ -38,11 +36,13 @@ import {
 import { isRenderablePanel, useAllPanels } from '../lib/panel';
 import { openShuttle } from '../lib/shuttle';
 import { useAllWeaves } from '../lib/weave';
+import { useWorkSession } from '../lib/work-session';
 import {
-  applyLastCompletedSessionSignal,
-  resolvedOutcomesForDisplay,
-  useWorkSession,
-} from '../lib/work-session';
+  deriveDeskLearningState,
+  deriveDeskQueue,
+  deriveDeskResolvedOutcomeItems,
+  hasDeskQueue,
+} from '../lib/shared/desk-derive';
 
 export function HomeClient() {
   const router = useRouter();
@@ -57,25 +57,21 @@ export function HomeClient() {
     () => buildLearningTargets({ panels: panels.filter(isRenderablePanel), weaves }),
     [panels, weaves],
   );
-  const rawTargets = useMemo(
-    () => applyLastCompletedSessionSignal(baseTargets, workSession.lastCompletedSession),
-    [baseTargets, workSession.lastCompletedSession],
-  );
-  const visibleTargets = useMemo(
-    () => applyLearningTargetState(rawTargets, targetState.state),
-    [rawTargets, targetState.state],
-  );
+  const deskState = useMemo(() => deriveDeskLearningState({
+    baseTargets,
+    learningTargetState: targetState.state,
+    lastCompletedSession: workSession.lastCompletedSession,
+    session: workSession.session,
+  }), [baseTargets, targetState.state, workSession.lastCompletedSession, workSession.session]);
+  const visibleTargets = deskState.visibleTargets;
   const focusTarget = visibleTargets[0] ?? null;
-  const queue = useMemo(
-    () => collectLearningTargetQueue(
-      rawTargets,
-      targetState.state,
-      focusTarget ? { excludeIds: new Set([focusTarget.id]) } : undefined,
-    ),
-    [focusTarget, rawTargets, targetState.state],
-  );
+  const queue = useMemo(() => deriveDeskQueue({
+    rawTargets: deskState.rawTargets,
+    learningTargetState: targetState.state,
+    excludeIds: focusTarget ? new Set([focusTarget.id]) : undefined,
+  }), [deskState.rawTargets, focusTarget, targetState.state]);
   const resolvedOutcomes = useMemo(
-    () => resolvedOutcomesForDisplay(workSession.lastCompletedSession).slice(0, 3),
+    () => deriveDeskResolvedOutcomeItems(workSession.lastCompletedSession, 3),
     [workSession.lastCompletedSession],
   );
 
@@ -86,7 +82,7 @@ export function HomeClient() {
     + queue.snoozed.length
     + queue.hiddenToday.length
     + queue.done.length;
-  const hasQueue = queueCount > 0;
+  const hasQueue = hasDeskQueue(queue);
   const hasResolved = resolvedOutcomes.length > 0;
   const hasRecentThreads = recentThreads.length > 0;
 
