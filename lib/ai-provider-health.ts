@@ -185,14 +185,25 @@ export function deriveAiAvailability(
   preferredCli: AiCliKind,
   providers: CliHealth[] | null | undefined,
 ): AiAvailability {
-  if (!providers || providers.length === 0) {
+  if (!providers) {
     return {
       selected: null,
       alternate: null,
-      effectiveCli: preferredCli,
-      canSend: true,
-      notice: null,
-      tone: null,
+      effectiveCli: null,
+      canSend: false,
+      notice: 'Checking AI availability…',
+      tone: 'muted',
+    };
+  }
+
+  if (providers.length === 0) {
+    return {
+      selected: null,
+      alternate: null,
+      effectiveCli: null,
+      canSend: false,
+      notice: 'AI unavailable — provider status could not be verified. Retry, or open Settings to inspect the configured CLI.',
+      tone: 'error',
     };
   }
 

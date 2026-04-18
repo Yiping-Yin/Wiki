@@ -10,6 +10,7 @@
  */
 import { pickCli } from '../../../lib/claude-cli';
 import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
+import type { AiStageId } from '../../../lib/ai/stage-model';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -34,7 +35,13 @@ function buildPrompt(messages: Msg[], context?: string): string {
 }
 
 export async function POST(req: Request) {
-  let body: { messages: Msg[]; cli?: 'claude' | 'codex'; model?: 'claude' | 'codex'; context?: string };
+  let body: {
+    messages: Msg[];
+    cli?: 'claude' | 'codex';
+    model?: 'claude' | 'codex';
+    context?: string;
+    stage?: AiStageId;
+  };
   try {
     body = await req.json();
   } catch {
@@ -61,7 +68,7 @@ export async function POST(req: Request) {
       const result = await invokeLocalRuntime({
         preferred: cli,
         prompt,
-        timeoutMs: 180000,
+        stage: body.stage,
         onChunk: (chunk) => {
           streamed = true;
           safeEnqueue(`data: ${JSON.stringify({ delta: chunk })}\n\n`);

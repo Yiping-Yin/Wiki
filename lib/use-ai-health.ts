@@ -36,7 +36,7 @@ export function useAiHealth(enabled = true) {
     const ac = new AbortController();
 
     setLoading(true);
-    fetch('/api/ai-health', { signal: ac.signal })
+    fetch(`/api/ai-health?preferred=${preferredCli}`, { signal: ac.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`health ${response.status}`);
         return response.json();
@@ -58,7 +58,7 @@ export function useAiHealth(enabled = true) {
       cancelled = true;
       ac.abort();
     };
-  }, [enabled]);
+  }, [enabled, preferredCli]);
 
   const availability: AiAvailability = deriveAiAvailability(preferredCli, providers);
 

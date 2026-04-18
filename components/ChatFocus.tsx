@@ -783,6 +783,7 @@ export function ChatFocus() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedPassIndex, setSelectedPassIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ClarificationViewMode>('source');
+  const waitingProviderLabel = effectiveCli === 'claude' ? 'Claude CLI' : 'Codex CLI';
 
   useEffect(() => {
     if (!shouldShowClarificationHistory(turns.length)) {
@@ -1135,7 +1136,12 @@ export function ChatFocus() {
                 alignItems: 'center',
               }}
             >
-              {showWaitingIndicator ? <WeftShuttle width={56} height={12} /> : null}
+              {showWaitingIndicator ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', fontSize: '0.72rem' }}>
+                  <WeftShuttle width={56} height={12} />
+                  <span>Waiting on {waitingProviderLabel}…</span>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
