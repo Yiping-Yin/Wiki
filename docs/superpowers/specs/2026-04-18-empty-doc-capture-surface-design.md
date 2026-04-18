@@ -100,6 +100,7 @@ This change applies to:
 - new topic creation handoff
 - source ingestion handoff for empty topics
 - one AI-assisted document organization path
+- workflow recording for this first-pass capture journey so future workflows can reuse the same contract shape
 
 This change may introduce a small document-write API if needed.
 
@@ -183,7 +184,50 @@ It should not feel like:
 
 The `/today` prompt remains valid for free-mode weaving, but it is no longer the recommended first step for turning raw topic material into a source note.
 
-## 9. Document-State Detection
+## 9. Workflow Contract
+
+This feature is not only a UI change. It is the first formal capture workflow contract for Loom.
+
+The following journeys must be fully connected end to end.
+
+### 9.1 Workflow A · New Topic -> Write -> Organize
+
+1. user creates a new topic
+2. Loom opens the first document page for that topic
+3. the page renders capture mode because the document is still empty
+4. user writes or pastes rough material
+5. user presses `Organize into note`
+6. AI rewrites the material into structured markdown
+7. Loom writes the result back into the same document
+8. the page exits capture mode and becomes a normal document page
+
+### 9.2 Workflow B · New Topic -> Import -> Organize
+
+1. user creates or opens an empty topic
+2. user drops or picks a text-extractable file inside that same topic
+3. Loom attaches the source to the topic and extracts usable text
+4. capture mode reflects that imported source is available
+5. user runs `Organize into note`
+6. the current document becomes the organized first source page for the topic
+
+### 9.3 Workflow C · Existing Empty Topic -> Paste -> Organize
+
+1. user reopens an empty topic later
+2. capture mode is still there because the document is still effectively empty
+3. user pastes a large block of raw material
+4. AI organizes the material into the same document
+5. the document becomes readable and study-ready without detouring through Today
+
+### 9.4 Failure Contract
+
+If any workflow fails:
+
+- the user's typed or pasted draft must remain visible
+- imported assets must not disappear
+- the page must explain what failed in place
+- the user must still be able to retry without re-entering everything
+
+## 10. Document-State Detection
 
 The capture surface should appear only when the document is still effectively empty.
 
@@ -194,9 +238,9 @@ Recommended rule:
 
 This avoids adding a new route or manual mode toggle.
 
-## 10. File Intake Contract
+## 11. File Intake Contract
 
-### 10.1 First Pass Support
+### 11.1 First Pass Support
 
 First implementation should support:
 
@@ -206,15 +250,15 @@ First implementation should support:
 
 Optionally keep existing upload support for richer file types, but only claim full empty-doc integration for text-extractable inputs that can actually feed the AI organization step.
 
-### 10.2 Deferred Rich Assets
+### 11.2 Deferred Rich Assets
 
 PDF, PPT, DOCX, video, and other richer assets are still part of the long-term target, but they should be explicitly treated as follow-up work unless there is already a clean extraction path.
 
 Do not pretend they are fully integrated into the same editable doc flow if the current behavior still treats them as plain uploaded assets.
 
-## 11. UI Contract
+## 12. UI Contract
 
-### 11.1 Composition
+### 12.1 Composition
 
 The page should feel like a source sheet, not a settings form.
 
@@ -228,13 +272,13 @@ Recommended vertical order:
 6. AI organize action row
 7. optional attached-source list
 
-### 11.2 Primary Focus
+### 12.2 Primary Focus
 
 The text area is the page.
 
 It should not be visually subordinate to buttons, helper cards, or side panels.
 
-### 11.3 After AI Organization
+### 12.3 After AI Organization
 
 Once the document has meaningful content:
 
@@ -242,7 +286,7 @@ Once the document has meaningful content:
 - the page becomes a normal document page
 - study tools such as selection chat, rehearsal, and examiner work as they already do
 
-## 12. Write Path
+## 13. Write Path
 
 This feature needs a real source write path.
 
@@ -256,7 +300,7 @@ The new capture flow therefore needs:
 
 This is the architectural difference between "generate a Today note" and "establish the actual source".
 
-## 13. Error Handling
+## 14. Error Handling
 
 If AI organization fails:
 
@@ -269,7 +313,33 @@ If file extraction is unsupported:
 - keep the asset attached if upload succeeded
 - say clearly that the file is attached but was not auto-organized into document text
 
-## 14. Testing
+## 15. Workflow Recording Rules
+
+This workflow should become the template for future Loom workflows.
+
+Every future workflow design should explicitly record:
+
+1. entry surface
+2. foreground object
+3. allowed user inputs
+4. AI action name
+5. persistent write target
+6. exit state after success
+7. exit state after failure
+
+For this workflow, those values are:
+
+- entry surface: empty knowledge document page
+- foreground object: capture text area
+- allowed inputs: type, paste, drop, pick file
+- AI action name: `Organize into note`
+- persistent write target: current knowledge markdown document
+- success exit state: normal document reader
+- failure exit state: same capture page with preserved draft and inline error
+
+This is what makes the feature reusable as a pattern instead of a one-off screen.
+
+## 16. Testing
 
 Minimum verification should cover:
 
@@ -278,6 +348,7 @@ Minimum verification should cover:
 - a non-empty document does not render the capture surface
 - organize action writes structured markdown back into the document body
 - failed organization preserves the draft
+- imported text-extractable files remain attached to the same topic throughout the organize flow
 
 Manual desktop validation should cover:
 
@@ -285,8 +356,10 @@ Manual desktop validation should cover:
 - organize into note
 - refresh / reopen app
 - confirm the same document now opens in normal reader mode
+- create topic -> import supported source -> organize into note
+- reopen that topic later and confirm the organized source is still the first foreground object
 
-## 15. Recommended Implementation Order
+## 17. Recommended Implementation Order
 
 1. detect empty-doc state on knowledge doc routes
 2. add source-body write API for the document
@@ -295,7 +368,7 @@ Manual desktop validation should cover:
 5. connect import handoff for empty topics
 6. verify in Loom.app by real first-use testing
 
-## 16. Why This Is The Right Next Move
+## 18. Why This Is The Right Next Move
 
 This is the smallest change that actually converges the product toward the requested behavior.
 
