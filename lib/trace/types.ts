@@ -74,13 +74,13 @@ export type TraceEvent =
   /**
    * §7 · Crystallize — lock a thinking unit as "final form".
    *
-   * Two scopes:
-   * - Trace-level (no anchorId): the whole reading session is done. This is
-   *   the legacy behavior used by /kesi to surface finished panels.
-   * - Anchor-level (with anchorId): a single thought container is locked.
-   *   New versions cannot be appended to a locked container without first
-   *   un-crystallizing. Multiple anchor-level crystallize events may exist
-   *   in the same trace, one per locked container.
+ * Two scopes:
+ * - Trace-level (no anchorId): the whole reading session is done. This is
+ *   the legacy behavior used by /patterns to surface finished panels.
+ * - Anchor-level (with anchorId): a single local thought container is locked.
+ *   This is NOT the same as the panel entering Kesi. It simply freezes one
+ *   local thread against new versions until unlocked. Multiple anchor-level
+ *   crystallize events may exist in the same trace, one per locked container.
    */
   | { kind: 'crystallize'; summary: string; at: number; anchorId?: string; }
   /**

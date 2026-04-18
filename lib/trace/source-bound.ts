@@ -1,15 +1,8 @@
 'use client';
 
+import { emitTraceChange } from './events';
 import type { Trace, TraceEvent } from './types';
 import { traceStore } from './store';
-
-const CHANGE_EVENT = 'loom:trace:changed';
-
-function emitChange() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
-  }
-}
 
 export async function ensureReadingTrace(input: {
   docId: string;
@@ -31,7 +24,11 @@ export async function ensureReadingTrace(input: {
     },
     initialEvents: [],
   });
-  emitChange();
+  emitTraceChange({
+    docIds: [input.docId],
+    traceIds: [created.id],
+    reason: 'ensure-reading-trace',
+  });
   return created;
 }
 
@@ -41,7 +38,11 @@ export async function appendEventForDoc(
 ): Promise<Trace | null> {
   const trace = await ensureReadingTrace(input);
   const updated = await traceStore.appendEvent(trace.id, event);
-  emitChange();
+  emitTraceChange({
+    docIds: [input.docId],
+    traceIds: updated ? [updated.id] : [trace.id],
+    reason: 'append-event-for-doc',
+  });
   return updated;
 }
 

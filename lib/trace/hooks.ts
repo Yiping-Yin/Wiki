@@ -8,22 +8,15 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { Trace, TraceCreateInput, TraceEvent } from './types';
+import { emitTraceChange, TRACE_CHANGE_EVENT, type TraceChangeDetail } from './events';
 import { traceStore } from './store';
-
-const CHANGE_EVENT = 'loom:trace:changed';
-
-function emitChange() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
-  }
-}
 
 function useChangeSubscription(refresh: () => void) {
   useEffect(() => {
     refresh();
     const onChange = () => refresh();
-    window.addEventListener(CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(CHANGE_EVENT, onChange);
+    window.addEventListener(TRACE_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(TRACE_CHANGE_EVENT, onChange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
@@ -41,10 +34,14 @@ export function useTrace(id: string | null): { trace: Trace | null; loading: boo
   }, [id]);
   useEffect(() => {
     refresh();
-    const onChange = () => refresh();
-    window.addEventListener(CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(CHANGE_EVENT, onChange);
-  }, [refresh]);
+    const onChange = (event: Event) => {
+      const detail = ((event as CustomEvent<TraceChangeDetail>).detail ?? {}) as TraceChangeDetail;
+      if (detail.traceIds && id && !detail.traceIds.includes(id)) return;
+      refresh();
+    };
+    window.addEventListener(TRACE_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(TRACE_CHANGE_EVENT, onChange);
+  }, [id, refresh]);
   return { trace, loading };
 }
 
@@ -59,10 +56,14 @@ export function useTracesForDoc(docId: string | null): { traces: Trace[]; loadin
   }, [docId]);
   useEffect(() => {
     refresh();
-    const onChange = () => refresh();
-    window.addEventListener(CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(CHANGE_EVENT, onChange);
-  }, [refresh]);
+    const onChange = (event: Event) => {
+      const detail = ((event as CustomEvent<TraceChangeDetail>).detail ?? {}) as TraceChangeDetail;
+      if (detail.docIds && docId && !detail.docIds.includes(docId)) return;
+      refresh();
+    };
+    window.addEventListener(TRACE_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(TRACE_CHANGE_EVENT, onChange);
+  }, [docId, refresh]);
   return { traces, loading };
 }
 
@@ -78,8 +79,8 @@ export function useTraceTree(rootId: string | null): { traces: Trace[]; loading:
   useEffect(() => {
     refresh();
     const onChange = () => refresh();
-    window.addEventListener(CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(CHANGE_EVENT, onChange);
+    window.addEventListener(TRACE_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(TRACE_CHANGE_EVENT, onChange);
   }, [refresh]);
   return { traces, loading };
 }
@@ -126,7 +127,11 @@ export function useSearchTraces(query: string, limit = 20): { results: Trace[]; 
 export function useCreateTrace() {
   return useCallback(async (input: TraceCreateInput): Promise<Trace> => {
     const t = await traceStore.create(input);
-    emitChange();
+    emitTraceChange({
+      docIds: input.source?.docId ? [input.source.docId] : undefined,
+      traceIds: [t.id],
+      reason: 'create-trace',
+    });
     return t;
   }, []);
 }
@@ -134,7 +139,11 @@ export function useCreateTrace() {
 export function useAppendEvent() {
   return useCallback(async (traceId: string, event: TraceEvent): Promise<Trace | null> => {
     const t = await traceStore.appendEvent(traceId, event);
-    emitChange();
+    emitTraceChange({
+      docIds: t?.source?.docId ? [t.source.docId] : undefined,
+      traceIds: t ? [t.id] : [traceId],
+      reason: 'append-event',
+    });
     return t;
   }, []);
 }
@@ -142,15 +151,24 @@ export function useAppendEvent() {
 export function useUpdateTrace() {
   return useCallback(async (traceId: string, partial: Partial<Trace>): Promise<Trace | null> => {
     const t = await traceStore.update(traceId, partial);
-    emitChange();
+    emitTraceChange({
+      docIds: t?.source?.docId ? [t.source.docId] : undefined,
+      traceIds: t ? [t.id] : [traceId],
+      reason: 'update-trace',
+    });
     return t;
   }, []);
 }
 
 export function useDeleteTrace() {
   return useCallback(async (traceId: string): Promise<void> => {
+    const tree = await traceStore.getTree(traceId);
     await traceStore.deleteTree(traceId);
-    emitChange();
+    emitTraceChange({
+      docIds: Array.from(new Set(tree.map((trace) => trace.source?.docId).filter(Boolean) as string[])),
+      traceIds: tree.map((trace) => trace.id),
+      reason: 'delete-trace',
+    });
   }, []);
 }
 
@@ -164,7 +182,11 @@ export function useRemoveEvents() {
     predicate: (e: TraceEvent, i: number) => boolean,
   ): Promise<Trace | null> => {
     const t = await traceStore.removeEvents(traceId, predicate);
-    emitChange();
+    emitTraceChange({
+      docIds: t?.source?.docId ? [t.source.docId] : undefined,
+      traceIds: t ? [t.id] : [traceId],
+      reason: 'remove-events',
+    });
     return t;
   }, []);
 }

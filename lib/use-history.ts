@@ -1,18 +1,11 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import { emitTraceChange, TRACE_CHANGE_EVENT } from './trace/events';
 import { traceStore } from './trace/store';
 import type { Trace } from './trace/types';
 import { ensureReadingTrace, latestVisitAt } from './trace/source-bound';
 
-const CHANGE_EVENT = 'loom:trace:changed';
-
 export type HistoryEntry = { id: string; title: string; href: string; viewedAt: number };
-
-function emitChange() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
-  }
-}
 
 function toEntries(traces: Trace[]): HistoryEntry[] {
   return traces
@@ -37,10 +30,10 @@ export function useHistory(): [HistoryEntry[], (e: Omit<HistoryEntry, 'viewedAt'
     };
     refresh();
     const onChange = () => refresh();
-    window.addEventListener(CHANGE_EVENT, onChange);
+    window.addEventListener(TRACE_CHANGE_EVENT, onChange);
     return () => {
       cancelled = true;
-      window.removeEventListener(CHANGE_EVENT, onChange);
+      window.removeEventListener(TRACE_CHANGE_EVENT, onChange);
     };
   }, []);
 
@@ -51,7 +44,7 @@ export function useHistory(): [HistoryEntry[], (e: Omit<HistoryEntry, 'viewedAt'
       sourceTitle: e.title,
     });
     await traceStore.appendEvent(trace.id, { kind: 'visit', at: Date.now() });
-    emitChange();
+    emitTraceChange({ docIds: [e.id], traceIds: [trace.id], reason: 'history-visit' });
   }, []);
 
   const clear = useCallback(async () => {
@@ -60,7 +53,11 @@ export function useHistory(): [HistoryEntry[], (e: Omit<HistoryEntry, 'viewedAt'
       if (t.kind !== 'reading' || t.parentId || !t.source?.docId) continue;
       await traceStore.removeEvents(t.id, (ev) => ev.kind === 'visit');
     }
-    emitChange();
+    emitTraceChange({
+      docIds: traces.map((trace) => trace.source?.docId).filter(Boolean) as string[],
+      traceIds: traces.map((trace) => trace.id),
+      reason: 'history-clear',
+    });
     setEntries([]);
   }, []);
 

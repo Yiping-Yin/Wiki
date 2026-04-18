@@ -1,18 +1,11 @@
 'use client';
 import { useCallback, useMemo } from 'react';
+import { emitTraceChange } from './trace/events';
 import { useAllTraces } from './trace';
 import { ensureReadingTrace } from './trace/source-bound';
 import { traceStore } from './trace/store';
 
-const CHANGE_EVENT = 'loom:trace:changed';
-
 export type PinnedDoc = { id: string; title: string; href: string; pinnedAt: number };
-
-function emitChange() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
-  }
-}
 
 export function usePins(): {
   pins: PinnedDoc[];
@@ -43,7 +36,7 @@ export function usePins(): {
       sourceTitle: entry.title,
     });
     await traceStore.update(trace.id, { pinnedAt: trace.pinnedAt ? undefined : Date.now() });
-    emitChange();
+    emitTraceChange({ docIds: [entry.id], traceIds: [trace.id], reason: 'pin-toggle' });
   }, []);
 
   const unpin = useCallback(async (id: string) => {
@@ -51,7 +44,7 @@ export function usePins(): {
     const trace = traces.find((t) => t.kind === 'reading' && !t.parentId);
     if (!trace) return;
     await traceStore.update(trace.id, { pinnedAt: undefined });
-    emitChange();
+    emitTraceChange({ docIds: [id], traceIds: [trace.id], reason: 'pin-remove' });
   }, []);
 
   return { pins, isPinned, toggle, unpin };

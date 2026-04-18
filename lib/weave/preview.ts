@@ -9,6 +9,12 @@ export type WeavePreviewItem<TPanel> = {
   evidence: WeaveEvidence[];
   status: Weave['status'];
   kind: Weave['kind'];
+  claim: Weave['claim'];
+  whyItHolds: Weave['whyItHolds'];
+  openTensions: Weave['openTensions'];
+  contractSource: Weave['contractSource'];
+  contractUpdatedAt: Weave['contractUpdatedAt'];
+  revisions: Weave['revisions'];
 };
 
 export type DirectedWeavePreview<TPanel> = {
@@ -39,6 +45,12 @@ export function buildWeavePreview<TPanel extends { docId: string }>(
       evidence: weave.evidence,
       status: weave.status,
       kind: weave.kind,
+      claim: weave.claim ?? `${from.docId} points to ${to.docId}.`,
+      whyItHolds: weave.whyItHolds ?? weave.evidence[0]?.snippet ?? 'This relation is carried by the current evidence threads.',
+      openTensions: weave.openTensions ?? [],
+      contractSource: weave.contractSource ?? 'derived',
+      contractUpdatedAt: weave.contractUpdatedAt ?? weave.updatedAt,
+      revisions: weave.revisions ?? [],
     });
     preview.get(to.docId)?.incoming.push({
       id: weave.id,
@@ -47,6 +59,12 @@ export function buildWeavePreview<TPanel extends { docId: string }>(
       evidence: weave.evidence,
       status: weave.status,
       kind: weave.kind,
+      claim: weave.claim ?? `${from.docId} points to ${to.docId}.`,
+      whyItHolds: weave.whyItHolds ?? weave.evidence[0]?.snippet ?? 'This relation is carried by the current evidence threads.',
+      openTensions: weave.openTensions ?? [],
+      contractSource: weave.contractSource ?? 'derived',
+      contractUpdatedAt: weave.contractUpdatedAt ?? weave.updatedAt,
+      revisions: weave.revisions ?? [],
     });
   }
 
