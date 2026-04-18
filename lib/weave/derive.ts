@@ -2,6 +2,7 @@
 
 import type { Trace } from '../trace/types';
 import type { Panel } from '../panel/types';
+import { applyWeaveContract, buildWeaveContract } from './contract';
 import type { Weave, WeaveEvidence } from './types';
 import { newWeaveId } from './types';
 
@@ -31,11 +32,13 @@ function snippetFor(summary: string, content: string) {
   return single.length > 96 ? `${single.slice(0, 96)}…` : single;
 }
 
-export function deriveSuggestedWeaves({
+export function deriveSuggestedWeavesForSourcePanels({
+  sourcePanels,
   panels,
   tracesByDocId,
   existingWeaves,
 }: {
+  sourcePanels: Panel[];
   panels: Panel[];
   tracesByDocId: Map<string, Trace[]>;
   existingWeaves: Weave[];
@@ -44,7 +47,7 @@ export function deriveSuggestedWeaves({
   const existingById = new Map(existingWeaves.map((weave) => [weave.id, weave] as const));
   const weaveCandidates = new Map<string, { fromPanelId: string; toPanelId: string; evidence: WeaveEvidence[] }>();
 
-  for (const panel of panels) {
+  for (const panel of sourcePanels) {
     const traceSet = tracesByDocId.get(panel.docId) ?? [];
     const latestByAnchor = new Map<string, { content: string; summary: string; at: number }>();
     for (const trace of traceSet) {
@@ -90,20 +93,41 @@ export function deriveSuggestedWeaves({
     const deduped = Array.from(
       new Map(candidate.evidence.map((item) => [`${item.anchorId ?? 'none'}:${item.snippet}`, item] as const)).values(),
     ).sort((a, b) => b.at - a.at);
+    const fromPanel = panels.find((panel) => panel.docId === candidate.fromPanelId);
+    const toPanel = panels.find((panel) => panel.docId === candidate.toPanelId);
+    if (!fromPanel || !toPanel) continue;
+    const status = existing?.status ?? 'suggested';
+    const contract = buildWeaveContract({
+      fromPanel,
+      toPanel,
+      evidence: deduped,
+      status,
+    });
     const evidenceChanged =
       !existing
       || JSON.stringify(existing.evidence) !== JSON.stringify(deduped)
-      || existing.status !== 'suggested';
-    weaves.push({
+      || existing.status !== status;
+    const baseWeave: Omit<Weave, 'claim' | 'whyItHolds' | 'openTensions' | 'contractSource' | 'contractUpdatedAt' | 'revisions'> = {
       id,
       fromPanelId: candidate.fromPanelId,
       toPanelId: candidate.toPanelId,
       kind: 'references',
-      status: existing?.status ?? 'suggested',
+      status,
       evidence: deduped,
       createdAt: existing?.createdAt ?? now,
       updatedAt: evidenceChanged ? now : (existing?.updatedAt ?? now),
-    });
+    };
+    weaves.push(applyWeaveContract(
+      {
+        ...baseWeave,
+        revisions: existing?.revisions,
+        contractSource: existing?.contractSource,
+        contractUpdatedAt: existing?.contractUpdatedAt,
+      },
+      contract,
+      evidenceChanged ? now : (existing?.contractUpdatedAt ?? now),
+      existing?.contractSource === 'confirmed' || status === 'confirmed' ? 'confirmed' : 'derived',
+    ));
   }
 
   for (const existing of existingWeaves) {
@@ -113,4 +137,21 @@ export function deriveSuggestedWeaves({
   }
 
   return weaves;
+}
+
+export function deriveSuggestedWeaves({
+  panels,
+  tracesByDocId,
+  existingWeaves,
+}: {
+  panels: Panel[];
+  tracesByDocId: Map<string, Trace[]>;
+  existingWeaves: Weave[];
+}): Weave[] {
+  return deriveSuggestedWeavesForSourcePanels({
+    sourcePanels: panels,
+    panels,
+    tracesByDocId,
+    existingWeaves,
+  });
 }

@@ -2,22 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { Weave } from './types';
+import { emitWeaveChange, WEAVE_CHANGE_EVENT } from './events';
 import { weaveStore } from './store';
-
-const CHANGE_EVENT = 'loom:weave:changed';
-
-export function emitWeaveChange() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
-  }
-}
 
 function useChangeSubscription(refresh: () => void) {
   useEffect(() => {
     refresh();
     const onChange = () => refresh();
-    window.addEventListener(CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(CHANGE_EVENT, onChange);
+    window.addEventListener(WEAVE_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(WEAVE_CHANGE_EVENT, onChange);
   }, [refresh]);
 }
 
@@ -35,6 +28,31 @@ export function useAllWeaves(): { weaves: Weave[]; loading: boolean } {
 
 export async function setWeaveStatus(id: string, status: Weave['status']) {
   const updated = await weaveStore.updateStatus(id, status);
-  if (updated) emitWeaveChange();
+  if (updated) {
+    emitWeaveChange({
+      docIds: [updated.fromPanelId, updated.toPanelId],
+      weaveIds: [updated.id],
+      reason: 'set-weave-status',
+    });
+  }
+  return updated;
+}
+
+export async function updateWeaveContract(
+  id: string,
+  contract: {
+    claim: string;
+    whyItHolds: string;
+    openTensions: string[];
+  },
+) {
+  const updated = await weaveStore.updateContract(id, contract);
+  if (updated) {
+    emitWeaveChange({
+      docIds: [updated.fromPanelId, updated.toPanelId],
+      weaveIds: [updated.id],
+      reason: 'update-weave-contract',
+    });
+  }
   return updated;
 }

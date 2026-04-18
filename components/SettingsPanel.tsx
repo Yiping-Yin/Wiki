@@ -12,10 +12,25 @@
  */
 import { useEffect, useState } from 'react';
 import { type AiCliKind, readAiCliPreference, writeAiCliPreference } from '../lib/ai-cli';
+import { SETTINGS_PANEL_OPEN_EVENT } from '../lib/settings-panel';
+import {
+  LEGACY_SIDEBAR_PINNED_KEY,
+  resolveInitialSidebarMode,
+  SIDEBAR_MODE_KEY,
+  type SidebarMode,
+} from '../lib/sidebar-mode';
 import { useSmallScreen } from '../lib/use-small-screen';
+import type { CliIssueCode } from '../lib/ai-provider-health';
 
 type Theme = 'auto' | 'light' | 'dark';
-type SbMode = 'hidden' | 'pinned';
+type ProviderHealth = {
+  cli: AiCliKind;
+  ok: boolean;
+  code: 'ok' | CliIssueCode;
+  summary: string;
+  action: string;
+  checkedAt: number;
+};
 
 const ACCENT_PRESETS: { name: string; light: string; dark: string }[] = [
   { name: 'Blue',   light: '#0071e3', dark: '#0a84ff' },
@@ -33,9 +48,11 @@ function applyTheme(t: Theme) {
   if (t === 'auto') {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     root.classList.toggle('dark', prefersDark);
+    root.classList.remove('light');
     localStorage.removeItem('theme');
   } else {
     root.classList.toggle('dark', t === 'dark');
+    root.classList.toggle('light', t === 'light');
     localStorage.setItem('theme', t);
   }
 }
@@ -69,8 +86,10 @@ export function SettingsPanel() {
   const [theme, setTheme] = useState<Theme>('auto');
   const [accent, setAccent] = useState<number | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [defaultMode, setDefaultMode] = useState<SbMode>('hidden');
+  const [defaultMode, setDefaultMode] = useState<SidebarMode>('hidden');
   const [aiCli, setAiCli] = useState<AiCliKind>('codex');
+  const [aiHealth, setAiHealth] = useState<ProviderHealth[] | null>(null);
+  const [aiHealthLoading, setAiHealthLoading] = useState(false);
 
   // Hydrate from localStorage
   useEffect(() => {
@@ -80,8 +99,11 @@ export function SettingsPanel() {
       const a = localStorage.getItem('wiki:accent');
       setAccent(a ? parseInt(a, 10) : null);
       setReduceMotion(localStorage.getItem('wiki:reduce-motion') === '1');
-      const m = localStorage.getItem('wiki:sidebar:mode');
-      if (m === 'pinned' || m === 'hidden') setDefaultMode(m);
+      setDefaultMode(resolveInitialSidebarMode({
+        storedMode: localStorage.getItem(SIDEBAR_MODE_KEY),
+        legacyPinned: localStorage.getItem(LEGACY_SIDEBAR_PINNED_KEY),
+        viewportWidth: window.innerWidth,
+      }));
       setAiCli(readAiCliPreference());
     } catch {}
   }, []);
@@ -100,19 +122,54 @@ export function SettingsPanel() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(SETTINGS_PANEL_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(SETTINGS_PANEL_OPEN_EVENT, onOpen);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const ac = new AbortController();
+
+    setAiHealthLoading(true);
+    fetch('/api/ai-health', { signal: ac.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`health ${response.status}`);
+        return response.json();
+      })
+      .then((payload: { providers?: ProviderHealth[] }) => {
+        if (cancelled) return;
+        setAiHealth(Array.isArray(payload.providers) ? payload.providers : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAiHealth([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setAiHealthLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [open]);
+
   const onTheme = (t: Theme) => { setTheme(t); applyTheme(t); };
   const onAccent = (i: number | null) => { setAccent(i); applyAccent(i); };
   const onReduceMotion = (on: boolean) => { setReduceMotion(on); applyReduceMotion(on); };
-  const onSbMode = (m: SbMode) => {
+  const onSbMode = (m: SidebarMode) => {
     setDefaultMode(m);
-    try { localStorage.setItem('wiki:sidebar:mode', m); } catch {}
+    try { localStorage.setItem(SIDEBAR_MODE_KEY, m); } catch {}
     document.body.classList.toggle('sidebar-pinned', m === 'pinned');
   };
   const onAiCli = (cli: AiCliKind) => {
     setAiCli(cli);
     writeAiCliPreference(cli);
   };
-
   const resetAll = () => {
     if (!confirm('Reset all UI preferences? This keeps your reading traces, highlights, notes, and pins.')) return;
     try {
@@ -120,7 +177,14 @@ export function SettingsPanel() {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k) continue;
-        if (k === 'theme' || k === 'wiki:accent' || k === 'wiki:reduce-motion' || k === 'wiki:sidebar:mode' || k === 'loom:ai-cli') {
+        if (
+          k === 'theme'
+          || k === 'wiki:accent'
+          || k === 'wiki:reduce-motion'
+          || k === SIDEBAR_MODE_KEY
+          || k === 'loom:ai-cli'
+          || k === 'loom:ai-cli:migrated-to-codex-v1'
+        ) {
           keys.push(k);
         }
       }
@@ -225,7 +289,7 @@ export function SettingsPanel() {
 
           <Section label="Sidebar">
             <Row label="Default mode">
-              <Segmented<SbMode>
+              <Segmented<SidebarMode>
                 value={defaultMode}
                 options={[{ value: 'hidden', label: 'Hidden' }, { value: 'pinned', label: 'Pinned' }]}
                 onChange={onSbMode}
@@ -234,7 +298,7 @@ export function SettingsPanel() {
           </Section>
 
           <Section label="AI">
-            <Row label="Preferred CLI">
+            <Row label="Preferred runtime">
               <Segmented<AiCliKind>
                 value={aiCli}
                 options={[
@@ -245,8 +309,28 @@ export function SettingsPanel() {
               />
             </Row>
             <p className="t-caption" style={{ marginTop: -6, color: 'var(--muted)', lineHeight: 1.5 }}>
-              Used by passage chat, note organization, and inline note completion. If the selected CLI is unavailable, Loom quietly falls back to the other allowed CLI.
+              Loom tries your preferred runtime first, then falls back automatically when the failure is recoverable.
             </p>
+            <p className="t-caption" style={{ marginTop: -4, color: 'var(--muted)', lineHeight: 1.5 }}>
+              Policy: Highest reasoning · Maximum context
+            </p>
+            <div style={{ display: 'grid', gap: 10, marginTop: 2 }}>
+              {aiHealthLoading ? (
+                <p className="t-caption" style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.5 }}>
+                  Checking provider status…
+                </p>
+              ) : aiHealth && aiHealth.length > 0 ? (
+                aiHealth.map((provider) => (
+                  <p key={provider.cli} className="t-caption" style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.5 }}>
+                    {provider.cli === 'codex' ? 'Codex CLI' : 'Claude CLI'} · {provider.ok ? 'Available' : provider.summary}
+                  </p>
+                ))
+              ) : (
+                <p className="t-caption" style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.5 }}>
+                  Provider status could not be checked right now.
+                </p>
+              )}
+            </div>
           </Section>
 
           <Section label="Motion">
@@ -271,7 +355,7 @@ export function SettingsPanel() {
               }}
             >Reset all preferences</button>
             <p className="t-caption" style={{ marginTop: 8, color: 'var(--muted)', lineHeight: 1.5 }}>
-              Clears theme, accent, motion, sidebar, and AI provider preferences. Reading traces, anchored notes, highlights, history, and pins stay intact.
+              Clears theme, accent, motion, sidebar, and AI runtime preferences. Reading traces, anchored notes, highlights, history, and pins stay intact.
             </p>
           </Section>
         </div>

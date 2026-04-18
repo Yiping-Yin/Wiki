@@ -1,9 +1,10 @@
 'use client';
 
 import type { Panel } from './types';
+import { canonicalizePanels } from './selectors';
 
 const DB_NAME = 'loom';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE = 'panels';
 
 let _dbPromise: Promise<IDBDatabase> | null = null;
@@ -19,6 +20,13 @@ function openDB(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
+      if (!db.objectStoreNames.contains('traces')) {
+        const traceStore = db.createObjectStore('traces', { keyPath: 'id' });
+        traceStore.createIndex('parentId', 'parentId', { unique: false });
+        traceStore.createIndex('docId', 'source.docId', { unique: false });
+        traceStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        traceStore.createIndex('kind', 'kind', { unique: false });
+      }
       if (!db.objectStoreNames.contains(STORE)) {
         const store = db.createObjectStore(STORE, { keyPath: 'id' });
         store.createIndex('docId', 'docId', { unique: false });
@@ -75,9 +83,52 @@ export const panelStore = {
     }
   },
 
+  async getByDocs(docIds: string[]): Promise<Map<string, Panel[]>> {
+    const uniqueDocIds = Array.from(new Set(docIds.filter(Boolean)));
+    const result = new Map<string, Panel[]>();
+    if (!isClient() || uniqueDocIds.length === 0) return result;
+    try {
+      return await openDB().then((db) => new Promise<Map<string, Panel[]>>((resolve, reject) => {
+        const txRef = db.transaction(STORE, 'readonly');
+        const store = txRef.objectStore(STORE);
+        const index = store.index('docId');
+        let pending = uniqueDocIds.length;
+        for (const docId of uniqueDocIds) {
+          const req = index.getAll(docId) as IDBRequest<Panel[]>;
+          req.onsuccess = () => {
+            result.set(docId, canonicalizePanels(req.result ?? []));
+            pending -= 1;
+            if (pending === 0) resolve(result);
+          };
+          req.onerror = () => reject(req.error);
+        }
+      }));
+    } catch {
+      return result;
+    }
+  },
+
+  async getCanonicalByDoc(docId: string): Promise<Panel | null> {
+    const panels = await this.getByDoc(docId);
+    return canonicalizePanels(panels)[0] ?? null;
+  },
+
   async put(panel: Panel): Promise<void> {
     if (!isClient()) return;
     await tx<IDBValidKey>('readwrite', (s) => s.put(panel));
+  },
+
+  async putMany(panels: Panel[]): Promise<void> {
+    const items = panels.filter(Boolean);
+    if (!isClient() || items.length === 0) return;
+    await openDB().then((db) => new Promise<void>((resolve, reject) => {
+      const txRef = db.transaction(STORE, 'readwrite');
+      const store = txRef.objectStore(STORE);
+      for (const panel of items) store.put(panel);
+      txRef.oncomplete = () => resolve();
+      txRef.onerror = () => reject(txRef.error);
+      txRef.onabort = () => reject(txRef.error);
+    }));
   },
 
   async delete(id: string): Promise<void> {
@@ -86,6 +137,19 @@ export const panelStore = {
       s.delete(id);
       return Promise.resolve();
     });
+  },
+
+  async deleteMany(ids: string[]): Promise<void> {
+    const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+    if (!isClient() || uniqueIds.length === 0) return;
+    await openDB().then((db) => new Promise<void>((resolve, reject) => {
+      const txRef = db.transaction(STORE, 'readwrite');
+      const store = txRef.objectStore(STORE);
+      for (const id of uniqueIds) store.delete(id);
+      txRef.oncomplete = () => resolve();
+      txRef.onerror = () => reject(txRef.error);
+      txRef.onabort = () => reject(txRef.error);
+    }));
   },
 
   async deleteByDoc(docId: string): Promise<void> {

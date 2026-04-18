@@ -1,5 +1,6 @@
 'use client';
 
+import { applyWeaveContract, syncWeaveContractStatus } from './contract';
 import type { Weave } from './types';
 
 const DB_NAME = 'loom-weaves';
@@ -72,17 +73,61 @@ export const weaveStore = {
     await tx<IDBValidKey>('readwrite', (s) => s.put(weave));
   },
 
+  async putMany(weaves: Weave[]): Promise<void> {
+    const items = weaves.filter(Boolean);
+    if (!isClient() || items.length === 0) return;
+    await openDB().then((db) => new Promise<void>((resolve, reject) => {
+      const txRef = db.transaction(STORE, 'readwrite');
+      const store = txRef.objectStore(STORE);
+      for (const weave of items) store.put(weave);
+      txRef.oncomplete = () => resolve();
+      txRef.onerror = () => reject(txRef.error);
+      txRef.onabort = () => reject(txRef.error);
+    }));
+  },
+
   async updateStatus(id: string, status: Weave['status']): Promise<Weave | null> {
     if (!isClient()) return null;
     const existing = await this.get(id);
     if (!existing) return null;
-    const next = {
-      ...existing,
-      status,
-      updatedAt: Date.now(),
+    const now = Date.now();
+    const contract = syncWeaveContractStatus(existing, status);
+    const next = applyWeaveContract(
+      {
+        ...existing,
+        status,
+      },
+      contract,
+      now,
+      status === 'confirmed' ? 'confirmed' : existing.contractSource,
+    );
+    const updated = {
+      ...next,
+      updatedAt: now,
     };
-    await this.put(next);
-    return next;
+    await this.put(updated);
+    return updated;
+  },
+
+  async updateContract(
+    id: string,
+    contract: {
+      claim: string;
+      whyItHolds: string;
+      openTensions: string[];
+    },
+  ): Promise<Weave | null> {
+    if (!isClient()) return null;
+    const existing = await this.get(id);
+    if (!existing) return null;
+    const now = Date.now();
+    const next = applyWeaveContract(existing, contract, now, 'manual');
+    const updated = {
+      ...next,
+      updatedAt: now,
+    };
+    await this.put(updated);
+    return updated;
   },
 
   async delete(id: string): Promise<void> {
@@ -91,5 +136,18 @@ export const weaveStore = {
       s.delete(id);
       return Promise.resolve();
     });
+  },
+
+  async deleteMany(ids: string[]): Promise<void> {
+    const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+    if (!isClient() || uniqueIds.length === 0) return;
+    await openDB().then((db) => new Promise<void>((resolve, reject) => {
+      const txRef = db.transaction(STORE, 'readwrite');
+      const store = txRef.objectStore(STORE);
+      for (const id of uniqueIds) store.delete(id);
+      txRef.oncomplete = () => resolve();
+      txRef.onerror = () => reject(txRef.error);
+      txRef.onabort = () => reject(txRef.error);
+    }));
   },
 };
