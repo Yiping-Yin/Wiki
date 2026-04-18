@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { WorkAction, WorkEyebrow, WorkSurface, WorkTextAction } from './WorkSurface';
 
 type QuietGuideAction = {
   label: string;
@@ -18,6 +18,8 @@ export function QuietGuideCard({
   detail,
   actions,
   mode = 'block',
+  tone = 'default',
+  density = 'regular',
 }: {
   eyebrow: string;
   title: string;
@@ -26,15 +28,15 @@ export function QuietGuideCard({
   detail?: ReactNode;
   actions?: QuietGuideAction[];
   mode?: 'block' | 'inline';
+  tone?: 'default' | 'primary' | 'quiet';
+  density?: 'compact' | 'regular' | 'roomy';
 }) {
   if (mode === 'inline') {
     return (
-      <section
-        style={{
-          marginBottom: 20,
-          paddingBottom: '0.6rem',
-          borderBottom: '0.5px solid var(--mat-border)',
-        }}
+      <WorkSurface
+        tone={tone === 'default' ? 'quiet' : tone}
+        density={density === 'roomy' ? 'regular' : density}
+        style={{ marginBottom: 18 }}
       >
         <div
           className="t-caption2"
@@ -47,39 +49,31 @@ export function QuietGuideCard({
             letterSpacing: '0.04em',
           }}
         >
-          <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-            {eyebrow}
-          </span>
-          <span aria-hidden>·</span>
-          <span>{title}</span>
+          <WorkEyebrow subtle style={{ letterSpacing: '0.08em' }}>{eyebrow}</WorkEyebrow>
+          <span aria-hidden style={{ opacity: 0.4 }}>·</span>
+          <span style={{ color: 'var(--fg)', fontWeight: 560 }}>{title}</span>
           {meta ? (
             <>
-              <span aria-hidden>·</span>
+              <span aria-hidden style={{ opacity: 0.4 }}>·</span>
               {meta}
             </>
           ) : null}
           {actions && actions.length > 0 ? (
-            <>
-              <span aria-hidden>·</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               {actions.map((action, index) => {
-                const style = quietGuideInlineActionStyle(Boolean(action.primary));
-                const child = action.href ? (
-                  <Link key={action.label} href={action.href} style={{ ...style, textDecoration: 'none' }}>
-                    {action.label}
-                  </Link>
-                ) : (
-                  <button key={action.label} type="button" onClick={action.onClick} style={style}>
-                    {action.label}
-                  </button>
-                );
                 return (
                   <span key={action.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {index > 0 ? <span aria-hidden>·</span> : null}
-                    {child}
+                    {index > 0 ? <span aria-hidden style={{ opacity: 0.3 }}>·</span> : null}
+                    <WorkTextAction
+                      label={action.label}
+                      href={action.href}
+                      onClick={action.onClick}
+                      emphasis={Boolean(action.primary)}
+                    />
                   </span>
                 );
               })}
-            </>
+            </div>
           ) : null}
         </div>
 
@@ -87,9 +81,9 @@ export function QuietGuideCard({
           <div
             style={{
               color: 'var(--fg-secondary)',
-              fontSize: '0.86rem',
-              lineHeight: 1.55,
-              marginTop: 6,
+              fontSize: '0.83rem',
+              lineHeight: 1.5,
+              marginTop: 5,
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 2,
@@ -101,44 +95,28 @@ export function QuietGuideCard({
         ) : null}
 
         {detail}
-      </section>
+      </WorkSurface>
     );
   }
 
   return (
-    <section
-      style={{
-        padding: '0.1rem 0 0.8rem',
-        marginBottom: 20,
-        borderBottom: '0.5px solid var(--mat-border)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <span aria-hidden style={{ width: 14, height: 1, background: 'var(--accent)', opacity: 0.65 }} />
-        <span
-          className="t-caption2"
-          style={{
-            color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 700,
-          }}
-        >
-          {eyebrow}
-        </span>
-        <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
+    <WorkSurface tone={tone} density={density} style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <WorkEyebrow>{eyebrow}</WorkEyebrow>
+        <span aria-hidden style={{ flex: 1, height: 0.5, background: 'var(--mat-border)', opacity: 0.6 }} />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 260 }}>
           <div
             style={{
               fontFamily: 'var(--display)',
-              fontSize: '1.18rem',
-              fontWeight: 650,
+              fontSize: '1.16rem',
+              fontWeight: 620,
               letterSpacing: '-0.02em',
               lineHeight: 1.25,
               marginBottom: meta || summary ? 6 : 0,
+              color: 'var(--fg)',
             }}
           >
             {title}
@@ -165,8 +143,8 @@ export function QuietGuideCard({
             <div
               style={{
                 color: 'var(--fg-secondary)',
-                fontSize: '0.9rem',
-                lineHeight: 1.55,
+                fontSize: '0.89rem',
+                lineHeight: 1.52,
                 overflow: 'hidden',
                 display: '-webkit-box',
                 WebkitLineClamp: 3,
@@ -184,61 +162,19 @@ export function QuietGuideCard({
         {actions && actions.length > 0 ? (
           <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
             {actions.map((action) => {
-              const style = quietGuideActionStyle(Boolean(action.primary));
-              if (action.href) {
-                return (
-                  <Link key={action.label} href={action.href} style={{ ...style, textDecoration: 'none' }}>
-                    {action.label}
-                  </Link>
-                );
-              }
               return (
-                <button key={action.label} type="button" onClick={action.onClick} style={style}>
-                  {action.label}
-                </button>
+                <WorkAction
+                  key={action.label}
+                  label={action.label}
+                  href={action.href}
+                  onClick={action.onClick}
+                  tone={action.primary ? 'primary' : 'secondary'}
+                />
               );
             })}
           </div>
         ) : null}
       </div>
-    </section>
+    </WorkSurface>
   );
-}
-
-function quietGuideActionStyle(primary: boolean) {
-  return {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    appearance: 'none' as const,
-    border: 0,
-    borderBottom: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    borderRadius: 999,
-    padding: '0.3rem 0',
-    fontSize: '0.82rem',
-    fontWeight: 650,
-    letterSpacing: '-0.01em',
-    lineHeight: 1,
-    cursor: 'pointer',
-  };
-}
-
-function quietGuideInlineActionStyle(primary: boolean) {
-  return {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    appearance: 'none' as const,
-    border: 0,
-    background: 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    padding: 0,
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.02em',
-    lineHeight: 1,
-    cursor: 'pointer',
-  };
 }

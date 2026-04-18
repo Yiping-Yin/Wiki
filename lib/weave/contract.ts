@@ -1,0 +1,71 @@
+'use client';
+
+import type { Panel } from '../panel/types';
+import type { Weave, WeaveContractSource, WeaveEvidence, WeaveRevision, WeaveStatus } from './types';
+
+type WeaveContractInput = {
+  fromPanel: Panel;
+  toPanel: Panel;
+  evidence: WeaveEvidence[];
+  status: WeaveStatus;
+};
+
+function uniqueLines(items: string[]) {
+  return Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+}
+
+export function buildWeaveContract(input: WeaveContractInput) {
+  const { fromPanel, toPanel, evidence, status } = input;
+  const primarySnippet = evidence[0]?.snippet ?? '';
+  const claim = `${fromPanel.title} points to ${toPanel.title} as part of the same weave.`;
+
+  const whyItHolds = primarySnippet
+    ? primarySnippet
+    : `${fromPanel.title} explicitly links outward toward ${toPanel.title}.`;
+
+  const tensions = uniqueLines([
+    status === 'suggested' ? 'This relation is still only suggested.' : '',
+    evidence.length <= 1 ? 'Only one explicit evidence thread currently supports this relation.' : '',
+    fromPanel.status === 'contested' ? `Source panel "${fromPanel.title}" is still contested.` : '',
+    toPanel.status === 'contested' ? `Target panel "${toPanel.title}" is still contested.` : '',
+  ]).slice(0, 3);
+
+  return {
+    claim,
+    whyItHolds,
+    openTensions: tensions,
+  };
+}
+
+function sameRevision(a: WeaveRevision, b: WeaveRevision) {
+  return a.claim === b.claim
+    && a.whyItHolds === b.whyItHolds
+    && JSON.stringify(a.openTensions) === JSON.stringify(b.openTensions);
+}
+
+export function applyWeaveContract(
+  weave: Omit<Weave, 'claim' | 'whyItHolds' | 'openTensions' | 'contractSource' | 'contractUpdatedAt' | 'revisions'> & Partial<Pick<Weave, 'contractSource' | 'contractUpdatedAt' | 'revisions'>>,
+  contract: ReturnType<typeof buildWeaveContract>,
+  at: number,
+  contractSource: WeaveContractSource,
+): Weave {
+  const nextRevision: WeaveRevision = {
+    at,
+    claim: contract.claim,
+    whyItHolds: contract.whyItHolds,
+    openTensions: contract.openTensions,
+  };
+  const revisions = [...(weave.revisions ?? [])];
+  const lastRevision = revisions.at(-1);
+  if (!lastRevision || !sameRevision(lastRevision, nextRevision)) {
+    revisions.push(nextRevision);
+  }
+
+  return {
+    ...weave,
+    ...contract,
+    contractSource,
+    contractUpdatedAt: at,
+    revisions,
+  };
+}
