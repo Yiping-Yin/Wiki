@@ -26,11 +26,17 @@ import {
   onIndexProgress,
   type Trace,
 } from '../../../lib/trace';
+import { panelStore, emitPanelChange, useAllPanels } from '../../../lib/panel';
+import { weaveStore, emitWeaveChange, useAllWeaves } from '../../../lib/weave';
+import { emitWorkSessionChange } from '../../../lib/work-session-events';
+import { emitLearningTargetStateChange } from '../../../lib/learning-target-state-events';
 import { toast, ToastHost } from '../../../components/Toast';
 import { useEffect } from 'react';
 
 export default function TraceInspectorPage() {
   const { traces, loading } = useAllTraces();
+  const { panels } = useAllPanels();
+  const { weaves } = useAllWeaves();
   const stats = useTraceStats();
   const create = useCreateTrace();
   const append = useAppendEvent();
@@ -102,6 +108,204 @@ export default function TraceInspectorPage() {
     toast(`Created ${t.id}`);
   };
 
+  const seedWorkFixture = async () => {
+    const now = Date.now();
+    const alphaPanel = {
+      id: 'pl_doc_alpha',
+      docId: 'doc:alpha',
+      href: '/about',
+      title: 'Alpha Source',
+      sourceDocIds: ['doc:alpha'],
+      traceIds: ['t_alpha'],
+      anchorIds: ['anchor-alpha'],
+      latestAnchorId: 'anchor-alpha',
+      summary: 'Alpha links outward to Beta.',
+      centralClaim: 'Alpha is still unsettled.',
+      keyDistinctions: ['Alpha vs beta'],
+      openTensions: ['Clarify whether alpha should be merged into beta.'],
+      contractSource: 'derived' as const,
+      contractUpdatedAt: now - 1000,
+      revisions: [
+        {
+          at: now - 1000,
+          summary: 'Alpha links outward to Beta.',
+          centralClaim: 'Alpha is still unsettled.',
+          keyDistinctions: ['Alpha vs beta'],
+          openTensions: ['Clarify whether alpha should be merged into beta.'],
+        },
+      ],
+      learning: {
+        nextAction: 'revisit' as const,
+        recency: 'fresh' as const,
+        touchedAt: now - 1000,
+        anchorCount: 1,
+      },
+      status: 'contested' as const,
+      createdAt: now - 9000,
+      updatedAt: now - 1000,
+      crystallizedAt: now - 4000,
+      sections: [
+        {
+          key: 'alpha-1',
+          anchorId: 'anchor-alpha',
+          summary: 'Alpha links outward to Beta.',
+          quote: 'Alpha quote',
+          thoughtType: 'question' as const,
+          at: now - 1500,
+        },
+      ],
+    };
+    const betaPanel = {
+      id: 'pl_doc_beta',
+      docId: 'doc:beta',
+      href: '/help',
+      title: 'Beta Source',
+      sourceDocIds: ['doc:beta'],
+      traceIds: ['t_beta'],
+      anchorIds: ['anchor-beta'],
+      latestAnchorId: 'anchor-beta',
+      summary: 'Beta stands alone.',
+      centralClaim: 'Beta needs refresh.',
+      keyDistinctions: ['Beta stands apart'],
+      openTensions: [],
+      contractSource: 'derived' as const,
+      contractUpdatedAt: now - 2000,
+      revisions: [],
+      learning: {
+        nextAction: 'refresh' as const,
+        recency: 'stale' as const,
+        touchedAt: now - 15 * 24 * 60 * 60 * 1000,
+        anchorCount: 1,
+      },
+      status: 'settled' as const,
+      createdAt: now - 20 * 24 * 60 * 60 * 1000,
+      updatedAt: now - 15 * 24 * 60 * 60 * 1000,
+      crystallizedAt: now - 18 * 24 * 60 * 60 * 1000,
+      sections: [
+        {
+          key: 'beta-1',
+          anchorId: 'anchor-beta',
+          summary: 'Beta stands alone.',
+          quote: 'Beta quote',
+          thoughtType: 'explanation' as const,
+          at: now - 15 * 24 * 60 * 60 * 1000,
+        },
+      ],
+    };
+    const alphaBetaWeave = {
+      id: 'wv_references_doc_alpha__doc_beta',
+      fromPanelId: 'doc:alpha',
+      toPanelId: 'doc:beta',
+      kind: 'references' as const,
+      status: 'suggested' as const,
+      evidence: [
+        {
+          anchorId: 'anchor-alpha',
+          snippet: 'Alpha note with relation to Beta.',
+          at: now - 1500,
+        },
+      ],
+      claim: 'Alpha should probably connect to Beta.',
+      whyItHolds: 'Alpha explicitly links to Beta.',
+      openTensions: ['Decide whether this relation should be confirmed.'],
+      contractSource: 'derived' as const,
+      contractUpdatedAt: now - 1000,
+      revisions: [],
+      createdAt: now - 1600,
+      updatedAt: now - 1000,
+    };
+    const existingPanels = await panelStore.getAll();
+    if (existingPanels.length > 0) {
+      await panelStore.deleteMany(existingPanels.map((panel) => panel.id));
+    }
+    const existingWeaves = await weaveStore.getAll();
+    if (existingWeaves.length > 0) {
+      await weaveStore.deleteMany(existingWeaves.map((weave) => weave.id));
+    }
+    await traceStore.clear();
+
+    const alpha = await create({
+      kind: 'reading',
+      title: 'Alpha trace',
+      source: {
+        docId: 'doc:alpha',
+        href: '/about',
+        sourceTitle: 'Alpha Source',
+      },
+      initialEvents: [
+        { kind: 'visit', at: now - 8_000, durationMs: 120_000 },
+        {
+          kind: 'thought-anchor',
+          anchorType: 'paragraph',
+          anchorId: 'anchor-alpha',
+          anchorBlockId: 'anchor-alpha',
+          anchorBlockText: 'Alpha block',
+          summary: 'Alpha links outward to Beta.',
+          content: 'Alpha note with relation to [Beta](/help).',
+          quote: 'Alpha quote',
+          thoughtType: 'question',
+          attribution: 'mixed',
+          at: now - 1_500,
+        },
+        { kind: 'crystallize', summary: 'Alpha settled once', at: now - 4_000 },
+        { kind: 'panel-reopen', at: now - 1_000 },
+      ],
+    });
+
+    await create({
+      kind: 'reading',
+      title: 'Beta trace',
+      source: {
+        docId: 'doc:beta',
+        href: '/help',
+        sourceTitle: 'Beta Source',
+      },
+      initialEvents: [
+        { kind: 'visit', at: now - 16 * 24 * 60 * 60 * 1000, durationMs: 90_000 },
+        {
+          kind: 'thought-anchor',
+          anchorType: 'paragraph',
+          anchorId: 'anchor-beta',
+          anchorBlockId: 'anchor-beta',
+          anchorBlockText: 'Beta block',
+          summary: 'Beta stands alone.',
+          content: 'Beta note.',
+          quote: 'Beta quote',
+          thoughtType: 'explanation',
+          attribution: 'mixed',
+          at: now - 15 * 24 * 60 * 60 * 1000,
+        },
+        { kind: 'crystallize', summary: 'Beta settled', at: now - 18 * 24 * 60 * 60 * 1000 },
+      ],
+    });
+
+    await panelStore.putMany([alphaPanel, betaPanel]);
+    await weaveStore.putMany([alphaBetaWeave]);
+
+    window.localStorage.removeItem('loom:learning-target-state:v1');
+    window.localStorage.removeItem('loom:last-work-session:v1');
+    window.sessionStorage.setItem('loom:work-session:v1', JSON.stringify({
+      startedAt: now - 500,
+      targetIds: ['panel:doc:alpha', 'weave:wv_references_doc_alpha__doc_beta'],
+      outcomes: [],
+      plannedResolutions: {
+        'panel:doc:alpha': 'reworked',
+        'weave:wv_references_doc_alpha__doc_beta': 'questioned',
+      },
+    }));
+
+    emitPanelChange({ docIds: ['doc:alpha', 'doc:beta'], reason: 'dev-fixture-seed' });
+    emitWeaveChange({
+      docIds: ['doc:alpha', 'doc:beta'],
+      weaveIds: [alphaBetaWeave.id],
+      reason: 'dev-fixture-seed',
+    });
+    emitWorkSessionChange({ reason: 'start' });
+    emitLearningTargetStateChange({ reason: 'clear' });
+    setSelectedId(null);
+    toast('Seeded work fixture');
+  };
+
   const appendTest = async () => {
     if (!selected) { toast('Select a trace first', { kind: 'warn' }); return; }
     await append(selected.id, {
@@ -157,7 +361,7 @@ export default function TraceInspectorPage() {
             Trace inspector
           </h1>
           <div className="t-footnote" style={{ marginTop: 8, color: 'var(--muted)' }}>
-            {stats.total} traces · {stats.totalEvents} events · {embeddingCount} embeddings · migration {isMigrated() ? 'ready' : 'pending'} · pipeline {pipelineState}
+            {stats.total} traces · {stats.totalEvents} events · {panels.length} panels · {weaves.length} weaves · {embeddingCount} embeddings · migration {isMigrated() ? 'ready' : 'pending'} · pipeline {pipelineState}
           </div>
         </section>
 
@@ -191,6 +395,7 @@ export default function TraceInspectorPage() {
         {/* Action bar */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '1.4rem' }}>
           <ActionButton onClick={createTest}>Create test trace</ActionButton>
+          <ActionButton onClick={seedWorkFixture}>Seed work fixture</ActionButton>
           <ActionButton onClick={appendTest} disabled={!selected}>Append event</ActionButton>
           <ActionButton onClick={crystallize} disabled={!selected}>Crystallize</ActionButton>
           <ActionButton onClick={removeTrace} disabled={!selected} danger>Delete</ActionButton>
