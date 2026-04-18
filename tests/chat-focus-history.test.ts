@@ -37,12 +37,14 @@ test('buildClarificationPasses keeps prior passes and labels them for compact hi
       question: 'What does this probability table represent?',
       answer: 'Pass 1',
       label: '1 · probability table',
+      delta: 'Added: probability table',
     },
     {
       index: 1,
       question: 'Why is the denominator summing over j?',
       answer: 'Pass 2',
       label: '2 · denominator',
+      delta: 'Added: denominator',
     },
   ]);
 });
