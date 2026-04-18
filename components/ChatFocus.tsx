@@ -829,8 +829,10 @@ export function ChatFocus() {
             top: 0,
             bottom: 0,
             width: 1,
-            background: 'linear-gradient(to bottom, color-mix(in srgb, var(--accent) 86%, white 14%), color-mix(in srgb, var(--accent) 72%, transparent))',
-            opacity: smallScreen ? 0.7 : 0.72,
+            background: smallScreen
+              ? 'linear-gradient(to bottom, color-mix(in srgb, var(--accent) 72%, white 28%), color-mix(in srgb, var(--accent) 54%, transparent))'
+              : 'color-mix(in srgb, var(--accent) 46%, var(--mat-border))',
+            opacity: smallScreen ? 0.62 : 0.46,
           }}
         />
         <div
@@ -838,8 +840,10 @@ export function ChatFocus() {
             position: 'absolute',
             inset: '0 auto 0 0',
             width: smallScreen ? 22 : 24,
-            background: 'linear-gradient(to right, color-mix(in srgb, var(--accent-soft) 58%, transparent), transparent)',
-            opacity: smallScreen ? 0.75 : 0.3,
+            background: smallScreen
+              ? 'linear-gradient(to right, color-mix(in srgb, var(--accent-soft) 38%, transparent), transparent)'
+              : 'linear-gradient(to right, color-mix(in srgb, var(--accent-soft) 16%, transparent), transparent)',
+            opacity: smallScreen ? 0.42 : 0.12,
             pointerEvents: 'none',
           }}
         />
@@ -1019,6 +1023,7 @@ export function ChatFocus() {
           )}
           {turns.length > 0 && !streaming && !committing && (
             <button
+              className="loom-chat-focus-commit"
               onClick={commit}
               disabled={isCurrentContainerLocked}
               aria-label={isCurrentContainerLocked ? 'Container locked · unlock with ◈ to iterate' : 'Commit anchored note'}
@@ -1029,15 +1034,8 @@ export function ChatFocus() {
                 color: isCurrentContainerLocked ? 'var(--tint-indigo)' : 'var(--accent)',
                 padding: '0 2px',
                 fontSize: '0.84rem', lineHeight: 1, flexShrink: 0,
-                opacity: isCurrentContainerLocked ? 0.36 : 0.62,
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.opacity = isCurrentContainerLocked ? '0.55' : '1';
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.opacity = isCurrentContainerLocked ? '0.42' : '0.7';
+                opacity: smallScreen ? (isCurrentContainerLocked ? 0.36 : 0.62) : 0.16,
+                transition: 'opacity 160ms var(--ease), color 160ms var(--ease)',
               }}
             >{isCurrentContainerLocked ? '◈' : '✓'}</button>
           )}
@@ -1060,6 +1058,13 @@ export function ChatFocus() {
         .loom-chat-focus-close:focus-visible {
           opacity: 0.74;
           color: var(--muted);
+        }
+
+        @media (min-width: 901px) {
+          .loom-chat-focus-shell:hover .loom-chat-focus-commit,
+          .loom-chat-focus-shell:focus-within .loom-chat-focus-commit {
+            opacity: 0.52 !important;
+          }
         }
       `}</style>
     </div>
