@@ -111,7 +111,7 @@ Rules:
 
 Examples:
 
-- `/kesi`
+- `/patterns`
 - `/graph`
 
 Purpose:
@@ -177,7 +177,7 @@ Rules:
 
 Used in:
 
-- `/kesi`
+- `/patterns`
 - settled or active panel surfaces
 
 Structure:
@@ -198,7 +198,7 @@ Rules:
 Used in:
 
 - `review`
-- `kesi`
+- `patterns`
 - `graph`
 - settled panel states
 

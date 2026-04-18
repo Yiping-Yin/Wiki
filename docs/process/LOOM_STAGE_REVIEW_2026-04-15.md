@@ -112,7 +112,7 @@ Relevant files:
 - [lib/trace/store.ts](/Users/yinyiping/Desktop/wiki/lib/trace/store.ts:1)
 - [components/LiveArtifact.tsx](/Users/yinyiping/Desktop/wiki/components/LiveArtifact.tsx:1)
 - [components/ReviewThoughtMap.tsx](/Users/yinyiping/Desktop/wiki/components/ReviewThoughtMap.tsx:1)
-- [components/KesiView.tsx](/Users/yinyiping/Desktop/wiki/components/KesiView.tsx:1)
+- [components/PatternsView.tsx](/Users/yinyiping/Desktop/Wiki/components/PatternsView.tsx:1)
 
 This is an important procedural shift:
 
@@ -130,10 +130,17 @@ It now remembers prior crystallized judgments.
 
 Relevant files:
 
-- [lib/panel/contract.ts](/Users/yinyiping/Desktop/wiki/lib/panel/contract.ts:1)
-- [lib/panel/types.ts](/Users/yinyiping/Desktop/wiki/lib/panel/types.ts:1)
+- [lib/panel/revisions.ts](/Users/yinyiping/Desktop/Wiki/lib/panel/revisions.ts:1)
+- [components/PatternsView.tsx](/Users/yinyiping/Desktop/Wiki/components/PatternsView.tsx:1)
+- [components/ReviewThoughtMap.tsx](/Users/yinyiping/Desktop/Wiki/components/ReviewThoughtMap.tsx:1)
+- [app/graph/page.tsx](/Users/yinyiping/Desktop/Wiki/app/graph/page.tsx:1)
 
-The UI only exposes this lightly today via `revised` in `/kesi`, but the data layer is in place.
+Revision is now visible as product behavior, not just stored data:
+
+- `/patterns` shows revision timelines
+- `ReviewThoughtMap` shows structured panel deltas
+- `/graph` surfaces panel revision in relation context
+- revision deltas can now trigger follow-up actions such as rework / verify / re-read
 
 ### 2.5 Weave as a First-Class Object
 
@@ -141,22 +148,33 @@ Weaves now exist as first-class stored relations.
 
 Relevant files:
 
-- [lib/weave/types.ts](/Users/yinyiping/Desktop/wiki/lib/weave/types.ts:1)
-- [lib/weave/store.ts](/Users/yinyiping/Desktop/wiki/lib/weave/store.ts:1)
-- [lib/weave/derive.ts](/Users/yinyiping/Desktop/wiki/lib/weave/derive.ts:1)
-- [components/WeaveSync.tsx](/Users/yinyiping/Desktop/wiki/components/WeaveSync.tsx:1)
+- [lib/weave/types.ts](/Users/yinyiping/Desktop/Wiki/lib/weave/types.ts:1)
+- [lib/weave/contract.ts](/Users/yinyiping/Desktop/Wiki/lib/weave/contract.ts:1)
+- [lib/weave/store.ts](/Users/yinyiping/Desktop/Wiki/lib/weave/store.ts:1)
+- [lib/weave/derive.ts](/Users/yinyiping/Desktop/Wiki/lib/weave/derive.ts:1)
+- [components/WeaveSync.tsx](/Users/yinyiping/Desktop/Wiki/components/WeaveSync.tsx:1)
 
 Current weave semantics:
 
 - `kind: references`
 - `status: suggested | confirmed | rejected`
+- `claim`
+- `whyItHolds`
+- `openTensions`
+- `contractSource`
+- `revisions`
 - evidence list with anchor/snippet/time
 
-This is the first point where Loom can say it has relation objects, not only parsed backlinks.
+This is now beyond "relation objects" and into relation judgment:
 
-### 2.6 Graph and Kesi Use the New Object Layer
+- graph can show the relation contract itself
+- relation revision is visible
+- relation contract is minimally editable
+- relation change can trigger strengthen / question / re-read / verify actions
 
-`/graph` and `/kesi` are no longer primarily trace-derived relation projections.
+### 2.6 Graph and Patterns Use the New Object Layer
+
+`/graph` and `/patterns` are no longer primarily trace-derived relation projections.
 
 They now consume:
 
@@ -167,42 +185,111 @@ as their main semantic layer.
 
 Relevant files:
 
-- [app/graph/page.tsx](/Users/yinyiping/Desktop/wiki/app/graph/page.tsx:1)
-- [components/KesiView.tsx](/Users/yinyiping/Desktop/wiki/components/KesiView.tsx:1)
+- [app/graph/page.tsx](/Users/yinyiping/Desktop/Wiki/app/graph/page.tsx:1)
+- [components/PatternsView.tsx](/Users/yinyiping/Desktop/Wiki/components/PatternsView.tsx:1)
+- [components/ReviewThoughtMap.tsx](/Users/yinyiping/Desktop/Wiki/components/ReviewThoughtMap.tsx:1)
 
 Important consequences:
 
 - graph can confirm / reject weaves
 - graph relation evidence can reopen the exact anchor
-- kesi relation evidence can reopen the exact anchor
+- patterns relation evidence can reopen the exact anchor
 - confirmed weaves are visually distinguished from suggested ones
+- review can show panel revision diff in the source-bound thinking surface
+- graph can now act on panel and weave changes rather than only display them
 
-### 2.7 Atlas Layer Has Begun to Follow the Object Layer
+### 2.7 Unified Learning Scheduler Is Real
 
-`KesiSwatch` now derives from `panel` and `weave`, not only raw trace events.
+Home and `/today` now schedule both `panel` and `weave` targets rather than
+only resuming reading traces.
+
+Relevant files:
+
+- [lib/learning-targets.ts](/Users/yinyiping/Desktop/Wiki/lib/learning-targets.ts:1)
+- [app/HomeClient.tsx](/Users/yinyiping/Desktop/Wiki/app/HomeClient.tsx:1)
+- [app/today/TodayClient.tsx](/Users/yinyiping/Desktop/Wiki/app/today/TodayClient.tsx:1)
+
+Important consequences:
+
+- the product can now recommend either a panel or a relation as the next unit of work
+- scheduler explanations are now based on explicit priority reasons
+- Home and `/today` are no longer doc-resume pages only; they are quiet learning schedulers
+- the queue can now become a real work session rather than only a ranked list
+
+### 2.8 Work Session and Change Resolution Are Real
+
+The scheduler is no longer only "pick the next object".
+
+It now has a real work-session layer:
+
+- `Start work session`
+- `current target`
+- `next up`
+- `Done and continue`
+- quiet session recap
+
+It also now has real change-resolution semantics:
+
+- targets carry stable `change token`s
+- re-entry can land on the specific change surface
+- `Done` resolves the current change, not the object forever
+- panel revision diff and focused relation diff can show `Resolved for this change`
+- `/today` can recap which changes were resolved and how
+
+Relevant files:
+
+- [lib/work-session.ts](/Users/yinyiping/Desktop/Wiki/lib/work-session.ts:1)
+- [app/today/TodayClient.tsx](/Users/yinyiping/Desktop/Wiki/app/today/TodayClient.tsx:1)
+- [components/WorkSessionHandoff.tsx](/Users/yinyiping/Desktop/Wiki/components/WorkSessionHandoff.tsx:1)
+- [components/ReviewThoughtMap.tsx](/Users/yinyiping/Desktop/Wiki/components/ReviewThoughtMap.tsx:1)
+- [app/graph/page.tsx](/Users/yinyiping/Desktop/Wiki/app/graph/page.tsx:1)
+
+### 2.9 Event-Scoped Sync and Cross-Tab Consistency Are Real
+
+The sync layer is no longer "full scan and rewrite on every change".
+
+Relevant files:
+
+- [components/PanelSync.tsx](/Users/yinyiping/Desktop/Wiki/components/PanelSync.tsx:1)
+- [components/WeaveSync.tsx](/Users/yinyiping/Desktop/Wiki/components/WeaveSync.tsx:1)
+- [lib/trace/events.ts](/Users/yinyiping/Desktop/Wiki/lib/trace/events.ts:1)
+- [lib/panel/events.ts](/Users/yinyiping/Desktop/Wiki/lib/panel/events.ts:1)
+- [lib/weave/events.ts](/Users/yinyiping/Desktop/Wiki/lib/weave/events.ts:1)
+- [lib/shared/event-bus.ts](/Users/yinyiping/Desktop/Wiki/lib/shared/event-bus.ts:1)
+
+Important consequences:
+
+- panel and weave sync are now event-scoped and incremental
+- change payloads carry `docIds` / object ids rather than anonymous "something changed"
+- tabs can stay consistent without manual refresh
+- pending sync work can survive reload / tab handoff
+
+### 2.10 Atlas Layer Has Begun to Follow the Object Layer
+
+`PatternSwatch` now derives from `panel` and `weave`, not only raw trace events.
 
 Relevant file:
 
-- [components/KesiSwatch.tsx](/Users/yinyiping/Desktop/wiki/components/KesiSwatch.tsx:1)
+- [components/PatternSwatch.tsx](/Users/yinyiping/Desktop/Wiki/components/PatternSwatch.tsx:1)
 
 This means the atlas texture is starting to reflect actual judged structure, not only historical interaction traces.
 
 ## 3. What Is Still Transitional
 
-Several important areas are still partially trace-first or still in a hybrid state.
+Several important areas are still transitional, but the gap has shifted.
 
 ### 3.1 Chat / Source-Surface Semantics
 
-`ChatFocus` and some related source-bound surfaces still carry direct trace-event logic:
-
-- direct crystallize checks
-- direct anchor locking checks
+`ChatFocus` and the unified overlay surfaces now mostly share stage-aware
+semantics, but there are still smaller long-tail places where older wording or
+component assumptions can drift back in.
 
 Relevant file:
 
-- [components/ChatFocus.tsx](/Users/yinyiping/Desktop/wiki/components/ChatFocus.tsx:1)
+- [components/ChatFocus.tsx](/Users/yinyiping/Desktop/Wiki/components/ChatFocus.tsx:1)
 
-This is not wrong yet, but it means the system is not fully speaking one object language.
+The remaining risk is no longer the absence of an object language. It is
+surface drift.
 
 ### 3.2 Thought Containers vs Panel-Level Judgment
 
@@ -213,34 +300,33 @@ This is not wrong yet, but it means the system is not fully speaking one object 
 
 Relevant files:
 
-- [components/VersionedAnchorCard.tsx](/Users/yinyiping/Desktop/wiki/components/VersionedAnchorCard.tsx:1)
-- [components/thought-anchor-model.ts](/Users/yinyiping/Desktop/wiki/components/thought-anchor-model.ts:1)
+- [components/VersionedAnchorCard.tsx](/Users/yinyiping/Desktop/Wiki/components/VersionedAnchorCard.tsx:1)
+- [components/thought-anchor-model.ts](/Users/yinyiping/Desktop/Wiki/components/thought-anchor-model.ts:1)
 
-This is an unresolved boundary:
+This boundary is now explicit in the product:
 
 - panel-level judgment is now real
 - anchor-container locking is still a separate local regime
 
-That split may be acceptable, but it should eventually be made explicit rather than left implicit.
+That split is acceptable, but it still needs careful wording discipline so
+`lock` never collapses back into `crystallize`.
 
-### 3.3 Kesi / Graph Still Carry Some Compatibility Logic
+### 3.3 Patterns / Graph Still Carry Some Compatibility Logic
 
-Even though `/kesi` and `/graph` are now panel/weave-first, there are still compatibility traces in the codebase:
+The remaining work is no longer "make the object layer real". It is:
 
-- helper residues
-- older sorting assumptions
-- light fallback residue in related helpers
-
-The core behavior is now correct, but the system still remembers its trace-derived ancestry.
+- keep wording aligned across Home / /today / review / /patterns / /graph
+- keep scheduler explanations quiet and non-dashboard-like
+- continue deleting compatibility residue in long-tail helpers
 
 ## 4. Where the Stop Point Is
 
-This phase should stop here.
+This build phase can stop here.
 
 The project has completed a meaningful transition:
 
 - from "quiet UI around trace events"
-- to "quiet UI around accountable objects"
+- to "quiet UI around accountable objects and actions"
 
 Continuing to push new objects or new lifecycle states immediately would likely blur phase boundaries.
 
@@ -250,62 +336,46 @@ This is now a good stopping point because:
 - the relation layer is real
 - the evidence path is real
 - the UI has already been substantially de-noised
+- scheduler and relation actions now exist across the main surfaces
+- work-session and change-resolution now form a complete object-level loop
 
 ## 5. What The Next Phase Should Be
 
-The next phase should **not** be "add more surfaces".
+The next phase should **not** be "add more object abilities or more queue mechanics".
 
-It should be one of the following, chosen explicitly:
+It should be:
 
-### Option A · Unify Remaining Trace-Only Semantics
+### Option A · Stabilization and Documentation Freeze
 
 Goal:
 
-- remove the remaining places where old trace-first logic still directly drives product semantics
+- audit terminology, status labels, and action wording across surfaces
+- freeze the current canon so future work does not drift back into trace-era language
+- keep Home / /today quiet even as scheduler logic gets richer
+- avoid letting resolved-change recap turn into a dashboard or task manager
 
 Priority targets:
 
-- `ChatFocus`
-- selected source surfaces
-- anchor-level locking boundary
-
-This option makes the system speak one programmatic language.
-
-### Option B · Unify AI Surfaces Around a Stage-Aware Model
-
-Goal:
-
-- make `ChatFocus`, `FreeInput`, `Rehearsal`, `Examiner`, and `Ingestion` feel like one learning engine instead of adjacent tools
-
-This option is likely the highest-leverage next product phase.
-
-### Option C · Make Panel Revision Properly Visible
-
-Goal:
-
-- make revision not only stored, but meaningful in the product
-
-For example:
-
-- show revision-aware panel state in `/kesi`
-- show revision differences in `review`
-
-This option should come after Option A or B, not before.
+- cross-surface naming consistency
+- review checklist / onboarding / canon alignment
+- removal of residual compatibility helpers where they no longer pay for themselves
 
 ## 6. Recommendation
 
 Recommended next phase:
 
-**Option B · unify AI surfaces around a stage-aware learning model**
+**Option A · stabilization and documentation freeze**
 
 Why:
 
-- the object layer is now strong enough to support it
-- the biggest remaining incoherence is not visual, but behavioral
-- Loom still risks feeling like multiple AI tools sharing a visual language instead of one system with multiple learning stages
+- the system now has enough real capability that naming drift is the bigger risk
+- product and docs need to teach the same object language
+- another round of feature growth before a freeze would make the system harder to reason about
 
 ## 7. Current One-Sentence Summary
 
 Loom is no longer just a source-first reading interface.
 
-It is now a panel/weave-based understanding system with accountable judgment objects, accountable relation objects, and evidence paths back into the source.
+It is now a panel/weave-based understanding system with accountable judgment
+objects, accountable relation objects, change-driven work sessions, visible
+change resolution, and evidence paths back into the source.

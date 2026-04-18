@@ -1,0 +1,25 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#050505"/>
+
+  <line x1="170" y1="448" x2="1430" y2="448" stroke="#1B1B1B" stroke-width="2"/>
+
+  <g stroke="#F2EEE5" fill="none" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M242 220V596H500"/>
+
+    <circle cx="654" cy="448" r="118"/>
+
+    <path d="M731 512
+             C782 512 824 484 866 434
+             C903 389 934 351 954 336"/>
+
+    <circle cx="1030" cy="448" r="118"/>
+
+    <path d="M1136 596V336L1260 448L1384 336V596"/>
+  </g>
+
+  <!-- break O1 so it behaves more like a transformed fragment than a full letter -->
+  <path d="M735 352L760 548" stroke="#050505" stroke-width="34" stroke-linecap="round"/>
+
+  <!-- break O2 at the top-right so it can resolve into M rather than remain a full O -->
+  <path d="M1096 328L1144 398" stroke="#050505" stroke-width="36" stroke-linecap="round"/>
+</svg>

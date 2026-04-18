@@ -1,200 +1,157 @@
 # Loom · Current Design Canon
 
-Status: current, operative design canon  
-Updated: 2026-04-13
+**Status: current, operative design canon**  
+**Updated: 2026-04-15**
 
-This file is the shortest reliable answer to:
+Loom is an **Epistemic Loom**. It is not a dashboard, not a landing page, and not a chat shell. It is a reading-and-thinking environment where source-bound understanding is woven into memory.
 
-- What Loom is
-- What interaction model is currently valid
-- Which older design directions are historical only
+LOOM is not an acronym. It names a time structure:
 
-Use this file for day-to-day product decisions.  
-Use `docs/design/DESIGN_MEMORY.md` for the long constitution and rationale.  
-Use `docs/design/CAPTURE_SPEC.md` for the capture/review pivot details.  
-Treat `docs/design/CANVAS_SPEC.md` as historical only.
+- **Library** — how the past reaches the present.
+- **Eyes** — the living threshold where seeing becomes thought and judgment.
+- **Memory** — how the present reaches the future.
 
-## 1. Product Identity
+Loom is where the world is seen, judged, woven, and stored across time.
 
-Loom is not a generic note app, chat app, or wiki.
+---
 
-Loom is a **loom** for thought:
+## 1. Product Definition
 
-- Source documents are the warp
-- Individual thoughts are the weft
-- The user reads, selects, asks, captures, elaborates, and crystallizes
-- `/kesi` is the accumulated fabric of understanding
+- **织者即智者.** The loom holds the tension; the weaver makes the judgment.
+- **润物无声.** The system should be felt in its results, not in its self-display.
+- **Source is sacred.** The document is the first foreground object.
+- **Panels are earned.** A panel is a settled judgment, not a decorative card.
+- **Relations are earned.** A weave is a judged relation, not a loose backlink list.
+- **Work begins from change.** The scheduler should surface unresolved change, not generic activity.
 
-If a design decision makes Loom feel like a floating AI chat tool or a generic PKM dashboard, the decision is wrong.
+---
 
-Strategic boundary:
+## 2. Surface Taxonomy
 
-- Loom should not try to compete head-on with Heptabase as a general visual knowledge base
-- Loom should not try to compete head-on with Readwise as reading-chat middleware
-- Loom should not try to compete head-on with Obsidian as an infinite personal canvas
+Every page belongs to one surface family. Do not force one shell across all of them.
 
-The correct entry point is narrower and stronger:
+- **Reading / prose-first**
+  Source pages, Help. One clear foreground object: the prose.
+- **Identity / manifesto**
+  About. One clear foreground object: the product's identity grammar and commitments.
+- **Work surfaces**
+  Home, Today, Review. One clear foreground object: the next action or current judgment.
+- **Archive / habitat**
+  Patterns, Atlas collection pages. The foreground is the current pattern or collection material, not controls.
+- **Relation surface**
+  Graph. With focus, the object is foreground and the map recedes. Without focus, the map may dominate.
 
-- read one document
-- ask around one passage
-- commit one anchor
-- review one evolving map
-- crystallize one panel
-- let real kesi emerge later from many such panels
+---
 
-Sharing, collaboration, ecosystem, and broader network effects are all secondary to this.
+## 3. Attention Contract
 
-## 2. The Five Active Rules
+Unify **attention**, not width.
 
-These are the current top-level filters.
+- At any moment there should be **one clear foreground object**.
+- System chrome must not compete with that object.
+- Controls appear when needed and recede when not needed.
+- Secondary information should be readable, but never louder than the current object of thought.
 
-1. **Loom is a loom**
-   Every action should map to reading, passing the shuttle, committing a block, or viewing the pattern.
+For reading surfaces:
 
-2. **润物细无声**
-   The user should feel the result, not the mechanism. No celebratory chrome, no noisy state reporting, no constant prompts.
+- Main prose column should adapt with screen size.
+- Large desktop windows should not collapse to a narrow center strip.
+- Review rails should remain secondary to the prose.
 
-3. **The source is sacred**
-   The document remains primary. Notes never invade the source body as permanent inline clutter.
+---
 
-4. **Faster and cleaner than handwriting**
-   Capture must be low-friction. AI output must improve structure, not add ceremony.
+## 4. Desktop Entry Hierarchy
 
-5. **Thought Map is the pattern**
-   The thought structure is not secondary metadata. It is the core product surface.
+Desktop entry roles are fixed.
 
-## 3. Current Interaction Model
+- **Sidebar** is the primary navigation layer.
+- **Shuttle** is the fast path. It is not a second home page.
+- **Home / Observation Deck** is the quiet desktop start surface:
+  - current work
+  - recent resolved changes
+  - recent threads
 
-The active interaction model is:
+Do not reintroduce a landing-page hero or a second global navigation layer on Home.
 
-1. Read the source
-2. Select text
-3. Do one of three things:
-   - Click the warp thread to ask AI
-   - `Cmd`-click or `Cmd+Shift+A` to capture a thought-anchor with quote-only
-   - `Option`-click to highlight
-4. Review thoughts in the right-side map
-5. Expand the map with `Cmd+/` to elaborate captured thoughts
-6. Crystallize completed understanding into `/kesi`
+---
 
-This means:
+## 5. System Layer Boundary
 
-- **Capture-first** is the active model
-- **Wide ReviewThoughtMap** is the active elaboration surface
-- **Canvas as a free 2D workspace is not current product direction**
-- **Single-document completion is the immediate product priority**
-- **Cross-panel fabric is allowed to emerge later; it is not the first battle**
+On macOS, the notch / island belongs to the **system layer**, not to the webpage layer.
 
-## 4. Valid Surfaces
+- Ear regions are for **passive status only**.
+- Primary interaction must live **below the safe area**.
+- The notch may be used as a visual anchor, but not as the main interaction anchor.
+- The web page must remain correct even if the top system layer is absent.
 
-These are the intended surfaces now:
+Ordinary window layouts may ignore the notch. Full-screen or custom top-chrome layouts must respect `safeAreaInsets`.
 
-- **Source document**
-  Primary reading surface
-
-- **SelectionWarp**
-  Contextual ask/capture/highlight entrypoint
-
-- **Anchor dots in the gutter**
-  Minimal signal that thought exists at a source location
-
-- **ReviewThoughtMap**
-  Narrow state: peripheral structure
-  Wide state: writable thought elaboration surface
-
-- **Live artifact**
-  The evolving, structured note for the current document
-
-- **/kesi**
-  The long-term woven output
-
-## 5. Invalid or Historical Surfaces
-
-These should not be reintroduced casually:
-
-- Persistent AI sidebar or always-open chat panel
-- Free-floating canvas workspace as the main thinking surface
-- Always-visible ambient controls competing with the source
-- Gamified or dashboard-like knowledge surfaces
-- Loud "AI is thinking", "saved", "indexed", or "synced" UI
-
-`docs/design/CANVAS_SPEC.md` documents a rejected direction, not a pending one.
+---
 
 ## 6. Visual Language
 
-The visual language should continue to be:
+- **Quiet material over scene design.**
+- **Glass is support, not spectacle.**
+- **Density over decoration.**
+- **Stillness over cinematic atmosphere.**
+- **Comets are moments, not backgrounds.** Insight may flare, but the page should not become cinematic theater.
 
-- Apple-native feeling rather than browser-native
-- Glass/material surfaces over flat boxed UI
-- SF/system typography
-- Quiet chrome, generous negative space
-- Accent only where intent is focused
-- Source-first layouts
+Preferred defaults:
 
-What this means in practice:
+- light living-vellum surfaces
+- subtle grain and restrained depth
+- SF / system-led typography
+- thin borders, quiet shadows
+- accent only where a thought is advancing
 
-- Prefer glass / material surfaces for containers that need a background
-- Prefer dimming/receding the source over replacing it abruptly
-- Avoid persistent toolbars, badges, chips, and status clutter
-- Prefer subtle transitions over obvious modal choreography
+Avoid:
 
-## 7. AI Behavior
+- theatrical backgrounds that dominate the page
+- neon HUD behavior
+- heavy hero cards pretending to be work surfaces
+- dashboard density disguised as productivity
 
-AI should feel like a silent collaborator, not a performer.
+Exception:
 
-Required:
+- `About` may use a controlled identity treatment, including atmospheric imagery, so long as it remains a dedicated manifesto surface and does not leak that visual language into work or reading surfaces.
 
-- Start with content, not preamble
-- End when the answer ends
-- Use markdown when useful
-- Stay concise and structured
+---
 
-Forbidden:
+## 7. Interaction Grammar
 
-- "Great question", "Sure", "Let me think"
-- self-narration
-- wrap-up fluff
-- permission-seeking after every answer
-- visible "assistant presence" when not summoned
+- **Shuttle**: move anywhere quickly.
+- **Interlace**: capture a source-bound thought.
+- **Review**: bring the judgment layer forward.
+- **Crystallize**: settle a thought container or a whole pattern.
+- **Resolve**: finish the current change, not the object forever.
 
-## 8. Branding
+This grammar should feel 润物无声: the tool exists, the action occurs, and the result is rich, but the user should feel the result more than the system’s self-display.
 
-Branding should remain literal and restrained:
+If the user marked something done, interpret it as:
 
-- Loom mark = warp threads
-- The absence of weft is intentional
-- Brand should support the weaving model, not compete with the reading surface
+- **Done for current change**, not “hide this object forever”.
 
-Inside the product, brand should be quiet. The work surface is not a marketing surface.
+---
 
-## 9. Current Decision Table
+## 8. Scheduler Grammar
 
-Use this table when deciding between alternatives.
+The scheduler is a workbench, not a scoring system.
 
-- If a choice increases focus and lowers ceremony: prefer it
-- If a choice preserves source primacy: prefer it
-- If a choice improves capture speed: prefer it
-- If a choice makes the map more legible as a pattern: prefer it
-- If a choice adds visible system presence without user intent: reject it
-- If a choice revives canvas-first thinking: reject it unless the canon changes
+- Prioritize unresolved change.
+- Let users pin, snooze, hide for today, and mark done.
+- Explain `Why now` quietly.
+- Let resolved changes be reviewable after the fact.
 
-## 10. What Still Needs Work
+Avoid rings, streaks, gamified scoreboards, or black-box recommendations.
 
-The current design is coherent, but not fully systematized.
+---
 
-Open design work:
+## 9. Implementation Priority
 
-- Reduce residual global-system feel in root layout overlays
-- Keep interaction density low as more learning tools are added
-- Continue collapsing historical naming and component residue
-- Avoid reintroducing tracked generated artifacts into the product surface
+When design decisions conflict, use this order:
 
-## 11. Source of Truth Order
-
-When documents disagree, use this precedence:
-
-1. `docs/design/CURRENT_DESIGN_CANON.md`
-2. `docs/design/CAPTURE_SPEC.md`
-3. `docs/design/DESIGN_MEMORY.md`
-4. implementation
-5. historical specs (`docs/design/CANVAS_SPEC.md`)
+1. Protect the foreground object.
+2. Preserve source-first reading.
+3. Keep system chrome above the page, not inside it.
+4. Reduce control-panel density.
+5. Only then optimize visual flourish.

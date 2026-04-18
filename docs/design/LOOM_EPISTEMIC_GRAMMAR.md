@@ -133,7 +133,7 @@ Properties:
 
 Weave is not adjacency. It is a claim of relationship.
 
-### 8. Kesi
+### 8. Patterns
 
 The user's durable fabric of panels and weaves.
 
@@ -148,13 +148,13 @@ Properties:
 
 The object hierarchy should be read as:
 
-`source -> passage -> thread -> anchor -> thought map -> panel -> weave -> kesi`
+`source -> passage -> thread -> anchor -> thought map -> panel -> weave -> patterns`
 
 Critical rule:
 
 - `thread` is not equivalent to `anchor`
 - `anchor` is not equivalent to `panel`
-- `panel` is not equivalent to `kesi`
+- `panel` is not equivalent to `patterns`
 
 Each upward move requires a stronger justification and a narrower claim.
 
@@ -231,7 +231,7 @@ The minimum lifecycle should be:
   New evidence or conflict has put the panel under pressure.
 
 - `settled`
-  Stable enough to live in `/kesi` without immediate revision.
+  Stable enough to live in `/patterns` without immediate revision.
 
 - `superseded`
   Retained for history, but no longer the current standing interpretation.
@@ -255,7 +255,7 @@ Crystallize means:
 
 - this line of understanding now stands as a panel-level holding
 - it has enough structure to be revisited later
-- it is worthy of entering kesi
+- it is worthy of entering patterns
 
 Therefore crystallize should always imply:
 
@@ -334,7 +334,7 @@ The next product / engineering priority should be:
 2. give anchors a stronger internal type grammar
 3. define a real panel object and revision contract
 4. make crystallize produce panel state, not only a trace-level flag
-5. let `/kesi` operate on panels as first-class objects
+5. let `/patterns` operate on panels as first-class objects
 
 Not priority right now:
 

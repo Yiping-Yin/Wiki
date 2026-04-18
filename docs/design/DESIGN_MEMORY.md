@@ -253,6 +253,11 @@ thick` glass with backdrop blur, inner highlight, aurora bloom, grain — is
 the visual baseline. Every container that has a background must default to
 glass. Solid `bg-elevated` is a fallback, never a first choice.
 
+**Terminology rule:** in Loom, **Liquid Glass** is the implementation
+shorthand for this same Apple-material, glass-over-surface baseline. It is
+not a second style direction. If a design note says "glass", "material",
+"Apple material", or "liquid glass", they all point to this one rule.
+
 ### §6 · Slow hands, fast mind
 > "kesi 虽然是慢工出细活的作品,但是不代表编织的手工艺人脑袋不活跃"
 
@@ -830,6 +835,149 @@ begins again.
 This is why no wordmark is needed (§31 — and now also §32). The name,
 when written, IS the icon. When abstracted, IS the icon. They cannot
 be separated because they were never two things.
+
+### §32A · LO = human logic · OM = AI omniscience · the name encodes the division of labor
+> "lo = logic = Human，om = omniscience = AI"
+
+This is the **internal semantic map** of the name `Loom`. It is not the
+first sentence we say to users, but it is the underlying logic that should
+govern future brand writing.
+
+`lo` names the **human side**: logic, judgment, framing, sequence,
+criterion, and the act of deciding what matters.
+
+`om` names the **AI side**: omniscience not in the literal theological
+sense, but as machine-scale breadth — recall, adjacency, survey,
+cross-reference, and near-total field visibility.
+
+`Loom` therefore means: **human logic directing AI-scale seeing**.
+It is not "AI replaces thought." It is not "human intuition alone." It is
+the coupling where the person provides structure and judgment, and the AI
+extends range and visibility.
+
+**The ordering is load-bearing:**
+
+- **Human logic leads.** The person chooses the frame, the question, the
+  standard, the boundary, and the final commitment.
+- **AI omniscience follows.** The machine widens the field, finds relations,
+  recalls possibilities, and helps surface structure at a scale the person
+  cannot manually hold.
+- **If the two ever conflict, the human side wins.** Loom must never brand
+  itself as an oracle that supersedes judgment.
+
+**Copy implications:**
+
+- **Internal language may use `omniscience`** as a compressed, mythic term
+  for the AI half of the system.
+- **Public language should translate that idea down into human clarity.**
+  Prefer phrases like:
+  - `human logic with AI reach`
+  - `human judgment, amplified by AI`
+  - `structure from humans, scale from AI`
+- **Forbidden public framing:** "all-knowing AI," "knows everything,"
+  "perfect answers," "godlike intelligence," or any promise that makes Loom
+  sound like a prophet instead of a thinking tool.
+
+**Tone lock:** when future brand writing must choose between sounding more
+powerful and sounding more human, choose the human-reading version first.
+The product may be ambitious, but the voice should still say: **the
+judgment is yours; the reach is expanded by AI**.
+
+### §32B · Approved brand copy stack · foundation first, hero second, about third
+> "都需要" / "同意"
+
+The following copy is the **approved baseline** for Loom's brand writing
+under the §32A semantic map. It is not immutable scripture, but future copy
+should begin here unless there is a deliberate reason to diverge.
+
+**1. Brand foundation · internal mother text**
+
+**English**
+
+Loom is a thinking system where human logic leads and AI expands the field
+of view.
+
+Its structure is encoded in the name itself: `lo` is logic, judgment,
+sequence, framing, and choice. This is the human side. `om` is
+omniscience, not as divinity, but as machine-scale reach: recall,
+adjacency, synthesis, and near-total visibility across a field. This is
+the AI side.
+
+Loom is not built on the idea that AI should replace thought. It is built
+on the idea that humans should keep judgment, while AI extends range. The
+human decides what matters. The AI helps reveal what can be seen. Loom is
+where structure stays human and scale becomes machine-assisted.
+
+Its promise is not perfect answers. Its promise is better judgment with
+more reach.
+
+**中文**
+
+Loom 是一个思维系统：由人的逻辑主导，由 AI 扩展视野。
+
+它的结构就写在名字里：`lo` 是 logic，是判断、顺序、framing、取舍。这一部分属于人。`om`
+是 omniscience，但不是神性的“全知”，而是机器尺度上的广域可见性：召回、邻接、综合、跨域关联。这一部分属于 AI。
+
+Loom 不是建立在“AI 替代思考”之上。它建立在“人保留判断，AI 扩展范围”之上。人决定什么重要。AI
+帮助显现什么可见。Loom 让结构继续属于人，让规模交给机器辅助。
+
+它承诺的不是完美答案。它承诺的是：在更大视野中，做出更好的判断。
+
+**2. Homepage hero · preferred public line**
+
+This is the current recommended homepage direction. Use this before trying
+new slogan variants.
+
+**English**
+
+Headline: `Human logic. AI reach.`
+
+Subline: `Loom helps you think with structure, while AI expands what you can see.`
+
+**中文**
+
+标题：`人的逻辑，AI 的视野。`
+
+副标题：`Loom 用结构帮助你思考，同时让 AI 扩展你能看见的范围。`
+
+**3. About copy · public explanatory paragraph**
+
+Use this when a fuller explanation is needed.
+
+**English**
+
+Loom is designed around a simple division of labor.
+
+Humans are better at judgment. We decide what matters, what to ignore,
+what a question really means, and when something is good enough to keep.
+That kind of logic is not just computation. It is structure, taste,
+priority, and responsibility.
+
+AI is better at scale. It can search wider, connect more, recall faster,
+and surface patterns across a field that would be too large to hold
+manually. That does not make it the author of judgment. It makes it a
+powerful extension of perception.
+
+Loom brings those two strengths together. It gives human reasoning a
+cleaner structure and AI a proper role. Not as a voice that replaces you,
+but as a system that helps you see further while you remain the one who
+decides.
+
+**中文**
+
+Loom 建立在一个很简单的分工之上。
+
+人更擅长判断。我们决定什么重要，什么可以忽略，一个问题真正的含义是什么，以及什么值得留下。这种逻辑不只是计算，它还包含结构、品味、优先级与责任。
+
+AI 更擅长规模。它可以搜索得更广，连接得更多，召回得更快，也能在过大的信息场里帮助人发现模式。但这并不意味着 AI
+负责判断。它只是把人的感知和观察面大幅扩展了。
+
+Loom 的作用，就是把这两种能力正确地放在一起。它让人的推理更有结构，也让 AI
+拥有恰当的位置。不是取代你发声，不是替你判断，而是在你仍然保有决定权的前提下，帮助你看得更远。
+
+**Operational rule:** if a future homepage, pitch deck, or about-page draft
+contradicts the stack above, the newer draft must explain why. Do not drift
+back into "all-knowing AI" language by accident.
 
 ### §33 · Visual pages must use visual effects · empty space is NOT content here
 > "大图展示的静态时候要学会利用视觉效果。静态需要很好的利用视觉效果"
@@ -1532,6 +1680,8 @@ Adding can always happen later; removing after shipping is harder.
 | 2026-04-09 | "一切为了沉浸式,logo 复杂,也会影响" | §31 Immersion outranks identity (rev 5) |
 | 2026-04-09 | "LOOM 相当于有 8 个竖线,7 个横线" | §32 LOOM = 8 warps + 7 wefts (rev 6) |
 | 2026-04-09 | "12 经线和 3+1 那个方案是在另外不同的场景" | §32 scoping caveat — 8 is for the logo only |
+| 2026-04-17 | "lo = logic = Human，om = omniscience = AI" | §32A semantic map — human logic leads, AI extends reach |
+| 2026-04-17 | "都需要" / "同意" | §32B approved brand copy stack — foundation, hero, and about copy locked |
 | 2026-04-09 | "大图展示的静态时候要学会利用视觉效果" | §33 Visual pages must use visual effects (rev 7) |
 | 2026-04-09 | "再 about 里加入 logo 和刚才讨论的静态,动态的图标" | §31 exception · icons-as-content (rev 8) |
 | 2026-04-09 | "AI 已经在帮助 highlight 了" | §34 Ask absorbs Highlight (rev 9) |

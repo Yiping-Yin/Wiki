@@ -1,0 +1,21 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#050505"/>
+
+  <line x1="140" y1="448" x2="1460" y2="448" stroke="#181818" stroke-width="2"/>
+
+  <g stroke="#F2EEE5" fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <!-- L -->
+    <path d="M224 220V596H500"/>
+
+    <!-- fused oo/m lower bowls -->
+    <path d="M710 385A90 90 0 1 1 590 385"/>
+    <path d="M940 385A90 90 0 1 1 820 385"/>
+
+    <!-- fused oo/m roof and right anchor -->
+    <path d="M590 385
+             C620 315 680 315 710 385
+             C742 455 788 455 820 385
+             C850 315 910 315 940 385
+             V596"/>
+  </g>
+</svg>

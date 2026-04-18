@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+  <title id="title">Loom blueprint wordmark</title>
+  <desc id="desc">Transparent wordmark for Loom with a continuous infinity-loop center stroke and cool blue edge glows.</desc>
+  <defs>
+    <linearGradient id="strokeSilver" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d6d7db" />
+      <stop offset="16%" stop-color="#f5f6f8" />
+      <stop offset="50%" stop-color="#a8abb1" />
+      <stop offset="84%" stop-color="#f5f6f8" />
+      <stop offset="100%" stop-color="#d6d7db" />
+    </linearGradient>
+    <linearGradient id="beamSilver" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a7a9ae" />
+      <stop offset="18%" stop-color="#f7f7f8" />
+      <stop offset="50%" stop-color="#85878d" />
+      <stop offset="82%" stop-color="#f7f7f8" />
+      <stop offset="100%" stop-color="#a7a9ae" />
+    </linearGradient>
+    <filter id="blueGlowWide" x="-80%" y="-100%" width="260%" height="300%">
+      <feGaussianBlur stdDeviation="18" />
+    </filter>
+    <filter id="blueGlowTight" x="-60%" y="-80%" width="220%" height="260%">
+      <feGaussianBlur stdDeviation="7" />
+    </filter>
+    <filter id="beamGlow" x="-40%" y="-300%" width="180%" height="700%">
+      <feGaussianBlur stdDeviation="8" />
+    </filter>
+  </defs>
+
+  <g transform="translate(28 18) scale(0.92)">
+    <g opacity="0.62">
+      <rect x="0" y="203" width="1404" height="14" rx="7" fill="#4fa4ff" filter="url(#beamGlow)" />
+      <rect x="0" y="208" width="1404" height="4" rx="2" fill="#8fc4ff" opacity="0.72" />
+    </g>
+
+    <g opacity="0.9">
+      <rect x="63" y="32" width="18" height="336" rx="9" fill="#69b6ff" filter="url(#blueGlowWide)" />
+      <rect x="1239" y="28" width="18" height="344" rx="9" fill="#69b6ff" filter="url(#blueGlowWide)" />
+      <rect x="1577" y="28" width="18" height="344" rx="9" fill="#69b6ff" filter="url(#blueGlowWide)" />
+    </g>
+
+    <g fill="none" stroke="url(#strokeSilver)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 81 28 L 81 372 L 318 372" />
+      <path d="M 220 210
+               C 220 38, 430 38, 624 210
+               C 818 382, 1028 382, 1028 210
+               C 1028 38, 818 38, 624 210
+               C 430 382, 220 382, 220 210" />
+      <path d="M 1248 28 L 1248 372" />
+      <path d="M 1248 28 L 1412 192 L 1576 28" />
+      <path d="M 1576 28 L 1576 372" />
+    </g>
+
+    <g opacity="0.4">
+      <rect x="81" y="28" width="12" height="344" rx="6" fill="#f6f7f8" filter="url(#blueGlowTight)" />
+      <rect x="1242" y="28" width="12" height="344" rx="6" fill="#f6f7f8" filter="url(#blueGlowTight)" />
+      <rect x="1570" y="28" width="12" height="344" rx="6" fill="#f6f7f8" filter="url(#blueGlowTight)" />
+    </g>
+
+    <rect x="188" y="202" width="1108" height="16" rx="8" fill="url(#beamSilver)" opacity="0.94" />
+  </g>
+</svg>
