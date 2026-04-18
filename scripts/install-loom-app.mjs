@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const home = homedir();
 const derivedDataRoot = path.join(home, 'Library/Developer/Xcode/DerivedData');
@@ -9,6 +10,25 @@ const primaryTarget = '/Applications/Loom.app';
 const fallbackTarget = path.join(home, 'Applications/Loom.app');
 const mode = process.argv[2] ?? 'auto';
 const preferredConfiguration = process.env.LOOM_APP_CONFIGURATION?.trim() || 'Release';
+
+export function buildInstallFailure(code, stderr = '') {
+  const message = stderr.trim() || `ditto exited ${code ?? 1}`;
+  const error = new Error(message);
+  const lower = message.toLowerCase();
+  if (lower.includes('permission denied') || lower.includes('operation not permitted') || lower.includes('not permitted')) {
+    error.code = 'EACCES';
+  }
+  return error;
+}
+
+export function isPermissionFallbackError(error) {
+  const code = error && typeof error === 'object' ? error.code : '';
+  if (code === 'EACCES' || code === 'EPERM') return true;
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return message.includes('permission denied')
+    || message.includes('operation not permitted')
+    || message.includes('not permitted');
+}
 
 async function listDirSafe(dir) {
   try {
@@ -57,12 +77,18 @@ async function installTo(target, source) {
   await fs.mkdir(path.dirname(target), { recursive: true });
   await fs.rm(target, { recursive: true, force: true });
   await new Promise((resolve, reject) => {
+    let stderr = '';
     const child = spawn('/usr/bin/ditto', [source, target], {
-      stdio: 'inherit',
+      stdio: ['ignore', 'inherit', 'pipe'],
+    });
+    child.stderr.on('data', (chunk) => {
+      const text = chunk.toString();
+      stderr += text;
+      process.stderr.write(text);
     });
     child.on('exit', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`ditto exited ${code ?? 1}`));
+      else reject(buildInstallFailure(code, stderr));
     });
     child.on('error', reject);
   });
@@ -87,14 +113,7 @@ async function main() {
     console.log(`Installed Loom.app to ${primaryTarget}`);
     return;
   } catch (error) {
-    const code = error && typeof error === 'object' ? error.code : '';
-    if (code !== 'EACCES' && code !== 'EPERM') throw error;
-    if (await exists(primaryTarget)) {
-      throw new Error(
-        `Primary target exists but is not writable in this environment: ${primaryTarget}. ` +
-          'Refusing to install a duplicate copy to ~/Applications.',
-      );
-    }
+    if (!isPermissionFallbackError(error)) throw error;
   }
 
   await installTo(fallbackTarget, source);
@@ -102,7 +121,13 @@ async function main() {
   console.log('Primary /Applications target was not writable in this environment.');
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+const isDirectRun = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
