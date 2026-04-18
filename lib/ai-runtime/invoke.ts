@@ -7,24 +7,31 @@ import {
   pickExecutionPlan,
   resolveBrokerResult,
 } from './broker';
+import { getRuntimeInvocationProfile } from './profile';
 import type { RuntimeFailureResult, RuntimeSuccess } from './types';
+import type { AiStageId } from '../ai/stage-model';
 
 export async function invokeLocalRuntime(args: {
   preferred: AiCliKind | null;
   prompt: string;
-  timeoutMs: number;
+  timeoutMs?: number;
+  stage?: AiStageId;
   model?: string;
   onChunk?: (chunk: string) => void;
 }): Promise<RuntimeSuccess | RuntimeFailureResult> {
   const plan = pickExecutionPlan({ preferred: args.preferred });
   const firstRuntime = plan.order[0];
   let primaryStreamed = false;
+  const profile = getRuntimeInvocationProfile(args.stage);
+  const timeoutMs = args.timeoutMs ?? profile.timeoutMs;
+  const codexConfigOverrides = profile.codexConfigOverrides;
 
   try {
     const text = await runCli(args.prompt, {
       cli: firstRuntime,
-      timeoutMs: args.timeoutMs,
-      model: args.model,
+      timeoutMs,
+      model: args.model ?? profile.model,
+      codexConfigOverrides,
       onChunk: args.onChunk
         ? (chunk) => {
             primaryStreamed = true;
@@ -50,8 +57,9 @@ export async function invokeLocalRuntime(args: {
     try {
       const text = await runCli(args.prompt, {
         cli: fallbackRuntime,
-        timeoutMs: args.timeoutMs,
-        model: args.model,
+        timeoutMs,
+        model: args.model ?? profile.model,
+        codexConfigOverrides,
         onChunk: args.onChunk,
       });
       return resolveBrokerResult({

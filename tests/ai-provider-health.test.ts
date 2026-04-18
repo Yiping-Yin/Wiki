@@ -129,6 +129,22 @@ test('deriveAiAvailability blocks send when both providers are unavailable', () 
   assert.match(availability.notice ?? '', /not authenticated/i);
 });
 
+test('deriveAiAvailability keeps send disabled while health is still unknown', () => {
+  const availability = deriveAiAvailability('codex', null);
+
+  assert.equal(availability.canSend, false);
+  assert.equal(availability.effectiveCli, null);
+  assert.match(availability.notice ?? '', /checking ai availability/i);
+});
+
+test('deriveAiAvailability keeps send disabled when provider verification failed', () => {
+  const availability = deriveAiAvailability('codex', []);
+
+  assert.equal(availability.canSend, false);
+  assert.equal(availability.effectiveCli, null);
+  assert.match(availability.notice ?? '', /could not be verified/i);
+});
+
 test('resolveAiNotice exposes an Open Settings action for provider auth guidance', () => {
   const notice = resolveAiNotice(
     'AI unavailable — Codex and Claude are not authenticated. Open Settings, sign in to one provider, then retry.',
