@@ -12,6 +12,8 @@ import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
 import { IngestionOverlay } from '../components/IngestionOverlay';
 import { RecursingOverlay } from '../components/RecursingOverlay';
+import { RehearsalOverlay } from '../components/RehearsalOverlay';
+import { ExaminerOverlay } from '../components/ExaminerOverlay';
 import { KeyboardHelpOverlay } from '../components/unified/KeyboardHelpOverlay';
 import { ExportAction } from '../components/ExportAction';
 import { CrystallizeListener } from '../components/CrystallizeListener';
@@ -76,6 +78,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <LinkPreview />
         <QuickSwitcher />
         <DropZone />
+        <RehearsalOverlay />
+        <ExaminerOverlay />
         <PageScopedChrome />
         <IngestionOverlay />
         <RecursingOverlay />

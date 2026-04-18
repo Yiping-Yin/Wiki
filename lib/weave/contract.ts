@@ -10,6 +10,8 @@ type WeaveContractInput = {
   status: WeaveStatus;
 };
 
+const SUGGESTED_STATUS_TENSION = 'This relation is still only suggested.';
+
 function uniqueLines(items: string[]) {
   return Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
 }
@@ -24,7 +26,7 @@ export function buildWeaveContract(input: WeaveContractInput) {
     : `${fromPanel.title} explicitly links outward toward ${toPanel.title}.`;
 
   const tensions = uniqueLines([
-    status === 'suggested' ? 'This relation is still only suggested.' : '',
+    status === 'suggested' ? SUGGESTED_STATUS_TENSION : '',
     evidence.length <= 1 ? 'Only one explicit evidence thread currently supports this relation.' : '',
     fromPanel.status === 'contested' ? `Source panel "${fromPanel.title}" is still contested.` : '',
     toPanel.status === 'contested' ? `Target panel "${toPanel.title}" is still contested.` : '',
@@ -34,6 +36,22 @@ export function buildWeaveContract(input: WeaveContractInput) {
     claim,
     whyItHolds,
     openTensions: tensions,
+  };
+}
+
+export function syncWeaveContractStatus(
+  weave: Pick<Weave, 'claim' | 'whyItHolds' | 'openTensions'>,
+  status: WeaveStatus,
+) {
+  const baseTensions = weave.openTensions.filter((item) => item !== SUGGESTED_STATUS_TENSION);
+  const openTensions = status === 'suggested'
+    ? uniqueLines([SUGGESTED_STATUS_TENSION, ...baseTensions])
+    : uniqueLines(baseTensions);
+
+  return {
+    claim: weave.claim,
+    whyItHolds: weave.whyItHolds,
+    openTensions,
   };
 }
 

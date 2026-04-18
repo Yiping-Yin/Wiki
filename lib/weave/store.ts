@@ -1,6 +1,6 @@
 'use client';
 
-import { applyWeaveContract } from './contract';
+import { applyWeaveContract, syncWeaveContractStatus } from './contract';
 import type { Weave } from './types';
 
 const DB_NAME = 'loom-weaves';
@@ -91,15 +91,22 @@ export const weaveStore = {
     const existing = await this.get(id);
     if (!existing) return null;
     const now = Date.now();
-    const next = {
-      ...existing,
-      status,
-      contractSource: status === 'confirmed' ? 'confirmed' : existing.contractSource,
-      contractUpdatedAt: now,
+    const contract = syncWeaveContractStatus(existing, status);
+    const next = applyWeaveContract(
+      {
+        ...existing,
+        status,
+      },
+      contract,
+      now,
+      status === 'confirmed' ? 'confirmed' : existing.contractSource,
+    );
+    const updated = {
+      ...next,
       updatedAt: now,
     };
-    await this.put(next);
-    return next;
+    await this.put(updated);
+    return updated;
   },
 
   async updateContract(
