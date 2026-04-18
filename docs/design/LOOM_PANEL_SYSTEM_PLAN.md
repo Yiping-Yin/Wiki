@@ -10,7 +10,7 @@ Use it when asking:
 - what should be built next
 - what should not be built yet
 - how to move from anchors to real panels
-- how `/kesi` becomes a habitat instead of a list
+- how `/patterns` becomes a habitat instead of a list
 
 If `LOOM_EPISTEMIC_GRAMMAR.md` is the law,
 this file is the first version of the procedure.
@@ -71,7 +71,7 @@ The actual codebase is closest to this shape:
 | Thought Map | `ReviewThoughtMap` + `thought-anchor-model` | Real but derived |
 | Panel | implied by trace-level crystallize | Missing as object |
 | Weave | implied by backlinks and graph relations | Missing as object |
-| Kesi | `KesiView` projection of crystallized traces | Real as shell, weak as data model |
+| Patterns | `PatternsView` projection of crystallized traces | Real as shell, weak as data model |
 
 So the next phase should not add more surfaces.
 
@@ -169,7 +169,7 @@ Work:
 
 Success criteria:
 
-- `/kesi` can render panels without reverse-engineering trace summaries
+- `/patterns` can render panels without reverse-engineering trace summaries
 - panel status becomes a real object property, not a visual guess
 
 ### Phase D · Weave Confirmation
@@ -201,17 +201,17 @@ Work:
 Success criteria:
 
 - `/graph` becomes accountable relation space
-- `/kesi` relations are not just parsed links
+- `/patterns` relations are not just parsed links
 
-### Phase E · Kesi as Habitat
+### Phase E · Patterns as Habitat
 
 Goal:
 
-- `/kesi` becomes the place where panels live and get reactivated
+- `/patterns` becomes the place where panels live and get reactivated
 
 Work:
 
-1. panels drive `/kesi`
+1. panels drive `/patterns`
    - not crystallized traces alone
 
 2. weave-aware resurfacing
@@ -224,7 +224,7 @@ Work:
 
 Success criteria:
 
-- `/kesi` stops feeling like a rendered archive
+- `/patterns` stops feeling like a rendered archive
 - users return to panels, not to a list of trace remnants
 
 ## 4. What Not To Build Yet
@@ -250,7 +250,7 @@ This plan implies several immediate engineering rules.
 
 Current risk:
 
-- `KesiView`, `Graph`, and settled states infer too much from traces
+- `PatternsView`, `Graph`, and settled states infer too much from traces
 
 Desired direction:
 
@@ -298,7 +298,7 @@ If work must be staged over the next 90 days, do this:
 ### 60–90 days
 
 - define first-class weave schema
-- migrate `/kesi` and `/graph` toward panel + weave objects
+- migrate `/patterns` and `/graph` toward panel + weave objects
 - add revision / contest / supersede transitions
 
 ## 7. Review Questions

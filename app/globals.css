@@ -918,10 +918,6 @@ html:not(.dark) [data-theme='dark'] {
   body.sidebar-pinned .layout-shell__main {
     margin-left: var(--sidebar-shell-width);
   }
-
-  .mobile-menu-btn {
-    display: none !important;
-  }
 }
 
 .layout .with-toc {
@@ -1648,4 +1644,15 @@ body.reading-mode .loom-source-prose {
   padding: 0 4px;
   border-radius: 4px;
   text-decoration: line-through;
+}
+
+body.loom-chat-focus-active .loom-source-prose > * {
+  opacity: 0.58;
+  filter: saturate(0.82);
+  transition: opacity 220ms var(--ease), filter 220ms var(--ease);
+}
+
+body.loom-chat-focus-active .loom-source-prose > *[data-loom-chat-focus] {
+  opacity: 1;
+  filter: none;
 }

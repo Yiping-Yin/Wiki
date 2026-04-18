@@ -1,0 +1,44 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#050505"/>
+
+  <g stroke="#171717" stroke-width="1.5">
+    <line x1="280" y1="250" x2="1320" y2="250"/>
+    <line x1="280" y1="596" x2="1320" y2="596"/>
+    <line x1="280" y1="424" x2="1320" y2="424"/>
+  </g>
+
+  <g stroke="#F2EEE5" fill="none">
+    <g stroke-width="18" stroke-linecap="square" stroke-linejoin="miter">
+      <!-- L -->
+      <path d="M334 250V596H486"/>
+
+      <!-- O1: almost complete, but still slightly open -->
+      <path d="M780 423
+               C780 470 764 511 733 539
+               C681 586 598 585 545 537
+               C493 489 490 401 540 346
+               C592 289 679 287 733 336
+               C763 364 778 394 780 423" />
+
+      <!-- O2: rewritten state, no longer a full letter -->
+      <path d="M814 500
+               C773 456 767 387 801 338
+               C842 279 918 269 978 307
+               C1012 329 1034 362 1041 404" />
+      <path d="M1041 444
+               C1034 486 1011 521 973 547
+               C915 586 839 579 799 530" />
+
+      <!-- M -->
+      <path d="M1096 596V250L1190 362L1284 250V596" />
+    </g>
+
+    <!-- datum spine -->
+    <path d="M428 424H1218" stroke-width="8"/>
+
+    <!-- subtle rightward compression on O2 -->
+    <path d="M990 334L1040 334" stroke-width="8" stroke-linecap="square"/>
+    <path d="M989 514L1039 514" stroke-width="8" stroke-linecap="square"/>
+  </g>
+
+</svg>

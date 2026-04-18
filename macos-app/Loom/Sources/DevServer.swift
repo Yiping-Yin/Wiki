@@ -12,6 +12,11 @@ class DevServer: ObservableObject {
         case failed(String)
     }
 
+    private struct RuntimeLaunch {
+        let shellCommand: String
+        let requiredExecutables: [String]
+    }
+
     @Published var status: Status = .idle
     @Published private(set) var currentPort: Int = 3001
 
@@ -56,11 +61,50 @@ class DevServer: ObservableObject {
         if explicitMode == "dev" || explicitMode == "development" {
             return "dev"
         }
+        let hasUsableProdBuild = FileManager.default.fileExists(atPath: buildIdPath)
+            && Self.prodBuildSupportsWikiPages(projectPath: projectPath)
         // Default: prefer the production build whenever one exists, even in DEBUG
         // Xcode builds. Dev mode's 5s-per-page compile wall is a 别让我等 violation;
         // production mode serves pre-compiled pages with zero per-navigation cost.
+        // If the build is incomplete for MDX wiki routes, fall back to dev so
+        // Atlas → LLM navigation still works instead of serving 500s.
         // If the user really wants live Next.js dev, set LOOM_APP_SERVER_MODE=dev.
-        return FileManager.default.fileExists(atPath: buildIdPath) ? "prod" : "dev"
+        return hasUsableProdBuild ? "prod" : "dev"
+    }
+
+    static func prodBuildSupportsWikiPages(
+        projectPath: String,
+        fileManager: FileManager = .default
+    ) -> Bool {
+        let sourceWikiDir = URL(fileURLWithPath: projectPath).appendingPathComponent("app/wiki", isDirectory: true)
+        let builtWikiDir = URL(fileURLWithPath: projectPath).appendingPathComponent(".next-build/server/app/wiki", isDirectory: true)
+
+        guard fileManager.fileExists(atPath: sourceWikiDir.path),
+              fileManager.fileExists(atPath: builtWikiDir.path) else {
+            return false
+        }
+
+        let sourceRoutes: [String]
+        do {
+            sourceRoutes = try fileManager.contentsOfDirectory(atPath: sourceWikiDir.path)
+                .filter { route in
+                    let routePath = sourceWikiDir.appendingPathComponent(route).appendingPathComponent("page.mdx").path
+                    return fileManager.fileExists(atPath: routePath)
+                }
+        } catch {
+            return false
+        }
+
+        if sourceRoutes.isEmpty { return true }
+
+        for route in sourceRoutes {
+            let builtPagePath = builtWikiDir.appendingPathComponent(route).appendingPathComponent("page.js").path
+            if !fileManager.fileExists(atPath: builtPagePath) {
+                return false
+            }
+        }
+
+        return true
     }
 
     deinit {
@@ -158,6 +202,25 @@ class DevServer: ObservableObject {
             return
         }
 
+        let serverMode = resolvedServerMode(projectPath: projectPath)
+        let runtimeLaunch = runtimeLaunch(projectPath: projectPath, port: currentPort, serverMode: serverMode)
+
+        if let executableMessage = DevServerPreflight.missingExecutableMessage(
+            requiredExecutables: runtimeLaunch.requiredExecutables
+        ) {
+            DispatchQueue.main.async {
+                self.status = .failed(executableMessage)
+            }
+            return
+        }
+
+        if let dependencyMessage = DevServerPreflight.missingDependencyMessage(projectPath: projectPath) {
+            DispatchQueue.main.async {
+                self.status = .failed(dependencyMessage)
+            }
+            return
+        }
+
         // Keep logs scoped to the current launch attempt so failure heuristics
         // (like EADDRINUSE detection) don't read stale history.
         logQueue.sync { recentLogs = [] }
@@ -165,12 +228,12 @@ class DevServer: ObservableObject {
 
         let p = Process()
         p.currentDirectoryURL = URL(fileURLWithPath: projectPath)
-        let serverMode = resolvedServerMode(projectPath: projectPath)
 
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         p.executableURL = URL(fileURLWithPath: shell)
-        p.arguments = ["-lc", launchCommand(projectPath: projectPath, port: currentPort)]
+        p.arguments = ["-lc", runtimeLaunch.shellCommand]
         var env = ProcessInfo.processInfo.environment
+        env["PATH"] = DevServerPreflight.enrichedPATH(environment: env)
         if serverMode == "dev" {
             env["LOOM_DIST_DIR"] = ".next-app-dev"
         } else {
@@ -412,52 +475,38 @@ class DevServer: ObservableObject {
         return snapshot.joined(separator: "\n")
     }
 
-    private func launchCommand(projectPath: String, port: Int) -> String {
+    private func runtimeLaunch(projectPath: String, port: Int, serverMode: String) -> RuntimeLaunch {
         let buildIdPath = "\(projectPath)/.next-build/BUILD_ID"
         let devScriptPath = "\(projectPath)/scripts/dev.mjs"
-        let env = ProcessInfo.processInfo.environment
-        let explicitMode = env["LOOM_APP_SERVER_MODE"]?.lowercased()
         let runtimeCommand: String
+        let requiredExecutables: [String]
 
-        if explicitMode == "prod" || explicitMode == "production" {
+        if serverMode == "prod" {
             if FileManager.default.fileExists(atPath: buildIdPath) {
                 runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
+                requiredExecutables = ["npx"]
             } else if FileManager.default.fileExists(atPath: devScriptPath) {
                 runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+                requiredExecutables = ["node"]
             } else {
                 runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
-            }
-        } else if explicitMode == "dev" || explicitMode == "development" {
-            if FileManager.default.fileExists(atPath: devScriptPath) {
-                runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
-            } else {
-                runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
+                requiredExecutables = ["npx"]
             }
         } else {
-            #if DEBUG
-            // Prefer production server even in Debug builds when a production
-            // build exists — avoids stale .next dev-cache chunk errors that
-            // plague `next dev` across code changes.
-            if FileManager.default.fileExists(atPath: buildIdPath) {
-                runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
-            } else if FileManager.default.fileExists(atPath: devScriptPath) {
+            if FileManager.default.fileExists(atPath: devScriptPath) {
                 runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
+                requiredExecutables = ["node"]
             } else {
                 runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
+                requiredExecutables = ["npx"]
             }
-            #else
-            if FileManager.default.fileExists(atPath: buildIdPath) {
-                runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
-            } else if FileManager.default.fileExists(atPath: devScriptPath) {
-                runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
-            } else {
-                runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
-            }
-            #endif
         }
         // Create an isolated process group when available so stop() can kill
         // the entire server tree reliably using negative PIDs.
-        return "if command -v setsid >/dev/null 2>&1; then exec setsid \(runtimeCommand); else exec \(runtimeCommand); fi"
+        return RuntimeLaunch(
+            shellCommand: "if command -v setsid >/dev/null 2>&1; then exec setsid \(runtimeCommand); else exec \(runtimeCommand); fi",
+            requiredExecutables: requiredExecutables
+        )
     }
 
     private func nextFallbackPort() -> Int? {

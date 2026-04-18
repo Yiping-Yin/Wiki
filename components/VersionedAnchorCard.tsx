@@ -9,7 +9,7 @@
  *   - Latest version summary + quote + content (collapsible version picker
  *     when versionCount > 1)
  *   - Asymmetric delete: revert single version / delete whole container
- *   - Crystallize toggle (lock/unlock this container)
+ *   - Lock toggle (lock/unlock this local container)
  *
  * §X · The card embodies the iterative thought model: an anchor is a
  * CONTAINER of versions, not a static note. The latest version is the
@@ -19,6 +19,7 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAppendEvent, useRemoveEvents } from '../lib/trace';
 import { passagePositionKey } from '../lib/passage-locator';
+import { matchesThoughtContainerCrystallizeEvent } from '../lib/thought-containers';
 import type { ThoughtAnchorView } from './thought-anchor-model';
 import { locateAnchorElement } from './thought-anchor-model';
 
@@ -116,24 +117,18 @@ export function VersionedAnchorCard({
     // Also wipe any anchor-scoped crystallize events for this container
     await removeEvents(
       item.traceId,
-      (e) =>
-        e.kind === 'crystallize'
-        && (e as any).anchorId !== undefined
-        && (e as any).anchorId === item.anchorId,
+      (e) => matchesThoughtContainerCrystallizeEvent(e, item.containerAnchorIds),
     );
     setPendingDeleteContainer(false);
   };
 
   const toggleCrystallize = async () => {
     if (!item.traceId) return;
-    if (item.isCrystallized) {
+    if (item.isLocked) {
       // Unlock: remove the anchor-scoped crystallize event
       await removeEvents(
         item.traceId,
-        (e) =>
-          e.kind === 'crystallize'
-          && (e as any).anchorId !== undefined
-          && (e as any).anchorId === item.anchorId,
+        (e) => matchesThoughtContainerCrystallizeEvent(e, item.containerAnchorIds),
       );
     } else {
       // Lock: append an anchor-scoped crystallize event
@@ -155,7 +150,7 @@ export function VersionedAnchorCard({
       style={{
         paddingBottom: 14,
         borderBottom: '0.5px solid var(--mat-border)',
-        opacity: item.isCrystallized ? 0.88 : 1,
+        opacity: item.isLocked ? 0.88 : 1,
         borderRadius: 12,
         paddingInline: 10,
         paddingTop: 10,
@@ -226,9 +221,9 @@ export function VersionedAnchorCard({
                 v{item.versionCount}
               </button>
             )}
-            {item.isCrystallized && (
+            {item.isLocked && (
               <span
-                title="This thought is crystallized (locked)"
+                title="This local thought is locked"
                 style={{
                   color: 'var(--tint-indigo)',
                   fontSize: '0.72rem',
@@ -271,17 +266,17 @@ export function VersionedAnchorCard({
               e.stopPropagation();
               toggleCrystallize();
             }}
-            aria-label={item.isCrystallized ? 'Unlock this thought' : 'Crystallize this thought'}
-            title={item.isCrystallized ? 'Unlock · allow new versions' : 'Crystallize · lock to final form'}
+            aria-label={item.isLocked ? 'Unlock this local thought' : 'Lock this local thought'}
+            title={item.isLocked ? 'Unlock · allow new versions' : 'Lock · keep this local thread fixed while the panel stays open'}
             style={{
               background: 'transparent',
               border: 0,
               cursor: 'pointer',
-              color: item.isCrystallized ? 'var(--tint-indigo)' : 'var(--muted)',
+              color: item.isLocked ? 'var(--tint-indigo)' : 'var(--muted)',
               fontSize: '0.92rem',
               lineHeight: 1,
               padding: '0 4px',
-              opacity: item.isCrystallized ? 0.9 : 0.42,
+              opacity: item.isLocked ? 0.9 : 0.42,
               marginTop: 1,
               transition: 'opacity 0.18s var(--ease), color 0.18s var(--ease)',
             }}
@@ -291,7 +286,7 @@ export function VersionedAnchorCard({
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
-              el.style.opacity = item.isCrystallized ? '0.9' : '0.42';
+              el.style.opacity = item.isLocked ? '0.9' : '0.42';
             }}
           >
             ◈

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { getAiSurface } from '../lib/ai/stage-model';
+import { openLoomOverlay, openLoomReview } from '../lib/ai/surface-actions';
 import { contextFromPathname } from '../lib/doc-context';
 import { REFRESH_RESUME_KEY, type RefreshResumePayload } from '../lib/refresh-resume';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../lib/learning-status';
@@ -14,6 +16,8 @@ export function RefreshCoach() {
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
   const smallScreen = useSmallScreen();
+  const rehearsalSurface = getAiSurface('rehearsal');
+  const examinerSurface = getAiSurface('examiner');
   const [payload, setPayload] = useState<RefreshResumePayload | null>(null);
   const [completion, setCompletion] = useState<'settled' | 'verified' | null>(null);
   const [history] = useHistory();
@@ -91,26 +95,14 @@ export function RefreshCoach() {
   if (!payload || ctx.isFree) return null;
 
   const openReview = () => {
-    window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
-    if (learning.latestAnchorId) {
-      requestAnimationFrame(() => {
-        window.dispatchEvent(
-          new CustomEvent('loom:review:focus-thought', {
-            detail: { anchorId: learning.latestAnchorId },
-          }),
-        );
-      });
-    }
+    openLoomReview(learning.latestAnchorId);
   };
 
   const openOverlay = (id: 'rehearsal' | 'examiner') => {
-    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id } }));
-    requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id } }));
-    });
+    openLoomOverlay({ id });
   };
 
-  const openKesi = () => router.push(ctx.docId ? `/kesi?focus=${encodeURIComponent(ctx.docId)}` : '/kesi');
+  const openPatterns = () => router.push(ctx.docId ? `/patterns?focus=${encodeURIComponent(ctx.docId)}` : '/patterns');
   const primaryAction = refreshPrimaryAction(learning.nextAction);
   const bodyText = refreshBodyText(learning, payload?.source);
 
@@ -154,7 +146,7 @@ export function RefreshCoach() {
 
       <div className="t-footnote" style={{ color: 'var(--fg-secondary)', lineHeight: 1.5 }}>
         {completion === 'settled'
-          ? 'This panel is no longer cooling. It has settled back into your kesi.'
+          ? 'This panel is no longer cooling. It has settled back into your patterns.'
           : completion === 'verified'
             ? 'Your latest examiner pass held. Keep going only if you want to deepen the weave.'
             : bodyText}
@@ -163,8 +155,8 @@ export function RefreshCoach() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {completion === 'settled' ? (
           <>
-            <button type="button" onClick={openKesi} style={actionStyle(true)}>
-              Open panel in Kesi
+            <button type="button" onClick={openPatterns} style={actionStyle(true)}>
+              Open panel in Patterns
             </button>
           </>
         ) : completion === 'verified' ? (
@@ -184,7 +176,11 @@ export function RefreshCoach() {
               }}
               style={actionStyle(true)}
             >
-              {primaryAction === 'review' ? 'Review' : primaryAction === 'rehearsal' ? 'Rehearse' : 'Examine'}
+              {primaryAction === 'review'
+                ? 'Review'
+                : primaryAction === 'rehearsal'
+                  ? rehearsalSurface.launcherTitle
+                  : examinerSurface.launcherTitle}
             </button>
           </>
         )}

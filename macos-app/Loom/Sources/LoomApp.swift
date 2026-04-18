@@ -74,5 +74,4 @@ extension Notification.Name {
     static let loomGoForward = Notification.Name("loomGoForward")
     static let loomNewTopic = Notification.Name("loomNewTopic")
     static let loomLearn = Notification.Name("loomLearn")
-    static let loomNotchPresetSwitch = Notification.Name("loomNotchPresetSwitch")
 }

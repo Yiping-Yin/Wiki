@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Loom app icon</title>
+  <desc id="desc">Black square icon with a white Loom wordmark, infinity-loop oo glyph, and cinematic light flare.</desc>
+  <defs>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" />
+    </filter>
+    <filter id="lineGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" />
+    </filter>
+    <filter id="starGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="10" />
+    </filter>
+    <radialGradient id="centerBloom" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+      <stop offset="30%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="streakFade" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <g id="sparkle">
+      <line x1="-34" y1="0" x2="34" y2="0" />
+      <line x1="0" y1="-34" x2="0" y2="34" />
+      <line x1="-24" y1="-24" x2="24" y2="24" />
+      <line x1="-24" y1="24" x2="24" y2="-24" />
+    </g>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#000000" />
+
+  <g transform="translate(0 8)">
+    <rect x="150" y="482" width="724" height="18" fill="#ffffff" opacity="0.92" filter="url(#lineGlow)" />
+    <rect x="172" y="489" width="680" height="4" fill="#ffffff" opacity="0.95" />
+    <ellipse cx="512" cy="491" rx="168" ry="62" fill="url(#centerBloom)" opacity="0.95" />
+    <ellipse cx="352" cy="491" rx="70" ry="22" fill="url(#streakFade)" opacity="0.7" />
+    <ellipse cx="672" cy="491" rx="70" ry="22" fill="url(#streakFade)" opacity="0.7" />
+
+    <g stroke="#f8f8f8" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" fill="none">
+      <path d="M 196 278 L 196 676 L 318 676" />
+      <path d="M 286 492
+               C 286 338, 440 338, 512 492
+               C 584 646, 738 646, 738 492
+               C 738 338, 584 338, 512 492
+               C 440 646, 286 646, 286 492" />
+      <path d="M 748 278 L 748 676" />
+      <path d="M 748 278 L 848 390 L 948 278" />
+      <path d="M 948 278 L 948 676" />
+    </g>
+
+    <g fill="#ffffff" opacity="0.78">
+      <circle cx="344" cy="434" r="2.2" />
+      <circle cx="388" cy="448" r="1.8" />
+      <circle cx="338" cy="564" r="2.1" />
+      <circle cx="402" cy="580" r="1.6" />
+      <circle cx="642" cy="420" r="1.9" />
+      <circle cx="676" cy="444" r="2.1" />
+      <circle cx="648" cy="584" r="1.7" />
+    </g>
+
+    <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.98">
+      <g transform="translate(360 468)">
+        <use href="#sparkle" />
+        <circle cx="0" cy="0" r="24" fill="#ffffff" opacity="0.4" filter="url(#starGlow)" stroke="none" />
+      </g>
+      <g transform="translate(644 486)">
+        <use href="#sparkle" />
+        <circle cx="0" cy="0" r="28" fill="#ffffff" opacity="0.46" filter="url(#starGlow)" stroke="none" />
+      </g>
+    </g>
+
+    <circle cx="512" cy="491" r="20" fill="#ffffff" opacity="0.9" filter="url(#softGlow)" />
+  </g>
+</svg>

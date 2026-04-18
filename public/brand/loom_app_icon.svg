@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Loom app icon</title>
+  <desc id="desc">Black app icon with subtle blueprint grid and a luminous silver Loom wordmark.</desc>
+  <defs>
+    <linearGradient id="strokeSilver" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d5d7db" />
+      <stop offset="16%" stop-color="#f5f6f8" />
+      <stop offset="50%" stop-color="#9fa3aa" />
+      <stop offset="84%" stop-color="#f5f6f8" />
+      <stop offset="100%" stop-color="#d5d7db" />
+    </linearGradient>
+    <linearGradient id="beamSilver" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9da0a6" />
+      <stop offset="18%" stop-color="#f7f7f8" />
+      <stop offset="50%" stop-color="#7c7f86" />
+      <stop offset="82%" stop-color="#f7f7f8" />
+      <stop offset="100%" stop-color="#9da0a6" />
+    </linearGradient>
+    <filter id="blueGlowWide" x="-80%" y="-100%" width="260%" height="300%">
+      <feGaussianBlur stdDeviation="16" />
+    </filter>
+    <filter id="beamGlow" x="-40%" y="-300%" width="180%" height="700%">
+      <feGaussianBlur stdDeviation="8" />
+    </filter>
+    <filter id="haloGlow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur stdDeviation="18" />
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#030507" />
+
+  <g opacity="0.18" stroke="#d9dde6" stroke-width="1">
+    <line x1="0" y1="276" x2="1024" y2="276" />
+    <line x1="0" y1="512" x2="1024" y2="512" />
+    <line x1="0" y1="748" x2="1024" y2="748" />
+    <line x1="154" y1="0" x2="154" y2="1024" />
+    <line x1="346" y1="0" x2="346" y2="1024" />
+    <line x1="512" y1="0" x2="512" y2="1024" />
+    <line x1="678" y1="0" x2="678" y2="1024" />
+    <line x1="870" y1="0" x2="870" y2="1024" />
+  </g>
+
+  <g opacity="0.12" stroke="#d9dde6" stroke-width="1">
+    <line x1="738" y1="278" x2="940" y2="480" />
+    <line x1="738" y1="746" x2="940" y2="544" />
+    <line x1="382" y1="282" x2="548" y2="448" />
+    <line x1="478" y1="282" x2="644" y2="448" />
+  </g>
+
+  <g transform="translate(92 182) scale(0.9)">
+    <g opacity="0.7">
+      <rect x="0" y="335" width="776" height="12" rx="6" fill="#5daeff" filter="url(#beamGlow)" />
+      <rect x="0" y="339" width="776" height="4" rx="2" fill="#8fc9ff" opacity="0.74" />
+    </g>
+
+    <g opacity="0.92">
+      <rect x="48" y="40" width="16" height="332" rx="8" fill="#72bcff" filter="url(#blueGlowWide)" />
+      <rect x="628" y="32" width="16" height="348" rx="8" fill="#72bcff" filter="url(#blueGlowWide)" />
+      <rect x="916" y="32" width="16" height="348" rx="8" fill="#72bcff" filter="url(#blueGlowWide)" />
+    </g>
+
+    <g fill="none" stroke="url(#strokeSilver)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 56 36 L 56 380 L 228 380" />
+      <path d="M 196 340
+               C 196 146, 368 146, 512 340
+               C 656 534, 828 534, 828 340
+               C 828 146, 656 146, 512 340
+               C 368 534, 196 534, 196 340" />
+      <path d="M 636 32 L 636 380" />
+      <path d="M 636 32 L 776 172 L 916 32" />
+      <path d="M 916 32 L 916 380" />
+    </g>
+
+    <rect x="126" y="334" width="578" height="14" rx="7" fill="url(#beamSilver)" opacity="0.94" />
+
+    <circle cx="56" cy="36" r="14" fill="#eaf4ff" opacity="0.8" filter="url(#haloGlow)" />
+    <circle cx="636" cy="32" r="14" fill="#eaf4ff" opacity="0.8" filter="url(#haloGlow)" />
+    <circle cx="916" cy="32" r="14" fill="#eaf4ff" opacity="0.8" filter="url(#haloGlow)" />
+  </g>
+</svg>

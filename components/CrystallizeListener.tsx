@@ -4,7 +4,7 @@
  * crystallized at the trace level.
  *
  * Crystallized = verified knowledge. The event must land in the reading
- * trace so /kesi and all trace-derived surfaces can see it as a true panel
+ * trace so /patterns and all trace-derived surfaces can see it as a true panel
  * transition, not just a local UI hint.
  */
 import { useEffect } from 'react';
@@ -53,14 +53,12 @@ export function CrystallizeListener() {
           );
           const traceSet = (await traceStore.getByDoc(docId))
             .filter((trace) => trace.kind === 'reading' && !trace.parentId);
-          const existing = (await panelStore.getByDoc(docId))[0] ?? null;
+          const existing = await panelStore.getCanonicalByDoc(docId);
           const derived = derivePanelFromTraces({ docId, traces: traceSet, existing });
           if (derived) {
             await panelStore.put(derived);
-            emitPanelChange();
+            emitPanelChange({ docIds: [docId], reason: 'crystallize-listener' });
           }
-
-          window.dispatchEvent(new CustomEvent('loom:trace:changed'));
           dispatchCrystallized({
             docId,
             href: docHrefFromDocId(docId),

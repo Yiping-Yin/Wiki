@@ -1,7 +1,7 @@
 # Design Memory Index
 
 Status: working index  
-Updated: 2026-04-13
+Updated: 2026-04-15
 
 This file is a navigable index into Loom's design memory stack.
 
@@ -47,6 +47,18 @@ mother document.
 3. `CAPTURE_SPEC.md`
 4. `DESIGN_MEMORY.md`
 5. `DESIGN_MEMORY_OPERATING_MODEL.md`
+
+This is an orientation order, not precedence.
+
+## Precedence
+
+When documents disagree, use:
+
+1. `CURRENT_DESIGN_CANON.md`
+2. topic spec documents
+3. `DESIGN_MEMORY.md`
+4. implementation
+5. historical documents
 
 ## Quick Questions
 

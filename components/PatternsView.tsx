@@ -1,18 +1,44 @@
 'use client';
 /**
- * KesiView · the portfolio of crystallized panels.
+ * PatternsView · the portfolio of crystallized panels.
  *
- * /kesi should show finished pieces of understanding, not abstract swatches.
+ * /patterns should show finished pieces of understanding, not abstract swatches.
  * Each crystallized reading trace becomes a readable panel: title, final
  * summary, and the first few woven sections that make up its thought map.
  */
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { LearningTargetStateBadge } from './LearningTargetStateBadge';
+import { QuietGuideCard } from './QuietGuideCard';
+import { QuietScene, QuietSceneColumn } from './QuietScene';
+import { QuietSceneIntro } from './QuietSceneIntro';
+import { StageShell } from './StageShell';
+import { buildPanelLearningTarget } from '../lib/learning-targets';
 import type { LearningRecency } from '../lib/learning-status';
+import {
+  describeLearningTargetState,
+  isLearningTargetInWorkQueue,
+  learningTargetReturnLabel,
+  learningTargetStateRank,
+  useLearningTargetState,
+} from '../lib/learning-target-state';
 import { useAppendEvent } from '../lib/trace';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
+import { useSmallScreen } from '../lib/use-small-screen';
 import { continuePanelLifecycle, openPanelReview } from '../lib/panel-resume';
-import { useAllPanels, type Panel as StoredPanel, type PanelSection as StoredPanelSection } from '../lib/panel';
+import {
+  isRenderablePanel,
+  panelDisplaySummary,
+  panelFamilyLabel,
+  panelRevisionCount,
+  panelRevisionLabel,
+  panelSourceMeta,
+  revisionChanges,
+  sortedPanelRevisions,
+  useAllPanels,
+  type Panel as StoredPanel,
+} from '../lib/panel';
 import { buildWeavePreview, useAllWeaves, type DirectedWeavePreview, type WeavePreviewItem } from '../lib/weave';
 
 const TINTS = [
@@ -58,69 +84,6 @@ function formatWhen(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function panelRevisionLabel(panel: { revisions: Array<unknown> }) {
-  return panel.revisions.length > 1 ? 'revised' : null;
-}
-
-function familyLabelForHref(
-  href: string,
-  knowledgeCategories: Array<{ slug: string; label: string }>,
-) {
-  if (href.startsWith('/wiki/')) return 'LLM Reference';
-  const m = href.match(/^\/knowledge\/([^/]+)/);
-  if (m) {
-    const cat = knowledgeCategories.find((c) => c.slug === m[1]);
-    if (!cat) return 'Knowledge';
-    const top = cat.label.match(/^([^·]+?)\s*·/);
-    return top ? top[1].trim() : cat.label;
-  }
-  if (href.startsWith('/uploads/')) return 'Intake';
-  return 'Other';
-}
-
-function panelSourceMeta(
-  href: string,
-  knowledgeCategories: Array<{ slug: string; label: string }>,
-) {
-  if (href.startsWith('/wiki/')) {
-    return {
-      sourceType: 'wiki' as const,
-      collectionLabel: 'LLM Reference',
-      collectionHref: '/browse',
-    };
-  }
-  const know = href.match(/^\/knowledge\/([^/]+)/);
-  if (know) {
-    const cat = knowledgeCategories.find((item) => item.slug === know[1]);
-    return {
-      sourceType: 'knowledge' as const,
-      collectionLabel: cat?.label ?? 'Knowledge',
-      collectionHref: `/knowledge/${know[1]}`,
-    };
-  }
-  if (href.startsWith('/uploads/')) {
-    return {
-      sourceType: 'upload' as const,
-      collectionLabel: 'Intake',
-      collectionHref: '/uploads',
-    };
-  }
-  return {
-    sourceType: 'other' as const,
-    collectionLabel: 'Other',
-    collectionHref: undefined,
-  };
-}
-
-function panelSummary(summary: string, sections: StoredPanelSection[]) {
-  if (summary.trim()) return summary;
-  const first = sections.find((s) => s.summary.trim());
-  if (first) return first.summary;
-  const quote = sections.find((s) => s.quote?.trim())?.quote?.trim();
-  if (quote) return quote.length > 180 ? `${quote.slice(0, 180)}…` : quote;
-  return '';
-}
-
 function extractMarkdownLinkUrls(content: string): string[] {
   if (!content) return [];
   const urls: string[] = [];
@@ -142,7 +105,7 @@ function urlReferencesDoc(url: string, docHref: string): boolean {
   return false;
 }
 
-function syncKesiFocusParam(docId: string | null) {
+function syncPatternsFocusParam(docId: string | null) {
   if (typeof window === 'undefined') return;
   const url = new URL(window.location.href);
   if (docId) url.searchParams.set('focus', docId);
@@ -151,20 +114,26 @@ function syncKesiFocusParam(docId: string | null) {
 }
 
 type ViewMode = 'recent' | 'dense';
+type PatternsLens = 'archive' | 'work';
 type SourceFilter = 'all' | 'knowledge' | 'wiki' | 'upload';
 type RecencyFilter = 'all' | 'fresh' | 'cooling' | 'stale';
 
-export function KesiView() {
+export function PatternsView() {
   const { panels: storedPanels, loading: panelsLoading } = useAllPanels();
   const { weaves, loading: weavesLoading } = useAllWeaves();
   const append = useAppendEvent();
+  const targetState = useLearningTargetState();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
+  const [revisionPanelId, setRevisionPanelId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('recent');
+  const [lens, setLens] = useState<PatternsLens>('archive');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>('all');
+  const compactSurface = useSmallScreen(1024);
   const { knowledgeCategories } = useKnowledgeNav();
 
   useEffect(() => {
@@ -178,7 +147,7 @@ export function KesiView() {
   }, []);
 
   const panels = useMemo<Panel[]>(() => {
-    const basePanels: StoredPanel[] = storedPanels.filter((panel) => panel.status !== 'provisional' && panel.status !== 'superseded');
+    const basePanels: StoredPanel[] = storedPanels.filter(isRenderablePanel);
 
     return basePanels.map((panel): Panel => {
       const meta = panelSourceMeta(panel.href, knowledgeCategories);
@@ -186,8 +155,8 @@ export function KesiView() {
         ...panel,
         stitches: panel.sections.length,
         tint: tintFor(panel.docId),
-        family: familyLabelForHref(panel.href, knowledgeCategories),
-        summary: panelSummary(panel.summary, panel.sections),
+        family: panelFamilyLabel(panel.href, knowledgeCategories),
+        summary: panelDisplaySummary(panel.summary, panel.sections),
         ...meta,
       };
     });
@@ -200,30 +169,38 @@ export function KesiView() {
   const visiblePanels = useMemo(() => {
     const q = query.trim();
     return panels.filter((panel) => {
+      if (
+        lens === 'work'
+        && panel.docId !== focusDocId
+        && !isLearningTargetInWorkQueue(buildPanelLearningTarget(panel), targetState.state)
+      ) return false;
       if (sourceFilter !== 'all' && panel.sourceType !== sourceFilter) return false;
       if (recencyFilter !== 'all' && panel.learning.recency !== recencyFilter) return false;
       if (!q) return true;
       return matchesQuery(panel, q);
     });
-  }, [panels, query, sourceFilter, recencyFilter]);
+  }, [focusDocId, lens, panels, query, sourceFilter, recencyFilter, targetState.state]);
 
   const sortedPanels = useMemo(() => {
     const next = [...visiblePanels];
     next.sort((a, b) => {
       const lifecycleRank = (panel: Panel) => (panel.status === 'contested' ? 0 : 1);
+      const stateRank = (panel: Panel) => learningTargetStateRank(buildPanelLearningTarget(panel), targetState.state);
       if (viewMode === 'dense') {
         return lifecycleRank(a) - lifecycleRank(b)
+          || stateRank(a) - stateRank(b)
           || b.stitches - a.stitches
           || recencySort(a.learning.recency) - recencySort(b.learning.recency)
           || b.crystallizedAt - a.crystallizedAt;
       }
       return lifecycleRank(a) - lifecycleRank(b)
+        || stateRank(a) - stateRank(b)
         || recencySort(a.learning.recency) - recencySort(b.learning.recency)
         || b.crystallizedAt - a.crystallizedAt
         || b.stitches - a.stitches;
     });
     return next;
-  }, [visiblePanels, viewMode]);
+  }, [targetState.state, viewMode, visiblePanels]);
 
   const groupedPanels = useMemo(() => {
     const groups = new Map<string, Panel[]>();
@@ -265,6 +242,11 @@ export function KesiView() {
       && panel.learning.nextAction !== 'capture'
     ))
     .slice(0, 4);
+  const secondaryThreads = [
+    ...contestedPanels.map((panel) => ({ panel, kind: 'review' as const, label: 'Needs review', cta: 'Review' })),
+    ...refreshPanels.map((panel) => ({ panel, kind: 'refresh' as const, label: 'Ready to return', cta: 'Return' })),
+    ...continuePanels.map((panel) => ({ panel, kind: 'continue' as const, label: 'Keep warm', cta: primaryActionLabel(panel) })),
+  ].slice(0, 6);
 
   const renderRelationButtons = (
     label: string,
@@ -288,11 +270,22 @@ export function KesiView() {
       >
         <span>{label}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, flex: 1 }}>
-          {items.slice(0, limit).map((relatedPanel) => (
-            <div key={relatedPanel.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          {[...items]
+            .sort((a, b) => {
+              const aRank = learningTargetStateRank(buildPanelLearningTarget(a.panel), targetState.state);
+              const bRank = learningTargetStateRank(buildPanelLearningTarget(b.panel), targetState.state);
+              return aRank - bRank || b.weight - a.weight;
+            })
+            .slice(0, limit)
+            .map((relatedPanel) => {
+              const panelTarget = buildPanelLearningTarget(relatedPanel.panel);
+              const panelState = describeLearningTargetState(panelTarget, targetState.state);
+              const panelReturnLabel = learningTargetReturnLabel(panelTarget, targetState.state);
+              return (
+            <div key={relatedPanel.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, opacity: panelState?.kind && panelState.kind !== 'pinned' ? 0.9 : 1 }}>
               <button
                 type="button"
-                onClick={() => focusPanelInKesi(relatedPanel.panel)}
+                onClick={() => focusPanelInPatterns(relatedPanel.panel)}
                 style={{
                   appearance: 'none',
                   border: 0,
@@ -309,6 +302,12 @@ export function KesiView() {
                 {relatedPanel.panel.title}
                 {relatedPanel.status === 'confirmed' ? <span style={{ color: 'var(--muted)' }}> · held</span> : null}
               </button>
+              {panelState && <LearningTargetStateBadge label={panelState.label} />}
+              {panelReturnLabel && (
+                <div className="t-caption2" style={{ color: 'var(--muted)' }}>
+                  Returned · {panelReturnLabel}
+                </div>
+              )}
               {relatedPanel.evidence[0]?.snippet ? (
                 <button
                   type="button"
@@ -332,7 +331,8 @@ export function KesiView() {
                 </button>
               ) : null}
             </div>
-          ))}
+          );
+        })}
         </div>
       </div>
     );
@@ -341,7 +341,7 @@ export function KesiView() {
   const openReview = (panel: Panel, anchorId: string | null = null) => {
     openPanelReview(router, {
       href: panel.href,
-      anchorId: anchorId ?? panel.sections[0]?.anchorId ?? null,
+      anchorId: anchorId ?? panel.latestAnchorId ?? null,
     });
   };
 
@@ -349,8 +349,8 @@ export function KesiView() {
     continuePanelLifecycle(router, {
       href: panel.href,
       nextAction: 'refresh',
-      latestAnchorId: panel.sections[0]?.anchorId ?? null,
-      refreshSource: 'kesi',
+      latestAnchorId: panel.latestAnchorId ?? null,
+      refreshSource: 'patterns',
     });
   };
 
@@ -362,82 +362,72 @@ export function KesiView() {
     continuePanelLifecycle(router, {
       href: panel.href,
       nextAction: panel.learning.nextAction,
-      latestAnchorId: panel.sections[0]?.anchorId ?? null,
-      refreshSource: 'kesi',
+      latestAnchorId: panel.latestAnchorId ?? null,
+      refreshSource: 'patterns',
     });
   };
 
-  const focusPanelInKesi = (panel: Panel) => {
+  const openSecondaryThread = (
+    panel: Panel,
+    kind: 'review' | 'refresh' | 'continue',
+  ) => {
+    if (kind === 'review') {
+      openReview(panel, panel.latestAnchorId);
+      return;
+    }
+    if (kind === 'refresh') {
+      openRefresh(panel);
+      return;
+    }
+    openPrimaryAction(panel);
+  };
+
+  const focusPanelInPatterns = (panel: Panel) => {
     setFocusDocId(panel.docId);
-    syncKesiFocusParam(panel.docId);
+    syncPatternsFocusParam(panel.docId);
   };
 
   const clearFocus = () => {
     setFocusDocId(null);
-    syncKesiFocusParam(null);
+    syncPatternsFocusParam(null);
+  };
+
+  const toggleRevisionPanel = (docId: string) => {
+    setRevisionPanelId((current) => (current === docId ? null : docId));
   };
 
   const content = !mounted || panelsLoading || weavesLoading
-    ? <LoadingKesiShell />
+    ? <LoadingPatternsShell />
     : panels.length === 0
-      ? <EmptyKesiCanvas />
+      ? <EmptyPatternsCanvas />
       : (
         <>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginBottom: 18 }}>
-          <button
-            type="button"
-            onClick={() => router.push(returnPanel ? `/graph?focus=${encodeURIComponent(returnPanel.docId)}` : '/graph')}
-            style={{
-              appearance: 'none',
-              border: 0,
-              background: 'transparent',
-              color: 'var(--fg-secondary)',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              letterSpacing: '0.04em',
-              padding: 0,
-              cursor: 'pointer',
-              marginRight: 10,
-            }}
-          >
-            Relations
-          </button>
-          {focusPanel && (
-            <button
-              type="button"
-              onClick={clearFocus}
-              style={{
-                appearance: 'none',
-                border: 0,
-                background: 'transparent',
-                color: 'var(--fg-secondary)',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                padding: 0,
-                cursor: 'pointer',
-                marginRight: 10,
-              }}
-            >
-              Clear focus
-            </button>
-          )}
-        </div>
-
         {returnPanel && (
           <section
             style={{
-              padding: '0.1rem 0 1rem',
-              marginBottom: 18,
+              padding: '0.15rem 0 1.1rem',
+              marginBottom: 20,
               borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 260 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: compactSurface ? 14 : 18, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: compactSurface ? 0 : 260 }}>
+                <div
+                  className="t-caption2"
+                  style={{
+                    color: 'var(--muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    fontWeight: 700,
+                    marginBottom: 8,
+                  }}
+                >
+                  Foreground pattern
+                </div>
                 <div
                   style={{
                     fontFamily: 'var(--display)',
-                    fontSize: '1.18rem',
+                    fontSize: compactSurface ? '1.08rem' : '1.18rem',
                     fontWeight: 650,
                     letterSpacing: '-0.02em',
                     lineHeight: 1.25,
@@ -465,7 +455,13 @@ export function KesiView() {
                   {panelRevisionLabel(returnPanel) && (
                     <>
                       <span aria-hidden>·</span>
-                      <span>{panelRevisionLabel(returnPanel)}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleRevisionPanel(returnPanel.docId)}
+                        style={inlineMetaActionStyle(revisionPanelId === returnPanel.docId)}
+                      >
+                        {panelRevisionLabel(returnPanel)} · {panelRevisionCount(returnPanel)}
+                      </button>
                     </>
                   )}
                   {returnPanel.collectionLabel && returnPanel.collectionLabel !== returnPanel.family && (
@@ -474,12 +470,17 @@ export function KesiView() {
                       <span>{returnPanel.collectionLabel}</span>
                     </>
                   )}
+                  {(() => {
+                    const target = buildPanelLearningTarget(returnPanel);
+                    const state = describeLearningTargetState(target, targetState.state);
+                    return state ? <LearningTargetStateBadge label={state.label} /> : null;
+                  })()}
                 </div>
 
                 <div
                   style={{
                     color: 'var(--fg-secondary)',
-                    fontSize: '0.9rem',
+                    fontSize: compactSurface ? '0.84rem' : '0.9rem',
                     lineHeight: 1.55,
                     overflow: 'hidden',
                     display: '-webkit-box',
@@ -491,6 +492,16 @@ export function KesiView() {
                   {returnPanel.summary}
                 </div>
                 {(() => {
+                  const target = buildPanelLearningTarget(returnPanel);
+                  const returnLabel = learningTargetReturnLabel(target, targetState.state);
+                  if (!returnLabel) return null;
+                  return (
+                    <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 8 }}>
+                      Returned · {returnLabel}
+                    </div>
+                  );
+                })()}
+                {(() => {
                   const related = relationPreview.get(returnPanel.docId) ?? { incoming: [], outgoing: [] };
                   if (related.incoming.length === 0 && related.outgoing.length === 0) return null;
                   return (
@@ -500,9 +511,20 @@ export function KesiView() {
                     </div>
                   );
                 })()}
+                {revisionPanelId === returnPanel.docId && returnPanel.revisions.length > 1 && (
+                  <PanelRevisionTimeline panel={returnPanel} />
+                )}
               </div>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  alignItems: compactSurface ? 'stretch' : 'flex-start',
+                  width: compactSurface ? '100%' : 'auto',
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => openPrimaryAction(returnPanel)}
@@ -510,28 +532,43 @@ export function KesiView() {
                 >
                   {primaryActionLabel(returnPanel)}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => router.push(returnPanel.href)}
-                  style={actionStyle(false)}
+                <div
+                  className="t-caption2"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    color: 'var(--muted)',
+                  }}
                 >
-                  Source
-                </button>
-                {returnPanel.collectionHref && returnPanel.collectionHref !== returnPanel.href && (
+                  <button type="button" onClick={() => router.push(returnPanel.href)} style={secondaryLinkStyle}>
+                    Source
+                  </button>
+                  {returnPanel.collectionHref && returnPanel.collectionHref !== returnPanel.href && (
+                    <button type="button" onClick={() => router.push(returnPanel.collectionHref!)} style={secondaryLinkStyle}>
+                      Collection
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => router.push(returnPanel.collectionHref!)}
-                    style={actionStyle(false)}
+                    onClick={() => router.push(`/graph?focus=${encodeURIComponent(returnPanel.docId)}`)}
+                    style={secondaryLinkStyle}
                   >
-                    Collection
+                    Relations
                   </button>
-                )}
+                  {focusPanel && (
+                    <button type="button" onClick={clearFocus} style={secondaryLinkStyle}>
+                      Clear focus
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </section>
         )}
 
-        {contestedPanels.length > 0 && (
+        {secondaryThreads.length > 0 && (
           <section
             style={{
               padding: '0.1rem 0 0.2rem',
@@ -539,196 +576,91 @@ export function KesiView() {
               borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {contestedPanels.map((panel, index) => (
-                <div
-                  key={panel.docId}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '0.78rem 0',
-                    borderBottom: index < contestedPanels.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: 'var(--display)',
-                        fontSize: '0.98rem',
-                        fontWeight: 600,
-                        letterSpacing: '-0.012em',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {panel.title}
-                    </div>
-                    <div
-                      className="t-caption2"
-                      style={{
-                        marginTop: 5,
-                        color: 'var(--muted)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span>{panel.family}</span>
-                      <span aria-hidden>·</span>
-                      <span>{formatWhen(panel.updatedAt)}</span>
-                      {panelRevisionLabel(panel) && (
-                        <>
-                          <span aria-hidden>·</span>
-                          <span>{panelRevisionLabel(panel)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openReview(panel, panel.latestAnchorId)}
-                    style={actionStyle(true)}
-                  >
-                    Review
-                  </button>
-                </div>
-              ))}
+            <div
+              className="t-caption2"
+              style={{
+                color: 'var(--muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+                marginBottom: 6,
+              }}
+            >
+              Other active threads
             </div>
-          </section>
-        )}
-
-        {refreshPanels.length > 0 && (
-          <section
-            style={{
-              padding: '0.1rem 0 0.2rem',
-              marginBottom: 18,
-              borderBottom: '0.5px solid var(--mat-border)',
-            }}
-          >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {refreshPanels.map((panel, index) => (
-                <div
-                  key={panel.docId}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '0.78rem 0',
-                    borderBottom: index < refreshPanels.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: 'var(--display)',
-                        fontSize: '0.98rem',
-                        fontWeight: 600,
-                        letterSpacing: '-0.012em',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {panel.title}
-                    </div>
-                    <div
-                      className="t-caption2"
-                      style={{
-                        marginTop: 5,
-                        color: 'var(--muted)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span>{panel.family}</span>
-                      <span aria-hidden>·</span>
-                      <span>{formatWhen(panel.crystallizedAt)}</span>
-                      {panelRevisionLabel(panel) && (
-                        <>
-                          <span aria-hidden>·</span>
-                          <span>{panelRevisionLabel(panel)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openRefresh(panel)}
-                    style={actionStyle(true)}
+              {secondaryThreads.map(({ panel, kind, label, cta }, index) => (
+                <div key={panel.docId}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '0.78rem 0',
+                      borderBottom: index < contestedPanels.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                    }}
                   >
-                    Return
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: 'var(--display)',
+                          fontSize: '0.98rem',
+                          fontWeight: 600,
+                          letterSpacing: '-0.012em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {panel.title}
+                      </div>
+                      <div
+                        className="t-caption2"
+                        style={{
+                          marginTop: 5,
+                          color: 'var(--muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span>{label}</span>
+                        <span aria-hidden>·</span>
+                        <span>{panel.family}</span>
+                        <span aria-hidden>·</span>
+                        <span>{formatWhen(panel.updatedAt || panel.crystallizedAt)}</span>
+                        {panelRevisionLabel(panel) && (
+                          <>
+                            <span aria-hidden>·</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleRevisionPanel(panel.docId)}
+                              style={inlineMetaActionStyle(revisionPanelId === panel.docId)}
+                            >
+                              {panelRevisionLabel(panel)} · {panelRevisionCount(panel)}
+                            </button>
+                          </>
+                        )}
+                        {(() => {
+                          const target = buildPanelLearningTarget(panel);
+                          const state = describeLearningTargetState(target, targetState.state);
+                          return state ? <LearningTargetStateBadge label={state.label} /> : null;
+                        })()}
+                      </div>
+                    </div>
 
-        {continuePanels.length > 0 && (
-          <section
-            style={{
-              padding: '0.1rem 0 0.2rem',
-              marginBottom: 18,
-              borderBottom: '0.5px solid var(--mat-border)',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {continuePanels.map((panel, index) => (
-                <div
-                  key={panel.docId}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '0.78rem 0',
-                    borderBottom: index < continuePanels.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: 'var(--display)',
-                        fontSize: '0.98rem',
-                        fontWeight: 600,
-                        letterSpacing: '-0.012em',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
+                    <button
+                      type="button"
+                      onClick={() => openSecondaryThread(panel, kind)}
+                      style={actionStyle(true)}
                     >
-                      {panel.title}
-                    </div>
-                    <div
-                      className="t-caption2"
-                      style={{
-                        marginTop: 5,
-                        color: 'var(--muted)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span>{panel.family}</span>
-                      <span aria-hidden>·</span>
-                      <span>{formatWhen(panel.crystallizedAt)}</span>
-                    </div>
+                      {cta}
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openPrimaryAction(panel)}
-                    style={actionStyle(true)}
-                  >
-                    {primaryActionLabel(panel)}
-                  </button>
+                  {revisionPanelId === panel.docId && panel.revisions.length > 1 && (
+                    <PanelRevisionTimeline panel={panel} compact />
+                  )}
                 </div>
               ))}
             </div>
@@ -754,7 +686,7 @@ export function KesiView() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a woven panel…"
+            placeholder="Find a woven pattern…"
             style={{
               flex: 1,
               minWidth: 0,
@@ -767,6 +699,13 @@ export function KesiView() {
               letterSpacing: '-0.01em',
             }}
           />
+          <button
+            type="button"
+            onClick={() => setShowFilters((current) => !current)}
+            style={secondaryLinkStyle}
+          >
+            {showFilters ? 'Hide lenses' : 'Show lenses'}
+          </button>
           {query && (
             <button
               type="button"
@@ -787,7 +726,29 @@ export function KesiView() {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+        <div
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            marginBottom: showFilters ? 10 : 18,
+            letterSpacing: '0.04em',
+          }}
+        >
+          {sortedPanels.length} settled · {sourceFilter === 'all' ? 'all sources' : sourceFilter} · {recencyFilter === 'all' ? 'any time' : recencyFilter}
+        </div>
+
+        {showFilters && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+          <ToolbarChip
+            active={lens === 'archive'}
+            onClick={() => setLens('archive')}
+            label="Archive"
+          />
+          <ToolbarChip
+            active={lens === 'work'}
+            onClick={() => setLens('work')}
+            label="Work queue"
+          />
           <ToolbarChip
             active={viewMode === 'recent'}
             onClick={() => setViewMode('recent')}
@@ -806,7 +767,7 @@ export function KesiView() {
           <ToolbarChip
             active={sourceFilter === 'knowledge'}
             onClick={() => setSourceFilter('knowledge')}
-            label="Knowledge"
+            label="Atlas"
           />
           <ToolbarChip
             active={sourceFilter === 'wiki'}
@@ -839,6 +800,7 @@ export function KesiView() {
             label="Far"
           />
         </div>
+        )}
 
         {sortedPanels.length === 0 && (
           <div
@@ -849,7 +811,9 @@ export function KesiView() {
               borderBottom: '0.5px solid var(--mat-border)',
             }}
           >
-            No woven panel matches “{query}”.
+            {lens === 'work'
+              ? `No work-queue pattern matches “${query}”.`
+              : `No woven pattern matches “${query}”.`}
           </div>
         )}
 
@@ -890,23 +854,37 @@ export function KesiView() {
                     key={panel.docId}
                     style={{
                       position: 'relative',
-                      borderRadius: 14,
-                      padding: '1rem 1.2rem',
-                      borderLeft: `3px solid ${panel.tint}`,
-                      background: `linear-gradient(90deg, color-mix(in srgb, ${panel.tint} 6%, transparent), transparent 40%)`,
+                      borderRadius: 'var(--r-3)',
+                      padding: compactSurface ? '1rem 1.05rem' : '1.2rem 1.4rem',
+                      borderLeft: `4px solid ${panel.tint}`,
+                      borderTop: '0.5px solid var(--mat-border)',
+                      borderBottom: '0.5px solid var(--mat-border)',
+                      borderRight: '0.5px solid var(--mat-border)',
+                      background: 'var(--mat-reg-bg)',
+                      backdropFilter: 'var(--mat-blur)',
+                      WebkitBackdropFilter: 'var(--mat-blur)',
+                      boxShadow: 'var(--shadow-1)',
                       color: 'var(--fg)',
                       cursor: 'pointer',
+                      transition: 'transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease), background 0.2s var(--ease)',
                     }}
-                    onClick={() => openPrimaryAction(panel)}
                     onMouseEnter={(e) => {
-                      const btn = e.currentTarget.querySelector('[aria-label="Remove from Kesi"]') as HTMLElement | null;
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = 'var(--shadow-2)';
+                      e.currentTarget.style.background = 'var(--mat-thick-bg)';
+                      const btn = e.currentTarget.querySelector('[aria-label="Remove from Patterns"]') as HTMLElement | null;
                       if (btn) btn.style.opacity = '0.5';
                     }}
                     onMouseLeave={(e) => {
-                      const btn = e.currentTarget.querySelector('[aria-label="Remove from Kesi"]') as HTMLElement | null;
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'var(--shadow-1)';
+                      e.currentTarget.style.background = 'var(--mat-reg-bg)';
+                      const btn = e.currentTarget.querySelector('[aria-label="Remove from Patterns"]') as HTMLElement | null;
                       if (btn) { btn.style.opacity = '0'; btn.style.color = 'var(--muted)'; btn.style.background = 'transparent'; }
                     }}
+                    onClick={() => openPrimaryAction(panel)}
                   >
+
                     {/* Delete button */}
                     <button
                       type="button"
@@ -918,8 +896,8 @@ export function KesiView() {
                           ),
                         );
                       }}
-                      aria-label="Remove from Kesi"
-                      title="Remove from Kesi"
+                      aria-label="Remove from Patterns"
+                      title="Remove from Patterns"
                       style={{
                         position: 'absolute', top: 10, right: 12, zIndex: 2,
                         background: 'transparent', border: 0, cursor: 'pointer',
@@ -950,7 +928,7 @@ export function KesiView() {
                         style={{
                           flex: 1,
                           fontFamily: 'var(--display)',
-                          fontSize: '1.1rem',
+                          fontSize: compactSurface ? '1rem' : '1.1rem',
                           fontWeight: 650,
                           letterSpacing: '-0.02em',
                           lineHeight: 1.3,
@@ -979,7 +957,16 @@ export function KesiView() {
                       {panelRevisionLabel(panel) && (
                         <>
                           <span aria-hidden>·</span>
-                          <span>{panelRevisionLabel(panel)}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleRevisionPanel(panel.docId);
+                            }}
+                            style={inlineMetaActionStyle(revisionPanelId === panel.docId)}
+                          >
+                            {panelRevisionLabel(panel)} · {panelRevisionCount(panel)}
+                          </button>
                         </>
                       )}
                       {panel.collectionLabel && panel.collectionLabel !== panel.family && (
@@ -988,12 +975,17 @@ export function KesiView() {
                           <span>{panel.collectionLabel}</span>
                         </>
                       )}
+                      {(() => {
+                        const target = buildPanelLearningTarget(panel);
+                        const state = describeLearningTargetState(target, targetState.state);
+                        return state ? <LearningTargetStateBadge label={state.label} /> : null;
+                      })()}
                     </div>
 
                     <div
                       style={{
                         color: 'var(--fg-secondary)',
-                        fontSize: '0.88rem',
+                        fontSize: compactSurface ? '0.82rem' : '0.88rem',
                         lineHeight: 1.55,
                         marginBottom: panel.sections.length > 0 ? 14 : 6,
                         overflow: 'hidden',
@@ -1004,6 +996,11 @@ export function KesiView() {
                     >
                       {panel.summary}
                     </div>
+                    {revisionPanelId === panel.docId && panel.revisions.length > 1 && (
+                      <div onClick={(e) => e.stopPropagation()} style={{ marginBottom: panel.sections.length > 0 ? 12 : 8 }}>
+                        <PanelRevisionTimeline panel={panel} compact />
+                      </div>
+                    )}
                     {(() => {
                       const related = relationPreview.get(panel.docId) ?? { incoming: [], outgoing: [] };
                       if (related.incoming.length === 0 && related.outgoing.length === 0) return null;
@@ -1028,7 +1025,7 @@ export function KesiView() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          focusPanelInKesi(panel);
+                          focusPanelInPatterns(panel);
                         }}
                         style={actionStyle(true)}
                       >
@@ -1040,7 +1037,7 @@ export function KesiView() {
                           e.stopPropagation();
                           router.push(panel.href);
                         }}
-                        style={actionStyle(false)}
+                        style={secondaryLinkStyle}
                       >
                         Source
                       </button>
@@ -1051,7 +1048,7 @@ export function KesiView() {
                             e.stopPropagation();
                             router.push(panel.collectionHref!);
                           }}
-                          style={actionStyle(false)}
+                          style={secondaryLinkStyle}
                         >
                           Collection
                         </button>
@@ -1089,7 +1086,7 @@ export function KesiView() {
                             <div
                               style={{
                                 color: panel.tint,
-                                fontSize: '0.82rem',
+                                fontSize: compactSurface ? '0.76rem' : '0.82rem',
                                 lineHeight: 1.45,
                                 fontWeight: 600,
                                 overflow: 'hidden',
@@ -1110,14 +1107,14 @@ export function KesiView() {
                                   marginTop: 4,
                                   overflow: 'hidden',
                                   display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                              }}
-                            >
-                              {section.quote.length > 120 ? `${section.quote.slice(0, 120)}…` : section.quote}
-                            </div>
-                          )}
-                        </div>
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                }}
+                              >
+                                {section.quote.length > 120 ? `${section.quote.slice(0, 120)}…` : section.quote}
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}
@@ -1127,109 +1124,52 @@ export function KesiView() {
             </section>
           ))}
         </div>
-        </>
+      </>
       );
 
-  return (
-    <KesiShell>
+      return (
+      <PatternsShell>
       {content}
-    </KesiShell>
-  );
-}
+      </PatternsShell>
+      );
+      }
 
-function KesiShell({ children }: { children: React.ReactNode }) {
+
+
+function PatternsShell({ children }: { children: ReactNode }) {
   return (
-    <div
+    <StageShell
+      variant="archive"
+      contentVariant="archive"
       style={{
-        width: '100%',
         minHeight: 'calc(100vh - 4rem)',
-        padding: '2.4rem 1.25rem 4rem',
-        background: `
-          radial-gradient(ellipse 60% 50% at 50% 24%, rgba(255,255,255,0.92) 0%, transparent 70%),
-          radial-gradient(ellipse 70% 60% at 24% 24%, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 60%)
-        `,
+        paddingTop: '2.4rem',
+        paddingBottom: '4rem',
       }}
     >
-      <div
-        style={{
-          width: 'min(1180px, 100%)',
-          margin: '0 auto',
-        }}
-      >
+      <QuietScene tone="patterns" style={{ minHeight: 'calc(100vh - 8rem)' }}>
         {children}
-      </div>
-    </div>
+      </QuietScene>
+    </StageShell>
   );
 }
 
-function LoadingKesiShell() {
+function LoadingPatternsShell() {
   return (
-    <>
-      <div
+    <PatternsShell>
+      <QuietSceneColumn
         style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 14,
-          marginBottom: 18,
+          minHeight: 'calc(100vh - 10rem)',
+          justifyContent: 'center',
         }}
       >
-        <LoadingStroke width={72} />
-        <LoadingStroke width={54} />
-      </div>
-
-      <div
-        style={{
-          padding: '0.15rem 0 0.9rem',
-          marginBottom: 18,
-          borderBottom: '0.5px solid var(--mat-border)',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <LoadingStroke width="34%" height={16} />
-          <LoadingStroke width="72%" />
-          <LoadingStroke width="58%" />
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '0.25rem 0 0.65rem',
-          marginBottom: 18,
-          color: 'var(--muted)',
-          borderBottom: '0.5px solid var(--mat-border)',
-        }}
-      >
-        <span aria-hidden style={{ fontSize: '0.8rem', lineHeight: 1 }}>⌕</span>
-        <span
-          style={{
-            flex: 1,
-            height: 12,
-            borderRadius: 999,
-            background: 'var(--surface-2)',
-          }}
+        <QuietSceneIntro
+          eyebrow="Patterns"
+          title="Preparing your settled fabric"
+          summary="Patterns is reading the current panel and weave layer. This should settle in a moment."
         />
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={index}
-            style={{
-              padding: '0.9rem 0',
-              borderBottom: index < 3 ? '0.5px solid var(--mat-border)' : 'none',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <LoadingStroke width={index === 0 ? '46%' : index === 1 ? '62%' : index === 2 ? '55%' : '48%'} height={14} />
-              <LoadingStroke width={index === 0 ? '26%' : index === 1 ? '22%' : index === 2 ? '28%' : '24%'} height={11} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </>
+      </QuietSceneColumn>
+    </PatternsShell>
   );
 }
 
@@ -1284,18 +1224,174 @@ function ToolbarChip({
   );
 }
 
+function inlineMetaActionStyle(active: boolean) {
+  return {
+    appearance: 'none' as const,
+    border: 0,
+    background: 'transparent',
+    color: active ? 'var(--accent)' : 'var(--fg-secondary)',
+    fontSize: '0.71rem',
+    fontWeight: 650,
+    letterSpacing: '0.03em',
+    padding: 0,
+    cursor: 'pointer',
+  };
+}
+
+const secondaryLinkStyle = {
+  appearance: 'none' as const,
+  border: 0,
+  background: 'transparent',
+  color: 'var(--fg-secondary)',
+  fontSize: '0.71rem',
+  fontWeight: 650,
+  letterSpacing: '0.03em',
+  padding: 0,
+  cursor: 'pointer',
+};
+
 function actionStyle(primary: boolean) {
   return {
-    padding: '0.42rem 0.72rem',
+    padding: '0.36rem 0.64rem',
     borderRadius: 999,
-    border: `0.5px solid ${primary ? 'var(--accent)' : 'var(--mat-border)'}`,
-    background: primary ? 'var(--accent-soft)' : 'transparent',
+    border: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 28%, var(--mat-border))' : 'var(--mat-border)'}`,
+    background: primary ? 'color-mix(in srgb, var(--accent-soft) 72%, transparent)' : 'transparent',
     color: primary ? 'var(--fg)' : 'var(--fg-secondary)',
-    fontSize: '0.76rem',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
+    fontSize: '0.74rem',
+    fontWeight: 650,
+    letterSpacing: '0.03em',
     cursor: 'pointer',
   } as const;
+}
+
+function PanelRevisionTimeline({
+  panel,
+  compact = false,
+}: {
+  panel: Panel;
+  compact?: boolean;
+}) {
+  const revisions = sortedPanelRevisions(panel);
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        paddingTop: 10,
+        borderTop: '0.5px solid var(--mat-border)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: compact ? 8 : 10,
+      }}
+    >
+      <div
+        className="t-caption2"
+        style={{
+          color: 'var(--accent)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          fontWeight: 700,
+        }}
+      >
+        Revision timeline
+      </div>
+      {revisions.map((revision, index) => {
+        const previous = revisions[index + 1] ?? null;
+        const changes = revisionChanges(revision, previous);
+        return (
+          <div
+            key={revision.at}
+            style={{
+              padding: compact ? '0.55rem 0.65rem' : '0.7rem 0.8rem',
+              borderRadius: 10,
+              border: '0.5px solid var(--mat-border)',
+              background: index === 0
+                ? 'color-mix(in srgb, var(--accent) 6%, var(--bg-elevated))'
+                : 'color-mix(in srgb, var(--bg-elevated) 92%, white)',
+            }}
+          >
+            <div
+              className="t-caption2"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                color: 'var(--muted)',
+                letterSpacing: '0.03em',
+                marginBottom: 6,
+              }}
+            >
+              <span>{index === 0 ? 'Current' : `Revision ${revisions.length - index}`}</span>
+              <span aria-hidden>·</span>
+              <span>{formatWhen(revision.at)}</span>
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--display)',
+                fontSize: compact ? '0.88rem' : '0.94rem',
+                fontWeight: 650,
+                letterSpacing: '-0.012em',
+                lineHeight: 1.4,
+                marginBottom: 6,
+              }}
+            >
+              {revision.summary}
+            </div>
+            {changes.centralClaimChanged && revision.centralClaim !== revision.summary && (
+              <div style={{ color: 'var(--fg-secondary)', fontSize: '0.8rem', lineHeight: 1.5, marginBottom: 6 }}>
+                <strong style={{ color: 'var(--fg)' }}>Claim:</strong> {revision.centralClaim}
+              </div>
+            )}
+            <RevisionChangeList label="Added distinctions" items={changes.addedDistinctions} tone="accent" />
+            <RevisionChangeList label="Resolved distinctions" items={changes.removedDistinctions} tone="muted" />
+            <RevisionChangeList label="Opened tensions" items={changes.addedTensions} tone="warning" />
+            <RevisionChangeList label="Closed tensions" items={changes.removedTensions} tone="muted" />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RevisionChangeList({
+  label,
+  items,
+  tone,
+}: {
+  label: string;
+  items: string[];
+  tone: 'accent' | 'warning' | 'muted';
+}) {
+  if (items.length === 0) return null;
+  const color = tone === 'accent'
+    ? 'var(--accent)'
+    : tone === 'warning'
+      ? 'var(--tint-orange)'
+      : 'var(--fg-secondary)';
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div
+        className="t-caption2"
+        style={{
+          color,
+          letterSpacing: '0.04em',
+          fontWeight: 700,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {items.map((item) => (
+          <div key={`${label}:${item}`} style={{ color: 'var(--fg-secondary)', fontSize: '0.78rem', lineHeight: 1.45 }}>
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function primaryActionLabel(panel: Panel) {
@@ -1320,48 +1416,23 @@ function recencySort(recency: LearningRecency) {
   return recency === 'stale' ? 0 : recency === 'cooling' ? 1 : 2;
 }
 
-function EmptyKesiCanvas() {
+function EmptyPatternsCanvas() {
   return (
-    <div className="kesi-empty-quiet">
-      <svg
-        viewBox="0 0 280 96"
-        aria-hidden
-        style={{ width: 280, height: 96, display: 'block', color: 'var(--fg)' }}
-      >
-        <defs>
-          <linearGradient id="silk-thread"
-            x1="0" y1="6" x2="0" y2="90"
-            gradientUnits="userSpaceOnUse">
-            <stop offset="0%"  stopColor="currentColor" stopOpacity="0.16"/>
-            <stop offset="22%" stopColor="currentColor" stopOpacity="0.40"/>
-            <stop offset="50%" stopColor="currentColor" stopOpacity="0.62"/>
-            <stop offset="78%" stopColor="currentColor" stopOpacity="0.40"/>
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0.16"/>
-          </linearGradient>
-        </defs>
-        <g strokeLinecap="butt">
-          {Array.from({ length: 12 }, (_, i) => {
-            const x = 14 + i * 23;
-            return (
-              <line
-                key={i}
-                x1={x} y1="6" x2={x} y2="90"
-                stroke="url(#silk-thread)"
-                strokeWidth="0.6"
-              />
-            );
-          })}
-        </g>
-      </svg>
-      <style>{`
-        .kesi-empty-quiet {
-          width: 100%;
-          min-height: calc(100vh - 4rem);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-      `}</style>
-    </div>
+    <QuietSceneColumn
+      style={{
+        minHeight: 'calc(100vh - 10rem)',
+        justifyContent: 'center',
+      }}
+    >
+      <QuietSceneIntro
+        eyebrow="Patterns"
+        title="No settled patterns yet"
+        summary="Patterns becomes meaningful after a few source threads have been interlaced, reviewed, and crystallized. Start from Atlas, read one source, and let the first pattern settle."
+        actions={[
+          { label: 'Open Atlas', onClick: () => window.location.assign('/atlas'), primary: true },
+          { label: 'Open Today', onClick: () => window.location.assign('/today') },
+        ]}
+      />
+    </QuietSceneColumn>
   );
 }

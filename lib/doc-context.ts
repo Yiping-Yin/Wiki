@@ -10,7 +10,7 @@
  *   - wiki/<slug>           a wiki chapter
  *   - know/<cat>__<file>    a knowledge-base document
  *   - upload/<name>         an uploaded source document
- *   - free/<YYYY-MM-DD>     non-doc surfaces (today, kesi, home, …)
+ *   - free/<YYYY-MM-DD>     non-doc surfaces (today, patterns, home, …)
  */
 
 export type DocContext = {

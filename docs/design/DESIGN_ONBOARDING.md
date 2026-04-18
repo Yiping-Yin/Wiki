@@ -36,7 +36,7 @@ This is the current valid model:
 3. Ask / capture / highlight from the selection
 4. Review in the right-side thought map
 5. Expand with `Cmd+/` to elaborate
-6. Crystallize into `/kesi`
+6. Crystallize into `/patterns`
 
 Important:
 
@@ -57,7 +57,9 @@ Important:
 
 ## 5. Visual Rules
 
-- Prefer glass/material over flat boxed panels.
+- Use one term consistently: **Liquid Glass** = Loom's Apple-material,
+  glass-first surface language.
+- Prefer liquid-glass / glass-material surfaces over flat boxed panels.
 - Prefer subtle dim/recede transitions over hard mode switches.
 - Use accent sparingly and intentionally.
 - Avoid dashboards, badges, pills, and constant tool presence.
@@ -85,14 +87,16 @@ If the AI sounds like a chatbot, the prompt is wrong.
 - modal-heavy note creation
 - decorative UI that competes with reading
 
-## 8. Source of Truth
+## 8. Reading Order
 
-Read in this order:
+For quick orientation, read in this order:
 
 1. `docs/design/DESIGN_ONBOARDING.md`
 2. `docs/design/CURRENT_DESIGN_CANON.md`
 3. `docs/design/CAPTURE_SPEC.md`
 4. `docs/design/DESIGN_MEMORY.md`
+
+If these documents disagree, `docs/design/CURRENT_DESIGN_CANON.md` wins.
 
 Treat `docs/design/CANVAS_SPEC.md` as historical only.
 
@@ -105,3 +109,4 @@ Before merging a UI change:
 - check `Cmd+/` behavior still matches the review model
 - check AI copy is still silent and direct
 - check the page does not introduce unnecessary always-visible chrome
+- check the same object uses the same words across Home / Today / Review / Patterns / Graph

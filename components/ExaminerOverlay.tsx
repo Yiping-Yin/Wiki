@@ -4,65 +4,40 @@
  */
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { getAiSurface } from '../lib/ai/stage-model';
+import { useLoomOverlay } from '../lib/ai/use-loom-overlay';
 import { contextFromPathname } from '../lib/doc-context';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
+import { consumeOverlayResume } from '../lib/overlay-resume';
 import { useSmallScreen } from '../lib/use-small-screen';
-import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { AIExaminer } from './unified/AIExaminer';
 import { WeftShuttle } from './DocViewer';
 
 export function ExaminerOverlay() {
   const smallScreen = useSmallScreen();
-  const [active, setActive] = useState(false);
-  const { mounted, visible } = useAnimatedPresence(active, 250);
+  const examinerSurface = getAiSurface('examiner');
   const pathname = usePathname();
   const ctx = contextFromPathname(pathname);
+  const { active, mounted, visible, close, open } = useLoomOverlay({
+    id: 'examiner',
+    pathname,
+  });
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id === 'examiner') setActive((a) => !a);
-    };
-    window.addEventListener('loom:overlay:toggle', handler);
-    return () => window.removeEventListener('loom:overlay:toggle', handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id !== 'examiner') setActive(false);
-    };
-    window.addEventListener('loom:overlay:open', handler);
-    return () => window.removeEventListener('loom:overlay:open', handler);
-  }, []);
-
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      e.preventDefault();
-      setActive(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [active]);
-
-  useEffect(() => {
-    if (!active) window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
-  }, [active]);
-
-  useEffect(() => { setActive(false); }, [pathname]);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(OVERLAY_RESUME_KEY);
-      if (!raw) return;
-      const payload = JSON.parse(raw) as OverlayResumePayload;
-      if (payload.overlay !== 'examiner' || payload.href !== window.location.pathname) return;
-      sessionStorage.removeItem(OVERLAY_RESUME_KEY);
-      setActive(true);
-    } catch {}
-  }, []);
+    const href = pathname ?? (typeof window !== 'undefined' ? window.location.pathname : null);
+    if (!href) return;
+    const payload = consumeOverlayResume(sessionStorage, {
+      href,
+      overlay: 'examiner',
+    });
+    if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+      console.warn('[loom-app-shell] consumeOverlayResume:examiner', JSON.stringify({
+        href,
+        matched: Boolean(payload),
+      }));
+    }
+    if (!payload) return;
+    open({ id: 'examiner' });
+  }, [open, pathname]);
 
   if (!mounted) return null;
   if (ctx.isFree) return null;
@@ -89,8 +64,8 @@ export function ExaminerOverlay() {
       }}
     >
       <div style={{ padding: '10px 16px', borderBottom: '0.5px solid var(--mat-border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem' }}>
-        <strong style={{ color: 'var(--fg-secondary)', flex: 1, fontWeight: 600 }}>Ask back</strong>
-        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => setActive(false)}>Esc</span>
+        <strong style={{ color: 'var(--fg-secondary)', flex: 1, fontWeight: 600 }}>{examinerSurface.launcherTitle}</strong>
+        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => close(true)}>Esc</span>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '10px 14px 14px' }}>
         <ExaminerInner docId={ctx.docId} />

@@ -17,7 +17,7 @@ import { newTraceId } from './types';
 import { tracePanelLifecycle } from './panel-lifecycle';
 
 const DB_NAME = 'loom';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 const STORE = 'traces';
 
 /* ─────────── DB connection ─────────── */
@@ -41,6 +41,12 @@ function openDB(): Promise<IDBDatabase> {
         store.createIndex('docId', 'source.docId', { unique: false });
         store.createIndex('updatedAt', 'updatedAt', { unique: false });
         store.createIndex('kind', 'kind', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('panels')) {
+        const panelStore = db.createObjectStore('panels', { keyPath: 'id' });
+        panelStore.createIndex('docId', 'docId', { unique: false });
+        panelStore.createIndex('status', 'status', { unique: false });
+        panelStore.createIndex('updatedAt', 'updatedAt', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -136,6 +142,31 @@ export const traceStore = {
         return idx.getAll(docId) as IDBRequest<Trace[]>;
       });
     } catch { return []; }
+  },
+
+  async getByDocs(docIds: string[]): Promise<Map<string, Trace[]>> {
+    const uniqueDocIds = Array.from(new Set(docIds.filter(Boolean)));
+    const result = new Map<string, Trace[]>();
+    if (!isClient() || uniqueDocIds.length === 0) return result;
+    try {
+      return await openDB().then((db) => new Promise<Map<string, Trace[]>>((resolve, reject) => {
+        const txRef = db.transaction(STORE, 'readonly');
+        const store = txRef.objectStore(STORE);
+        const index = store.index('docId');
+        let pending = uniqueDocIds.length;
+        for (const docId of uniqueDocIds) {
+          const req = index.getAll(docId) as IDBRequest<Trace[]>;
+          req.onsuccess = () => {
+            result.set(docId, req.result ?? []);
+            pending -= 1;
+            if (pending === 0) resolve(result);
+          };
+          req.onerror = () => reject(req.error);
+        }
+      }));
+    } catch {
+      return result;
+    }
   },
 
   /** Get direct children of a trace. */

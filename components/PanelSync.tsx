@@ -1,76 +1,119 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useAllTraces } from '../lib/trace';
-import { derivePanelFromTraces, emitPanelChange, panelStore } from '../lib/panel';
+import { useEffect, useRef } from 'react';
+import { canonicalizePanels, derivePanelFromTraces, emitPanelChange, panelPersistedEqual, panelStore } from '../lib/panel';
+import { panelRecordSignature, panelTraceSignature } from '../lib/panel/sync-signatures';
+import { createPendingSyncQueue } from '../lib/sync/pending-queue';
+import { TRACE_CHANGE_EVENT, type TraceChangeDetail } from '../lib/trace/events';
+import { traceStore } from '../lib/trace/store';
+import type { Trace } from '../lib/trace/types';
 
-/**
- * Mirrors trace-level crystallize state into first-class panel objects.
- *
- * Minimal Phase C bridge:
- * - if a root reading trace set has anchors, upsert a panel
- * - if it has no anchors, remove the panel for that doc
- */
+function rootReadingTraces(traces: Trace[]) {
+  return traces.filter((trace) => trace.kind === 'reading' && !trace.parentId && trace.source?.docId);
+}
+
 export function PanelSync() {
-  const { traces, loading } = useAllTraces();
+  const pendingDocIdsRef = useRef<Set<string> | null | undefined>(undefined);
+  const runningRef = useRef(false);
+  const lastDocSignaturesRef = useRef<Map<string, string>>(new Map());
+  const queueStorageRef = useRef(createPendingSyncQueue('loom:panel-sync:pending'));
 
   useEffect(() => {
-    if (loading) return;
     let cancelled = false;
 
-    void (async () => {
-      const byDoc = new Map<string, typeof traces>();
-      for (const trace of traces) {
-        if (trace.kind !== 'reading' || trace.parentId || !trace.source?.docId) continue;
-        const existing = byDoc.get(trace.source.docId) ?? [];
-        existing.push(trace);
-        byDoc.set(trace.source.docId, existing);
-      }
+    const syncDocIds = async (docIds: string[] | null) => {
+      const existingPanels = canonicalizePanels(await panelStore.getAll());
+      const existingByDoc = new Map(existingPanels.map((panel) => [panel.docId, panel] as const));
+      const targetDocIds = docIds ?? Array.from(new Set([
+        ...existingByDoc.keys(),
+        ...rootReadingTraces(await traceStore.getAll()).map((trace) => trace.source!.docId),
+      ]));
+      const tracesByDoc = await traceStore.getByDocs(targetDocIds);
 
-      const existingPanels = await panelStore.getAll();
-      const existingByDoc = new Map<string, typeof existingPanels>();
-      for (const panel of existingPanels) {
-        const current = existingByDoc.get(panel.docId) ?? [];
-        current.push(panel);
-        existingByDoc.set(panel.docId, current);
-      }
-      const desired = new Map<string, ReturnType<typeof derivePanelFromTraces>>();
-      for (const [docId, traceSet] of byDoc) {
-        const existing = (existingByDoc.get(docId) ?? [])[0] ?? null;
-        desired.set(docId, derivePanelFromTraces({ docId, traces: traceSet, existing }));
-      }
+      const changedDocIds: string[] = [];
+      const panelsToPut = [];
+      const panelIdsToDelete: string[] = [];
 
-      for (const [docId, maybePanel] of desired) {
+      for (const docId of targetDocIds) {
         if (cancelled) return;
-        const existingForDoc = existingByDoc.get(docId) ?? [];
-        if (maybePanel) {
-          for (const existing of existingForDoc) {
-            if (existing.id !== maybePanel.id) {
-              await panelStore.delete(existing.id);
-            }
+        const traceSet = rootReadingTraces(tracesByDoc.get(docId) ?? []);
+        const existing = existingByDoc.get(docId) ?? null;
+        const nextSignature = `${panelTraceSignature(traceSet)}||${panelRecordSignature(existing)}`;
+        if (lastDocSignaturesRef.current.get(docId) === nextSignature) continue;
+
+        const maybePanel = traceSet.length > 0
+          ? derivePanelFromTraces({ docId, traces: traceSet, existing })
+          : null;
+
+        if (!maybePanel) {
+          if (existing) {
+            panelIdsToDelete.push(existing.id);
+            changedDocIds.push(docId);
           }
-          await panelStore.put(maybePanel);
-        } else if (existingForDoc.length > 0) {
-          for (const existing of existingForDoc) {
-            await panelStore.delete(existing.id);
-          }
+          lastDocSignaturesRef.current.set(docId, `${panelTraceSignature(traceSet)}||${panelRecordSignature(null)}`);
+          continue;
         }
+
+        if (!panelPersistedEqual(existing, maybePanel)) {
+          panelsToPut.push(maybePanel);
+          changedDocIds.push(docId);
+        }
+        lastDocSignaturesRef.current.set(docId, `${panelTraceSignature(traceSet)}||${panelRecordSignature(maybePanel)}`);
       }
 
-      for (const existing of existingPanels) {
-        if (cancelled) return;
-        if (!desired.has(existing.docId)) {
-          await panelStore.delete(existing.id);
-        }
+      if (panelIdsToDelete.length > 0) {
+        await panelStore.deleteMany(panelIdsToDelete);
       }
+      if (panelsToPut.length > 0) {
+        await panelStore.putMany(panelsToPut);
+      }
+      if (changedDocIds.length > 0) {
+        emitPanelChange({ docIds: changedDocIds, reason: 'panel-sync' });
+      }
+      queueStorageRef.current.clear();
+    };
 
-      emitPanelChange();
-    })();
+    const runQueue = async () => {
+      if (runningRef.current) return;
+      runningRef.current = true;
+      try {
+        while (!cancelled && pendingDocIdsRef.current !== undefined) {
+          const pending = pendingDocIdsRef.current;
+          pendingDocIdsRef.current = undefined;
+          await syncDocIds(pending === null ? null : Array.from(pending));
+        }
+      } finally {
+        runningRef.current = false;
+      }
+    };
 
+    const queueSync = (docIds: string[] | null) => {
+      if (docIds === null) {
+        pendingDocIdsRef.current = null;
+      } else if (pendingDocIdsRef.current !== null) {
+        const next = pendingDocIdsRef.current ?? new Set<string>();
+        for (const docId of docIds) next.add(docId);
+        pendingDocIdsRef.current = next;
+      }
+      queueStorageRef.current.save(pendingDocIdsRef.current === undefined ? undefined : pendingDocIdsRef.current === null ? null : Array.from(pendingDocIdsRef.current));
+      void runQueue();
+    };
+
+    const recovered = queueStorageRef.current.load();
+    queueSync(recovered ?? null);
+
+    const onTraceChange = (event: Event) => {
+      const detail = ((event as CustomEvent<TraceChangeDetail>).detail ?? {}) as TraceChangeDetail;
+      const docIds = detail.docIds?.filter(Boolean) ?? [];
+      queueSync(docIds.length > 0 ? docIds : null);
+    };
+
+    window.addEventListener(TRACE_CHANGE_EVENT, onTraceChange);
     return () => {
       cancelled = true;
+      window.removeEventListener(TRACE_CHANGE_EVENT, onTraceChange);
     };
-  }, [traces, loading]);
+  }, []);
 
   return null;
 }

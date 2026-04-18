@@ -2,8 +2,9 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
-const root = process.cwd();
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const nextBin = path.join(root, 'node_modules', 'next', 'dist', 'bin', 'next');
 const buildIdPath = path.join(root, '.next-build', 'BUILD_ID');
 const middlewareManifestPath = path.join(root, '.next-build', 'server', 'middleware-manifest.json');

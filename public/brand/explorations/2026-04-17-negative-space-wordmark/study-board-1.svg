@@ -1,0 +1,79 @@
+<svg width="1800" height="980" viewBox="0 0 1800 980" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="980" fill="#F8F7F3"/>
+
+  <g fill="#121212" font-family="Helvetica Neue, Arial, sans-serif">
+    <text x="96" y="112" font-size="42" font-weight="700">Loom Negative-Space Wordmark Studies</text>
+    <text x="96" y="156" font-size="22" font-weight="400" fill="#5A5A5A">Black and white only. No effects. The difference should come from proportion, omission, and state change between the two o forms.</text>
+  </g>
+
+  <g stroke="#D7D3CA" stroke-width="2">
+    <line x1="600" y1="214" x2="600" y2="882"/>
+    <line x1="1200" y1="214" x2="1200" y2="882"/>
+  </g>
+
+  <g fill="#121212" font-family="Helvetica Neue, Arial, sans-serif">
+    <text x="112" y="236" font-size="24" font-weight="700">A</text>
+    <text x="148" y="236" font-size="18" font-weight="600" letter-spacing="2">STATE DIFFERENCE</text>
+    <text x="708" y="236" font-size="24" font-weight="700">B</text>
+    <text x="744" y="236" font-size="18" font-weight="600" letter-spacing="2">REDUCED SYMBOL</text>
+    <text x="1308" y="236" font-size="24" font-weight="700">C</text>
+    <text x="1344" y="236" font-size="18" font-weight="600" letter-spacing="2">EDITORIAL CALM</text>
+  </g>
+
+  <!-- Study A -->
+  <g transform="translate(104 290)" stroke="#111111" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M110 0V238" />
+    <path d="M110 238H160" />
+    <!-- first o: intentionally unresolved -->
+    <path d="M208 121C208 67 249 30 304 30C357 30 396 63 400 114" />
+    <path d="M392 147C381 196 344 230 294 230C237 230 196 187 196 130" />
+    <!-- second o: absorbed and settled -->
+    <ellipse cx="486" cy="130" rx="96" ry="100" />
+    <!-- m: quiet sediment -->
+    <path d="M626 230V93C626 54 653 30 691 30C729 30 751 49 762 88C772 49 794 30 832 30C870 30 898 54 898 93V230" />
+  </g>
+
+  <g fill="#6A6A6A" font-family="Helvetica Neue, Arial, sans-serif" font-size="18">
+    <text x="112" y="792">first o remains slightly open</text>
+    <text x="112" y="822">second o is calmer and more complete</text>
+    <text x="112" y="852">m stays low and sedimented</text>
+  </g>
+
+  <!-- Study B -->
+  <g transform="translate(662 290)" stroke="#111111" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M92 8V238" />
+    <path d="M92 238H140" />
+    <!-- first o: reduced C-like fragment -->
+    <path d="M188 119C188 68 225 30 278 30C321 30 351 51 365 86" />
+    <path d="M356 168C340 205 310 230 267 230C216 230 178 190 178 136" />
+    <!-- second o: compressed and fully absorbed -->
+    <path d="M398 132C398 73 438 30 492 30C546 30 582 71 582 130C582 190 546 230 492 230C438 230 398 191 398 132Z" />
+    <!-- m: broader floor -->
+    <path d="M624 230V95C624 55 650 30 688 30C724 30 747 49 758 87C768 49 790 30 826 30C864 30 890 55 890 95V230" />
+  </g>
+
+  <g fill="#6A6A6A" font-family="Helvetica Neue, Arial, sans-serif" font-size="18">
+    <text x="708" y="792">more omission, stronger silhouette</text>
+    <text x="708" y="822">riskier but more symbolic</text>
+    <text x="708" y="852">could become a distinct brand shape</text>
+  </g>
+
+  <!-- Study C -->
+  <g transform="translate(1254 290)" stroke="#111111" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M104 10L98 238" />
+    <path d="M98 238H148" />
+    <!-- first o: incomplete but more refined -->
+    <path d="M198 124C200 70 240 32 293 32C337 32 370 58 380 97" />
+    <path d="M372 160C357 205 323 230 278 230C226 230 188 189 190 134" />
+    <!-- second o: settled, slightly narrower -->
+    <ellipse cx="475" cy="132" rx="88" ry="98" />
+    <!-- m: editorial but still grounded -->
+    <path d="M610 230V98C610 58 635 32 671 32C705 32 729 50 739 88C749 51 772 32 806 32C842 32 868 58 868 98V230" />
+  </g>
+
+  <g fill="#6A6A6A" font-family="Helvetica Neue, Arial, sans-serif" font-size="18">
+    <text x="1308" y="792">slightly more editorial rhythm</text>
+    <text x="1308" y="822">still driven by state difference</text>
+    <text x="1308" y="852">calmest overall tone</text>
+  </g>
+</svg>

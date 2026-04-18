@@ -22,8 +22,7 @@ const PRECACHE_URLS = [
   '/knowledge',
   '/browse',
   '/highlights',
-  '/icon.svg',
-  '/manifest.webmanifest',
+  '/icon.png',
 ];
 
 self.addEventListener('install', (event) => {

@@ -7,7 +7,7 @@
  * Access paths:
  *   - /help (direct URL)
  *   - Sidebar: "Help" link
- *   - CommandPalette: search "help" or "guide"
+ *   - Shuttle: ⌘K
  *   - KeyboardHelpOverlay footer: "/help" link
  */
 import Link from 'next/link';
@@ -17,7 +17,7 @@ export const metadata = { title: 'Help · Loom' };
 
 export default function HelpPage() {
   return (
-    <article className="prose-notion">
+    <article className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '4rem' }}>
       <h1 style={{ marginBottom: '0.2rem', textAlign: 'left' }}>Usage Guide</h1>
       <p
         style={{
@@ -26,43 +26,67 @@ export default function HelpPage() {
           fontSize: '1.05rem',
         }}
       >
-        Loom is a screen that helps you learn until you truly understand.{' '}
+        Loom is a reading-and-thinking environment where source-bound understanding is woven into memory.{' '}
         <Link href="/about" style={{ color: 'var(--accent)' }}>
           /about
         </Link>
       </p>
 
+      <p>
+        <strong>织者即智者。</strong> The loom holds the tension; the weaver
+        makes the judgment. The system can organize and reflect, but the
+        understanding is still woven by the person doing the work.
+      </p>
+
       <Callout>
         <strong>Quick start:</strong> Open any doc → start reading → select
-        text → click the warp to ask AI or press <Kbd>⌘⇧A</Kbd> to capture it.
+        text → click the warp to ask AI or press <Kbd>⌘⇧A</Kbd> to interlace it.
         That's it. Everything else you can learn as you go.
       </Callout>
 
+      <h2>Getting around Loom</h2>
+      <p>
+        Loom now has a clear desktop entry hierarchy:
+      </p>
+      <ul>
+        <li>
+          <strong>Sidebar</strong> is the primary navigation layer. Use it to move
+          between <em>Today</em>, <em>Atlas</em>, <em>Patterns</em>, and document collections.
+        </li>
+        <li>
+          <strong>Shuttle</strong> is the fast path. Press <Kbd>⌘K</Kbd> to jump anywhere quickly.
+          In the macOS app, it stays an in-window fast path rather than a second navigation layer.
+        </li>
+        <li>
+          <strong>Home</strong> is the quiet start surface. It shows current work,
+          recent resolved changes, and recent threads. It is not a second navigation page.
+        </li>
+      </ul>
+
       <h2>What is this</h2>
       <p>
-        Loom is not a notebook, not a PKM, not an AI chat. Loom is a{' '}
-        <strong>screen that replaces paper</strong>: you read, ask, capture,
-        reconstruct, get examined by AI, and recurse — until a concept truly
-        enters your brain.
+        Loom is not a notebook, not a PKM, not an AI chat. It is a screen for
+        reading, asking, interlacing, reconstructing, verifying, and returning
+        until a concept is stable enough to keep.
       </p>
       <p>
         Loom&rsquo;s primary reading loop stays local to the source: select a
-        passage, then ask, capture, or highlight it in place. Deeper tools
-        remain available through <Kbd>⌘P</Kbd>.
+        passage, then ask, interlace, or highlight it in place. Deeper tools
+        remain available through the <Kbd>⌘K</Kbd> Shuttle.
       </p>
 
       <h2>3-minute quick start</h2>
       <ol>
         <li>
-          <strong>Open a doc</strong> from the sidebar or press <Kbd>⌘P</Kbd> to search.
-          Loom keeps your current weave close at hand when you open the app.
+          <strong>Start from Home or Today</strong> if you want the next recommended thread,
+          or open a doc directly from the sidebar if you already know where you want to go.
         </li>
         <li>
           <strong>Select a passage</strong> you want to think about.
         </li>
         <li>
           <strong>Click the warp thread</strong> to ask AI, or press <Kbd>⌘⇧A</Kbd>
-          to capture the passage and elaborate it later in the thought map.
+          to interlace the passage and elaborate it later in the thought map.
         </li>
       </ol>
       <p>
@@ -72,45 +96,44 @@ export default function HelpPage() {
 
       <h2>Learning tools</h2>
 
-      <StateRow k="⌘⇧A" name="Capture">
-        Select a passage, then press <Kbd>⌘⇧A</Kbd> to capture it as a
+      <StateRow k="⌘⇧A" name="Interlace">
+        Select a passage, then press <Kbd>⌘⇧A</Kbd> to interlace it as a
         thought-anchor. No dialog appears. The thought is hung in the
         gutter first; elaboration happens later in the wide thought map.
       </StateRow>
 
-      <StateRow k="⌘P" name="All tools">
-        Press <Kbd>⌘P</Kbd> and search for any deeper tool:
+      <StateRow k="⌘K" name="Shuttle">
+        Press <Kbd>⌘K</Kbd> to shuttle anywhere in Loom:
         <ul style={{ marginTop: 4, marginBottom: 4 }}>
           <li><strong>Rehearsal</strong> — write from memory, ⌘K AI transform, ⌘S save</li>
           <li><strong>Examiner</strong> — AI tests your understanding, ⌘↩ submit</li>
           <li><strong>Import</strong> — drag-drop .md/.txt files</li>
-          <li><strong>Export</strong> — download notes as JSON or Markdown</li>
-          <li><strong>Thought Map</strong> — review all captures (also ⌘/)</li>
+          <li><strong>Export</strong> — download patterns as JSON or Markdown</li>
+          <li><strong>Thought Map</strong> — review all interlaced thoughts (also ⌘/)</li>
         </ul>
       </StateRow>
 
       <StateRow k="⌘/" name="Thought Map">
-        Near the top of a document, your captures remain visible on the right
+        Near the top of a document, your interlaced thoughts remain visible on the right
         as a quiet reading rail. Press <Kbd>⌘/</Kbd> to bring the thought map
         forward for editing and deep review. Press again to narrow it back.
       </StateRow>
 
-      <h2>Every Note is editable and deletable</h2>
+      <h2>Every Pattern is editable and deletable</h2>
       <p>
-        Any focal note (the main note displayed in a panel) can be edited
-        in-place by double-clicking:
+        Any focal thought-anchor can be edited in-place by double-clicking:
       </p>
       <ul>
         <li>Edit content (full Markdown + LaTeX support)</li>
         <li>
-          <Kbd>⌘↩</Kbd> to save → creates a superseding Note (the original is
+          <Kbd>⌘↩</Kbd> to save → creates a superseding version (the original is
           preserved in the trace, just no longer rendered)
         </li>
         <li>
           <Kbd>Esc</Kbd> to cancel
         </li>
         <li>
-          The <strong>× Delete</strong> button in the bottom-right → two-step
+          The <strong>× Remove</strong> button in the bottom-right → two-step
           confirmation (first click turns red "Delete?", second click actually
           deletes) → soft delete
         </li>
@@ -123,38 +146,37 @@ export default function HelpPage() {
 
       <h2>Keyboard shortcuts</h2>
 
-      <h3>Capture-first reading</h3>
+      <h3>Interlace-first reading</h3>
       <p>
         While reading a document, the fast path is selection-bound:
       </p>
       <Kbds>
         <KbdRow k="✦ click" label="Ask AI about the selection" />
-        <KbdRow k="⌘ click" label="Capture directly from the warp thread" />
-        <KbdRow k="⌘⇧A" label="Capture selected text without using the mouse" />
+        <KbdRow k="⌘ click" label="Interlace directly from the warp thread" />
+        <KbdRow k="⌘⇧A" label="Interlace selected text without using the mouse" />
         <KbdRow k="⌥ click" label="Highlight the selection" />
         <KbdRow k="⌘/" label="Settle the current weave in the thought map" />
       </Kbds>
 
       <h3>Tools and global shortcuts</h3>
       <Kbds>
-        <KbdRow k="⌘P" label="Search everything" />
-        <KbdRow k="Relations" label="Open the active panel’s relation layer from settled surfaces" />
+        <KbdRow k="⌘K" label="Shuttle through everything" />
+        <KbdRow k="Relations" label="Open the active pattern’s relation layer from the Atlas" />
         <KbdRow k="?" label="This help" />
         <KbdRow k="Esc" label="Close any panel" />
       </Kbds>
 
-      <h2>Command palette · ⌘P</h2>
+      <h2>The Shuttle · ⌘K</h2>
       <p>
-        If you can't remember a shortcut, press <Kbd>⌘P</Kbd> to open the
-        command palette. It's Loom's universal action entry point: search a
-        keyword and see all matching presets, docs, and actions.
+        If you can't remember where something lives, press <Kbd>⌘K</Kbd>.
+        The shuttle is the fast path, not the main navigation layer.
       </p>
       <ul>
-        <li>Search "<strong>rehearsal</strong>" → deepen a panel from memory</li>
+        <li>Search "<strong>rehearsal</strong>" → deepen a pattern from memory</li>
         <li>Search "<strong>examiner</strong>" → verify a woven understanding</li>
         <li>Search "<strong>thought map</strong>" → settle the current weave</li>
         <li>Search "<strong>export</strong>" → three export options</li>
-        <li>Search a <strong>doc name</strong> → jump to that doc</li>
+        <li>Search a <strong>doc name</strong> → shuttle to that doc</li>
         <li>Search "<strong>help</strong>" → this page or keyboard help</li>
       </ul>
       <p>
@@ -162,32 +184,32 @@ export default function HelpPage() {
         <Kbd>Esc</Kbd> to close. Clicking outside also closes it.
       </p>
 
-      <h2>Search · ⌘F</h2>
+      <h2>Atlas Filtering · ⌘F</h2>
       <p>
-        The search box in any reading page's toolbar filters your entire Personal
-        Layer of Notes in real time. Cross-doc, cross-state. Multi-token AND
-        semantics — searching "<code>dpo math</code>" returns only Notes
+        The filter box in the Atlas filters your entire personal
+        Layer of thoughts in real time. Cross-doc, cross-state. Multi-token AND
+        semantics — searching "<code>dpo math</code>" returns only thoughts
         containing both words.
       </p>
 
       <h2>Data export</h2>
       <p>
-        Your Notes are always yours. In the <Kbd>⌘P</Kbd> command palette,
+        Your woven patterns are always yours. In the <Kbd>⌘K</Kbd> Shuttle,
         search "export" to see three options:
       </p>
       <ul>
         <li>
-          <strong>Export all notes as Markdown</strong> — all notes written to a
+          <strong>Export all patterns as Markdown</strong> — all patterns written to a
           single <code>.md</code> file, organized by source doc, with quotes
           and timestamps
         </li>
         <li>
-          <strong>Export all notes as JSON</strong> — full-fidelity JSON backup
+          <strong>Export all patterns as JSON</strong> — full-fidelity JSON backup
           that can be re-imported or migrated
         </li>
         <li>
-          <strong>Export current doc's notes as Markdown</strong> — export only
-          the notes for the current focal doc, useful for sharing a single
+          <strong>Export current doc's patterns as Markdown</strong> — export only
+          the patterns for the current focal doc, useful for sharing a single
           topic's work
         </li>
       </ul>
@@ -195,12 +217,13 @@ export default function HelpPage() {
       <h2>Where your data lives</h2>
       <ul>
         <li>
-          <strong>All notes are stored in the browser's IndexedDB</strong> —
+          <strong>All thoughts are stored in the browser's IndexedDB</strong> —
           local, never uploaded
         </li>
         <li>
-          <strong>AI calls go through a local CLI</strong> (Codex CLI or Claude
-          CLI), not directly to OpenAI/Anthropic APIs
+          <strong>AI calls go through local machine runtimes</strong> —
+          Codex CLI first, Claude CLI as fallback. Choose the preferred runtime
+          in Settings.
         </li>
         <li>
           <strong>No cloud sync</strong> — the single-machine experience is
@@ -220,44 +243,44 @@ export default function HelpPage() {
         fix="A stale next dev server process is running in the background. Kill it and restart Loom.app."
       />
       <Trouble
-        symptom="Search returns no results, but the text is clearly there"
-        fix="Search is case-insensitive, but all tokens must match. Clear the search and try again."
+        symptom="Shuttle returns no results, but the text is clearly there"
+        fix="Shuttle is case-insensitive, but all tokens must match. Clear the shuttle and try again."
       />
       <Trouble
-        symptom="AI call fails"
-        fix="Check that Codex CLI or Claude CLI is working. Run 'codex --version' in the terminal to verify."
+        symptom="AI is unavailable"
+        fix="Loom runs through local AI runtimes on this machine. Open Settings and check Preferred AI runtime. Loom tries Codex CLI first and falls back to Claude CLI when possible."
       />
       <Trouble
         symptom="Can't find a feature"
-        fix="Press ⌘P to open the command palette and search by keyword. Or press ? to see the full keyboard shortcuts list."
+        fix="Press ⌘K to open the Shuttle and search by keyword. Or press ? to see the full keyboard shortcuts list."
       />
       <Trouble
         symptom="Doc loads slowly in the iframe"
         fix="First load shows a loading indicator. If it takes more than 3 seconds, check if 'npm run build' has been run (production mode is much faster than dev)."
       />
       <Trouble
-        symptom="Accidentally deleted a Note and want it back"
-        fix="Soft delete only hides the Note from view — the original is still in the trace. JSON export will show everything. A restore UI is planned."
+        symptom="Accidentally removed a thought and want it back"
+        fix="Removal only hides the thought from view — the original is still in the trace. JSON export will show everything."
       />
 
       <h2>Further reading</h2>
       <ul>
         <li>
           <Link href="/about">/about</Link> — Loom's design principles and the
-          kesi metaphor
+          weaving metaphor
         </li>
         <li>
-          any reading page — unified architecture main entry (or press <Kbd>⌘P</Kbd>)
+          <Link href="/">/</Link> — the quiet desktop start surface
         </li>
         <li>
-          <Link href="/">/</Link> — Loom home
+          any reading page — the primary learning surface
         </li>
       </ul>
 
       <h2>North star</h2>
       <p style={{ fontStyle: 'italic', color: 'var(--fg-secondary)' }}>
-        Notes are a byproduct of learning, not the object of learning. Time
-        spent organizing notes = time not spent learning.
+        Patterns are a byproduct of learning, not the object of learning. Time
+        spent organizing thoughts = time not spent learning.
       </p>
       <p>
         Every design decision in Loom passes through this sentence. If a
@@ -267,7 +290,7 @@ export default function HelpPage() {
         not by your decisions.
       </p>
       <p>
-        Your only job is to <strong>read, ask, and produce</strong>. Leave the
+        Your only job is to <strong>read, shuttle, and produce</strong>. Leave the
         rest to Loom.
       </p>
     </article>

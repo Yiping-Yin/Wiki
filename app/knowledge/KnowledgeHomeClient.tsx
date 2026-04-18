@@ -7,15 +7,20 @@ type KnowledgeHomeGroup = {
   items: Array<{
     slug: string;
     label: string;
+    count: number;
   }>;
 };
 
 export function KnowledgeHomeClient({
   groups,
+  totalCollections,
+  totalDocs,
 }: {
   groups: KnowledgeHomeGroup[];
+  totalCollections: number;
+  totalDocs: number;
 }) {
   return (
-    <KnowledgeHomeStatic groups={groups} />
+    <KnowledgeHomeStatic groups={groups} totalCollections={totalCollections} totalDocs={totalDocs} />
   );
 }

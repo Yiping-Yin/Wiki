@@ -1,17 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!--
-    Loom · monochrome variant. Uses currentColor.
-    8 warp threads = the 8 verticals of L-O-O-M. See icon.svg for the
-    full reasoning.
-  -->
-  <g stroke="currentColor" stroke-width="8" stroke-linecap="round">
-    <line x1="116" y1="176" x2="116" y2="336"/>
-    <line x1="156" y1="176" x2="156" y2="336"/>
-    <line x1="196" y1="176" x2="196" y2="336"/>
-    <line x1="236" y1="176" x2="236" y2="336"/>
-    <line x1="276" y1="176" x2="276" y2="336"/>
-    <line x1="316" y1="176" x2="316" y2="336"/>
-    <line x1="356" y1="176" x2="356" y2="336"/>
-    <line x1="396" y1="176" x2="396" y2="336"/>
+  <rect width="512" height="512" fill="none" />
+  <g opacity="0.12" stroke="currentColor" stroke-width="1" fill="none">
+    <line x1="0" y1="138" x2="512" y2="138" />
+    <line x1="0" y1="256" x2="512" y2="256" />
+    <line x1="0" y1="374" x2="512" y2="374" />
+    <line x1="77" y1="0" x2="77" y2="512" />
+    <line x1="173" y1="0" x2="173" y2="512" />
+    <line x1="256" y1="0" x2="256" y2="512" />
+    <line x1="339" y1="0" x2="339" y2="512" />
+    <line x1="435" y1="0" x2="435" y2="512" />
+  </g>
+  <g transform="translate(62 83)" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 18 L 28 190 L 114 190" />
+    <path d="M 98 170
+             C 98 73, 184 73, 256 170
+             C 328 267, 414 267, 414 170
+             C 414 73, 328 73, 256 170
+             C 184 267, 98 267, 98 170" />
+    <path d="M 318 16 L 318 190" />
+    <path d="M 318 16 L 388 86 L 458 16" />
+    <path d="M 458 16 L 458 190" />
+    <path d="M 63 170 L 352 170" stroke-width="7" />
   </g>
 </svg>

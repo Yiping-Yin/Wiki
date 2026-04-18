@@ -1,0 +1,29 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#050505"/>
+
+  <line x1="140" y1="448" x2="1460" y2="448" stroke="#181818" stroke-width="2"/>
+
+  <!-- base skeleton -->
+  <g stroke="#F2EEE5" fill="none" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M224 220V596H498"/>
+    <circle cx="642" cy="448" r="118"/>
+    <circle cx="952" cy="448" r="118"/>
+    <path d="M1062 596V336L1188 448L1314 336V596"/>
+  </g>
+
+  <!-- bridge between the two O states -->
+  <path d="M726 520
+           C786 518 832 476 876 424
+           C905 389 925 355 944 334"
+        stroke="#F2EEE5"
+        stroke-width="18"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- cut the first O to make it feel transitional rather than complete -->
+  <path d="M722 348L752 550" stroke="#050505" stroke-width="34" stroke-linecap="round"/>
+
+  <!-- let the M absorb the second O at the top-right -->
+  <path d="M1016 330L1072 398" stroke="#050505" stroke-width="36" stroke-linecap="round"/>
+</svg>

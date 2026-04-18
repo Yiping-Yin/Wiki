@@ -1,101 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Loom · The Definitive Mark · Bold variant -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#061850"/>
-      <stop offset="0.50" stop-color="#302d90"/>
-      <stop offset="1" stop-color="#5a2898"/>
+    <linearGradient id="strokeSilver" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d5d7db" />
+      <stop offset="16%" stop-color="#f5f6f8" />
+      <stop offset="50%" stop-color="#9fa3aa" />
+      <stop offset="84%" stop-color="#f5f6f8" />
+      <stop offset="100%" stop-color="#d5d7db" />
     </linearGradient>
-    <radialGradient id="vignette" cx="50%" cy="48%" r="58%">
-      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="0.60" stop-color="#000000" stop-opacity="0.18"/>
-      <stop offset="0.85" stop-color="#000000" stop-opacity="0.50"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.70"/>
-    </radialGradient>
-    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.02"/>
-      <stop offset="0.10" stop-color="#d0d0ff" stop-opacity="0.18"/>
-      <stop offset="0.30" stop-color="#e0e0ff" stop-opacity="0.35"/>
-      <stop offset="0.50" stop-color="#ffffff" stop-opacity="0.40"/>
-      <stop offset="0.70" stop-color="#e0e0ff" stop-opacity="0.32"/>
-      <stop offset="0.90" stop-color="#d0d0ff" stop-opacity="0.15"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.01"/>
+    <linearGradient id="beamSilver" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9da0a6" />
+      <stop offset="18%" stop-color="#f7f7f8" />
+      <stop offset="50%" stop-color="#7c7f86" />
+      <stop offset="82%" stop-color="#f7f7f8" />
+      <stop offset="100%" stop-color="#9da0a6" />
     </linearGradient>
-    <linearGradient id="silk" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>
-      <stop offset="0.10" stop-color="#f0f0ff" stop-opacity="0.65"/>
-      <stop offset="0.30" stop-color="#ffffff" stop-opacity="0.92"/>
-      <stop offset="0.50" stop-color="#ffffff" stop-opacity="0.98"/>
-      <stop offset="0.70" stop-color="#ffffff" stop-opacity="0.92"/>
-      <stop offset="0.90" stop-color="#f0f0ff" stop-opacity="0.60"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.10"/>
-    </linearGradient>
-    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="0.15" stop-color="#ffffff" stop-opacity="0.70"/>
-      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.97"/>
-      <stop offset="0.50" stop-color="#ffffff" stop-opacity="1"/>
-      <stop offset="0.65" stop-color="#ffffff" stop-opacity="0.97"/>
-      <stop offset="0.85" stop-color="#ffffff" stop-opacity="0.65"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="shadow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="0.20" stop-color="#000000" stop-opacity="0.40"/>
-      <stop offset="0.50" stop-color="#000000" stop-opacity="0.55"/>
-      <stop offset="0.80" stop-color="#000000" stop-opacity="0.40"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="weft" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="0.12" stop-color="#000000" stop-opacity="0.16"/>
-      <stop offset="0.50" stop-color="#000000" stop-opacity="0.22"/>
-      <stop offset="0.88" stop-color="#000000" stop-opacity="0.16"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="clip"><rect width="512" height="512" rx="112"/></clipPath>
+    <filter id="blueGlowWide" x="-80%" y="-100%" width="260%" height="300%">
+      <feGaussianBlur stdDeviation="8" />
+    </filter>
+    <filter id="beamGlow" x="-40%" y="-300%" width="180%" height="700%">
+      <feGaussianBlur stdDeviation="4" />
+    </filter>
   </defs>
-  <g clip-path="url(#clip)">
-    <rect width="512" height="512" fill="url(#bg)"/>
-    <rect width="512" height="512" fill="url(#vignette)"/>
-    <rect x="108" y="186.5" width="296" height="1.5" fill="url(#weft)"/>
-    <rect x="108" y="216.5" width="296" height="1.5" fill="url(#weft)"/>
-    <rect x="108" y="246.5" width="296" height="1.5" fill="url(#weft)"/>
-    <rect x="108" y="276.5" width="296" height="1.5" fill="url(#weft)"/>
-    <rect x="108" y="306.5" width="296" height="1.5" fill="url(#weft)"/>
-    <rect x="108" y="336.5" width="296" height="1.5" fill="url(#weft)"/>
-    <rect x="108" y="366.5" width="296" height="1.5" fill="url(#weft)"/>
-    <rect x="142" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="180" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="218" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="244" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="272" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="298" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="336" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="374" y="142" width="4" height="228" rx="2" fill="url(#shadow)"/>
-    <rect x="134" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="172" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="210" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="236" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="264" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="290" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="328" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="366" y="142" width="10" height="228" rx="5" fill="url(#glow)"/>
-    <rect x="136.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="174.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="212.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="238.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="266.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="292.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="330.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="368.5" y="142" width="5.5" height="228" rx="2.75" fill="url(#silk)"/>
-    <rect x="137.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
-    <rect x="175.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
-    <rect x="213.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
-    <rect x="239.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
-    <rect x="267.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
-    <rect x="293.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
-    <rect x="331.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
-    <rect x="369.8" y="142" width="2.8" height="228" rx="1.4" fill="url(#core)"/>
+  <rect width="512" height="512" fill="#020407" />
+  <g opacity="0.18" stroke="#d9dde6" stroke-width="1">
+    <line x1="0" y1="138" x2="512" y2="138" />
+    <line x1="0" y1="256" x2="512" y2="256" />
+    <line x1="0" y1="374" x2="512" y2="374" />
+    <line x1="77" y1="0" x2="77" y2="512" />
+    <line x1="173" y1="0" x2="173" y2="512" />
+    <line x1="256" y1="0" x2="256" y2="512" />
+    <line x1="339" y1="0" x2="339" y2="512" />
+    <line x1="435" y1="0" x2="435" y2="512" />
+  </g>
+  <g transform="translate(62 83)">
+    <rect x="0" y="168" width="388" height="6" rx="3" fill="#5daeff" filter="url(#beamGlow)" opacity="0.7" />
+    <g opacity="0.92">
+      <rect x="24" y="20" width="8" height="166" rx="4" fill="#72bcff" filter="url(#blueGlowWide)" />
+      <rect x="314" y="16" width="8" height="174" rx="4" fill="#72bcff" filter="url(#blueGlowWide)" />
+      <rect x="458" y="16" width="8" height="174" rx="4" fill="#72bcff" filter="url(#blueGlowWide)" />
+    </g>
+    <g fill="none" stroke="url(#strokeSilver)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 18 L 28 190 L 114 190" />
+      <path d="M 98 170
+               C 98 73, 184 73, 256 170
+               C 328 267, 414 267, 414 170
+               C 414 73, 328 73, 256 170
+               C 184 267, 98 267, 98 170" />
+      <path d="M 318 16 L 318 190" />
+      <path d="M 318 16 L 388 86 L 458 16" />
+      <path d="M 458 16 L 458 190" />
+    </g>
+    <rect x="63" y="167" width="289" height="7" rx="3.5" fill="url(#beamSilver)" opacity="0.94" />
   </g>
 </svg>

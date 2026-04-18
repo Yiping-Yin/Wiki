@@ -8,7 +8,8 @@
  *
  * Each SSE event is `data: {"delta":"chunk"}\n\n` followed by `data: [DONE]\n\n`.
  */
-import { pickCli, runCli } from '../../../lib/claude-cli';
+import { pickCli } from '../../../lib/claude-cli';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -57,20 +58,27 @@ export async function POST(req: Request) {
       };
       let streamed = false;
 
+      const result = await invokeLocalRuntime({
+        preferred: cli,
+        prompt,
+        timeoutMs: 180000,
+        onChunk: (chunk) => {
+          streamed = true;
+          safeEnqueue(`data: ${JSON.stringify({ delta: chunk })}\n\n`);
+        },
+      });
+
       try {
-        const text = await runCli(prompt, {
-          cli,
-          timeoutMs: 180000,
-          onChunk: (chunk) => {
-            streamed = true;
-            safeEnqueue(`data: ${JSON.stringify({ delta: chunk })}\n\n`);
-          },
-        });
-        if (text && !streamed) {
-          safeEnqueue(`data: ${JSON.stringify({ delta: text })}\n\n`);
+        if (result.runtime === null) {
+          safeEnqueue(`data: ${JSON.stringify({ error: result.userMessage })}\n\n`);
+        } else {
+          if (result.notice) {
+            safeEnqueue(`data: ${JSON.stringify({ notice: result.notice })}\n\n`);
+          }
+          if (result.text && !streamed) {
+            safeEnqueue(`data: ${JSON.stringify({ delta: result.text })}\n\n`);
+          }
         }
-      } catch (e: any) {
-        safeEnqueue(`data: ${JSON.stringify({ error: e.message })}\n\n`);
       } finally {
         safeEnqueue('data: [DONE]\n\n');
         try { controller.close(); } catch {}

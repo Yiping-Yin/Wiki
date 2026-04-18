@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+  <title id="title">Loom blueprint board</title>
+  <desc id="desc">Loom wordmark presented on a dark blueprint grid board for the about page.</desc>
+  <defs>
+    <linearGradient id="boardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#05070a" />
+      <stop offset="100%" stop-color="#030406" />
+    </linearGradient>
+    <linearGradient id="majorGridStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b93a0" stop-opacity="0.42" />
+      <stop offset="100%" stop-color="#8b93a0" stop-opacity="0.3" />
+    </linearGradient>
+    <linearGradient id="minorGridStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6e7683" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#6e7683" stop-opacity="0.12" />
+    </linearGradient>
+    <linearGradient id="diagStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8c95a2" stop-opacity="0.34" />
+      <stop offset="100%" stop-color="#8c95a2" stop-opacity="0.16" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="420" fill="url(#boardBg)" />
+
+  <g stroke="url(#minorGridStroke)" stroke-width="1">
+    <line x1="0" y1="86" x2="1600" y2="86" />
+    <line x1="0" y1="120" x2="1600" y2="120" />
+    <line x1="0" y1="210" x2="1600" y2="210" />
+    <line x1="0" y1="244" x2="1600" y2="244" />
+    <line x1="0" y1="300" x2="1600" y2="300" />
+    <line x1="0" y1="334" x2="1600" y2="334" />
+    <line x1="134" y1="0" x2="134" y2="420" />
+    <line x1="194" y1="0" x2="194" y2="420" />
+    <line x1="354" y1="0" x2="354" y2="420" />
+    <line x1="414" y1="0" x2="414" y2="420" />
+    <line x1="520" y1="0" x2="520" y2="420" />
+    <line x1="660" y1="0" x2="660" y2="420" />
+    <line x1="800" y1="0" x2="800" y2="420" />
+    <line x1="940" y1="0" x2="940" y2="420" />
+    <line x1="1080" y1="0" x2="1080" y2="420" />
+    <line x1="1186" y1="0" x2="1186" y2="420" />
+    <line x1="1246" y1="0" x2="1246" y2="420" />
+    <line x1="1406" y1="0" x2="1406" y2="420" />
+    <line x1="1466" y1="0" x2="1466" y2="420" />
+  </g>
+
+  <g stroke="url(#majorGridStroke)" stroke-width="1.2">
+    <line x1="0" y1="120" x2="1600" y2="120" />
+    <line x1="0" y1="210" x2="1600" y2="210" />
+    <line x1="0" y1="300" x2="1600" y2="300" />
+    <line x1="194" y1="0" x2="194" y2="420" />
+    <line x1="414" y1="0" x2="414" y2="420" />
+    <line x1="660" y1="0" x2="660" y2="420" />
+    <line x1="800" y1="0" x2="800" y2="420" />
+    <line x1="940" y1="0" x2="940" y2="420" />
+    <line x1="1186" y1="0" x2="1186" y2="420" />
+    <line x1="1406" y1="0" x2="1406" y2="420" />
+  </g>
+
+  <g stroke="url(#diagStroke)" stroke-width="1">
+    <line x1="96" y1="122" x2="194" y2="220" />
+    <line x1="96" y1="300" x2="194" y2="202" />
+    <line x1="1126" y1="120" x2="1316" y2="310" />
+    <line x1="1316" y1="120" x2="1126" y2="310" />
+    <line x1="1220" y1="120" x2="1466" y2="366" />
+    <line x1="1466" y1="120" x2="1220" y2="366" />
+    <line x1="458" y1="126" x2="634" y2="302" />
+    <line x1="538" y1="126" x2="714" y2="302" />
+    <line x1="776" y1="126" x2="952" y2="302" />
+    <line x1="696" y1="126" x2="872" y2="302" />
+  </g>
+</svg>

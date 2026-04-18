@@ -7,7 +7,8 @@
  *
  * Non-streaming. Spawns the selected local CLI, captures stdout, parses JSON.
  */
-import { runCli, pickCli } from '../../../lib/claude-cli';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
+import { pickCli } from '../../../lib/claude-cli';
 import { extractJson } from '../../../lib/ai/extract-json';
 
 export const runtime = 'nodejs';
@@ -67,26 +68,36 @@ export async function POST(req: Request) {
 
   const cli = pickCli(body);
   const prompt = buildPrompt(body.source, body.focus);
-  try {
-    const stdout = await runCli(prompt, { cli, timeoutMs: 110_000 });
-    const parsed = extractJson(stdout);
-    if (!parsed || !Array.isArray(parsed.concepts)) {
-      return Response.json({
-        error: 'failed to parse concepts',
-        raw: stdout.slice(0, 500),
-      }, { status: 502 });
-    }
+  const result = await invokeLocalRuntime({
+    preferred: cli,
+    prompt,
+    timeoutMs: 110_000,
+  });
 
-    const concepts = parsed.concepts
-      .filter((c: any) => c && typeof c.name === 'string')
-      .slice(0, 8)
-      .map((c: any) => ({
-        name: String(c.name).trim().slice(0, 80),
-        why: String(c.why ?? '').trim().slice(0, 240),
-      }));
-
-    return Response.json({ concepts });
-  } catch (e: any) {
-    return Response.json({ error: e.message }, { status: 500 });
+  if (result.runtime === null) {
+    return Response.json({ error: result.userMessage }, { status: 500 });
   }
+
+  const parsed = extractJson(result.text);
+  if (!parsed || !Array.isArray(parsed.concepts)) {
+    return Response.json({
+      error: 'failed to parse concepts',
+      raw: result.text.slice(0, 500),
+    }, { status: 502 });
+  }
+
+  const concepts = parsed.concepts
+    .filter((c: any) => c && typeof c.name === 'string')
+    .slice(0, 8)
+    .map((c: any) => ({
+      name: String(c.name).trim().slice(0, 80),
+      why: String(c.why ?? '').trim().slice(0, 240),
+    }));
+
+  return Response.json({
+    concepts,
+    runtime: result.runtime,
+    fellBack: result.fellBack,
+    notice: result.notice,
+  });
 }

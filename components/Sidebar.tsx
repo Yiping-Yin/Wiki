@@ -3,19 +3,24 @@ import Link from 'next/link';
 import { useRef, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { chapters } from '../lib/nav';
+import {
+  LEGACY_SIDEBAR_PINNED_KEY,
+  resolveInitialSidebarMode,
+  SIDEBAR_MODE_KEY,
+  shouldForcePinnedSidebarForPath,
+  type SidebarMode,
+} from '../lib/sidebar-mode';
 import { SearchBox } from './SearchBox';
 import chapterMeta from '../lib/chapter-meta.json';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
+import { useSmallScreen } from '../lib/use-small-screen';
 
 type ChMeta = { hasVideo?: boolean; hasMath?: boolean; hasCode?: boolean; hasMermaid?: boolean; hasPdf?: boolean; hasWidget?: boolean; wordCount?: number };
 const META = chapterMeta as Record<string, ChMeta>;
 
-type SbMode = 'hidden' | 'pinned';
-const MODE_KEY = 'wiki:sidebar:mode';
-
 export function Sidebar() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<SbMode>('hidden');
+  const [mode, setMode] = useState<SidebarMode>('hidden');
   const [llmOpen, setLlmOpen] = useState(false);
   const [knowOpen, setKnowOpen] = useState(false);
   const { knowledgeCategories } = useKnowledgeNav();
@@ -23,16 +28,17 @@ export function Sidebar() {
   // Restore preference + edge-hover peek (only when hidden)
   useEffect(() => {
     try {
-      const v = localStorage.getItem(MODE_KEY);
-      if (!v) {
-        const old = localStorage.getItem('wiki:sidebar:pinned');
-        if (old === '1') setMode('pinned');
-      } else if (v === 'pinned' || v === 'hidden') {
-        setMode(v);
-      } else if (v === 'mini') {
+      const v = localStorage.getItem(SIDEBAR_MODE_KEY);
+      if (v === 'mini') {
         // Migrate broken mini state to hidden
         setMode('hidden');
-        localStorage.setItem(MODE_KEY, 'hidden');
+        localStorage.setItem(SIDEBAR_MODE_KEY, 'hidden');
+      } else {
+        setMode(resolveInitialSidebarMode({
+          storedMode: v,
+          legacyPinned: localStorage.getItem(LEGACY_SIDEBAR_PINNED_KEY),
+          viewportWidth: window.innerWidth,
+        }));
       }
     } catch {}
     let hideTimer: number | null = null;
@@ -73,8 +79,8 @@ export function Sidebar() {
 
   const cycleMode = () => {
     setMode((m) => {
-      const next: SbMode = m === 'hidden' ? 'pinned' : 'hidden';
-      try { localStorage.setItem(MODE_KEY, next); } catch {}
+      const next: SidebarMode = m === 'hidden' ? 'pinned' : 'hidden';
+      try { localStorage.setItem(SIDEBAR_MODE_KEY, next); } catch {}
       return next;
     });
   };
@@ -99,12 +105,18 @@ export function Sidebar() {
   useEffect(() => {
     if (isReadingPage) setOpen(false);
   }, [isReadingPage, pathname]);
-  const pinned = mode === 'pinned' && !isReadingPage;
+  const smallScreen = useSmallScreen();
+  const forcePinned = !smallScreen && shouldForcePinnedSidebarForPath(pathname);
+  const pinned = (mode === 'pinned' || forcePinned) && !isReadingPage;
   const visible = open || pinned;
   const sections = Array.from(new Set(chapters.map((c) => c.section)));
   const router = useRouter();
 
-  const isActive = (href: string) => pathname === href;
+  const isActive = (href: string) => {
+    if (href === '/patterns') return pathname === '/patterns' || pathname === '/kesi';
+    if (href === '/atlas') return pathname === '/knowledge' || pathname === '/atlas';
+    return pathname === href;
+  };
 
   return (
     <>
@@ -119,7 +131,7 @@ export function Sidebar() {
           className="mobile-menu-btn"
           style={{
             position: 'fixed',
-            top: 'max(12px, env(safe-area-inset-top, 0px) + 6px)',
+            top: 'max(44px, env(safe-area-inset-top, 0px) + 28px)',
             left: 'max(12px, env(safe-area-inset-left, 0px) + 6px)',
             zIndex: 66,
             background: 'var(--bg-translucent)',
@@ -175,16 +187,25 @@ export function Sidebar() {
             href="/"
             style={{
               textDecoration: 'none',
-              display: 'block', minWidth: 0, flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              minWidth: 0,
+              flex: 1,
+              paddingLeft: 1,
             }}
           >
-            <span className="t-title3" style={{
-              display: 'block', color: 'var(--fg)',
-              fontFamily: 'var(--display)',
-              letterSpacing: '-0.020em',
-              fontWeight: 700,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>Loom</span>
+            <span
+              style={{
+                fontFamily: 'var(--display)',
+                fontSize: '0.98rem',
+                fontWeight: isActive('/') ? 620 : 560,
+                letterSpacing: '-0.028em',
+                color: isActive('/') ? 'var(--fg)' : 'color-mix(in srgb, var(--fg) 92%, var(--muted))',
+                lineHeight: 1,
+              }}
+            >
+              Loom
+            </span>
           </Link>
           <button
             onClick={cycleMode}
@@ -207,16 +228,16 @@ export function Sidebar() {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = pinned ? '1' : '0.5'; }}
           >◰</button>
         </div>
-        <SearchBox />
+        {smallScreen && <SearchBox />}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0 0.4rem' }}>
           <NavLink href="/today" active={isActive('/today')}>Today</NavLink>
-          <NavLink href="/knowledge" active={isActive('/knowledge')}>Knowledge</NavLink>
-          <NavLink href="/kesi" active={isActive('/kesi')}>Kesi</NavLink>
+          <NavLink href="/atlas" active={isActive('/atlas')}>Atlas</NavLink>
+          <NavLink href="/patterns" active={isActive('/patterns')}>Patterns</NavLink>
         </div>
 
         {/* Personal knowledge */}
-        <Section title="Collections" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
+        <Section title="The Atlas" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
           trailing={<NewTopicButton onCreated={(href) => { setOpen(false); router.push(href); }} />}
         >
           {knowledgeCategories.map((c) => (

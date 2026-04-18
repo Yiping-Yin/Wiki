@@ -26,8 +26,13 @@ import {
   resolveBlockElement,
   stableFragmentAnchorId,
 } from '../lib/passage-locator';
-import { getAiStage } from '../lib/ai/stage-model';
+import { isThoughtPositionCrystallized } from '../lib/thought-containers';
+import { getAiStage, getAiSurface } from '../lib/ai/stage-model';
+import { formatAiRuntimeErrorMessage, resolveAiNotice } from '../lib/ai-provider-health';
 import { runAiText } from '../lib/ai/runtime';
+import { computeChatFocusPosition } from '../lib/chat-focus-layout';
+import { openSettingsPanel } from '../lib/settings-panel';
+import { useAiHealth } from '../lib/use-ai-health';
 import {
   useTracesForDoc,
   useAppendEvent,
@@ -127,7 +132,10 @@ export function ChatFocus() {
   const pathname = usePathname() ?? '/';
   const clarifyStage = getAiStage('clarify-passage');
   const commitStage = getAiStage('commit-anchor');
+  const selectionSurface = getAiSurface(clarifyStage.family);
   const smallScreen = useSmallScreen();
+  const { availability } = useAiHealth();
+  const effectiveCli = availability.effectiveCli;
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [focusedEl, setFocusedEl] = useState<HTMLElement | null>(null);
   const [draft, setDraft] = useState('');
@@ -140,6 +148,12 @@ export function ChatFocus() {
    *  quiet hint in the input area (tier-3 actionable, but non-modal and
    *  self-clearing on next keystroke). Not a toast. */
   const [aiError, setAiError] = useState<string | null>(null);
+  const [runtimeNotice, setRuntimeNotice] = useState<string | null>(null);
+  const activeNotice = resolveAiNotice(aiError ?? runtimeNotice ?? availability.notice);
+  const activeNoticeTone = aiError ? 'error' : (runtimeNotice ? 'muted' : (availability.tone ?? 'muted'));
+  const handleNoticeAction = activeNotice.action?.kind === 'open-settings'
+    ? openSettingsPanel
+    : null;
   const [position, setPosition] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 720 });
   const overlayRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -149,6 +163,7 @@ export function ChatFocus() {
   const restoreViewportTopRef = useRef<number | null>(null);
   const restoreScrollYRef = useRef<number | null>(null);
   const restoreRafRef = useRef<number | null>(null);
+  const positionRafRef = useRef<number | null>(null);
 
   const ctx = anchor
     ? contextFromPathname(typeof window !== 'undefined' ? window.location.pathname : '/')
@@ -211,7 +226,7 @@ export function ChatFocus() {
   }, [anchor, activeTrace, focusedEl]);
 
   /**
-   * §X · Is the current passage inside a crystallized (locked) container?
+   * §X · Is the current passage inside a locally locked thought container?
    *
    * Computed at render time so the commit ✓ button can be shown as disabled
    * with a ◈ hint rather than rejecting the user's click with an alert().
@@ -221,29 +236,38 @@ export function ChatFocus() {
    */
   const isCurrentContainerLocked = useMemo(() => {
     if (!anchor || !activeTrace || !focusedEl) return false;
-    const currentBlockText = normalizeBlockText(focusedEl);
-    if (!currentBlockText) return false;
-    const cs = anchor.charStart ?? 0;
-    const ce = anchor.charEnd ?? Math.max(0, anchor.text.length);
-    const anchorIdsAtPosition = new Set<string>();
-    for (const e of activeTrace.events) {
-      if (e.kind !== 'thought-anchor') continue;
-      const etext = e.anchorBlockText ?? '';
-      const ecs = e.anchorCharStart ?? -1;
-      const ece = e.anchorCharEnd ?? -1;
-      if (etext && etext === currentBlockText && ecs <= ce && ece >= cs) {
-        anchorIdsAtPosition.add(e.anchorId);
-      }
-    }
-    return activeTrace.events.some(
-      (e) =>
-        e.kind === 'crystallize'
-        && (e as any).anchorId !== undefined
-        && anchorIdsAtPosition.has((e as any).anchorId),
-    );
-  }, [anchor, activeTrace, focusedEl]);
+    return isThoughtPositionCrystallized(activeTrace.events, {
+      anchorId: anchor.blockId,
+      anchorBlockId: anchor.blockId,
+      anchorBlockText: normalizeBlockText(focusedEl),
+      anchorCharStart: anchor.charStart ?? 0,
+      anchorCharEnd: anchor.charEnd ?? Math.max(0, anchor.text.length),
+      target: ctx?.docId,
+    });
+  }, [anchor, activeTrace, ctx?.docId, focusedEl]);
 
   // Listen for activation
+  const recomputePosition = useCallback(() => {
+    if (!focusedEl) return;
+    const proseContainer = focusedEl.closest('.loom-source-prose') as HTMLElement | null;
+    if (!proseContainer) return;
+
+    const blockRect = focusedEl.getBoundingClientRect();
+    const proseRect = proseContainer.getBoundingClientRect();
+    const proseStyle = window.getComputedStyle(proseContainer);
+
+    setPosition(
+      computeChatFocusPosition({
+        blockBottom: blockRect.bottom,
+        proseLeft: proseRect.left,
+        proseWidth: proseRect.width,
+        proseMaxWidth: proseStyle.maxWidth,
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+      }),
+    );
+  }, [focusedEl]);
+
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
@@ -335,19 +359,23 @@ export function ChatFocus() {
       block.setAttribute('data-loom-chat-focus', 'true');
       document.body.classList.add(MAIN_FOCUS_CLASS);
 
-      // Position the discussion overlay below the focused element, but
-      // always size it to the full prose width. If the focused block is
-      // a narrow display-math / code / media block, using its own width
-      // would collapse the input into a tiny strip.
+      // Position the discussion overlay below the focused element and keep it
+      // exactly aligned with the prose subject. Math/code/media selections can
+      // still borrow the prose column width, but the overlay should not invent
+      // a second width system of its own.
       const newRect = (block as HTMLElement).getBoundingClientRect();
       const proseRect = (proseContainer as HTMLElement).getBoundingClientRect();
-      const stageEl = proseContainer.closest('.with-toc') as HTMLElement | null;
-      const stageRect = stageEl?.getBoundingClientRect() ?? proseRect;
-      setPosition({
-        top: newRect.bottom + window.scrollY + 16,
-        left: stageRect.left + window.scrollX,
-        width: stageRect.width,
-      });
+      const proseStyle = window.getComputedStyle(proseContainer as HTMLElement);
+      setPosition(
+        computeChatFocusPosition({
+          blockBottom: newRect.bottom,
+          proseLeft: proseRect.left,
+          proseWidth: proseRect.width,
+          proseMaxWidth: proseStyle.maxWidth,
+          scrollX: window.scrollX,
+          scrollY: window.scrollY,
+        }),
+      );
 
       // Clear native selection — focus mode replaces it visually
       window.getSelection()?.removeAllRanges();
@@ -358,6 +386,28 @@ export function ChatFocus() {
     window.addEventListener('loom:chat:focus', onOpen);
     return () => window.removeEventListener('loom:chat:focus', onOpen);
   }, []);
+
+  useEffect(() => {
+    if (!anchor || !focusedEl) return;
+
+    const schedule = () => {
+      if (positionRafRef.current) cancelAnimationFrame(positionRafRef.current);
+      positionRafRef.current = requestAnimationFrame(() => {
+        positionRafRef.current = null;
+        recomputePosition();
+      });
+    };
+
+    schedule();
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.removeEventListener('resize', schedule);
+      if (positionRafRef.current) {
+        cancelAnimationFrame(positionRafRef.current);
+        positionRafRef.current = null;
+      }
+    };
+  }, [anchor, focusedEl, smallScreen, recomputePosition]);
 
   // Esc closes
   useEffect(() => {
@@ -418,6 +468,7 @@ export function ChatFocus() {
   useEffect(() => {
     return () => {
       if (restoreRafRef.current) cancelAnimationFrame(restoreRafRef.current);
+      if (positionRafRef.current) cancelAnimationFrame(positionRafRef.current);
       document.body.classList.remove(MAIN_FOCUS_CLASS);
       document
         .querySelectorAll('[data-loom-chat-focus]')
@@ -481,6 +532,7 @@ export function ChatFocus() {
         stage: getAiStage(stage).id,
         messages,
         context,
+        cli: effectiveCli ?? undefined,
         signal: ac.signal,
         onDelta: (_delta, full) => {
           assistantBuf = full;
@@ -491,6 +543,7 @@ export function ChatFocus() {
             }));
           }
         },
+        onNotice: (notice) => setRuntimeNotice(notice),
       });
     } catch (e: any) {
       if (e.name !== 'AbortError') assistantBuf = `[error: ${e.message}]`;
@@ -498,15 +551,20 @@ export function ChatFocus() {
       abortRef.current = null;
     }
     return assistantBuf;
-  }, []);
+  }, [effectiveCli]);
 
   const send = useCallback(async () => {
     const text = draft.trim();
     if (!text || streaming || !ctx || !anchor) return;
+    if (!availability.canSend) {
+      setAiError(availability.notice ?? 'AI unavailable — Open Settings to check provider status, then retry.');
+      return;
+    }
     setDraft('');
     setStreaming(true);
     setStreamBuf('');
     setAiError(null);
+    setRuntimeNotice(null);
 
     const messages: { role: 'user' | 'assistant'; content: string }[] = [];
     for (const t of turns) {
@@ -542,17 +600,14 @@ export function ChatFocus() {
       setStreamBuf('');
       if (answer && answer.startsWith('[error:')) {
         const rawMsg = answer.slice(7, -1);
-        setAiError(
-          rawMsg.toLowerCase().includes('fetch') || rawMsg.toLowerCase().includes('network')
-            ? 'AI unreachable — check connection and press Enter to retry.'
-            : `AI returned an error — press Enter to retry. (${rawMsg.slice(0, 80)})`
-        );
+        console.error('ChatFocus AI error:', rawMsg);
+        setAiError(`${formatAiRuntimeErrorMessage(rawMsg)} Press Enter to retry.`);
       } else {
-        setAiError('No response from AI — press Enter to retry.');
+        setAiError('AI returned no response. Open Settings to check provider status, then press Enter to retry.');
       }
       setTimeout(() => inputRef.current?.focus(), 30);
     }
-  }, [draft, streaming, ctx, turns, anchor, streamChat, existingNotes, priorVersionsOnThisPassage]);
+  }, [draft, streaming, ctx, turns, anchor, availability, streamChat, existingNotes, priorVersionsOnThisPassage]);
 
   const commit = useCallback(async () => {
     if (turns.length === 0 || committing || !ctx || !anchor) return;
@@ -709,6 +764,15 @@ export function ChatFocus() {
 
   if (!anchor) return null;
 
+  const hasEditorialBody =
+    turns.length > 0
+    || (!!streamBuf && !committing)
+    || committing
+    || !!aiError
+    || !!runtimeNotice
+    || !availability.canSend;
+  const desktopEditorial = !smallScreen;
+
   return (
     <div
       ref={overlayRef}
@@ -728,36 +792,108 @@ export function ChatFocus() {
         animation: 'chatFocusIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both',
       }}
     >
-      {/* Hairline left border anchors the discussion to the doc visually,
-          like a margin note bracket. Background ensures no text bleed-through. */}
-      <div style={{
-        borderLeft: smallScreen ? 'none' : '1px solid var(--accent)',
-        borderTop: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
-        borderBottom: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
-        paddingLeft: smallScreen ? '0.9rem' : '1rem',
-        paddingRight: smallScreen ? '0.9rem' : 0,
-        paddingTop: smallScreen ? '0.75rem' : '0.4rem',
-        paddingBottom: smallScreen ? '0.8rem' : '0.4rem',
-        background: 'var(--bg)',
-        borderRadius: smallScreen ? 14 : '0 8px 8px 0',
-        boxShadow: smallScreen ? 'var(--shadow-2)' : 'none',
-      }}>
+      <div
+        className="loom-chat-focus-shell"
+        style={{
+          position: 'relative',
+          background: hasEditorialBody
+            ? (smallScreen
+                ? 'color-mix(in srgb, var(--bg) 88%, var(--bg-elevated) 12%)'
+                : 'transparent')
+            : 'transparent',
+          border: hasEditorialBody
+            ? (smallScreen
+                ? '0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent)'
+                : 'none')
+            : 'none',
+          borderRadius: hasEditorialBody ? (smallScreen ? 16 : 0) : 0,
+          boxShadow: hasEditorialBody
+            ? (smallScreen ? 'var(--shadow-2)' : 'none')
+            : 'none',
+          backdropFilter: hasEditorialBody
+            ? (smallScreen ? 'saturate(138%) blur(20px)' : 'none')
+            : 'none',
+          WebkitBackdropFilter: hasEditorialBody
+            ? (smallScreen ? 'saturate(138%) blur(20px)' : 'none')
+            : 'none',
+          overflow: desktopEditorial ? 'visible' : 'hidden',
+        }}
+      >
+        {hasEditorialBody ? (
+          <>
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 1,
+            background: 'linear-gradient(to bottom, color-mix(in srgb, var(--accent) 86%, white 14%), color-mix(in srgb, var(--accent) 72%, transparent))',
+            opacity: smallScreen ? 0.7 : 0.72,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: '0 auto 0 0',
+            width: smallScreen ? 22 : 24,
+            background: 'linear-gradient(to right, color-mix(in srgb, var(--accent-soft) 58%, transparent), transparent)',
+            opacity: smallScreen ? 0.75 : 0.3,
+            pointerEvents: 'none',
+          }}
+        />
+        </>
+        ) : null}
+        <div style={{
+          paddingLeft: smallScreen ? '1rem' : '1.1rem',
+          paddingRight: smallScreen ? '0.95rem' : '0.1rem',
+          paddingTop: hasEditorialBody ? (smallScreen ? '0.9rem' : '0.24rem') : '0',
+          paddingBottom: smallScreen ? '0.9rem' : '0.18rem',
+        }}>
+        {hasEditorialBody ? (
+        <button
+          className="loom-chat-focus-close"
+          onClick={() => close()}
+          aria-label="Close"
+          title="Esc"
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 10,
+            background: 'transparent',
+            border: 0,
+            cursor: 'pointer',
+            color: 'color-mix(in srgb, var(--muted) 82%, transparent)',
+            padding: 0,
+            fontSize: '0.74rem',
+            lineHeight: 1,
+            opacity: smallScreen ? 0.22 : 0,
+            transition: 'opacity 160ms var(--ease), color 160ms var(--ease)',
+          }}
+        >×</button>
+        ) : null}
         {/* Accumulated turns */}
         {turns.map((t, i) => (
-          <div key={i} style={{ marginBottom: '1rem' }}>
-            <div style={{
-              fontSize: '0.86rem',
-              fontStyle: 'italic',
-              color: 'var(--accent)',
-              marginBottom: 6,
-              opacity: 0.85,
-            }}>— {t.q}</div>
+          <div key={i} style={{ marginBottom: desktopEditorial ? '0.72rem' : '1.15rem' }}>
+            {turns.length > 1 ? (
+              <div style={{
+                fontSize: '0.72rem',
+                fontWeight: 500,
+                letterSpacing: '-0.01em',
+                color: 'color-mix(in srgb, var(--accent) 70%, white 30%)',
+                marginBottom: 10,
+                opacity: 0.72,
+              }}>— {t.q}</div>
+            ) : null}
             <div className="prose-notion" style={{
-              fontSize: '0.94rem',
-              lineHeight: 1.6,
+              fontSize: 'inherit',
+              lineHeight: 'inherit',
+              fontFamily: 'var(--serif)',
               padding: 0,
               maxWidth: 'none',
-              color: 'var(--fg-secondary)',
+              color: 'var(--fg)',
+              background: desktopEditorial ? 'linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 10%, transparent) 0%, transparent 100%)' : 'none',
             }}>
               <NoteRenderer source={t.a} />
             </div>
@@ -767,12 +903,14 @@ export function ChatFocus() {
         {/* In-flight stream */}
         {streaming && streamBuf && !committing && (
           <div className="prose-notion" style={{
-            fontSize: '0.94rem',
-            lineHeight: 1.6,
+            fontSize: 'inherit',
+            lineHeight: 'inherit',
+            fontFamily: 'var(--serif)',
             padding: 0,
             maxWidth: 'none',
-            color: 'var(--fg-secondary)',
-            marginBottom: '1rem',
+            color: 'var(--fg)',
+            marginBottom: desktopEditorial ? '0.72rem' : '1.15rem',
+            background: desktopEditorial ? 'linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 10%, transparent) 0%, transparent 100%)' : 'none',
           }}>
             <NoteRenderer source={streamBuf} />
           </div>
@@ -786,13 +924,27 @@ export function ChatFocus() {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          marginTop: '0.4rem',
+          gap: hasEditorialBody ? 8 : 6,
+          marginTop: hasEditorialBody ? (desktopEditorial ? '0.28rem' : '0.95rem') : '0.12rem',
+          padding: hasEditorialBody
+            ? (smallScreen ? '0.62rem 0.72rem' : '0.18rem 0 0.02rem 0')
+            : (smallScreen ? '0.18rem 0.18rem 0.08rem 0.08rem' : '0.06rem 0 0.02rem 0'),
+          borderTop: hasEditorialBody
+            ? (smallScreen ? '0.5px solid color-mix(in srgb, var(--mat-border) 72%, transparent)' : 'none')
+            : 'none',
+          background: smallScreen
+            ? 'color-mix(in srgb, var(--bg-translucent) 82%, transparent)'
+            : hasEditorialBody
+              ? 'transparent'
+              : 'transparent',
+          borderRadius: hasEditorialBody ? (smallScreen ? 10 : 0) : 0,
+          border: hasEditorialBody ? 'none' : 'none',
         }}>
           <span style={{
             color: 'var(--accent)',
-            fontSize: '0.78rem',
+            fontSize: hasEditorialBody ? '0.72rem' : '0.62rem',
             flexShrink: 0,
+            opacity: hasEditorialBody ? (smallScreen ? 0.76 : 0.34) : 0.36,
             ...(streaming ? { animation: 'loomPulse 2s ease-in-out infinite' } : {}),
           }}>✦</span>
           {streaming && !committing ? (
@@ -810,10 +962,12 @@ export function ChatFocus() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <textarea
                 ref={inputRef}
+                className="loom-chat-focus-input"
                 value={draft}
                 onChange={(e) => {
                   setDraft(e.target.value);
                   if (aiError) setAiError(null);
+                  if (runtimeNotice) setRuntimeNotice(null);
                   const el = e.target as HTMLTextAreaElement;
                   el.style.height = 'auto';
                   el.style.height = Math.min(120, el.scrollHeight) + 'px';
@@ -821,29 +975,46 @@ export function ChatFocus() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
                 }}
-                placeholder={turns.length > 0 ? 'Clarify this passage again…' : clarifyStage.title}
+                placeholder={
+                  turns.length > 0
+                    ? 'Continue the annotation…'
+                    : 'Write into this margin…'
+                }
                 rows={1}
                 style={{
                   background: 'transparent',
                   border: 0,
                   outline: 0,
-                  color: 'var(--fg)',
-                  fontSize: '0.88rem',
-                  fontFamily: 'var(--display)',
-                  letterSpacing: '-0.012em',
+                  color: hasEditorialBody ? 'var(--fg)' : 'color-mix(in srgb, var(--fg) 88%, var(--muted))',
+                  fontSize: hasEditorialBody ? (smallScreen ? '0.92rem' : '0.86rem') : '0.88rem',
+                  fontFamily: 'var(--serif)',
+                  letterSpacing: '-0.006em',
                   minWidth: 0,
                   resize: 'none',
-                  lineHeight: 1.5,
-                  minHeight: 22,
+                  lineHeight: hasEditorialBody ? (desktopEditorial ? 1.45 : 1.55) : 1.4,
+                  minHeight: hasEditorialBody ? 22 : 20,
                   maxHeight: 120,
                   padding: 0,
                 }}
               />
               {aiError && (
-                <AiInlineHint tone="error">
-                  {aiError}
+                <AiInlineHint
+                  tone={activeNoticeTone}
+                  actionLabel={activeNotice.action?.label}
+                  onAction={handleNoticeAction}
+                >
+                  {activeNotice.message}
                 </AiInlineHint>
               )}
+              {!aiError && (runtimeNotice ?? availability.notice) ? (
+                <AiInlineHint
+                  tone={activeNoticeTone}
+                  actionLabel={activeNotice.action?.label}
+                  onAction={handleNoticeAction}
+                >
+                  {activeNotice.message}
+                </AiInlineHint>
+              ) : null}
             </div>
           )}
           {turns.length > 0 && !streaming && !committing && (
@@ -851,14 +1022,14 @@ export function ChatFocus() {
               onClick={commit}
               disabled={isCurrentContainerLocked}
               aria-label={isCurrentContainerLocked ? 'Container locked · unlock with ◈ to iterate' : 'Commit anchored note'}
-              title={isCurrentContainerLocked ? '◈ This thought is locked. Unlock via the ◈ icon on the anchor card to iterate.' : '✓ Commit anchored note'}
+                  title={isCurrentContainerLocked ? '◈ This local thought is locked. Unlock it on the card to iterate.' : '✓ Commit anchored note'}
               style={{
                 background: 'transparent', border: 0,
                 cursor: isCurrentContainerLocked ? 'not-allowed' : 'pointer',
                 color: isCurrentContainerLocked ? 'var(--tint-indigo)' : 'var(--accent)',
                 padding: '0 2px',
-                fontSize: '0.88rem', lineHeight: 1, flexShrink: 0,
-                opacity: isCurrentContainerLocked ? 0.42 : 0.7,
+                fontSize: '0.84rem', lineHeight: 1, flexShrink: 0,
+                opacity: isCurrentContainerLocked ? 0.36 : 0.62,
               }}
               onMouseEnter={(e) => {
                 const el = e.currentTarget as HTMLButtonElement;
@@ -870,26 +1041,25 @@ export function ChatFocus() {
               }}
             >{isCurrentContainerLocked ? '◈' : '✓'}</button>
           )}
-          <button
-            onClick={() => close()}
-            aria-label="Close"
-            title="Esc"
-            style={{
-              background: 'transparent', border: 0, cursor: 'pointer',
-              color: 'var(--muted)', padding: '0 2px',
-              fontSize: '0.88rem', lineHeight: 1, flexShrink: 0,
-              opacity: 0.45,
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.45'; }}
-          >×</button>
         </div>
+      </div>
       </div>
 
       <style>{`
         @keyframes chatFocusIn {
           from { opacity: 0; transform: translateY(-6px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .loom-chat-focus-input::placeholder {
+          color: color-mix(in srgb, var(--muted) 82%, transparent);
+          opacity: 1;
+        }
+
+        .loom-chat-focus-close:hover,
+        .loom-chat-focus-close:focus-visible {
+          opacity: 0.74;
+          color: var(--muted);
         }
       `}</style>
     </div>

@@ -1,5 +1,5 @@
 'use client';
-import { getAiStage } from '../../lib/ai/stage-model';
+import { getAiStage, getAiSurface } from '../../lib/ai/stage-model';
 import { callAiPrompt } from '../../lib/ai/runtime';
 /**
  * AIExaminer · Phase 5 (Verifying) component.
@@ -28,6 +28,7 @@ import { callAiPrompt } from '../../lib/ai/runtime';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Note, SourceDocId } from '../../lib/note/types';
+import { openLoomReview, replaceLoomOverlay } from '../../lib/ai/surface-actions';
 import { appendNote } from '../../lib/note/store';
 import { setOverlayResume } from '../../lib/panel-resume';
 import { AiStageBusyState, AiStageEmptyState, AiStageHeader, aiStageButtonStyle } from './AiStagePrimitives';
@@ -90,6 +91,8 @@ export function AIExaminer({ docId, contextNotes }: Props) {
   const router = useRouter();
   const questionStage = getAiStage('examiner-question');
   const gradeStage = getAiStage('examiner-grade');
+  const examinerSurface = getAiSurface(questionStage.family);
+  const rehearsalSurface = getAiSurface('rehearsal');
   const [phase, setPhase] = useState<Phase>(() => loadSession(docId).phase);
   const [draft, setDraft] = useState(() => loadSession(docId).draft);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -207,8 +210,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
   }, [generateQuestion]);
 
   const reviewNotes = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
-    window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
+    openLoomReview();
   }, []);
 
   const returnToRehearsal = useCallback(() => {
@@ -225,10 +227,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
       seedDraft,
       seedLabel: 'Pick up the missing edge',
     });
-    window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: 'rehearsal' } }));
-    requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'rehearsal', seedDraft, seedLabel: 'Pick up the missing edge' } }));
-    });
+    replaceLoomOverlay({ id: 'rehearsal', seedDraft, seedLabel: 'Pick up the missing edge' });
   }, [docId, examinerHistory.lastFailedFeedback, examinerHistory.lastFailedQuestion, phase]);
 
   const stop = useCallback(() => {
@@ -239,7 +238,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
   if (!docId) {
     return (
       <AiStageEmptyState
-        message="Pick a doc above to begin one verifying question."
+        message={examinerSurface.emptyMessage ?? 'Pick a doc above to begin one verifying question.'}
         actionLabel="Choose a doc"
         onAction={() => {}}
         actionDisabled
@@ -261,18 +260,22 @@ export function AIExaminer({ docId, contextNotes }: Props) {
     >
       {/* Header */}
       <AiStageHeader
-        title={questionStage.title}
-        helper={`from ${contextNotes.length} note${contextNotes.length === 1 ? '' : 's'}`}
+        title={phase.kind === 'grading' ? gradeStage.title : questionStage.title}
+        helper={
+          contextNotes.length > 0
+            ? `${contextNotes.length} note${contextNotes.length === 1 ? '' : 's'} · ${examinerSurface.helper ?? 'One question at a time'}`
+            : examinerSurface.helper
+        }
       />
 
       {/* Idle: show "start" button */}
       {phase.kind === 'idle' && (
-        <AiStageEmptyState
-          message="Stay with the unfinished edge of this panel."
-          actionLabel={contextNotes.length === 0 ? 'Capture first' : questionStage.title}
-          onAction={() => void generateQuestion()}
-          actionDisabled={contextNotes.length === 0}
-        />
+          <AiStageEmptyState
+            message="Stay with the unfinished edge of this panel."
+            actionLabel={contextNotes.length === 0 ? 'Capture first' : examinerSurface.launcherTitle}
+            onAction={() => void generateQuestion()}
+            actionDisabled={contextNotes.length === 0}
+          />
       )}
 
       {/* Generating */}
@@ -415,7 +418,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
                   Close
                 </button>
                 <button type="button" onClick={returnToRehearsal} style={aiStageButtonStyle(true, 'muted')}>
-                  Write again
+                  {rehearsalSurface.launcherTitle}
                 </button>
                 <button type="button" onClick={next} style={aiStageButtonStyle(true)}>
                   Ask another

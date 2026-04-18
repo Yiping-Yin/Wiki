@@ -7,6 +7,15 @@ export async function generateStaticParams() {
   return knowledgeCategories.map((c) => ({ category: c.slug }));
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
+  const { category } = await params;
+  const knowledgeCategories = await getKnowledgeCategories();
+  const cat = knowledgeCategories.find((item) => item.slug === category);
+  return {
+    title: cat ? `${cat.label} · Atlas` : 'Atlas · Loom',
+  };
+}
+
 function toDocCard(doc: Awaited<ReturnType<typeof docsByCategory>>[number]): CategoryDocCard {
   return {
     id: doc.id,

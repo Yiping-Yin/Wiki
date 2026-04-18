@@ -8,19 +8,42 @@
 
 /* Begin PBXBuildFile section */
 		02C2B3A4C02B66E7B7F76245 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01B6CE70855F78F1B5B70D23 /* ContentView.swift */; };
-		22CB4E9D53AA1F7A52FAB052 /* NotchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = E215814A60E668DE80E63332 /* NotchOverlay.swift */; };
 		23CE85EE6E1FF90E11496A02 /* DevServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4256C4FA4AF59076B3DBBBDC /* DevServer.swift */; };
+		4A07C211A0D26822457C750D /* DevServerPreflightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */; };
+		50C1F901B210F46BAC4BB09C /* DevServerPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */; };
+		6432F892116325B00A613D05 /* DevServerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */; };
 		72DFEDD02D325EBAA571412D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */; };
+		A16D95B79EEAE3C2337663FA /* LoomWebViewInteractionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */; };
+		B8B8C6F5796088A9F0EA8337 /* LoomCommandScriptsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */; };
+		BEB5D87B0B644A913586CF49 /* LoomCommandScripts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */; };
+		DAD1E4E09155B63DFD48EFFB /* LoomWebViewInteractionPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */; };
 		EB23057432E7A926D52C4FD0 /* LoomApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97F465B75FE18597076B7FEE /* LoomApp.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		C9D08863B97F9676FE553444 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 32B58EFB3FEA3E3E81D94DBD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 92B1BC83B42A8E6DA14FE2C3;
+			remoteInfo = Loom;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		01B6CE70855F78F1B5B70D23 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWebViewInteractionPolicyTests.swift; sourceTree = "<group>"; };
+		2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerTests.swift; sourceTree = "<group>"; };
 		4256C4FA4AF59076B3DBBBDC /* DevServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServer.swift; sourceTree = "<group>"; };
+		50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWebViewInteractionPolicy.swift; sourceTree = "<group>"; };
+		53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerPreflightTests.swift; sourceTree = "<group>"; };
+		738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomCommandScriptsTests.swift; sourceTree = "<group>"; };
+		965174FB87136638BA643B4C /* LoomTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoomTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		97F465B75FE18597076B7FEE /* LoomApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomApp.swift; sourceTree = "<group>"; };
 		B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFB0FB42BDCFD78AC68A01BF /* Loom.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loom.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		E215814A60E668DE80E63332 /* NotchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchOverlay.swift; sourceTree = "<group>"; };
+		E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerPreflight.swift; sourceTree = "<group>"; };
+		F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomCommandScripts.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -29,8 +52,10 @@
 			children = (
 				01B6CE70855F78F1B5B70D23 /* ContentView.swift */,
 				4256C4FA4AF59076B3DBBBDC /* DevServer.swift */,
+				E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */,
 				97F465B75FE18597076B7FEE /* LoomApp.swift */,
-				E215814A60E668DE80E63332 /* NotchOverlay.swift */,
+				F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */,
+				50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -39,6 +64,7 @@
 			isa = PBXGroup;
 			children = (
 				CFB0FB42BDCFD78AC68A01BF /* Loom.app */,
+				965174FB87136638BA643B4C /* LoomTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,8 +74,20 @@
 			children = (
 				B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */,
 				6114BBD5F32D87A441F33A24 /* Sources */,
+				BEEE710EB30DC84354D7E0F0 /* Tests */,
 				AE2495C2DD7C4012BED6E594 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		BEEE710EB30DC84354D7E0F0 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */,
+				2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */,
+				738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */,
+				06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */,
+			);
+			path = Tests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -72,6 +110,24 @@
 			productName = Loom;
 			productReference = CFB0FB42BDCFD78AC68A01BF /* Loom.app */;
 			productType = "com.apple.product-type.application";
+		};
+		ED826D576EF84C5DCAA12309 /* LoomTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC7C822050D13A1780EA0563 /* Build configuration list for PBXNativeTarget "LoomTests" */;
+			buildPhases = (
+				5DF0A9639115211713D1BD94 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A3CD4F83D239141298BB1268 /* PBXTargetDependency */,
+			);
+			name = LoomTests;
+			packageProductDependencies = (
+			);
+			productName = LoomTests;
+			productReference = 965174FB87136638BA643B4C /* LoomTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -99,6 +155,7 @@
 			projectRoot = "";
 			targets = (
 				92B1BC83B42A8E6DA14FE2C3 /* Loom */,
+				ED826D576EF84C5DCAA12309 /* LoomTests */,
 			);
 		};
 /* End PBXProject section */
@@ -121,14 +178,52 @@
 			files = (
 				02C2B3A4C02B66E7B7F76245 /* ContentView.swift in Sources */,
 				23CE85EE6E1FF90E11496A02 /* DevServer.swift in Sources */,
+				50C1F901B210F46BAC4BB09C /* DevServerPreflight.swift in Sources */,
 				EB23057432E7A926D52C4FD0 /* LoomApp.swift in Sources */,
-				22CB4E9D53AA1F7A52FAB052 /* NotchOverlay.swift in Sources */,
+				BEB5D87B0B644A913586CF49 /* LoomCommandScripts.swift in Sources */,
+				A16D95B79EEAE3C2337663FA /* LoomWebViewInteractionPolicy.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5DF0A9639115211713D1BD94 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4A07C211A0D26822457C750D /* DevServerPreflightTests.swift in Sources */,
+				6432F892116325B00A613D05 /* DevServerTests.swift in Sources */,
+				B8B8C6F5796088A9F0EA8337 /* LoomCommandScriptsTests.swift in Sources */,
+				DAD1E4E09155B63DFD48EFFB /* LoomWebViewInteractionPolicyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		A3CD4F83D239141298BB1268 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 92B1BC83B42A8E6DA14FE2C3 /* Loom */;
+			targetProxy = C9D08863B97F9676FE553444 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		0597129A1260A66422EB504F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.loom.appTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Loom.app/Contents/MacOS/Loom";
+			};
+			name = Debug;
+		};
 		126D55997EBF15956046E58F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -294,6 +389,23 @@
 			};
 			name = Debug;
 		};
+		F0D3E0EDEB02B1F76B3E4C03 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.loom.appTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Loom.app/Contents/MacOS/Loom";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -311,6 +423,15 @@
 			buildConfigurations = (
 				7DDE0896E67F1B37B182DEA0 /* Debug */,
 				126D55997EBF15956046E58F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CC7C822050D13A1780EA0563 /* Build configuration list for PBXNativeTarget "LoomTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0597129A1260A66422EB504F /* Debug */,
+				F0D3E0EDEB02B1F76B3E4C03 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

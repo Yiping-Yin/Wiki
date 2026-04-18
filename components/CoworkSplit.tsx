@@ -74,6 +74,9 @@ export function ReviewMode() {
       sessionStorage.removeItem(REVIEW_RESUME_KEY);
       setActive(true);
       requestAnimationFrame(() => {
+        if (payload.focusRevisionDiff) {
+          window.dispatchEvent(new CustomEvent('loom:review:focus-panel-revision'));
+        }
         if (payload.anchorId) {
           window.dispatchEvent(
             new CustomEvent('loom:review:focus-thought', {

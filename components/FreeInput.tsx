@@ -2,7 +2,7 @@
 /**
  * FreeInput · the scratchpad for free-mode thinking.
  *
- * On non-document pages (home, today, kesi, etc.), the user has no source
+ * On non-document pages (home, today, patterns, etc.), the user has no source
  * passage to select. FreeInput provides the AI entry point: a single
  * textarea at the bottom of the viewport, like a terminal prompt.
  *
@@ -13,10 +13,13 @@
  */
 import { useCallback, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { formatAiRuntimeErrorMessage, resolveAiNotice } from '../lib/ai-provider-health';
 import { contextFromPathname } from '../lib/doc-context';
 import { recompileSystemPrompt } from '../lib/ai/system-prompt';
-import { getAiStage } from '../lib/ai/stage-model';
+import { getAiStage, getAiSurface } from '../lib/ai/stage-model';
 import { runAiText } from '../lib/ai/runtime';
+import { openSettingsPanel } from '../lib/settings-panel';
+import { useAiHealth } from '../lib/use-ai-health';
 import { useSmallScreen } from '../lib/use-small-screen';
 import { useTracesForDoc, useAppendEvent } from '../lib/trace';
 import { ensureReadingTrace } from '../lib/trace/source-bound';
@@ -26,27 +29,40 @@ export function FreeInput() {
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
   const freeStage = getAiStage('free-recompile');
+  const freeSurface = getAiSurface(freeStage.family);
   const smallScreen = useSmallScreen();
+  const { availability } = useAiHealth(pathname === '/today');
   const [value, setValue] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [runtimeNotice, setRuntimeNotice] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { traces } = useTracesForDoc(ctx.isFree ? ctx.docId : null);
   const append = useAppendEvent();
+  const activeNotice = resolveAiNotice(aiError ?? runtimeNotice ?? availability.notice);
+  const activeNoticeTone = aiError ? 'error' : (runtimeNotice ? 'muted' : (availability.tone ?? 'muted'));
+  const handleNoticeAction = activeNotice.action?.kind === 'open-settings'
+    ? openSettingsPanel
+    : null;
 
   // Only render on /today — the daily thinking surface.
   // Home page has HomeLoom when empty and Resume list when not;
-  // neither needs a persistent input. /kesi, /about etc. are not thinking pages.
+  // neither needs a persistent input. /patterns, /about etc. are not thinking pages.
   if (!ctx.isFree || pathname !== '/today') return null;
 
   const send = async () => {
     const text = value.trim();
     if (!text || streaming) return;
+    if (!availability.canSend) {
+      setAiError(availability.notice ?? 'AI unavailable — Open Settings to check provider status, then retry.');
+      return;
+    }
     setValue('');
     setStreaming(true);
     setAiError(null);
+    setRuntimeNotice(null);
 
     try {
       // Ensure a reading trace exists for today's free mode
@@ -83,6 +99,7 @@ export function FreeInput() {
           href: ctx.href,
           priorArtifact,
         }),
+        cli: availability.effectiveCli ?? undefined,
         signal: ac.signal,
         onDelta: (_delta, full) => {
           buf = full;
@@ -90,6 +107,7 @@ export function FreeInput() {
             detail: { docId: ctx.docId, content: full },
           }));
         },
+        onNotice: (notice) => setRuntimeNotice(notice),
       });
 
       // Commit the recompiled artifact
@@ -108,7 +126,7 @@ export function FreeInput() {
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
-        setAiError('AI error — press Enter to retry.');
+        setAiError(`${formatAiRuntimeErrorMessage(e?.message ?? String(e))} Press Enter to retry.`);
       }
     } finally {
       setStreaming(false);
@@ -210,6 +228,7 @@ export function FreeInput() {
             ref={taRef}
             value={value}
             onChange={(e) => {
+              if (runtimeNotice) setRuntimeNotice(null);
               setValue(e.target.value);
               const el = e.target;
               el.style.height = 'auto';
@@ -217,6 +236,7 @@ export function FreeInput() {
             }}
             onKeyDown={(e) => {
               if (aiError) setAiError(null);
+              if (runtimeNotice) setRuntimeNotice(null);
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 send();
@@ -226,7 +246,7 @@ export function FreeInput() {
               }
             }}
             onBlur={() => { if (!value && !streaming) setExpanded(false); }}
-            placeholder={`${freeStage.title.toLowerCase()}…`}
+            placeholder={freeSurface.placeholder ?? `${freeStage.title.toLowerCase()}…`}
             rows={1}
             style={{
               flex: 1,
@@ -248,9 +268,26 @@ export function FreeInput() {
       </div>
       {aiError && (
         <div style={{ padding: '0.2rem 0 0 1.2rem' }}>
-          <AiInlineHint tone="error">{aiError}</AiInlineHint>
+          <AiInlineHint
+            tone={activeNoticeTone}
+            actionLabel={activeNotice.action?.label}
+            onAction={handleNoticeAction}
+          >
+            {activeNotice.message}
+          </AiInlineHint>
         </div>
       )}
+      {!aiError && (runtimeNotice ?? availability.notice) ? (
+        <div style={{ padding: '0.2rem 0 0 1.2rem' }}>
+          <AiInlineHint
+            tone={activeNoticeTone}
+            actionLabel={activeNotice.action?.label}
+            onAction={handleNoticeAction}
+          >
+            {activeNotice.message}
+          </AiInlineHint>
+        </div>
+      ) : null}
     </div>
   );
 }

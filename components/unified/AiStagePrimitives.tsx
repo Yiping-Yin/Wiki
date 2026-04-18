@@ -171,9 +171,13 @@ export function AiInlineNotice({
 export function AiInlineHint({
   tone = 'muted',
   children,
+  actionLabel,
+  onAction,
 }: {
   tone?: 'muted' | 'error' | 'accent';
   children: React.ReactNode;
+  actionLabel?: string;
+  onAction?: (() => void) | null;
 }) {
   const color =
     tone === 'error' ? 'var(--tint-red)'
@@ -188,9 +192,36 @@ export function AiInlineHint({
         letterSpacing: '-0.005em',
         lineHeight: 1.4,
         opacity: tone === 'muted' ? 0.8 : 1,
+        maxWidth: '56ch',
+        whiteSpace: 'normal',
+        overflowWrap: 'anywhere',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 6,
       }}
     >
-      {children}
+      <div>{children}</div>
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          style={{
+            padding: 0,
+            border: 0,
+            background: 'transparent',
+            color: 'var(--accent)',
+            font: 'inherit',
+            lineHeight: 1.2,
+            letterSpacing: 'inherit',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            textUnderlineOffset: '0.18em',
+          }}
+        >
+          {actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

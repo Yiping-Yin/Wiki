@@ -7,7 +7,8 @@
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { runCli, pickCli } from '../../../lib/claude-cli';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
+import { pickCli } from '../../../lib/claude-cli';
 import { extractJson } from '../../../lib/ai/extract-json';
 import { legacyPublicCachePath, runtimeCacheDir, runtimeCachePath } from '../../../lib/generated-cache';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
@@ -85,28 +86,43 @@ Document text:
 ${doc.body.slice(0, 12000)}
 """`;
 
-  try {
-    const text = await runCli(prompt, { cli, timeoutMs: 180000 });
-    const parsed = extractJson(text);
-    if (!parsed) throw new Error('non-JSON response');
-    const result = {
-      id: safe,
-      questions: (parsed.questions ?? []).slice(0, 5).map((q: any) => ({
-        q: String(q.q ?? ''),
-        choices: Array.isArray(q.choices) ? q.choices.slice(0, 4).map(String) : [],
-        correct: Number.isInteger(q.correct) ? Math.max(0, Math.min(3, q.correct)) : 0,
-        explain: String(q.explain ?? ''),
-      })).filter((q: any) => q.q && q.choices.length === 4),
-      generatedAt: new Date().toISOString(),
-    };
-    if (result.questions.length === 0) {
-      return Response.json({ error: 'model returned no usable questions' }, { status: 500 });
-    }
-    const cacheFile = runtimeCachePath('quizzes', safe);
-    await fs.mkdir(runtimeCacheDir('quizzes'), { recursive: true });
-    await fs.writeFile(cacheFile, JSON.stringify(result, null, 2));
-    return Response.json({ ...result, cached: false });
-  } catch (e: any) {
-    return Response.json({ error: 'quiz generation failed: ' + e.message }, { status: 500 });
+  const result = await invokeLocalRuntime({
+    preferred: cli,
+    prompt,
+    timeoutMs: 180000,
+  });
+
+  if (result.runtime === null) {
+    return Response.json({ error: result.userMessage }, { status: 500 });
   }
+
+  const parsed = extractJson(result.text);
+  if (!parsed) {
+    return Response.json({ error: 'quiz generation failed: non-JSON response' }, { status: 500 });
+  }
+
+  const quiz = {
+    id: safe,
+    questions: (parsed.questions ?? []).slice(0, 5).map((q: any) => ({
+      q: String(q.q ?? ''),
+      choices: Array.isArray(q.choices) ? q.choices.slice(0, 4).map(String) : [],
+      correct: Number.isInteger(q.correct) ? Math.max(0, Math.min(3, q.correct)) : 0,
+      explain: String(q.explain ?? ''),
+    })).filter((q: any) => q.q && q.choices.length === 4),
+    generatedAt: new Date().toISOString(),
+  };
+  if (quiz.questions.length === 0) {
+    return Response.json({ error: 'model returned no usable questions' }, { status: 500 });
+  }
+
+  const cacheFile = runtimeCachePath('quizzes', safe);
+  await fs.mkdir(runtimeCacheDir('quizzes'), { recursive: true });
+  await fs.writeFile(cacheFile, JSON.stringify(quiz, null, 2));
+  return Response.json({
+    ...quiz,
+    cached: false,
+    runtime: result.runtime,
+    fellBack: result.fellBack,
+    notice: result.notice,
+  });
 }
