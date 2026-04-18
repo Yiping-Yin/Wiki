@@ -24,6 +24,11 @@ async function loadBody(id: string): Promise<string> {
   return (await readKnowledgeDocBody(id))?.body ?? '';
 }
 
+function readingMinutes(body: string) {
+  const words = body.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 220));
+}
+
 export default async function DocPage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   const { category, slug } = await params;
   const categorySlug = decodeURIComponent(category);
@@ -35,6 +40,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
   if (!doc) notFound();
 
   const body = await loadBody(doc.id);
+  const minutes = body ? readingMinutes(body) : 0;
   const cat = knowledgeCategories.find((c) => c.slug === categorySlug);
   const { prev, next } = await neighborsInCategory(categorySlug, fileSlug);
   const sourceUrl = `/api/source?p=${encodeURIComponent(doc.sourcePath)}`;
@@ -47,9 +53,53 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
         <div style={{ minWidth: 0, position: 'relative' }} className="prose-notion loom-source-prose">
           <TrackView id={`know/${doc.id}`} title={doc.title} href={`/knowledge/${doc.categorySlug}/${doc.fileSlug}`} />
 
-          <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-            <Link href={`/knowledge/${categorySlug}`}>{cat?.label}</Link>
-            {doc.subcategory && <> › <span style={{ color: 'var(--fg-secondary)' }}>{doc.subcategory}</span></>}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: '0.7rem',
+            }}
+          >
+            <Link
+              href="/"
+              className="t-caption"
+              style={{ color: 'var(--muted)', textDecoration: 'none', fontWeight: 600 }}
+            >
+              Home
+            </Link>
+            <span className="t-caption" style={{ color: 'var(--muted)' }}>›</span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '3px 10px',
+                borderRadius: 999,
+                background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                border: '0.5px solid color-mix(in srgb, var(--accent) 35%, var(--mat-border))',
+              }}
+            >
+              <span className="t-caption2" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent)', fontWeight: 700 }}>
+                {cat?.label ?? doc.category}
+              </span>
+            </span>
+            {doc.subcategory && (
+              <>
+                <span className="t-caption" style={{ color: 'var(--muted)' }}>›</span>
+                <span className="t-caption" style={{ color: 'var(--fg-secondary)' }}>{doc.subcategory}</span>
+              </>
+            )}
+            {minutes > 0 && (
+              <span
+                className="t-caption"
+                style={{ color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                title="Estimated reading time"
+              >
+                <span aria-hidden>⏱</span> {minutes} min read
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>

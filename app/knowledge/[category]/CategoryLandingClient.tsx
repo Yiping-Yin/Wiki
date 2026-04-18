@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuietGuideCard } from '../../../components/QuietGuideCard';
+import { StageShell } from '../../../components/StageShell';
+import { WorkAction, WorkEyebrow, WorkSurface } from '../../../components/WorkSurface';
 import { useHistory } from '../../../lib/use-history';
-import { useAllTraces, type Trace } from '../../../lib/trace';
-import type { KnowledgeCategory } from '../../../lib/knowledge-types';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../../lib/learning-status';
+import type { KnowledgeCategory } from '../../../lib/knowledge-types';
 import { continuePanelLifecycle } from '../../../lib/panel-resume';
+import { useAllTraces, type Trace } from '../../../lib/trace';
 
 export type CategoryDocCard = {
   id: string;
@@ -65,6 +67,32 @@ function stateRank(surface: CategorySurface) {
     default:
       return 3;
   }
+}
+
+function stateLabel(surface: CategorySurface) {
+  if (surface.state === 'woven') return 'Woven';
+  if (surface.state === 'opened') return 'Opened';
+  if (surface.state === 'finished') return 'Settled';
+  return 'Unopened';
+}
+
+function extLabel(ext: string) {
+  return ext.replace(/^\./, '').toUpperCase();
+}
+
+function activeSurfaceCount(surfaces: CategorySurface[]) {
+  return surfaces.filter((surface) => surface.state === 'woven' || surface.state === 'opened').length;
+}
+
+function defaultSurfaceFromDoc(doc: CategoryDocCard): CategorySurface {
+  return {
+    ...doc,
+    state: 'new',
+    touchedAt: 0,
+    anchorCount: 0,
+    latestSummary: '',
+    learning: summarizeLearningSurface([], 0),
+  };
 }
 
 export function CategoryLandingClient({
@@ -127,7 +155,7 @@ export function CategoryLandingClient({
           anchorCount: summary.anchorCount,
           latestSummary: summary.latestSummary,
           latestQuote: summary.latestQuote,
-          learning: summarizeLearningSurface(traceSet, viewedAt),
+          learning: summary,
         } satisfies CategorySurface;
       })
       .sort((a, b) => stateRank(a) - stateRank(b) || b.touchedAt - a.touchedAt || a.subOrder - b.subOrder);
@@ -136,7 +164,26 @@ export function CategoryLandingClient({
   const continueDocs = surfaces.filter((surface) => surface.state === 'woven' || surface.state === 'opened').slice(0, 4);
   const startDoc = docs[0] ?? null;
   const continueDoc = continueDocs[0] ?? null;
-  const focusDoc = continueDoc ?? startDoc;
+  const focusDoc = continueDoc ?? (startDoc ? defaultSurfaceFromDoc(startDoc) : null);
+  const activeCount = useMemo(() => activeSurfaceCount(surfaces), [surfaces]);
+  const surfaceById = useMemo(
+    () => new Map(surfaces.map((surface) => [surface.id, surface] as const)),
+    [surfaces],
+  );
+
+  const groupSummaries = useMemo(() => {
+    return groups.map((group) => {
+      const docsWithSurface = group.docs.map((doc) => surfaceById.get(doc.id) ?? defaultSurfaceFromDoc(doc));
+      const activeDocs = docsWithSurface.filter((surface) => surface.state === 'woven' || surface.state === 'opened');
+      const latestTouchedAt = docsWithSurface.reduce((max, surface) => Math.max(max, surface.touchedAt), 0);
+      return {
+        group,
+        activeCount: activeDocs.length,
+        latestTouchedAt,
+        focusSurface: activeDocs[0] ?? docsWithSurface[0] ?? null,
+      };
+    });
+  }, [groups, surfaceById]);
 
   const openPrimaryAction = (surface: CategorySurface) => {
     continuePanelLifecycle(router, {
@@ -148,92 +195,220 @@ export function CategoryLandingClient({
   };
 
   return (
-    <div className="prose-notion">
-      <div
-        className="t-caption2"
-        style={{ color: 'var(--muted)', marginBottom: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
-      >
-        <Link href="/knowledge" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Knowledge</Link>
-        <span aria-hidden>›</span>
-        <span>{category.label}</span>
-      </div>
+    <StageShell
+      variant="archive"
+      contentVariant="archive"
+      innerStyle={{ minHeight: '100vh', paddingTop: '4.75rem', paddingBottom: '2.5rem' }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div
+          className="t-caption2"
+          style={{ color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+        >
+          <Link href="/knowledge" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Atlas</Link>
+          <span aria-hidden>›</span>
+          <span>{category.label}</span>
+        </div>
 
-      <QuietGuideCard
-        eyebrow="Collection"
-        title={category.label}
-        mode="inline"
-        meta={continueDoc?.touchedAt ? <span>{formatWhen(continueDoc.touchedAt)}</span> : undefined}
-        actions={focusDoc ? [
-          {
-            label: continueDoc ? 'Continue collection' : 'Open first doc',
-            onClick: () => openPrimaryAction(continueDoc ?? ({ ...startDoc, state: 'new', touchedAt: 0, anchorCount: 0, latestSummary: '', learning: summarizeLearningSurface([], 0) } as CategorySurface)),
-            primary: true,
-          },
-          { label: 'All material', href: `#${encodeURIComponent(groups[0]?.label || '_all')}` },
-        ] : undefined}
-      />
+        <QuietGuideCard
+          eyebrow="Collection"
+          title={category.label}
+          tone="primary"
+          density="roomy"
+          summary={
+            continueDoc
+              ? 'Continue from the current thread in this collection, then move through the material below.'
+              : 'Start from the first document, then move through the collection one source at a time.'
+          }
+          meta={
+            <span>
+              {docs.length} doc{docs.length === 1 ? '' : 's'}
+              {activeCount > 0 ? ` · ${activeCount} active` : ''}
+              {continueDoc?.touchedAt ? ` · ${formatWhen(continueDoc.touchedAt)}` : ''}
+            </span>
+          }
+          detail={
+            <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
+              Group headers keep the long list legible; the source rows stay quiet until a thread needs attention.
+            </div>
+          }
+          actions={
+            focusDoc
+              ? [
+                  {
+                    label: continueDoc ? 'Continue collection' : 'Open first doc',
+                    onClick: () => openPrimaryAction(focusDoc),
+                    primary: true,
+                  },
+                  { label: 'Back to Atlas', href: '/knowledge' },
+                ]
+              : undefined
+          }
+        />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
-        {groups.map((group) => (
-          <section
-            key={group.label || '_root'}
-            id={encodeURIComponent(group.label || '_all')}
-            style={{ scrollMarginTop: '2rem' }}
-          >
-            {group.label && (
-              <header style={{ padding: '0 0 0.35rem' }}>
-                <div
-                  className="t-caption2"
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {groupSummaries.map(({ group, activeCount: groupActiveCount, latestTouchedAt, focusSurface }) => (
+            <WorkSurface key={group.label || '_root'} tone="quiet">
+              <div
+                id={encodeURIComponent(group.label || '_all')}
+                style={{ scrollMarginTop: '2rem', display: 'flex', flexDirection: 'column', gap: 12 }}
+              >
+                <header
                   style={{
-                    color: 'var(--muted)',
-                    letterSpacing: '0.04em',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    flexWrap: 'wrap',
                   }}
                 >
-                  {group.label}
-                </div>
-              </header>
-            )}
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {group.docs.map((doc, index) => {
-                return (
-                  <li
-                    key={doc.id}
-                    style={{
-                      borderBottom: index < group.docs.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-                    }}
-                  >
-                    <Link
-                      href={doc.href}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <WorkEyebrow subtle>{group.label || 'All material'}</WorkEyebrow>
+                    <div
                       style={{
                         display: 'flex',
-                        alignItems: 'baseline',
-                        gap: 10,
-                        padding: '0.7rem 0',
-                        textDecoration: 'none',
-                        color: 'var(--fg)',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        color: 'var(--muted)',
                       }}
                     >
-                      <span
-                        className="t-headline"
+                      <span>{group.docs.length} item{group.docs.length === 1 ? '' : 's'}</span>
+                      {groupActiveCount > 0 ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>{groupActiveCount} active</span>
+                        </>
+                      ) : null}
+                      {latestTouchedAt > 0 ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>{formatWhen(latestTouchedAt)}</span>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {focusSurface ? (
+                    <WorkAction
+                      label={groupActiveCount > 0 ? 'Continue section' : 'Open first doc'}
+                      onClick={() => openPrimaryAction(focusSurface)}
+                      tone={groupActiveCount > 0 ? 'primary' : 'secondary'}
+                    />
+                  ) : null}
+                </header>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {group.docs.map((doc) => {
+                    const surface = surfaceById.get(doc.id) ?? defaultSurfaceFromDoc(doc);
+                    const summary = surface.latestSummary || doc.preview;
+                    return (
+                      <Link
+                        key={doc.id}
+                        href={doc.href}
                         style={{
-                          flex: 1,
-                          fontFamily: 'var(--display)',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {doc.title}
-                    </span>
-                  </Link>
-                </li>
-              );
-              })}
-            </ul>
-          </section>
-        ))}
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'space-between',
+                          gap: 16,
+                          padding: '0.98rem 1rem',
+                          textDecoration: 'none',
+                          color: 'var(--fg)',
+                          borderRadius: 'var(--r-3)',
+                          border: '0.5px solid color-mix(in srgb, var(--mat-border) 80%, transparent)',
+                          background: 'color-mix(in srgb, var(--mat-thick-bg) 74%, transparent)',
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.24)',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontFamily: 'var(--display)',
+                              fontSize: '1rem',
+                              fontWeight: 560,
+                              letterSpacing: '-0.015em',
+                              lineHeight: 1.25,
+                            }}
+                          >
+                            {doc.title}
+                          </div>
+
+                          <div
+                            className="t-caption2"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              color: 'var(--muted)',
+                              marginTop: 5,
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                borderRadius: 999,
+                                border: '0.5px solid color-mix(in srgb, var(--mat-border) 86%, transparent)',
+                                padding: '0.16rem 0.48rem',
+                                color: 'var(--fg-secondary)',
+                              }}
+                            >
+                              {stateLabel(surface)}
+                            </span>
+                            {surface.touchedAt ? (
+                              <>
+                                <span aria-hidden>·</span>
+                                <span>{formatWhen(surface.touchedAt)}</span>
+                              </>
+                            ) : null}
+                            {surface.anchorCount > 0 ? (
+                              <>
+                                <span aria-hidden>·</span>
+                                <span>{surface.anchorCount} anchor{surface.anchorCount === 1 ? '' : 's'}</span>
+                              </>
+                            ) : null}
+                          </div>
+
+                          {summary ? (
+                            <div
+                              style={{
+                                color: 'var(--fg-secondary)',
+                                fontSize: '0.84rem',
+                                lineHeight: 1.48,
+                                marginTop: 6,
+                                overflow: 'hidden',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                            >
+                              {summary}
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div
+                          className="t-caption2"
+                          style={{
+                            color: 'var(--muted)',
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            flexShrink: 0,
+                            paddingTop: 2,
+                          }}
+                        >
+                          {extLabel(doc.ext)}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </WorkSurface>
+          ))}
+        </div>
       </div>
-    </div>
+    </StageShell>
   );
 }

@@ -1,7 +1,5 @@
-import { KesiView } from '../../components/KesiView';
-
-export const metadata = { title: 'Your Kesi · Loom' };
+import { permanentRedirect } from 'next/navigation';
 
 export default function KesiPage() {
-  return <KesiView />;
+  permanentRedirect('/patterns');
 }

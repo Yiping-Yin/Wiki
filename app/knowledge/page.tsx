@@ -1,19 +1,19 @@
-import { getKnowledgeCategories } from '../../lib/knowledge-store';
+import { getKnowledgeCategories, getKnowledgeTotal } from '../../lib/knowledge-store';
 import { KnowledgeHomeClient } from './KnowledgeHomeClient';
 
-export const metadata = { title: 'Your Kesi · Loom' };
+export const metadata = { title: 'The Atlas · Loom' };
 
 /**
- * /knowledge — kesi-swatch grid view of every collection.
+ * /knowledge — pattern-swatch grid view of every collection.
  *
  * §1, §11 — the previous version had a glassed aurora hero with
- * "Your Kesi · 缂" eyebrow + large title + 3-stat row + descriptive
- * paragraph. All chrome. The kesi swatches themselves ARE the page —
+ * "Your Patterns" eyebrow + large title + 3-stat row + descriptive
+ * paragraph. All chrome. The pattern swatches themselves ARE the page —
  * they need no introduction. /about already explains the metaphor.
  *
- * Each collection's swatch (a small woven preview from KesiSwatch)
+ * Each collection's swatch (a small woven preview from PatternSwatch)
  * stays — that's §19 in action: the visualization derives from the
- * physical kesi grammar, not from borrowed UI patterns.
+ * physical weaving grammar, not from borrowed UI patterns.
  */
 
 function groupTop(cats: Awaited<ReturnType<typeof getKnowledgeCategories>>) {
@@ -33,7 +33,10 @@ function groupTop(cats: Awaited<ReturnType<typeof getKnowledgeCategories>>) {
 }
 
 export default async function KnowledgeHome() {
-  const knowledgeCategories = await getKnowledgeCategories();
+  const [knowledgeCategories, knowledgeTotal] = await Promise.all([
+    getKnowledgeCategories(),
+    getKnowledgeTotal(),
+  ]);
   const groups = groupTop(knowledgeCategories);
 
   const clientGroups = groups.map((group) => ({
@@ -41,8 +44,15 @@ export default async function KnowledgeHome() {
     items: group.items.map((category) => ({
       slug: category.slug,
       label: category.label.replace(/^[^·]+·\s*/, ''),
+      count: category.count,
     })),
   }));
 
-  return <KnowledgeHomeClient groups={clientGroups} />;
+  return (
+    <KnowledgeHomeClient
+      groups={clientGroups}
+      totalCollections={knowledgeCategories.length}
+      totalDocs={knowledgeTotal}
+    />
+  );
 }
