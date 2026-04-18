@@ -1,7 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
 import { embedQuery, cosine } from '../../../lib/embed';
-import { runCli, pickCli } from '../../../lib/claude-cli';
+import { pickCli } from '../../../lib/claude-cli';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
 import { ragIndexPath } from '../../../lib/derived-index-cache';
 
@@ -93,13 +94,21 @@ ${context || '(no relevant sources found — say so)'}
 
 Question: ${q}`;
 
-  try {
-    const text = await runCli(prompt, { cli, timeoutMs: 120000 });
-    return Response.json({
-      answer: text,
-      sources: sources.map(({ id, title, href, score }) => ({ id, title, href, score })),
-    });
-  } catch (e: any) {
-    return Response.json({ error: `${cli} CLI failed: ` + e.message }, { status: 500 });
+  const result = await invokeLocalRuntime({
+    preferred: cli,
+    prompt,
+    timeoutMs: 120000,
+  });
+
+  if (result.runtime === null) {
+    return Response.json({ error: result.userMessage }, { status: 500 });
   }
+
+  return Response.json({
+    answer: result.text,
+    runtime: result.runtime,
+    fellBack: result.fellBack,
+    notice: result.notice,
+    sources: sources.map(({ id, title, href, score }) => ({ id, title, href, score })),
+  });
 }

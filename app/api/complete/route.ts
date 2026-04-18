@@ -9,7 +9,8 @@
  * The suggestion is one sentence (≤ 30 words). It's NOT a full essay — just
  * what the user might write next given what they have so far.
  */
-import { runCli, pickCli } from '../../../lib/claude-cli';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
+import { pickCli } from '../../../lib/claude-cli';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,15 +42,25 @@ ${body.context.slice(-1500)}
 
 Continuation:`;
 
-  try {
-    const text = await runCli(prompt, { cli, timeoutMs: 25000 });
-    let suggestion = text.trim()
-      .replace(/^["'`]+|["'`]+$/g, '')
-      .replace(/^Continuation:\s*/i, '')
-      .split('\n')[0]
-      .slice(0, 200);
-    return Response.json({ suggestion });
-  } catch (e: any) {
-    return Response.json({ error: e.message }, { status: 500 });
+  const result = await invokeLocalRuntime({
+    preferred: cli,
+    prompt,
+    timeoutMs: 25000,
+  });
+
+  if (result.runtime === null) {
+    return Response.json({ error: result.userMessage }, { status: 500 });
   }
+
+  const suggestion = result.text.trim()
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(/^Continuation:\s*/i, '')
+    .split('\n')[0]
+    .slice(0, 200);
+  return Response.json({
+    suggestion,
+    runtime: result.runtime,
+    fellBack: result.fellBack,
+    notice: result.notice,
+  });
 }

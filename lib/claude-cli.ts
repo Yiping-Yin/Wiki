@@ -15,11 +15,19 @@ import { CLAUDE_BIN, CODEX_BIN, DEFAULT_CLI, type CliKind } from './server-confi
 
 const DEFAULT_TIMEOUT_MS = 180000;
 
+export function buildCliEnv(
+  baseEnv: Record<string, string | undefined> = process.env,
+): Record<string, string | undefined> {
+  return {
+    ...baseEnv,
+    NO_COLOR: '1',
+  };
+}
+
 export async function runCli(prompt: string, opts: {
   cli?: CliKind;
   timeoutMs?: number;
   model?: string;
-  allowFallback?: boolean;
   onChunk?: (chunk: string) => void;
 } = {}): Promise<string> {
   const cli: CliKind = opts.cli === 'claude' || opts.cli === 'codex' ? opts.cli : DEFAULT_CLI;
@@ -53,8 +61,7 @@ export async function runCli(prompt: string, opts: {
   }
 
   return new Promise((resolve, reject) => {
-    const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: '1' };
-    if (cli === 'codex' && tempDir) env.CODEX_HOME = tempDir;
+    const env: NodeJS.ProcessEnv = buildCliEnv(process.env) as NodeJS.ProcessEnv;
     const proc = spawn(bin, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env,
@@ -122,19 +129,7 @@ export async function runCli(prompt: string, opts: {
           resolve(out.trim());
           return;
         }
-        const detail = (err || out).slice(0, 500);
-        if ((opts.allowFallback ?? true) && shouldFallback(cli, detail)) {
-          const fallbackCli = otherCli(cli);
-          try {
-            const fallback = await runCli(prompt, { ...opts, cli: fallbackCli, allowFallback: false });
-            resolve(fallback);
-            return;
-          } catch (fallbackError: any) {
-            reject(new Error(explainCliFailure(cli, detail, fallbackCli, fallbackError.message)));
-            return;
-          }
-        }
-        reject(new Error(explainCliFailure(cli, detail)));
+        reject(new Error((err || out).trim() || `${cli} CLI exited with code ${code}`));
       } catch (e: any) {
         reject(new Error(`failed to read ${cli} output: ${e.message}`));
       } finally {
@@ -158,44 +153,6 @@ export const runClaude = (prompt: string, opts: { timeoutMs?: number; model?: st
 export function pickCli(body: any): CliKind {
   const v = body?.cli ?? body?.model;
   return v === 'claude' || v === 'codex' ? v : DEFAULT_CLI;
-}
-
-export function otherCli(cli: CliKind): CliKind {
-  return cli === 'claude' ? 'codex' : 'claude';
-}
-
-export function isAuthFailure(text: string): boolean {
-  const lower = text.toLowerCase();
-  return lower.includes('failed to authenticate')
-    || lower.includes('authentication_error')
-    || lower.includes('invalid authentication credentials')
-    || lower.includes('invalid_token')
-    || lower.includes('missing or invalid access token')
-    || lower.includes('missing bearer or basic authentication')
-    || lower.includes('unauthorized')
-    || lower.includes('authrequired');
-}
-
-export function shouldFallback(cli: CliKind, detail: string): boolean {
-  if (isAuthFailure(detail)) return true;
-  const lower = detail.toLowerCase();
-  if (cli === 'codex') {
-    return lower.includes('failed to connect to websocket')
-      || lower.includes('internal server error')
-      || lower.includes('reading additional input from stdin')
-      || lower.includes('unexpected status 401');
-  }
-  return false;
-}
-
-export function explainCliFailure(cli: CliKind, detail: string, fallbackCli?: CliKind, fallbackDetail?: string): string {
-  if (isAuthFailure(detail)) {
-    if (fallbackCli && fallbackDetail) {
-      return `${cli} CLI is not authenticated, and fallback to ${fallbackCli} also failed: ${fallbackDetail.slice(0, 220)}`;
-    }
-    return `${cli} CLI is not authenticated. Sign in to ${cli}, or switch provider in Settings.`;
-  }
-  return `${cli} CLI failed: ${detail}`;
 }
 
 function parseClaudeStreamChunk(line: string, streamedText: string): string {

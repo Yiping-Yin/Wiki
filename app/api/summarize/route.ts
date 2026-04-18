@@ -9,7 +9,8 @@
  */
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
-import { runCli, pickCli } from '../../../lib/claude-cli';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
+import { pickCli } from '../../../lib/claude-cli';
 import { extractJson } from '../../../lib/ai/extract-json';
 import { legacyPublicCachePath, runtimeCacheDir, runtimeCachePath } from '../../../lib/generated-cache';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
@@ -69,22 +70,36 @@ Document text (may contain OCR artefacts — extract the meaning, ignore formatt
 ${docBody.slice(0, 12000)}
 """`;
 
-  try {
-    const text = await runCli(prompt, { cli, timeoutMs: 180000 });
-    const parsed = extractJson(text);
-    if (!parsed) throw new Error('non-JSON response');
-    const result = {
-      id: safe,
-      summary: String(parsed.summary ?? ''),
-      bullets: Array.isArray(parsed.bullets) ? parsed.bullets.slice(0, 8).map(String) : [],
-      keyTerms: Array.isArray(parsed.keyTerms) ? parsed.keyTerms.slice(0, 12).map(String) : [],
-      generatedAt: new Date().toISOString(),
-    };
-    const cachePath = runtimeCachePath('summaries', safe);
-    await fs.mkdir(runtimeCacheDir('summaries'), { recursive: true });
-    await fs.writeFile(cachePath, JSON.stringify(result, null, 2));
-    return Response.json({ ...result, cached: false });
-  } catch (e: any) {
-    return Response.json({ error: 'summarization failed: ' + e.message }, { status: 500 });
+  const result = await invokeLocalRuntime({
+    preferred: cli,
+    prompt,
+    timeoutMs: 180000,
+  });
+
+  if (result.runtime === null) {
+    return Response.json({ error: result.userMessage }, { status: 500 });
   }
+
+  const parsed = extractJson(result.text);
+  if (!parsed) {
+    return Response.json({ error: 'summarization failed: non-JSON response' }, { status: 500 });
+  }
+
+  const summaryResult = {
+    id: safe,
+    summary: String(parsed.summary ?? ''),
+    bullets: Array.isArray(parsed.bullets) ? parsed.bullets.slice(0, 8).map(String) : [],
+    keyTerms: Array.isArray(parsed.keyTerms) ? parsed.keyTerms.slice(0, 12).map(String) : [],
+    generatedAt: new Date().toISOString(),
+  };
+  const cachePath = runtimeCachePath('summaries', safe);
+  await fs.mkdir(runtimeCacheDir('summaries'), { recursive: true });
+  await fs.writeFile(cachePath, JSON.stringify(summaryResult, null, 2));
+  return Response.json({
+    ...summaryResult,
+    cached: false,
+    runtime: result.runtime,
+    fellBack: result.fellBack,
+    notice: result.notice,
+  });
 }

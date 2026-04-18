@@ -12,7 +12,8 @@
  */
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
-import { runCli, pickCli } from '../../../lib/claude-cli';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
+import { pickCli } from '../../../lib/claude-cli';
 import { legacyPublicCachePath, runtimeCacheDir, runtimeCachePath } from '../../../lib/generated-cache';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
 
@@ -85,25 +86,36 @@ ${docBody.slice(0, 18000)}
 # Begin Markdown output now
 `;
 
-  try {
-    const text = await runCli(prompt, { cli, timeoutMs: 240000 });
-    const cleaned = text.replace(/^```(?:markdown|md)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+  const result = await invokeLocalRuntime({
+    preferred: cli,
+    prompt,
+    timeoutMs: 240000,
+  });
 
-    if (cleaned.length < 50) {
-      return Response.json({ error: 'CLI returned too little content' }, { status: 500 });
-    }
-
-    const result = {
-      id: safe,
-      title,
-      markdown: cleaned,
-      generatedAt: new Date().toISOString(),
-    };
-    const cachePath = runtimeCachePath('structures', safe);
-    await fs.mkdir(runtimeCacheDir('structures'), { recursive: true });
-    await fs.writeFile(cachePath, JSON.stringify(result, null, 2));
-    return Response.json({ ...result, cached: false });
-  } catch (e: any) {
-    return Response.json({ error: 'structuring failed: ' + e.message }, { status: 500 });
+  if (result.runtime === null) {
+    return Response.json({ error: result.userMessage }, { status: 500 });
   }
+
+  const cleaned = result.text.replace(/^```(?:markdown|md)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+
+  if (cleaned.length < 50) {
+    return Response.json({ error: 'CLI returned too little content' }, { status: 500 });
+  }
+
+  const structured = {
+    id: safe,
+    title,
+    markdown: cleaned,
+    generatedAt: new Date().toISOString(),
+  };
+  const cachePath = runtimeCachePath('structures', safe);
+  await fs.mkdir(runtimeCacheDir('structures'), { recursive: true });
+  await fs.writeFile(cachePath, JSON.stringify(structured, null, 2));
+  return Response.json({
+    ...structured,
+    cached: false,
+    runtime: result.runtime,
+    fellBack: result.fellBack,
+    notice: result.notice,
+  });
 }

@@ -8,7 +8,8 @@
  *
  * Client caches the result for the day (localStorage key includes the date).
  */
-import { runCli, pickCli } from '../../../lib/claude-cli';
+import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
+import { pickCli } from '../../../lib/claude-cli';
 import { extractJson } from '../../../lib/ai/extract-json';
 
 export const runtime = 'nodejs';
@@ -53,17 +54,30 @@ Has notes on: ${noted.length > 0 ? noted.join('; ') : '(none)'}
 
 Begin JSON:`;
 
-  try {
-    const text = await runCli(prompt, { cli, timeoutMs: 60000 });
-    const parsed = extractJson(text);
-    if (!parsed) throw new Error('non-JSON');
-    const items = Array.isArray(parsed.items) ? parsed.items.slice(0, 3).map((it: any) => ({
-      title: String(it.title ?? '').slice(0, 60),
-      why: String(it.why ?? '').slice(0, 200),
-      action: String(it.action ?? '').slice(0, 100),
-    })).filter((it: any) => it.title) : [];
-    return Response.json({ items });
-  } catch (e: any) {
-    return Response.json({ error: e.message }, { status: 500 });
+  const result = await invokeLocalRuntime({
+    preferred: cli,
+    prompt,
+    timeoutMs: 60000,
+  });
+
+  if (result.runtime === null) {
+    return Response.json({ error: result.userMessage }, { status: 500 });
   }
+
+  const parsed = extractJson(result.text);
+  if (!parsed) {
+    return Response.json({ error: 'non-JSON' }, { status: 500 });
+  }
+
+  const items = Array.isArray(parsed.items) ? parsed.items.slice(0, 3).map((it: any) => ({
+    title: String(it.title ?? '').slice(0, 60),
+    why: String(it.why ?? '').slice(0, 200),
+    action: String(it.action ?? '').slice(0, 100),
+  })).filter((it: any) => it.title) : [];
+  return Response.json({
+    items,
+    runtime: result.runtime,
+    fellBack: result.fellBack,
+    notice: result.notice,
+  });
 }
