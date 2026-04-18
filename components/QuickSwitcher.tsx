@@ -75,7 +75,7 @@ export function QuickSwitcher() {
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const { knowledgeCategories } = useKnowledgeNav();
+  const { sourceLibraryGroups } = useKnowledgeNav();
   const rehearsalSurface = getAiSurface('rehearsal');
   const examinerSurface = getAiSurface('examiner');
   const ingestionSurface = getAiSurface('ingestion');
@@ -112,30 +112,28 @@ export function QuickSwitcher() {
   }, [open]);
 
   const collections: Result[] = useMemo(
-    () => knowledgeCategories.map((c) => ({
-      kind: 'collection', key: `c:${c.slug}`,
-      title: c.label, sub: 'Collection',
-      href: `/knowledge/${c.slug}`,
-    })),
-    [knowledgeCategories],
+    () => sourceLibraryGroups.flatMap((group) => group.categories.map((category) => ({
+      kind: 'collection' as const,
+      key: `c:${group.id}:${category.slug}`,
+      title: category.label,
+      sub: group.label,
+      href: `/knowledge/${category.slug}`,
+    }))),
+    [sourceLibraryGroups],
   );
 
-  const weeks: Result[] = useMemo(() => {
-    const out: Result[] = [];
-    for (const c of knowledgeCategories) {
-      for (const s of c.subs) {
-        if (!s.label) continue;
-        out.push({
-          kind: 'week',
-          key: `w:${c.slug}:${s.label}`,
-          title: s.label,
-          sub: c.label,
-          href: `/knowledge/${c.slug}#${encodeURIComponent(s.label)}`,
-        });
-      }
-    }
-    return out;
-  }, [knowledgeCategories]);
+  const sourceSections: Result[] = useMemo(
+    () => sourceLibraryGroups.flatMap((group) => group.categories.flatMap((category) => category.subs
+      .filter((section) => section.label)
+      .map((section) => ({
+        kind: 'week' as const,
+        key: `w:${group.id}:${category.slug}:${section.label}`,
+        title: section.label,
+        sub: `${group.label} · ${category.label}`,
+        href: `/knowledge/${category.slug}#${encodeURIComponent(section.label)}`,
+      })))),
+    [sourceLibraryGroups],
+  );
 
   const allDocResults: Result[] = useMemo(
     () => docs.map((d) => ({
@@ -175,15 +173,24 @@ export function QuickSwitcher() {
     };
     return {
       collections: filterAndSort(collections, hasQuery ? 4 : 0),
-      weeks:       filterAndSort(weeks,       hasQuery ? 6 : 0),
+      sourceSections: filterAndSort(sourceSections, hasQuery ? 6 : 0),
+      sourceDocs:  filterAndSort(allDocResults.filter((item) => item.href.startsWith('/knowledge/')), hasQuery ? 10 : 4),
+      wikiDocs:    filterAndSort(allDocResults.filter((item) => item.href.startsWith('/wiki/')), hasQuery ? 10 : 4),
+      otherDocs:   filterAndSort(allDocResults.filter((item) => !item.href.startsWith('/knowledge/') && !item.href.startsWith('/wiki/')), hasQuery ? 4 : 2),
       tools:       filterAndSort(toolActions, hasQuery ? 4 : 3),
-      docs:        filterAndSort(allDocResults, hasQuery ? 18 : 6),
     };
-  }, [q, collections, weeks, allDocResults, toolActions]);
+  }, [q, collections, sourceSections, allDocResults, toolActions]);
 
   // Flatten to a single keyboard-navigable list
   const flat: Result[] = useMemo(
-    () => [...grouped.collections, ...grouped.weeks, ...grouped.docs, ...grouped.tools],
+    () => [
+      ...grouped.collections,
+      ...grouped.sourceSections,
+      ...grouped.sourceDocs,
+      ...grouped.wikiDocs,
+      ...grouped.otherDocs,
+      ...grouped.tools,
+    ],
     [grouped],
   );
 
@@ -376,7 +383,7 @@ export function QuickSwitcher() {
                 Preparing the Shuttle
               </div>
               <div className="t-footnote">
-                Pulling your Atlas, recent documents, and available actions into one quiet lane.
+                Pulling your source library, LLM Wiki, and available actions into one quiet lane.
               </div>
             </div>
           ) : flat.length === 0 && q ? (
@@ -397,7 +404,7 @@ export function QuickSwitcher() {
                 Nothing to shuttle yet
               </div>
               <div className="t-footnote">
-                Open Atlas or Today once, and recent documents will start to gather here.
+                Open Atlas, LLM Wiki, or Today once, and recent documents will start to gather here.
               </div>
             </div>
           ) : (
@@ -415,9 +422,11 @@ export function QuickSwitcher() {
                   Your next quiet move, without leaving the desk.
                 </div>
               )}
-              {renderGroup('Atlas', grouped.collections)}
-              {renderGroup('Sections', grouped.weeks)}
-              {renderGroup(q.trim() ? 'Documents' : 'Recent', grouped.docs)}
+              {renderGroup('Source Library', grouped.collections)}
+              {renderGroup('Source Sections', grouped.sourceSections)}
+              {renderGroup(q.trim() ? 'Raw Sources' : 'Recent Raw Sources', grouped.sourceDocs)}
+              {renderGroup('LLM Wiki', grouped.wikiDocs)}
+              {renderGroup(q.trim() ? 'Other Results' : 'Recent Elsewhere', grouped.otherDocs)}
               {renderGroup('Actions', grouped.tools)}
             </>
           )}
@@ -435,7 +444,7 @@ export function QuickSwitcher() {
             letterSpacing: '0.04em',
           }}
         >
-          <span>Shuttle through your Atlas</span>
+          <span>Shuttle through your source library</span>
           <span aria-hidden>·</span>
           <span>↑↓ move</span>
           <span aria-hidden>·</span>

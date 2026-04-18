@@ -1,7 +1,8 @@
-import { getKnowledgeCategories, getKnowledgeTotal } from '../../lib/knowledge-store';
+import { getSourceLibraryGroups } from '../../lib/knowledge-store';
 import { KnowledgeHomeClient } from './KnowledgeHomeClient';
 
 export const metadata = { title: 'The Atlas · Loom' };
+export const dynamic = 'force-dynamic';
 
 /**
  * /knowledge — pattern-swatch grid view of every collection.
@@ -16,43 +17,30 @@ export const metadata = { title: 'The Atlas · Loom' };
  * physical weaving grammar, not from borrowed UI patterns.
  */
 
-function groupTop(cats: Awaited<ReturnType<typeof getKnowledgeCategories>>) {
-  const groups = new Map<string, typeof cats>();
-  for (const c of cats) {
-    const m = c.label.match(/^([^·]+?)\s*·/);
-    const top = m ? m[1].trim() : 'Other';
-    if (!groups.has(top)) groups.set(top, []);
-    groups.get(top)!.push(c);
-  }
-  return Array.from(groups.entries())
-    .map(([label, items]) => ({
-      label,
-      items: items.sort((a, b) => a.label.localeCompare(b.label)),
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-}
-
 export default async function KnowledgeHome() {
-  const [knowledgeCategories, knowledgeTotal] = await Promise.all([
-    getKnowledgeCategories(),
-    getKnowledgeTotal(),
-  ]);
-  const groups = groupTop(knowledgeCategories);
+  const sourceLibraryGroups = await getSourceLibraryGroups();
+  const totalCollections = sourceLibraryGroups.reduce((sum, group) => sum + group.categories.length, 0);
+  const totalDocs = sourceLibraryGroups.reduce(
+    (sum, group) => sum + group.categories.reduce((groupSum, category) => groupSum + category.count, 0),
+    0,
+  );
 
-  const clientGroups = groups.map((group) => ({
+  const clientGroups = sourceLibraryGroups.map((group) => ({
+    id: group.id,
     label: group.label,
-    items: group.items.map((category) => ({
+    items: group.categories.map((category) => ({
       slug: category.slug,
-      label: category.label.replace(/^[^·]+·\s*/, ''),
+      label: category.label,
       count: category.count,
+      groupId: group.id,
     })),
   }));
 
   return (
     <KnowledgeHomeClient
-      groups={clientGroups}
-      totalCollections={knowledgeCategories.length}
-      totalDocs={knowledgeTotal}
+      sourceLibraryGroups={clientGroups}
+      totalCollections={totalCollections}
+      totalDocs={totalDocs}
     />
   );
 }

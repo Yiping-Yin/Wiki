@@ -47,13 +47,11 @@ export function panelFamilyLabel(
   href: string,
   knowledgeCategories: KnowledgeCategoryMeta[] = [],
 ): string {
-  if (href.startsWith('/wiki/')) return 'LLM Reference';
+  if (href.startsWith('/wiki/')) return 'LLM Wiki';
   const match = href.match(/^\/knowledge\/([^/]+)/);
   if (match) {
     const category = knowledgeCategories.find((item) => item.slug === match[1]);
-    if (!category) return match[1];
-    const top = category.label.match(/^([^·]+?)\s*·/);
-    return top ? top[1].trim() : category.label;
+    return category?.label ?? match[1];
   }
   if (href.startsWith('/uploads/')) return 'Intake';
   return 'Other';
@@ -66,7 +64,7 @@ export function panelSourceMeta(
   if (href.startsWith('/wiki/')) {
     return {
       sourceType: 'wiki' as const,
-      collectionLabel: 'LLM Reference',
+      collectionLabel: 'LLM Wiki',
       collectionHref: '/browse',
     };
   }
@@ -76,7 +74,7 @@ export function panelSourceMeta(
     const category = knowledgeCategories.find((item) => item.slug === match[1]);
     return {
       sourceType: 'knowledge' as const,
-      collectionLabel: category?.label ?? 'Knowledge',
+      collectionLabel: category?.label ?? 'Source Library',
       collectionHref: `/knowledge/${match[1]}`,
     };
   }
