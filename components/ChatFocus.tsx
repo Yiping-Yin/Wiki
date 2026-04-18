@@ -35,7 +35,8 @@ import {
   getCurrentSynthesis,
   shouldShowClarificationHistory,
 } from '../lib/chat-focus-history';
-import { buildSourceExcerpt } from '../lib/chat-focus-source';
+import { buildSourceStub } from '../lib/chat-focus-source';
+import { resolveClarificationViewMode, type ClarificationViewMode } from '../lib/chat-focus-view';
 import { computeChatFocusPosition } from '../lib/chat-focus-layout';
 import { openSettingsPanel } from '../lib/settings-panel';
 import { useAiHealth } from '../lib/use-ai-health';
@@ -778,9 +779,10 @@ export function ChatFocus() {
   const desktopEditorial = !smallScreen;
   const clarificationPasses = useMemo(() => buildClarificationPasses(turns), [turns]);
   const currentSynthesis = useMemo(() => getCurrentSynthesis(turns, streamBuf), [turns, streamBuf]);
-  const sourceExcerpt = useMemo(() => buildSourceExcerpt(anchor?.text ?? ''), [anchor?.text]);
+  const sourceStub = useMemo(() => buildSourceStub(anchor?.text ?? ''), [anchor?.text]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedPassIndex, setSelectedPassIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<ClarificationViewMode>('source');
 
   useEffect(() => {
     if (!shouldShowClarificationHistory(turns.length)) {
@@ -788,6 +790,10 @@ export function ChatFocus() {
       setSelectedPassIndex(null);
     }
   }, [turns.length]);
+
+  useEffect(() => {
+    setViewMode((current: ClarificationViewMode) => resolveClarificationViewMode(current, hasEditorialBody));
+  }, [hasEditorialBody, anchor?.text]);
 
   if (!anchor) return null;
 
@@ -907,14 +913,52 @@ export function ChatFocus() {
               paddingBottom: desktopEditorial ? '0.34rem' : 0,
             }}
           >
-            <span style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem', marginRight: 8 }}>
-              Current source
-            </span>
-            <span style={{ fontStyle: 'italic' }}>{sourceExcerpt}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+              <span style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem' }}>
+                {viewMode === 'source' ? 'Current source' : 'Current synthesis'}
+              </span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  onClick={() => setViewMode('synthesis')}
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
+                    cursor: 'pointer',
+                    color: viewMode === 'synthesis' ? 'var(--fg)' : 'var(--muted)',
+                    fontSize: '0.66rem',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    opacity: viewMode === 'synthesis' ? 0.96 : 0.62,
+                  }}
+                >
+                  Synthesis
+                </button>
+                <button
+                  onClick={() => setViewMode('source')}
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
+                    cursor: 'pointer',
+                    color: viewMode === 'source' ? 'var(--fg)' : 'var(--muted)',
+                    fontSize: '0.66rem',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    opacity: viewMode === 'source' ? 0.96 : 0.62,
+                  }}
+                >
+                  Source
+                </button>
+              </div>
+            </div>
+            <div style={{ fontStyle: viewMode === 'source' ? 'normal' : 'italic' }}>
+              {viewMode === 'source' ? sourceStub.full : sourceStub.preview}
+            </div>
           </div>
         ) : null}
         {/* Accumulated turns */}
-        {turns.map((t, i) => (
+        {viewMode === 'synthesis' ? turns.map((t, i) => (
           <div
             key={i}
             style={{
@@ -944,10 +988,10 @@ export function ChatFocus() {
               <NoteRenderer source={t.a} />
             </div>
           </div>
-        ))}
+        )) : null}
 
         {/* In-flight stream */}
-        {streaming && streamBuf && !committing && (
+        {viewMode === 'synthesis' && streaming && streamBuf && !committing && (
           <div className="prose-notion" style={{
             fontSize: 'inherit',
             lineHeight: 'inherit',
@@ -962,7 +1006,7 @@ export function ChatFocus() {
           </div>
         )}
 
-        {shouldShowClarificationHistory(turns.length) ? (
+        {viewMode === 'synthesis' && shouldShowClarificationHistory(turns.length) ? (
           <div
             style={{
               display: 'flex',
@@ -1025,7 +1069,12 @@ export function ChatFocus() {
                       lineHeight: 1.35,
                     }}
                   >
-                    {pass.label}
+                    <div style={{ color: active ? 'var(--fg)' : 'var(--fg)', fontWeight: 500 }}>
+                      {pass.delta}
+                    </div>
+                    <div style={{ marginTop: 2, color: 'var(--muted)', fontSize: '0.7rem', opacity: 0.74 }}>
+                      {pass.label}
+                    </div>
                   </button>
                 );
               })}

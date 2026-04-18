@@ -5,6 +5,7 @@ export type ClarificationPass = {
   question: string;
   answer: string;
   label: string;
+  delta: string;
 };
 
 const QUESTION_PREFIXES = [
@@ -60,6 +61,7 @@ export function buildClarificationPasses(turns: Turn[]): ClarificationPass[] {
     question: turn.q,
     answer: turn.a,
     label: `${index + 1} · ${summarizeQuestion(turn.q)}`,
+    delta: `Added: ${summarizeQuestion(turn.q)}`,
   }));
 }
 
