@@ -23,6 +23,9 @@ export function setRefreshResume(review: ReviewResumePayload, refresh: RefreshRe
 export function setOverlayResume(payload: OverlayResumePayload) {
   try {
     sessionStorage.setItem(OVERLAY_RESUME_KEY, JSON.stringify(payload));
+    if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+      console.warn('[loom-app-shell] setOverlayResume', JSON.stringify(payload), 'pathname=', window.location.pathname);
+    }
   } catch {}
 }
 
@@ -72,11 +75,13 @@ export function openPanelReview(
   {
     href,
     anchorId,
+    focusRevisionDiff,
   }: {
     href: string;
     anchorId?: string | null;
+    focusRevisionDiff?: boolean;
   },
 ) {
-  setReviewResume({ href, anchorId: anchorId ?? null });
+  setReviewResume({ href, anchorId: anchorId ?? null, focusRevisionDiff });
   router.push(href);
 }
