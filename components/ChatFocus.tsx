@@ -792,7 +792,7 @@ export function ChatFocus() {
   }, [turns.length]);
 
   useEffect(() => {
-    setViewMode((current) => resolveClarificationViewMode(current, hasEditorialBody));
+    setViewMode((current: ClarificationViewMode) => resolveClarificationViewMode(current, hasEditorialBody));
   }, [hasEditorialBody, anchor?.text]);
 
   if (!anchor) return null;
