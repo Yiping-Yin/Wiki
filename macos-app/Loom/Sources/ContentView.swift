@@ -15,32 +15,17 @@ final class WebDebugState: ObservableObject {
 struct ContentView: View {
     @EnvironmentObject var server: DevServer
     @StateObject private var webState = WebDebugState()
-    @StateObject private var notchState = NotchState()
-    @State private var notchController: NotchWindowController?
     @AppStorage("loom.showDebugHUD.v2") private var showDebugHUD = false
 
-    private func showNotchPanel() {
-        guard notchController == nil else { return }
-        let controller = NotchWindowController(state: notchState) { presetId in
-            NotificationCenter.default.post(
-                name: .loomNotchPresetSwitch,
-                object: nil,
-                userInfo: ["presetId": presetId]
-            )
-        }
-        controller.show()
-        notchController = controller
-    }
-
     private var windowTitle: String {
-        let url = server.serverURL.absoluteString
         switch server.status {
         case .ready:
-            return "Loom - \(url)"
+            let title = webState.pageTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            return title.isEmpty ? "Loom" : title
         case .starting, .idle:
-            return "Loom - Connecting \(url)"
+            return "Loom"
         case .failed:
-            return "Loom - Failed \(url)"
+            return "Loom · Offline"
         }
     }
 
@@ -48,12 +33,9 @@ struct ContentView: View {
         ZStack {
             switch server.status {
             case .ready:
-                LoomWebView(url: server.serverURL, debugState: webState, notchState: notchState)
+                LoomWebView(url: server.serverURL, debugState: webState)
                     .ignoresSafeArea()
                     .transition(.opacity)
-                    // NotchPanel disabled: black-on-black menu bar makes status
-                    // display invisible. Notch area reserved for future drag-drop
-                    // ingestion feature (file → notch → auto-ingest).
             case .starting, .idle:
                 StartingView(serverURL: server.serverURL)
             case .failed(let msg):
@@ -207,7 +189,7 @@ struct DevHUD: View {
     }
 }
 
-/// Makes the title bar transparent and blends with content — handles notch/刘海 on MacBook Pro.
+/// Makes the title bar transparent and lets the web surface occupy the full content view.
 struct WindowConfigurator: NSViewRepresentable {
     let title: String
 
@@ -281,9 +263,8 @@ struct StartingView: View {
 struct LoomWebView: NSViewRepresentable {
     let url: URL
     let debugState: WebDebugState
-    let notchState: NotchState
 
-    func makeCoordinator() -> Coordinator { Coordinator(debugState: debugState, notchState: notchState) }
+    func makeCoordinator() -> Coordinator { Coordinator(debugState: debugState) }
 
     private func isLoopbackHost(_ host: String?) -> Bool {
         guard let host else { return false }
@@ -382,7 +363,6 @@ struct LoomWebView: NSViewRepresentable {
             WKUserScript(source: debugScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         )
         userContentController.add(context.coordinator, name: "loomDebug")
-        userContentController.add(context.coordinator, name: "loomNotch")
         config.userContentController = userContentController
         #endif
 
@@ -390,7 +370,7 @@ struct LoomWebView: NSViewRepresentable {
         webView.navigationDelegate = context.coordinator
         context.coordinator.fallbackURL = url
         // drawsBackground stays true — let the web app control its own colors
-        webView.allowsMagnification = true
+        LoomWebViewInteractionPolicy.apply(to: webView)
 
         loadIfNeeded(webView, coordinator: context.coordinator)
         context.coordinator.syncState(from: webView)
@@ -445,10 +425,6 @@ struct LoomWebView: NSViewRepresentable {
             name: .loomNewTopic,
             object: nil
         )
-
-        // Listen for notch preset switches from SwiftUI → web
-        context.coordinator.setupNotchPresetObserver()
-
         // Enable swipe back/forward gesture
         webView.allowsBackForwardNavigationGestures = true
 
@@ -477,7 +453,6 @@ struct LoomWebView: NSViewRepresentable {
         nsView.navigationDelegate = nil
         #if DEBUG
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: "loomDebug")
-        nsView.configuration.userContentController.removeScriptMessageHandler(forName: "loomNotch")
         #endif
     }
 
@@ -486,18 +461,15 @@ struct LoomWebView: NSViewRepresentable {
         var lastRequestedURL: URL?
         var fallbackURL: URL?
         let debugState: WebDebugState
-        let notchState: NotchState
         private var blankPageWorkItem: DispatchWorkItem?
         private var isInReviewMode = false
         private var fallbackCheckGeneration = 0
         private var lastChunkRecoveryAt: Date?
         private var lastProcessTerminationRecoveryAt: Date?
         private var lastRuntimeRecoveryAt: Date?
-        private var notchPresetSwitchObserver: Any?
 
-        init(debugState: WebDebugState, notchState: NotchState) {
+        init(debugState: WebDebugState) {
             self.debugState = debugState
-            self.notchState = notchState
         }
 
         private func normalizedLocalRelativeLocation(for url: URL) -> String {
@@ -725,11 +697,6 @@ struct LoomWebView: NSViewRepresentable {
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            // Handle notch messages from web layer
-            if message.name == "loomNotch" {
-                handleNotchMessage(message)
-                return
-            }
             guard message.name == "loomDebug" else { return }
             guard let body = message.body as? [String: Any] else { return }
             let kind = body["kind"] as? String ?? "message"
@@ -750,26 +717,9 @@ struct LoomWebView: NSViewRepresentable {
             }
         }
 
-        /// ⌘E · Engage. Selection → capture. No selection → rehearsal.
+        /// ⌘E · Engage. Selection → passage chat. No selection → rehearsal.
         @objc func triggerLearn() {
-            webView?.evaluateJavaScript("""
-                (() => {
-                    const sel = window.getSelection();
-                    const text = sel ? sel.toString().trim() : '';
-                    if (text.length > 1) {
-                        window.dispatchEvent(new CustomEvent('loom:capture-prompt', {
-                            detail: { quote: text }
-                        }));
-                    } else {
-                        window.dispatchEvent(new CustomEvent('loom:overlay:open', {
-                            detail: { id: 'rehearsal' }
-                        }));
-                        window.dispatchEvent(new CustomEvent('loom:overlay:toggle', {
-                            detail: { id: 'rehearsal' }
-                        }));
-                    }
-                })();
-            """)
+            webView?.evaluateJavaScript(LoomCommandScripts.learnSelectionScript())
         }
 
         @objc func triggerSearch() {
@@ -829,7 +779,7 @@ struct LoomWebView: NSViewRepresentable {
             syncState(from: webView)
         }
 
-        // Allow pinch gesture to coexist with WKWebView's built-in zoom
+        // The shell owns pinch for Review mode; WKWebView page zoom is disabled.
         func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer, shouldRecognizeSimultaneouslyWith other: NSGestureRecognizer) -> Bool {
             true
         }
@@ -860,47 +810,6 @@ struct LoomWebView: NSViewRepresentable {
             webView?.evaluateJavaScript("""
                 window.dispatchEvent(new CustomEvent('loom:new-topic'));
             """)
-        }
-
-        // MARK: - Notch overlay message handling
-
-        private func handleNotchMessage(_ message: WKScriptMessage) {
-            guard let body = message.body as? [String: Any] else { return }
-            let type = body["type"] as? String ?? ""
-            DispatchQueue.main.async { [weak self] in
-                guard let state = self?.notchState else { return }
-                switch type {
-                case "preset":
-                    state.presetId = body["id"] as? String ?? ""
-                    state.presetLabel = body["label"] as? String ?? ""
-                    state.noteCount = body["noteCount"] as? Int ?? 0
-                case "ai-start":
-                    state.aiActive = true
-                case "ai-end":
-                    state.aiActive = false
-                case "save":
-                    state.flashSave()
-                case "noteCount":
-                    state.noteCount = body["count"] as? Int ?? 0
-                default:
-                    break
-                }
-            }
-        }
-
-        func setupNotchPresetObserver() {
-            notchPresetSwitchObserver = NotificationCenter.default.addObserver(
-                forName: .loomNotchPresetSwitch,
-                object: nil,
-                queue: .main
-            ) { [weak self] notification in
-                guard let presetId = notification.userInfo?["presetId"] as? String else { return }
-                self?.webView?.evaluateJavaScript("""
-                    window.dispatchEvent(new CustomEvent('loom:notch-preset', {
-                        detail: { presetId: '\(presetId)' }
-                    }));
-                """)
-            }
         }
 
         private func recoverFromChunkError(_ message: String) {

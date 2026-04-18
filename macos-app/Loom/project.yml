@@ -36,3 +36,15 @@ targets:
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.network.client: true
+
+  LoomTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+    dependencies:
+      - target: Loom
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.loom.appTests
+        GENERATE_INFOPLIST_FILE: YES
