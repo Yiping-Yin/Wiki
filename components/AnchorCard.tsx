@@ -87,23 +87,27 @@ export const AnchorCard = forwardRef<HTMLDivElement, Props>(function AnchorCard(
     >
       <div
         style={{
-          background: 'color-mix(in srgb, var(--accent) 6%, var(--bg))',
-          borderRadius: smallScreen ? 16 : 14,
+          background: 'var(--mat-reg-bg)',
+          backdropFilter: 'var(--mat-blur)',
+          WebkitBackdropFilter: 'var(--mat-blur)',
+          borderRadius: smallScreen ? 'var(--r-3)' : 'var(--r-2)',
           padding: smallScreen
-            ? '0.8rem 0.95rem 0.9rem'
+            ? '1rem 1.1rem'
             : pinned
-              ? '0.9rem 1rem 0.95rem'
-              : '0.72rem 0.95rem',
-          borderLeft: smallScreen ? 'none' : '2px solid var(--accent)',
-          borderTop: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
-          borderBottom: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
+              ? '1.1rem 1.2rem'
+              : '0.85rem 1.1rem',
+          borderLeft: smallScreen ? '0.5px solid var(--mat-border)' : '2.5px solid var(--accent)',
+          borderTop: '0.5px solid var(--mat-border)',
+          borderBottom: '0.5px solid var(--mat-border)',
+          borderRight: '0.5px solid var(--mat-border)',
           boxShadow: smallScreen
-            ? 'var(--shadow-2)'
+            ? 'var(--shadow-3)'
             : pinned
-              ? '0 18px 48px rgba(0,0,0,0.08)'
-              : '0 8px 28px rgba(0,0,0,0.05)',
+              ? 'var(--shadow-3)'
+              : 'var(--shadow-2)',
         }}
       >
+
         {pinned && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span

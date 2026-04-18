@@ -10,6 +10,7 @@
  * This component should therefore be a whisper, not a form.
  */
 import { useEffect, useState } from 'react';
+import { openLoomReview } from '../lib/ai/surface-actions';
 import { useSmallScreen } from '../lib/use-small-screen';
 
 type State = {
@@ -68,10 +69,7 @@ export function CapturePrompt() {
   if (!state) return null;
 
   const continueToThought = () => {
-    window.dispatchEvent(new CustomEvent('loom:review:set-active', { detail: { active: true } }));
-    window.dispatchEvent(new CustomEvent('loom:review:focus-thought', {
-      detail: { anchorId: state.anchorId },
-    }));
+    openLoomReview(state.anchorId);
     setState(null);
     setFading(false);
   };

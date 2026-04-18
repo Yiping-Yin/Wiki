@@ -1,5 +1,5 @@
 'use client';
-import { getAiStage } from '../../lib/ai/stage-model';
+import { getAiStage, getAiSurface } from '../../lib/ai/stage-model';
 import { callAiPrompt } from '../../lib/ai/runtime';
 /**
  * IngestionPanel · Phase 0 drag-drop ingestion for plain text / markdown files.
@@ -48,6 +48,7 @@ const MAX_BYTES = 1_000_000; // 1 MB per file
 
 export function IngestionPanel({ existingIngested }: Props) {
   const ingestionStage = getAiStage('ingestion-summary');
+  const ingestionSurface = getAiSurface(ingestionStage.family);
   const [items, setItems] = useState<IngestionItem[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -161,7 +162,7 @@ export function IngestionPanel({ existingIngested }: Props) {
         gap: 10,
       }}
     >
-      <AiStageHeader title={ingestionStage.title} helper="Drop one source, then let Loom hold the first thread" />
+      <AiStageHeader title={ingestionStage.title} helper={ingestionSurface.helper} />
 
       {/* Drop zone */}
       <div

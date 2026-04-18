@@ -2,6 +2,7 @@
 
 import type { AiCliKind } from '../ai-cli';
 import { readAiCliPreference } from '../ai-cli';
+import { readSseToString } from './sse-reader';
 import type { AiStageId } from './stage-model';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
@@ -13,6 +14,7 @@ type RunAiOptions = {
   cli?: AiCliKind;
   signal?: AbortSignal;
   onDelta?: (delta: string, full: string) => void;
+  onNotice?: (notice: string) => void;
 };
 
 function dispatchIsland(type: 'ai-start' | 'ai-end', stage: AiStageId) {
@@ -27,6 +29,7 @@ export async function runAiText({
   cli,
   signal,
   onDelta,
+  onNotice,
 }: RunAiOptions): Promise<string> {
   dispatchIsland('ai-start', stage);
   try {
@@ -45,36 +48,10 @@ export async function runAiText({
       throw new Error(`AI call failed: ${response.status}`);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let raw = '';
-    let result = '';
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      raw += decoder.decode(value, { stream: true });
-      const lines = raw.split('\n');
-      raw = lines.pop() ?? '';
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const payload = line.slice(6).trim();
-        if (payload === '[DONE]') continue;
-        try {
-          const json = JSON.parse(payload);
-          if (json.error) throw new Error(json.error);
-          if (typeof json.delta === 'string') {
-            result += json.delta;
-            onDelta?.(json.delta, result);
-          }
-        } catch (e) {
-          if (e instanceof SyntaxError) continue;
-          throw e;
-        }
-      }
-    }
-
-    return result;
+    return readSseToString(response.body, signal, {
+      onDelta,
+      onNotice,
+    });
   } finally {
     dispatchIsland('ai-end', stage);
   }
@@ -92,5 +69,6 @@ export async function callAiPrompt(
     cli: opts?.cli,
     signal: opts?.signal,
     onDelta: opts?.onDelta,
+    onNotice: opts?.onNotice,
   });
 }

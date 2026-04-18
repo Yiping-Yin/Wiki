@@ -31,7 +31,7 @@ export function DocViewer({
   if (e === '.csv' || e === '.tsv') return <CsvTable url={sourceUrl} sep={e === '.tsv' ? '\t' : ','} />;
   if (e === '.json') return <JsonView url={sourceUrl} />;
   if (e === '.ipynb') return <NotebookView url={sourceUrl} />;
-  if (e === '.md' || e === '.txt') return <TextView body={body} />;
+  if (e === '.md' || e === '.txt') return <ProseTextSurface body={body} />;
   if (e === '.xlsx' || e === '.xls') return <BinaryEmbed ext={ext} sourceUrl={sourceUrl} title={title} body={body} kind="spreadsheet" />;
   if (e === '.docx' || e === '.doc') return <BinaryEmbed ext={ext} sourceUrl={sourceUrl} title={title} body={body} kind="document" />;
   if (e === '.pptx' || e === '.ppt') return <BinaryEmbed ext={ext} sourceUrl={sourceUrl} title={title} body={body} kind="slides" />;
@@ -53,65 +53,54 @@ function BinaryEmbed({
   const meta = KIND_META[kind] ?? KIND_META.file;
   const hasExtracted = body && body.length > 30 && !body.startsWith('[Binary');
   return (
-    <figure style={{ margin: '1.4rem 0' }}>
+    <figure style={{ margin: '1.25rem 0' }}>
       <div style={{
-        padding: '0.25rem 0 1rem',
+        padding: '0.35rem 0 0.95rem',
         display: 'flex',
-        gap: '0.95rem',
-        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: '1rem',
+        alignItems: 'baseline',
         borderBottom: '0.5px solid var(--mat-border)',
       }}>
-        <div style={{
-          width: 34,
-          flexShrink: 0,
-          color: meta.tint,
-          fontSize: '1rem',
-          lineHeight: 1.2,
-          paddingTop: 2,
-          textAlign: 'center',
-        }}>
-          {meta.icon}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ minWidth: 0 }}>
           <div className="t-caption2" style={{
-            color: 'var(--muted)', textTransform: 'uppercase',
-            letterSpacing: '0.08em', fontWeight: 700,
+            color: meta.tint,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            fontWeight: 700,
             marginBottom: 6,
           }}>{meta.label} · {ext.slice(1).toUpperCase()}</div>
-          <div className="t-title3" style={{
+          <div style={{
             color: 'var(--fg)',
-            overflow: 'hidden', textOverflow: 'ellipsis',
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            fontSize: '1.05rem',
+            fontWeight: 600,
+            lineHeight: 1.35,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
           }}>{title}</div>
-          <div className="t-footnote" style={{ marginTop: 8, color: 'var(--muted)' }}>
-            {hasExtracted
-              ? 'Original above. Extracted text below.'
-              : 'Open the original when you need the full surface.'}
-          </div>
-          <div style={{ marginTop: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href={sourceUrl} target="_blank" rel="noreferrer" style={{
-              color: 'var(--accent)',
-              textDecoration: 'none',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-            }}>Open original</a>
-          </div>
         </div>
+        <a href={sourceUrl} target="_blank" rel="noreferrer" style={{
+          color: 'var(--accent)',
+          textDecoration: 'none',
+          fontSize: '0.82rem',
+          fontWeight: 600,
+          flexShrink: 0,
+          paddingTop: 4,
+        }}>Open original</a>
       </div>
       {hasExtracted && (
-        <div style={{ marginTop: '1.2rem' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            marginBottom: 14,
-          }}>
-            <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-            <span className="t-caption2" style={{
-              color: 'var(--muted)', textTransform: 'uppercase',
-              letterSpacing: '0.10em', fontWeight: 700,
-            }}>Source</span>
-            <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          </div>
-          <TextView body={body} />
+        <div style={{ marginTop: '1rem' }}>
+          <div className="t-caption2" style={{
+            color: 'var(--muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.10em',
+            fontWeight: 700,
+            marginBottom: 12,
+          }}>Source</div>
+          <ProseTextSurface body={body} />
         </div>
       )}
     </figure>
@@ -158,7 +147,7 @@ function PdfWithText({ src, title, body }: { src: string; title: string; body: s
            */}
           <div className="loom-source-prose">
             {paragraphs.map((p, i) => (
-              <p key={i} style={{ fontSize: '0.95rem', lineHeight: 1.65, margin: '0 0 0.9rem' }}>
+              <p key={i} style={{ fontSize: '0.98rem', lineHeight: 1.74, margin: '0 0 1rem' }}>
                 {p}
               </p>
             ))}
@@ -447,7 +436,7 @@ function LoadingPane({ label }: { label: string }) {
   );
 }
 
-/** Weft shuttle progress · kesi-native loading indicator. Used everywhere a spinner would have been. */
+/** Weft shuttle progress · loom-native loading indicator. Used everywhere a spinner would have been. */
 export function WeftShuttle({ width = 64, height = 14 }: { width?: number; height?: number }) {
   return (
     <div style={{
@@ -557,15 +546,39 @@ function ErrorPane({ what, how, raw, openHref }: {
 
 function TextView({ body }: { body: string }) {
   if (!body || body.length < 5) {
-    return <div style={{ color: 'var(--muted)', fontSize: '0.85rem', padding: '1rem 0' }}>(empty)</div>;
+    return (
+      <div style={{ color: 'var(--muted)', fontSize: '0.88rem', padding: '1rem 0' }}>
+        (empty)
+      </div>
+    );
   }
   const paragraphs = body.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).slice(0, 200);
   return (
     <div style={{ marginTop: '1rem' }}>
       {paragraphs.map((p, i) => (
-        <p key={i} style={{ fontSize: '0.95rem', lineHeight: 1.65 }}>{p}</p>
+        <p
+          key={i}
+          style={{
+            margin: '0 0 1rem',
+            fontSize: '0.98rem',
+            lineHeight: 1.78,
+            color: 'var(--fg)',
+          }}
+        >
+          {p}
+        </p>
       ))}
     </div>
+  );
+}
+
+function ProseTextSurface({ body }: { body: string }) {
+  return (
+    <section style={{ margin: '1.35rem 0 0' }}>
+      <div className="loom-source-prose">
+        <TextView body={body} />
+      </div>
+    </section>
   );
 }
 

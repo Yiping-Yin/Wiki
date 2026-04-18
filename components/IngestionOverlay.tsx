@@ -4,50 +4,17 @@
  * Lazy-loads trace data only when active.
  */
 import { useEffect, useState } from 'react';
+import { getAiSurface } from '../lib/ai/stage-model';
+import { useLoomOverlay } from '../lib/ai/use-loom-overlay';
 import { useSmallScreen } from '../lib/use-small-screen';
-import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { IngestionPanel } from './unified/IngestionPanel';
 
 export function IngestionOverlay() {
   const smallScreen = useSmallScreen();
-  const [active, setActive] = useState(false);
-  const { mounted, visible } = useAnimatedPresence(active, 250);
-
-  // Triggered by ⌘P (⌘E → I)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id === 'ingestion') setActive((a) => !a);
-    };
-    window.addEventListener('loom:overlay:toggle', handler);
-    return () => window.removeEventListener('loom:overlay:toggle', handler);
-  }, []);
-
-  // Mutual exclusion
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id !== 'ingestion') setActive(false);
-    };
-    window.addEventListener('loom:overlay:open', handler);
-    return () => window.removeEventListener('loom:overlay:open', handler);
-  }, []);
-
-  // Esc closes
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      e.preventDefault();
-      setActive(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [active]);
-
-  useEffect(() => {
-    if (!active) window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
-  }, [active]);
+  const ingestionSurface = getAiSurface('ingestion');
+  const { mounted, visible, close } = useLoomOverlay({
+    id: 'ingestion',
+  });
 
   if (!mounted) return null;
 
@@ -75,8 +42,8 @@ export function IngestionOverlay() {
       }}
     >
       <div style={{ padding: '10px 16px', borderBottom: '0.5px solid var(--mat-border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem' }}>
-        <strong style={{ color: 'var(--accent)', flex: 1 }}>Import</strong>
-        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => setActive(false)}>Esc ×</span>
+        <strong style={{ color: 'var(--accent)', flex: 1 }}>{ingestionSurface.launcherTitle}</strong>
+        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => close(true)}>Esc ×</span>
       </div>
       <div style={{ flex: 1, overflow: 'auto' }}>
         <IngestionInner />

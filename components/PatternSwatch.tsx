@@ -1,10 +1,10 @@
 'use client';
 /**
- * KesiSwatch · a tiny woven tile representing one collection (course / wiki section).
+ * PatternSwatch · a tiny woven tile representing one collection (course / wiki section).
  *
  * Reads panels and weaves tied to the given knowledge collection and renders a
  * small tapestry showing what has actually settled there. Same physics as
- * KesiView, but compressed to a card-sized swatch.
+ * PatternsView, but compressed to a card-sized swatch.
  *
  * Used as the replacement for "App Store style" CollectionCard on /knowledge,
  * /browse, etc. Each card is the actual texture of your engagement, not a
@@ -113,7 +113,7 @@ function cellFill(intensity: number, mastery: number): string {
   }
 }
 
-export function KesiSwatch({
+export function PatternSwatch({
   categorySlug,
   width,
   height = 36,

@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 import { useTracesForDoc } from '../lib/trace';
 import type { Trace } from '../lib/trace';
-import { passagePositionKey, resolveBlockElement } from '../lib/passage-locator';
+import { resolveBlockElement } from '../lib/passage-locator';
+import { thoughtPositionKey } from '../lib/thought-containers';
 
 /**
  * A single version of a thought inside a ThoughtAnchorView container.
@@ -36,6 +37,10 @@ export type ThoughtAnchorView = {
    *  can collide when two different positions share a fallback id like
    *  `loom-block-0` or inherit legacy ids from pre-container-model data. */
   containerKey: string;
+  /** Shared semantic key for "same passage = same thought container". */
+  positionKey: string;
+  /** All anchor ids that have represented this passage container over time. */
+  containerAnchorIds: string[];
   anchorId: string;
   anchorType: 'heading' | 'page' | 'timestamp' | 'slide' | 'paragraph';
   anchorBlockId?: string;
@@ -69,8 +74,9 @@ export type ThoughtAnchorView = {
   versionCount: number;
   /** Version chain, oldest-first. Length >= 1. */
   versions: ThoughtAnchorVersion[];
-  /** True if this container has been crystallized (locked, no new versions) */
-  isCrystallized: boolean;
+  /** True if this local thought container is locked against new versions. */
+  isLocked: boolean;
+  lockedAt?: number;
   /** Legacy: count of times the user visited this anchor. Kept for compat. */
   count: number;
 };
@@ -99,8 +105,8 @@ export type ThoughtMapNode = {
   /** Max version count of any single anchor in this section. Shown as the
    *  dominant "depth" hint when rendering. */
   maxDepth: number;
-  /** True if any anchor in this section is crystallized. */
-  anyCrystallized: boolean;
+  /** True if any local thought container in this section is locked. */
+  anyLocked: boolean;
   anchorId: string;
   anchorBlockId?: string;
   anchorBlockText?: string;
@@ -198,12 +204,12 @@ export function buildThoughtAnchorViewsFromTraces(readingTraces: Trace[]): Thoug
   //
   // Key format: `${anchorBlockText}::${charStart}-${charEnd}`
   // If no block text or char range is available, fall back to anchorId.
-  const containerKey = (e: any): string => passagePositionKey({
+  const containerKey = (e: any): string => thoughtPositionKey({
     anchorId: e.anchorId,
-    blockId: e.anchorBlockId,
-    blockText: e.anchorBlockText,
-    charStart: e.anchorCharStart,
-    charEnd: e.anchorCharEnd,
+    anchorBlockId: e.anchorBlockId,
+    anchorBlockText: e.anchorBlockText,
+    anchorCharStart: e.anchorCharStart,
+    anchorCharEnd: e.anchorCharEnd,
   });
 
   // First pass: bucket all thought-anchor events by container key, and
@@ -264,6 +270,7 @@ export function buildThoughtAnchorViewsFromTraces(readingTraces: Trace[]): Thoug
       summary: ev.summary,
       content: ev.content,
     }));
+    const containerAnchorIds = Array.from(new Set(sorted.map((ev) => ev.anchorId)));
 
     const blockEl = locateAnchorElement(latest.anchorId, latest.anchorBlockId, latest.anchorBlockText);
     const top = blockEl
@@ -284,6 +291,8 @@ export function buildThoughtAnchorViewsFromTraces(readingTraces: Trace[]): Thoug
     items.push({
       traceId: latest.__traceId,
       containerKey: `${latest.__traceId}::${bucketKey}`,
+      positionKey: bucketKey,
+      containerAnchorIds,
       anchorId: latest.anchorId,
       anchorType: latest.anchorType,
       anchorBlockId: latest.anchorBlockId,
@@ -310,7 +319,8 @@ export function buildThoughtAnchorViewsFromTraces(readingTraces: Trace[]): Thoug
       firstAt: first.at,
       versionCount: versions.length,
       versions,
-      isCrystallized: bucket.crystallizedAt !== undefined,
+      isLocked: bucket.crystallizedAt !== undefined,
+      lockedAt: bucket.crystallizedAt,
       // Legacy count (how many events for this container — same as versionCount)
       count: versions.length,
     });
@@ -336,7 +346,7 @@ export function buildThoughtMapNodes(headings: HeadingItem[], thoughts: ThoughtA
       hasPendingCapture: false,
       totalVersions: 0,
       maxDepth: 0,
-      anyCrystallized: false,
+      anyLocked: false,
       anchorId: heading.id,
       anchorBlockId: heading.id,
       anchorBlockText: heading.text,
@@ -353,7 +363,7 @@ export function buildThoughtMapNodes(headings: HeadingItem[], thoughts: ThoughtA
     if (thought.at > (node.latestAt ?? 0)) node.latestAt = thought.at;
     node.totalVersions += thought.versionCount;
     if (thought.versionCount > node.maxDepth) node.maxDepth = thought.versionCount;
-    if (thought.isCrystallized) node.anyCrystallized = true;
+    if (thought.isLocked) node.anyLocked = true;
     node.anchorId = thought.anchorId;
     node.anchorBlockId = thought.anchorBlockId ?? thought.anchorId;
     node.anchorBlockText = thought.anchorBlockText ?? thought.section;

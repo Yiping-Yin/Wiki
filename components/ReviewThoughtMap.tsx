@@ -25,9 +25,19 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { LearningTargetStateControls } from './LearningTargetStateControls';
+import { WorkSessionHandoff } from './WorkSessionHandoff';
+import { openLoomOverlay, openLoomReview } from '../lib/ai/surface-actions';
+import { matchesThoughtContainerCrystallizeEvent } from '../lib/thought-containers';
 import { contextFromPathname } from '../lib/doc-context';
+import { buildLearningTargets, buildPanelLearningTarget, type LearningTarget } from '../lib/learning-targets';
+import { buildRevisionActionSeed } from '../lib/panel/revision-actions';
+import { applyLearningTargetState, resolveLearningTargetState, useLearningTargetState } from '../lib/learning-target-state';
+import { isRenderablePanel, panelRevisionCount, panelRevisionLabel, revisionChanges, sortedPanelRevisions, useAllPanels, usePanel } from '../lib/panel';
 import { useSmallScreen } from '../lib/use-small-screen';
 import { useAllTraces, useAppendEvent, useBacklinksForDoc, useRemoveEvents } from '../lib/trace';
+import { useAllWeaves } from '../lib/weave';
+import { isTargetChangeResolved, resolveWorkSession, useWorkSession } from '../lib/work-session';
 import {
   buildThoughtMapNodes,
   collectHeadingItems,
@@ -73,6 +83,7 @@ function thoughtTypeColor(type: import('../lib/trace/types').ThoughtType | undef
 
 const REVIEW_SCROLL_EVENT = 'loom:review:scroll-to-anchor';
 const REVIEW_FOCUS_THOUGHT_EVENT = 'loom:review:focus-thought';
+const REVIEW_FOCUS_PANEL_REVISION_EVENT = 'loom:review:focus-panel-revision';
 
 type RelatedDocPreview = {
   docId: string;
@@ -91,13 +102,19 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   const router = useRouter();
   const pathname = usePathname() ?? '/';
   const ctx = contextFromPathname(pathname);
-  const smallScreen = useSmallScreen();
+  const smallScreen = useSmallScreen(1024);
   const { traces: allTraces } = useAllTraces();
+  const { panels: allPanels } = useAllPanels();
+  const { weaves } = useAllWeaves();
+  const targetState = useLearningTargetState();
+  const workSession = useWorkSession();
+  const { panel: currentPanel } = usePanel(ctx.isFree ? null : ctx.docId);
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [nodes, setNodes] = useState<ThoughtMapNode[]>([]);
   const [activeAnchorId, setActiveAnchorId] = useState<string>('');
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [pendingFocusAnchorId, setPendingFocusAnchorId] = useState<string | null>(null);
+  const [highlightPanelRevision, setHighlightPanelRevision] = useState(false);
   const { thoughtItems, traces, primaryReadingTrace } = useReadingThoughtAnchors(
     ctx.isFree ? null : ctx.docId,
   );
@@ -174,6 +191,20 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
       outgoing: Array.from(outgoing.values()),
     };
   }, [allTraces, backlinks, ctx.docId, thoughtItems]);
+  const rawTargets = useMemo(() => buildLearningTargets({
+    panels: allPanels.filter(isRenderablePanel),
+    weaves,
+  }), [allPanels, weaves]);
+  const visibleTargets = useMemo(
+    () => applyLearningTargetState(rawTargets, targetState.state),
+    [rawTargets, targetState.state],
+  );
+  const resolvedSession = useMemo(
+    () => resolveWorkSession(workSession.session, visibleTargets),
+    [visibleTargets, workSession.session],
+  );
+  const currentSessionTarget = resolvedSession.currentTarget;
+  const nextSessionTarget = resolvedSession.nextTarget;
 
   // Narrow thought-map presence is an intro/review affordance, not a
   // permanent right sidebar. Near the top of a document it is visible;
@@ -309,6 +340,15 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   }, []);
 
   useEffect(() => {
+    const onFocusPanelRevision = () => {
+      setHighlightPanelRevision(true);
+      window.setTimeout(() => setHighlightPanelRevision(false), 1800);
+    };
+    window.addEventListener(REVIEW_FOCUS_PANEL_REVISION_EVENT, onFocusPanelRevision);
+    return () => window.removeEventListener(REVIEW_FOCUS_PANEL_REVISION_EVENT, onFocusPanelRevision);
+  }, []);
+
+  useEffect(() => {
     if (!active || !pendingFocusAnchorId) return;
     const target = thoughtItems.find((item) => item.anchorId === pendingFocusAnchorId);
     if (!target) return;
@@ -326,7 +366,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
   // Append-version handler for wide-mode elaboration.
   const handleAppendVersion = useCallback(
     async (thought: ThoughtAnchorView, newContent: string) => {
-      if (!newContent.trim()) return;
+      if (!newContent.trim() || thought.isLocked) return;
       const summary = deriveSummary(newContent);
       await append(thought.traceId, {
         kind: 'thought-anchor',
@@ -352,13 +392,30 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
     [append],
   );
 
+  const toggleThoughtLock = useCallback(async (thought: ThoughtAnchorView) => {
+    if (!thought.traceId) return;
+    if (thought.isLocked) {
+      await removeEvents(
+        thought.traceId,
+        (event) => matchesThoughtContainerCrystallizeEvent(event, thought.containerAnchorIds),
+      );
+      return;
+    }
+    await append(thought.traceId, {
+      kind: 'crystallize',
+      summary: thought.summary,
+      at: Date.now(),
+      anchorId: thought.anchorId,
+    });
+  }, [append, removeEvents]);
+
   if (!mounted) return null;
   // Hide when a learning overlay occupies the right side
   if (overlayOpen && !active) return null;
 
   // Empty state: no reading-page chrome if no captures exist yet.
-  const narrowWidth = hasThoughts ? 'clamp(240px, 20vw, 320px)' : '40px';
-  const wideWidth = 'min(440px, 40vw)';
+  const narrowWidth = hasThoughts ? 'var(--focus-rail-collapsed-width)' : '40px';
+  const wideWidth = 'var(--focus-rail-width)';
   const setReviewActive = (next: boolean) => {
     window.dispatchEvent(
       new CustomEvent('loom:review:set-active', { detail: { active: next } }),
@@ -396,16 +453,16 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
         transform: visible ? 'translateX(0)' : 'translateX(6px)',
         transition:
           'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), width 0.4s cubic-bezier(0.22, 1, 0.36, 1), left 0.4s cubic-bezier(0.22, 1, 0.36, 1), right 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
-        background: smallScreen ? 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))' : 'transparent',
-        borderTop: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
-        borderBottom: smallScreen ? '0.5px solid var(--mat-border)' : 'none',
-        borderRadius: smallScreen ? 16 : 0,
-        boxShadow: smallScreen ? 'var(--shadow-2)' : 'none',
-        padding: smallScreen ? '0.75rem 0.85rem 0.85rem' : 0,
-        backdropFilter: smallScreen ? 'saturate(180%) blur(20px)' : 'none',
-        WebkitBackdropFilter: smallScreen ? 'saturate(180%) blur(20px)' : 'none',
+        background: active ? 'transparent' : 'var(--mat-thin-bg)',
+        backdropFilter: active ? 'none' : 'var(--mat-blur)',
+        WebkitBackdropFilter: active ? 'none' : 'var(--mat-blur)',
+        border: active ? 'none' : '0.5px solid var(--mat-border)',
+        borderRadius: active ? 0 : 'var(--r-2)',
+        boxShadow: active ? 'none' : 'var(--shadow-1)',
+        padding: active ? 0 : '0.75rem 0.85rem',
       }}
     >
+
       {(active || smallScreen) && (
         <div
           className="t-caption2"
@@ -451,12 +508,17 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           expandedKey={expandedKey}
           onExpand={setExpandedKey}
           onAppendVersion={handleAppendVersion}
+          onToggleThoughtLock={toggleThoughtLock}
           activeAnchorId={activeAnchorId}
+          panel={currentPanel}
           panelCrystallized={panelCrystallized}
           panelRelations={panelRelations}
-          onOpenKesi={() => router.push(ctx.docId ? `/kesi?focus=${encodeURIComponent(ctx.docId)}` : '/kesi')}
+          onOpenPatterns={() => router.push(ctx.docId ? `/patterns?focus=${encodeURIComponent(ctx.docId)}` : '/patterns')}
           onOpenRelations={() => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph')}
           onUncrystallize={uncrystallizePanel}
+          currentSessionTarget={currentSessionTarget}
+          nextSessionTarget={nextSessionTarget}
+          highlightPanelRevision={highlightPanelRevision}
         />
       ) : (
         <NarrowSectionTOC
@@ -548,18 +610,21 @@ function NarrowSectionTOC({
               display: 'block',
               width: '100%',
               textAlign: 'left',
-              borderRadius: 8,
-              border: 0,
+              borderRadius: 'var(--r-1)',
+              border: '0.5px solid transparent',
               background: isActive
-                ? 'color-mix(in srgb, var(--accent) 7%, var(--bg))'
+                ? 'var(--mat-thin-bg)'
                 : 'transparent',
-              padding: item.level === 2 ? '0.38rem 0.45rem 0.42rem' : '0.26rem 0.45rem 0.32rem 0.9rem',
+              padding: item.level === 2 ? '0.5rem 0.65rem' : '0.4rem 0.65rem 0.4rem 0.95rem',
               color: 'var(--fg)',
               cursor: 'pointer',
+              borderBottom: isActive ? '0.5px solid var(--mat-border)' : 'none',
+              boxShadow: isActive ? 'var(--shadow-1)' : 'none',
               // Passive Fading: older thoughts visually recede.
+
               // Crystallized items never fade. Uses the item's latest
               // event timestamp if available, otherwise no fading.
-              opacity: item.anyCrystallized ? 1
+              opacity: item.anyLocked ? 1
                 : (() => {
                     const at = (item as any).latestAt ?? (item as any).at ?? 0;
                     if (!at) return 1;
@@ -613,9 +678,9 @@ function NarrowSectionTOC({
                   × {item.totalVersions}
                 </span>
               )}
-              {item.anyCrystallized && (
+              {item.anyLocked && (
                 <span
-                  title="Contains crystallized (locked) thoughts"
+                  title="Contains locked local thoughts"
                   style={{ color: 'var(--tint-indigo)', fontSize: '0.78rem' }}
                 >
                   ◈
@@ -682,23 +747,33 @@ function WideThoughtList({
   expandedKey,
   onExpand,
   onAppendVersion,
+  onToggleThoughtLock,
   activeAnchorId,
+  panel,
   panelCrystallized,
   panelRelations,
-  onOpenKesi,
+  onOpenPatterns,
   onOpenRelations,
   onUncrystallize,
+  currentSessionTarget,
+  nextSessionTarget,
+  highlightPanelRevision,
 }: {
   thoughts: ThoughtAnchorView[];
   expandedKey: string | null;
   onExpand: (key: string | null) => void;
   onAppendVersion: (thought: ThoughtAnchorView, content: string) => Promise<void>;
+  onToggleThoughtLock: (thought: ThoughtAnchorView) => Promise<void>;
   activeAnchorId: string;
+  panel: ReturnType<typeof usePanel>['panel'];
   panelCrystallized: boolean;
   panelRelations: { incoming: RelatedDocPreview[]; outgoing: RelatedDocPreview[] };
-  onOpenKesi: () => void;
+  onOpenPatterns: () => void;
   onOpenRelations: () => void;
   onUncrystallize: () => Promise<void>;
+  currentSessionTarget: LearningTarget | null;
+  nextSessionTarget: LearningTarget | null;
+  highlightPanelRevision: boolean;
 }) {
   const sectionGroups = useMemo(() => {
     const groups = new Map<string, {
@@ -760,9 +835,13 @@ function WideThoughtList({
       {focusThought && (
         <WideThoughtHeader
           thought={focusThought}
+          panel={panel}
           panelCrystallized={panelCrystallized}
           panelRelations={panelRelations}
           onOpenRelatedDoc={(docId) => window.location.assign(`/graph?focus=${encodeURIComponent(docId)}`)}
+          currentSessionTarget={currentSessionTarget}
+          nextSessionTarget={nextSessionTarget}
+          highlightPanelRevision={highlightPanelRevision}
         />
       )}
       {sectionGroups.map((group) => (
@@ -810,7 +889,8 @@ function WideThoughtList({
                 expanded={expandedKey === t.containerKey}
                 emphasized={activeAnchorId === t.anchorId}
                 panelCrystallized={panelCrystallized}
-                onOpenKesi={onOpenKesi}
+                onToggleThoughtLock={onToggleThoughtLock}
+                onOpenPatterns={onOpenPatterns}
                 onOpenRelations={onOpenRelations}
                 onUncrystallize={onUncrystallize}
                 onToggle={() =>
@@ -828,14 +908,22 @@ function WideThoughtList({
 
 function WideThoughtHeader({
   thought,
+  panel,
   panelCrystallized,
   panelRelations,
   onOpenRelatedDoc,
+  currentSessionTarget,
+  nextSessionTarget,
+  highlightPanelRevision,
 }: {
   thought: ThoughtAnchorView;
+  panel: ReturnType<typeof usePanel>['panel'];
   panelCrystallized: boolean;
   panelRelations: { incoming: RelatedDocPreview[]; outgoing: RelatedDocPreview[] };
   onOpenRelatedDoc: (docId: string) => void;
+  currentSessionTarget: LearningTarget | null;
+  nextSessionTarget: LearningTarget | null;
+  highlightPanelRevision: boolean;
 }) {
   const goToSource = () => {
     window.dispatchEvent(
@@ -847,6 +935,17 @@ function WideThoughtHeader({
 
   const heading = thought.summary.trim() || thought.content.trim() || 'This weave is still taking shape.';
   const excerpt = thought.quote?.trim() || thought.anchorBlockText?.trim() || '';
+  const revisions = panel ? sortedPanelRevisions(panel) : [];
+  const currentRevision = revisions[0] ?? null;
+  const previousRevision = revisions[1] ?? null;
+  const showRevisionDiff = Boolean(panel && currentRevision && previousRevision && (panel.status === 'contested' || panel.revisions.length > 1));
+  const revisionDelta = currentRevision && previousRevision ? revisionChanges(currentRevision, previousRevision) : null;
+  const revisionSeed = panel ? buildRevisionActionSeed(panel) : null;
+  const panelTarget = useMemo(() => (panel ? buildPanelLearningTarget(panel) : null), [panel]);
+  const targetState = useLearningTargetState();
+  const workSession = useWorkSession();
+  const sessionCurrentMatches = Boolean(panelTarget && currentSessionTarget && panelTarget.id === currentSessionTarget.id);
+  const panelChangeResolved = panelTarget ? isTargetChangeResolved(panelTarget, workSession.lastCompletedSession) : false;
 
   return (
     <section
@@ -907,6 +1006,92 @@ function WideThoughtHeader({
           {excerpt}
         </div>
       ) : null}
+      {showRevisionDiff && revisionDelta && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: '0.7rem 0.8rem',
+            borderRadius: 10,
+            border: '0.5px solid var(--mat-border)',
+            background: panel?.status === 'contested'
+              ? 'color-mix(in srgb, var(--tint-orange) 8%, var(--bg-elevated))'
+              : 'color-mix(in srgb, var(--accent) 5%, var(--bg-elevated))',
+            boxShadow: highlightPanelRevision ? '0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent), var(--shadow-1)' : undefined,
+          }}
+        >
+          <div
+            className="t-caption2"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+              color: 'var(--accent)',
+              letterSpacing: '0.06em',
+              fontWeight: 700,
+              marginBottom: 6,
+            }}
+          >
+            <span>{panel?.status === 'contested' ? 'In revision now' : 'Changed since last settling'}</span>
+            {panelChangeResolved && (
+              <>
+                <span aria-hidden>·</span>
+                <span>Resolved for this change</span>
+              </>
+            )}
+            {panelRevisionLabel(panel ?? { revisions: [] }) && (
+              <>
+                <span aria-hidden>·</span>
+                <span>{panelRevisionCount(panel ?? { revisions: [] })} revision{panelRevisionCount(panel ?? { revisions: [] }) === 1 ? '' : 's'}</span>
+              </>
+            )}
+          </div>
+          {revisionDelta.summaryChanged && (
+            <div style={{ color: 'var(--fg)', fontSize: '0.82rem', lineHeight: 1.5, marginBottom: 6 }}>
+              <strong>Now:</strong> {currentRevision?.summary}
+            </div>
+          )}
+          {revisionDelta.centralClaimChanged && currentRevision?.centralClaim !== currentRevision?.summary && (
+            <div style={{ color: 'var(--fg-secondary)', fontSize: '0.8rem', lineHeight: 1.5, marginBottom: 6 }}>
+              <strong style={{ color: 'var(--fg)' }}>Claim:</strong> {currentRevision?.centralClaim}
+            </div>
+          )}
+          <RevisionDeltaInline label="Added distinctions" items={revisionDelta.addedDistinctions} tone="accent" />
+          <RevisionDeltaInline label="Opened tensions" items={revisionDelta.addedTensions} tone="warning" />
+          <RevisionDeltaInline label="Closed tensions" items={revisionDelta.removedTensions} tone="muted" />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            {revisionSeed && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (panelTarget) workSession.setResolutionKind(panelTarget, 'reworked');
+                  openLoomOverlay({ id: 'rehearsal', seedDraft: revisionSeed.seedDraft, seedLabel: revisionSeed.seedLabel });
+                }}
+                style={settledActionStyle(true)}
+              >
+                Rework this change
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (panelTarget) workSession.setResolutionKind(panelTarget, 'verified');
+                openLoomOverlay({ id: 'examiner' });
+              }}
+              style={settledActionStyle(false)}
+            >
+              Verify this revision
+            </button>
+            <button
+              type="button"
+              onClick={() => openLoomReview(thought.anchorId)}
+              style={settledActionStyle(false)}
+            >
+              Re-read source
+            </button>
+          </div>
+        </div>
+      )}
 
       <div
         className="t-caption2"
@@ -937,6 +1122,19 @@ function WideThoughtHeader({
           Source
         </button>
       </div>
+      {panelTarget && (
+        <LearningTargetStateControls
+          target={panelTarget}
+          buttonStyle={settledActionStyle(false)}
+        />
+      )}
+      {sessionCurrentMatches && (
+        <WorkSessionHandoff
+          currentTarget={currentSessionTarget}
+          nextTarget={nextSessionTarget}
+          buttonStyle={settledActionStyle(false)}
+        />
+      )}
       {(panelRelations.incoming.length > 0 || panelRelations.outgoing.length > 0) && (
         <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {panelRelations.incoming.length > 0 && (
@@ -959,12 +1157,45 @@ function WideThoughtHeader({
   );
 }
 
+function RevisionDeltaInline({
+  label,
+  items,
+  tone,
+}: {
+  label: string;
+  items: string[];
+  tone: 'accent' | 'warning' | 'muted';
+}) {
+  if (items.length === 0) return null;
+  const color = tone === 'accent'
+    ? 'var(--accent)'
+    : tone === 'warning'
+      ? 'var(--tint-orange)'
+      : 'var(--fg-secondary)';
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div className="t-caption2" style={{ color, letterSpacing: '0.04em', fontWeight: 700, marginBottom: 4 }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {items.map((item) => (
+          <div key={`${label}:${item}`} style={{ color: 'var(--fg-secondary)', fontSize: '0.78rem', lineHeight: 1.45 }}>
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function WideThoughtCard({
   thought,
   expanded,
   emphasized,
   panelCrystallized,
-  onOpenKesi,
+  onToggleThoughtLock,
+  onOpenPatterns,
   onOpenRelations,
   onUncrystallize,
   onToggle,
@@ -974,7 +1205,8 @@ function WideThoughtCard({
   expanded: boolean;
   emphasized: boolean;
   panelCrystallized: boolean;
-  onOpenKesi: () => void;
+  onToggleThoughtLock: (thought: ThoughtAnchorView) => Promise<void>;
+  onOpenPatterns: () => void;
   onOpenRelations: () => void;
   onUncrystallize: () => Promise<void>;
   onToggle: () => void;
@@ -1005,7 +1237,7 @@ function WideThoughtCard({
 
   const save = useCallback(async () => {
     const text = draft.trim();
-    if (!text || saving) return;
+    if (!text || saving || thought.isLocked) return;
     setSaving(true);
     try {
       await onAppendVersion(thought, text);
@@ -1018,7 +1250,7 @@ function WideThoughtCard({
   const saveEdit = useCallback(async () => {
     const text = editBuf.trim();
     const original = (thought.content || thought.summary).trim();
-    if (!text || text === original || saving) { setEditing(false); return; }
+    if (!text || text === original || saving || thought.isLocked) { setEditing(false); return; }
     setSaving(true);
     try {
       await onAppendVersion(thought, text);
@@ -1029,7 +1261,7 @@ function WideThoughtCard({
   }, [editBuf, saving, thought, onAppendVersion]);
 
   const startEditing = useCallback(() => {
-    if (panelCrystallized) return;
+    if (panelCrystallized || thought.isLocked) return;
     setEditBuf(thought.content || thought.summary);
     setEditing(true);
     requestAnimationFrame(() => {
@@ -1094,13 +1326,39 @@ function WideThoughtCard({
             v{thought.versionCount}
           </span>
         )}
-        {thought.isCrystallized && (
+        {thought.isLocked && (
           <span
-            title="Crystallized (locked)"
+            title="Local thought lock"
             style={{ color: 'var(--tint-indigo)', fontSize: '0.82rem' }}
           >
             ◈
           </span>
+        )}
+        {!panelCrystallized && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void onToggleThoughtLock(thought);
+            }}
+            aria-label={thought.isLocked ? 'Unlock this local thought' : 'Lock this local thought'}
+            title={thought.isLocked ? 'Unlock · allow a new version here' : 'Lock · freeze this local thread without settling the whole panel'}
+            style={{
+              appearance: 'none',
+              border: 0,
+              background: 'transparent',
+              color: thought.isLocked ? 'var(--tint-indigo)' : 'var(--muted)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              padding: 0,
+              cursor: 'pointer',
+              opacity: thought.isLocked ? 1 : 0.72,
+              marginLeft: 'auto',
+            }}
+          >
+            {thought.isLocked ? 'Unlock' : 'Lock'}
+          </button>
         )}
       </button>
 
@@ -1171,7 +1429,7 @@ function WideThoughtCard({
             WebkitBoxOrient: 'vertical',
             userSelect: 'text',
             WebkitUserSelect: 'text',
-            cursor: expanded && !panelCrystallized ? 'text' : 'default',
+            cursor: expanded && !panelCrystallized && !thought.isLocked ? 'text' : 'default',
           }}
           className="note-rendered"
         >
@@ -1209,7 +1467,7 @@ function WideThoughtCard({
               marginBottom: 6,
             }}
           >
-            Settled into Kesi
+            Settled into Patterns
           </div>
           <div
             style={{
@@ -1222,14 +1480,50 @@ function WideThoughtCard({
             This panel is no longer provisional. If you want to keep weaving here, uncrystallize it first.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" onClick={onOpenKesi} style={settledActionStyle(true)}>
-              Kesi
+            <button type="button" onClick={onOpenPatterns} style={settledActionStyle(true)}>
+              Patterns
             </button>
             <button type="button" onClick={onOpenRelations} style={settledActionStyle(false)}>
               Relations
             </button>
             <button type="button" onClick={() => void onUncrystallize()} style={settledActionStyle(false)}>
               Uncrystallize
+            </button>
+          </div>
+        </div>
+      ) : expanded && thought.isLocked ? (
+        <div
+          style={{
+            marginTop: 10,
+            padding: '10px 0 0',
+            borderTop: '0.5px solid var(--mat-border)',
+          }}
+        >
+          <div
+            className="t-caption2"
+            style={{
+              color: 'var(--tint-indigo)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontWeight: 700,
+              marginBottom: 6,
+            }}
+          >
+            Local thread locked
+          </div>
+          <div
+            style={{
+              color: 'var(--fg-secondary)',
+              fontSize: '0.8rem',
+              lineHeight: 1.5,
+              marginBottom: 8,
+            }}
+          >
+            This thought is frozen locally. The panel can still keep weaving elsewhere, but this thread will not take a new version until you unlock it.
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => void onToggleThoughtLock(thought)} style={settledActionStyle(true)}>
+              Unlock this thought
             </button>
           </div>
         </div>
@@ -1287,7 +1581,7 @@ function WideThoughtCard({
             <button
               type="button"
               onClick={() => void save()}
-              disabled={!draft.trim() || saving}
+              disabled={!draft.trim() || saving || thought.isLocked}
               style={{
                 background: draft.trim() ? 'var(--accent)' : 'transparent',
                 color: draft.trim() ? 'var(--bg)' : 'var(--muted)',

@@ -10,84 +10,44 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { replaceLoomOverlay } from '../lib/ai/surface-actions';
+import { useLoomOverlay } from '../lib/ai/use-loom-overlay';
 import { contextFromPathname } from '../lib/doc-context';
-import { OVERLAY_RESUME_KEY, type OverlayResumePayload } from '../lib/overlay-resume';
+import { consumeOverlayResume } from '../lib/overlay-resume';
 import { useSmallScreen } from '../lib/use-small-screen';
-import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { RehearsalPanel } from './unified/RehearsalPanel';
 
 export function RehearsalOverlay() {
   const smallScreen = useSmallScreen();
-  const [active, setActive] = useState(false);
   const [resumeDraft, setResumeDraft] = useState('');
   const [resumeLabel, setResumeLabel] = useState('');
-  const { mounted, visible } = useAnimatedPresence(active, 250);
   const pathname = usePathname();
   const ctx = contextFromPathname(pathname);
-
-  // Triggered by ⌘E (no selection) or ⌘P → Rehearsal
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.id === 'rehearsal') {
-        if (typeof detail.seedDraft === 'string') setResumeDraft(detail.seedDraft);
-        if (typeof detail.seedLabel === 'string') setResumeLabel(detail.seedLabel);
-        setActive((a) => !a);
-      }
-    };
-    window.addEventListener('loom:overlay:toggle', handler);
-    return () => window.removeEventListener('loom:overlay:toggle', handler);
-  }, []);
-
-  // Mutual exclusion
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id !== 'rehearsal') setActive(false);
-    };
-    window.addEventListener('loom:overlay:open', handler);
-    return () => window.removeEventListener('loom:overlay:open', handler);
-  }, []);
-
-  // Esc closes (but not from inside textarea — let textarea handle its own Esc)
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      e.preventDefault();
-      setActive(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [active]);
+  const { active, mounted, visible, open } = useLoomOverlay({
+    id: 'rehearsal',
+    pathname,
+    onToggleDetail: (detail) => {
+      if (typeof detail.seedDraft === 'string') setResumeDraft(detail.seedDraft);
+      if (typeof detail.seedLabel === 'string') setResumeLabel(detail.seedLabel);
+    },
+  });
 
   useEffect(() => {
-    if (!active) window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: '__none__' } }));
-  }, [active]);
-
-  useEffect(() => { setActive(false); }, [pathname]);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(OVERLAY_RESUME_KEY);
-      if (!raw) return;
-      const payload = JSON.parse(raw) as OverlayResumePayload;
-      if (payload.overlay !== 'rehearsal' || payload.href !== window.location.pathname) return;
-      sessionStorage.removeItem(OVERLAY_RESUME_KEY);
-      setResumeDraft(payload.seedDraft ?? '');
-      setResumeLabel(payload.seedLabel ?? '');
-      setActive(true);
-    } catch {}
-  }, []);
+    const href = pathname ?? (typeof window !== 'undefined' ? window.location.pathname : null);
+    if (!href) return;
+    const payload = consumeOverlayResume(sessionStorage, {
+      href,
+      overlay: 'rehearsal',
+    });
+    if (!payload) return;
+    setResumeDraft(payload.seedDraft ?? '');
+    setResumeLabel(payload.seedLabel ?? '');
+    open({ id: 'rehearsal', seedDraft: payload.seedDraft, seedLabel: payload.seedLabel });
+  }, [open, pathname]);
 
   const onSaved = useCallback((next: 'stay' | 'examine' = 'stay') => {
-    window.dispatchEvent(new CustomEvent('loom:trace:changed'));
     if (next === 'examine') {
-      window.dispatchEvent(new CustomEvent('loom:overlay:open', { detail: { id: 'examiner' } }));
-      requestAnimationFrame(() => {
-        window.dispatchEvent(new CustomEvent('loom:overlay:toggle', { detail: { id: 'examiner' } }));
-      });
+      replaceLoomOverlay({ id: 'examiner' });
     }
   }, []);
 

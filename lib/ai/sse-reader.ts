@@ -13,6 +13,10 @@ const INACTIVITY_TIMEOUT_MS = 60_000;
 export async function readSseToString(
   stream: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
+  handlers?: {
+    onDelta?: (delta: string, full: string) => void;
+    onNotice?: (notice: string) => void;
+  },
 ): Promise<string> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
@@ -51,7 +55,11 @@ export async function readSseToString(
           if (payload === '[DONE]') return result;
           try {
             const obj = JSON.parse(payload);
-            if (typeof obj.delta === 'string') result += obj.delta;
+            if (typeof obj.delta === 'string') {
+              result += obj.delta;
+              handlers?.onDelta?.(obj.delta, result);
+            }
+            if (typeof obj.notice === 'string') handlers?.onNotice?.(obj.notice);
             if (typeof obj.error === 'string') throw new Error(obj.error);
           } catch (e) {
             if (e instanceof SyntaxError) continue;

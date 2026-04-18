@@ -1,5 +1,5 @@
 'use client';
-import { getAiStage } from '../../lib/ai/stage-model';
+import { getAiStage, getAiSurface } from '../../lib/ai/stage-model';
 import { callAiPrompt } from '../../lib/ai/runtime';
 /**
  * RehearsalPanel · editable scratch surface for the Producing learning state.
@@ -46,6 +46,7 @@ type Props = {
 export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' }: Props) {
   const router = useRouter();
   const rehearsalStage = getAiStage('rehearsal-transform');
+  const rehearsalSurface = getAiSurface(rehearsalStage.family);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [transforming, setTransforming] = useState(false);
@@ -178,7 +179,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
   if (!docId) {
     return (
       <AiStageEmptyState
-        message="Pick a doc above and begin the next memory pass."
+        message={rehearsalSurface.emptyMessage ?? 'Pick a doc above and begin the next memory pass.'}
         actionLabel="Choose a doc"
         onAction={() => {}}
         actionDisabled
@@ -203,7 +204,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
       {/* Toolbar */}
       <AiStageHeader
         title={rehearsalStage.title}
-        helper="⌘K shape · ⌘S save · Save & ask"
+        helper={rehearsalSurface.helper}
         status={status}
         busy={transforming || saving}
       />

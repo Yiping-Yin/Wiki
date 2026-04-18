@@ -22,7 +22,6 @@ import { useEffect, useRef, useState } from 'react';
 import { contextFromPathname } from '../lib/doc-context';
 import {
   ensureBlockAnchorId,
-  filteredChildren,
   normalizeBlockText,
   rangeTextOffsets,
   stableFragmentAnchorId,
@@ -54,8 +53,6 @@ type Spot = {
 
 type Intent = 'ask' | 'capture' | 'highlight';
 
-// Lower minimum for math / code selections where text might be short
-// but still meaningful (e.g. "σ(z)" = 4 chars after normalization).
 const MIN_LEN = 2;
 
 function intentFromInput({
@@ -81,11 +78,8 @@ export function SelectionWarp() {
   const [tint, setTint] = useState<string>(HIGHLIGHT_TINTS[0]);
   const [intent, setIntent] = useState<Intent>('ask');
   const [touchActionsOpen, setTouchActionsOpen] = useState(false);
-  // Ref to the warp's outer DOM element so the document-level mouseup
-  // handler can detect "this click is on me, don't recompute".
   const warpRef = useRef<HTMLDivElement>(null);
 
-  // Restore last-used highlight color
   useEffect(() => {
     try {
       const t = localStorage.getItem(HIGHLIGHT_COLOR_KEY);
@@ -111,9 +105,6 @@ export function SelectionWarp() {
       const text = sel.toString().trim();
       if (text.length < MIN_LEN) { setSpot(null); return; }
 
-      // Use getBoundingClientRect instead of getClientRects — KaTeX math
-      // and code blocks render with absolute-positioned spans that produce
-      // fragmented or empty client rects. The bounding rect always works.
       const rect = range.getBoundingClientRect();
       if (rect.height < 4 || rect.width < 2) { setSpot(null); return; }
 
@@ -136,9 +127,6 @@ export function SelectionWarp() {
         ? blockId
         : stableFragmentAnchorId(blockId, charOffsets.start, charOffsets.end);
 
-      // Position ✦ at the end of the selection (near the cursor release point),
-      // not at the right edge of the bounding rect. This way the user's
-      // pointer is already close to ✦ when they release the mouse.
       const endRect = sel && sel.rangeCount > 0
         ? (() => {
             const r = sel.getRangeAt(0);
@@ -182,25 +170,14 @@ export function SelectionWarp() {
       });
     };
 
-    // Show on mouseup (after a drag-select completes) — this avoids
-    // the problem of the warp flashing during the drag itself.
     const onMouseUp = (e: MouseEvent) => {
-      // If the click was on the warp itself, do NOT recompute —
-      // that would re-set spot from the still-existing selection and
-      // cause a re-render that interferes with the click handler.
       const target = e.target as Node | null;
       if (target && warpRef.current && warpRef.current.contains(target)) return;
-      // Wait one tick for the browser to settle the selection state.
       defer(compute);
     };
 
-    const onTouchEnd = () => {
-      defer(compute);
-    };
+    const onTouchEnd = () => { defer(compute); };
 
-    // selectionchange fires when selection becomes empty (e.g. user
-    // clicked elsewhere) — hide the warp in that case. We do NOT use
-    // it for "show" because it fires too aggressively during drag.
     const onSelectionChange = () => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
@@ -249,10 +226,6 @@ export function SelectionWarp() {
   const ask = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // §37 · trigger ChatFocus — vertical focus mode. The doc collapses
-    // around the selected paragraph, an inline discussion appears below.
-    // Pass explicit anchor details so ChatFocus does not depend on the
-    // browser preserving the native selection after pointerdown.
     window.dispatchEvent(new CustomEvent('loom:chat:focus', {
       detail: {
         text: spot.text,
@@ -264,7 +237,6 @@ export function SelectionWarp() {
         localOffsetPx: spot.localOffsetPx,
       },
     }));
-    // §23 extended · Ask absorbs Highlight
     autoHighlight(spot.text);
     setSpot(null);
     setHovered(false);
@@ -307,7 +279,6 @@ export function SelectionWarp() {
     return next;
   };
 
-  // Trigger on pointerdown so click cannot be swallowed by anything else.
   const trigger = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -317,9 +288,6 @@ export function SelectionWarp() {
     }
     const nextIntent = intentFromInput(e);
     if (nextIntent === 'capture') {
-      // ⌘-click → capture quick path: create a thought-anchor with empty
-      // content/summary (just the quote). No dialog, no AI. User elaborates
-      // later in the wide state of ReviewThoughtMap.
       void captureCurrentSelection().then((captured) => {
         if (!captured) return;
         window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
@@ -328,12 +296,11 @@ export function SelectionWarp() {
             anchorId: captured.anchorId,
             quote: captured.quote,
             reviewHint: '⌘/ 打开 Thought Map 延伸',
-            viewport: {
-              x: spot.left,
-              y: spot.top,
-              height: spot.height,
-            },
+            viewport: { x: spot.left, y: spot.top, height: spot.height },
           },
+        }));
+        window.dispatchEvent(new CustomEvent('loom:capture-success', {
+          detail: { label: 'Weft Woven' }
         }));
       });
       setSpot(null);
@@ -341,7 +308,6 @@ export function SelectionWarp() {
       setTouchActionsOpen(false);
       setIntent('ask');
     } else if (nextIntent === 'highlight') {
-      // ⌥-click or right-click → manual highlight only (no Ask)
       const text = spot.text;
       const ctx = contextFromPathname(window.location.pathname);
       void appendEventForDoc(
@@ -361,21 +327,9 @@ export function SelectionWarp() {
     }
   };
 
-  const actionLabel = intent === 'capture'
-    ? 'capture'
-    : intent === 'highlight'
-      ? 'highlight'
-      : 'ask';
-  const actionHint = intent === 'capture'
-    ? '⌘ click'
-    : intent === 'highlight'
-      ? '⌥ click'
-      : 'click';
-  const threadColor = intent === 'capture'
-    ? 'var(--tint-indigo)'
-    : intent === 'highlight'
-      ? tint
-      : 'var(--accent)';
+  const actionLabel = intent === 'capture' ? 'capture' : intent === 'highlight' ? 'highlight' : 'ask';
+  const actionHint = intent === 'capture' ? '⌘ click' : intent === 'highlight' ? '⌥ click' : 'click';
+  const threadColor = intent === 'capture' ? 'var(--tint-indigo)' : intent === 'highlight' ? tint : 'var(--accent)';
   const showLabel = !smallScreen && (hovered || intent !== 'ask');
 
   const capture = async () => {
@@ -387,12 +341,11 @@ export function SelectionWarp() {
         anchorId: captured.anchorId,
         quote: captured.quote,
         reviewHint: '⌘/ 打开 Thought Map 延伸',
-        viewport: {
-          x: spot.left,
-          y: spot.top,
-          height: spot.height,
-        },
+        viewport: { x: spot.left, y: spot.top, height: spot.height },
       },
+    }));
+    window.dispatchEvent(new CustomEvent('loom:capture-success', {
+      detail: { label: 'Weft Woven' }
     }));
     setSpot(null);
     setHovered(false);
@@ -433,8 +386,6 @@ export function SelectionWarp() {
       style={{
         position: 'absolute',
         top: spot.top,
-        // 40px wide click target, very forgiving for trackpad.
-        // The visible thread is centered in the middle.
         left: spot.left - 20,
         height: spot.height,
         zIndex: 9999,
@@ -446,7 +397,6 @@ export function SelectionWarp() {
         userSelect: 'none',
         WebkitUserSelect: 'none',
         cursor: 'pointer',
-        // Ensure no parent's transform creates a stacking context confusion
         background: 'transparent',
       }}
     >
@@ -455,87 +405,98 @@ export function SelectionWarp() {
           className="t-caption2"
           style={{
             position: 'absolute',
-            left: 24,
+            left: 28,
             top: '50%',
             transform: 'translateY(-50%)',
-            padding: '3px 0',
-            borderBottom: `0.5px solid color-mix(in srgb, ${threadColor} 40%, transparent)`,
-            background: 'color-mix(in srgb, var(--bg) 90%, transparent)',
+            padding: '4px 10px',
+            background: 'var(--mat-reg-bg)',
+            backdropFilter: 'var(--mat-blur)',
+            WebkitBackdropFilter: 'var(--mat-blur)',
+            border: '0.5px solid var(--mat-border)',
+            borderRadius: 'var(--r-2)',
+            boxShadow: 'var(--shadow-1)',
             color: threadColor,
             fontWeight: 700,
             letterSpacing: '0.04em',
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            animation: 'loom-overlay-fade-in 0.18s var(--ease) both',
           }}
         >
-          {actionLabel} · {actionHint}
+          <span>{actionLabel}</span>
+          <span aria-hidden style={{ opacity: 0.3, width: 0.5, height: 10, background: 'var(--fg)' }} />
+          <span style={{ fontSize: '0.62rem', color: 'var(--muted)', fontWeight: 600 }}>{actionHint}</span>
         </div>
       )}
       <span
         aria-hidden
         style={{
           display: 'block',
-          width: hovered || intent !== 'ask' ? 3 : 1.5,
+          width: hovered || intent !== 'ask' ? 3.5 : 2,
           height: '100%',
           background: threadColor,
-          opacity: hovered || intent !== 'ask' ? 1 : 0.6,
-          borderRadius: 2,
+          opacity: hovered || intent !== 'ask' ? 1 : 0.45,
+          borderRadius: 4,
           boxShadow: hovered || intent !== 'ask'
-            ? `0 0 12px color-mix(in srgb, ${threadColor} 35%, transparent)`
+            ? `0 0 14px color-mix(in srgb, ${threadColor} 45%, transparent)`
             : 'none',
-          transition: 'opacity 0.12s var(--ease), box-shadow 0.12s var(--ease), background 0.12s var(--ease), width 0.12s var(--ease)',
+          transition: 'opacity 0.18s var(--ease), box-shadow 0.18s var(--ease), background 0.18s var(--ease), width 0.18s var(--ease)',
           flexShrink: 0,
+          animation: 'string-vibrate 0.4s var(--ease-spring) both',
         }}
       />
       {smallScreen && touchActionsOpen && (
         <div
           style={{
             position: 'fixed',
-            left: 12,
-            right: 12,
-            bottom: 'max(12px, env(safe-area-inset-bottom, 0px) + 8px)',
+            left: 16,
+            right: 16,
+            bottom: 'max(16px, env(safe-area-inset-bottom, 0px) + 12px)',
             display: 'flex',
-            gap: 8,
-            flexWrap: 'wrap',
-            padding: '0.7rem 0.8rem',
-            borderTop: '0.5px solid var(--mat-border)',
-            borderBottom: '0.5px solid var(--mat-border)',
-            borderRadius: 14,
-            background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
-            boxShadow: 'var(--shadow-2)',
+            flexDirection: 'column',
+            padding: '0.4rem',
+            background: 'var(--mat-thick-bg)',
+            backdropFilter: 'var(--mat-blur-thick)',
+            WebkitBackdropFilter: 'var(--mat-blur-thick)',
+            border: '0.5px solid var(--mat-border)',
+            borderRadius: 'var(--r-4)',
+            boxShadow: 'var(--shadow-3)',
             zIndex: 10000,
+            animation: 'toastIn 0.3s var(--ease-spring) both',
           }}
         >
-          <button type="button" onClick={(e) => ask(e as unknown as React.MouseEvent)} style={touchActionStyle(true)}>
-            Ask
-          </button>
-          <button type="button" onClick={() => void capture()} style={touchActionStyle(false)}>
-            Capture
-          </button>
-          <button type="button" onClick={highlightSelection} style={touchActionStyle(false)}>
-            Mark
-          </button>
-          <button type="button" onClick={() => setTouchActionsOpen(false)} style={touchActionStyle(false)}>
-            Close
-          </button>
+          <button type="button" onClick={(e) => ask(e as unknown as React.MouseEvent)} style={touchActionStyle(true)}>Ask AI</button>
+          <div style={{ height: 0.5, background: 'var(--mat-border)', margin: '0 0.6rem' }} />
+          <button type="button" onClick={() => void capture()} style={touchActionStyle(false)}>Capture</button>
+          <div style={{ height: 0.5, background: 'var(--mat-border)', margin: '0 0.6rem' }} />
+          <button type="button" onClick={highlightSelection} style={touchActionStyle(false)}>Mark / Highlight</button>
+          <div style={{ height: 0.5, background: 'var(--mat-border)', margin: '0 0.6rem' }} />
+          <button type="button" onClick={() => setTouchActionsOpen(false)} style={{ ...touchActionStyle(false), color: 'var(--tint-red)' }}>Cancel</button>
         </div>
       )}
+      <style>{`
+        @keyframes string-vibrate {
+          0% { transform: scaleX(1); opacity: 0; }
+          20% { transform: scaleX(1.8); opacity: 1; }
+          40% { transform: scaleX(0.8); }
+          60% { transform: scaleX(1.3); }
+          80% { transform: scaleX(0.95); }
+          100% { transform: scaleX(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
 
 function touchActionStyle(primary: boolean): React.CSSProperties {
   return {
-    appearance: 'none',
-    border: 0,
-    background: primary ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elevated))' : 'transparent',
-    color: primary ? 'var(--accent)' : 'var(--fg-secondary)',
-    borderBottom: `0.5px solid ${primary ? 'color-mix(in srgb, var(--accent) 38%, var(--mat-border))' : 'var(--mat-border)'}`,
-    padding: '0.35rem 0',
-    fontSize: '0.78rem',
-    fontWeight: 700,
-    letterSpacing: '0.03em',
-    cursor: 'pointer',
-    minWidth: 64,
+    appearance: 'none', border: 0, background: 'transparent',
+    color: primary ? 'var(--accent)' : 'var(--fg)',
+    padding: '0.85rem 1rem', fontSize: '0.94rem', fontWeight: primary ? 650 : 450,
+    letterSpacing: '-0.01em', cursor: 'pointer', width: '100%',
+    textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center',
   };
 }

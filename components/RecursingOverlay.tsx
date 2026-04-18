@@ -4,44 +4,15 @@
  * Lazy-loads trace data only when active.
  */
 import { useEffect, useState } from 'react';
+import { useLoomOverlay } from '../lib/ai/use-loom-overlay';
 import { useSmallScreen } from '../lib/use-small-screen';
-import { useAnimatedPresence } from '../lib/use-animated-presence';
 import { RecursingPanel } from './unified/RecursingPanel';
 
 export function RecursingOverlay() {
   const smallScreen = useSmallScreen();
-  const [active, setActive] = useState(false);
-  const { mounted, visible } = useAnimatedPresence(active, 250);
-
-  // Triggered by ⌘P tool action or future chord
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id === 'recursing') setActive((a) => !a);
-    };
-    window.addEventListener('loom:overlay:toggle', handler);
-    return () => window.removeEventListener('loom:overlay:toggle', handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.id !== 'recursing') setActive(false);
-    };
-    window.addEventListener('loom:overlay:open', handler);
-    return () => window.removeEventListener('loom:overlay:open', handler);
-  }, []);
-
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      e.preventDefault();
-      setActive(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [active]);
+  const { mounted, visible, close } = useLoomOverlay({
+    id: 'recursing',
+  });
 
   if (!mounted) return null;
 
@@ -70,7 +41,7 @@ export function RecursingOverlay() {
     >
       <div style={{ padding: '10px 16px', borderBottom: '0.5px solid var(--mat-border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem' }}>
         <strong style={{ color: 'var(--accent)', flex: 1 }}>Reconstructions</strong>
-        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => setActive(false)}>Esc ×</span>
+        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => close(true)}>Esc ×</span>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>
         <RecursingInner />
