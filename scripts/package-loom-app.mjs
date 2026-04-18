@@ -2,10 +2,17 @@ import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const home = homedir();
 const derivedDataRoot = path.join(home, 'Library/Developer/Xcode/DerivedData');
-const outputRoot = path.join('/Users/yinyiping/Desktop/Wiki', 'output');
+
+export function resolveOutputRoot(scriptUrl = import.meta.url) {
+  const root = path.resolve(path.dirname(fileURLToPath(scriptUrl)), '..');
+  return path.join(root, 'output');
+}
+
+const outputRoot = resolveOutputRoot();
 const zipPath = path.join(outputRoot, 'Loom-replacement.zip');
 
 async function listDirSafe(dir) {
@@ -72,7 +79,13 @@ async function main() {
   console.log(zipPath);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+const isDirectRun = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
