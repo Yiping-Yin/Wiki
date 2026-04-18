@@ -1,6 +1,6 @@
 # Loom
 
-**Think on the Loom. Live in your Kesi.**
+**Think on the Loom. Live in your Patterns.**
 
 ---
 
@@ -14,11 +14,21 @@ In the AI era, two things matter that no chat tool gives you at the same time: *
 
 - `npm run knowledge:refresh` rebuilds the local knowledge caches under `knowledge/.cache/` and prunes old generated files from `public/`.
 - `npm run verify` runs typecheck, production build, and smoke checks in the correct order.
+- `npm run app`, `npm run app:user`, and `npm run app:system` build and install the macOS shell.
+- `npm run app:where` prints the currently installed Loom.app location.
 - GitHub Actions runs `build -> typecheck -> smoke` and intentionally skips the chat-specific smoke path.
 - Generated knowledge bodies, manifests, and derived indexes now live in `knowledge/.cache/` rather than tracked `public/` or `lib/` files.
 - [docs/README.md](/Users/yinyiping/Desktop/Wiki/docs/README.md) indexes current design and process docs.
 - [DESIGN_ONBOARDING.md](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_ONBOARDING.md) is the fastest collaborator-facing intro to the current product/design model.
 - [CURRENT_DESIGN_CANON.md](/Users/yinyiping/Desktop/Wiki/docs/design/CURRENT_DESIGN_CANON.md) is the shortest current product/design source of truth; use it before historical specs.
+
+## Current surfaces
+
+- `/` — Home. A single foreground workbench showing the next quiet move.
+- `/today` — the daily desk for returns, review, and active threads.
+- `/knowledge` — Atlas. Collection-level entry point into the library.
+- `/patterns` — the archive of crystallized panels and settled relations.
+- `/wiki/*`, `/knowledge/<category>/<doc>`, `/uploads/*` — reading surfaces where capture, rehearsal, and examiner flows happen.
 
 ---
 
@@ -85,9 +95,9 @@ A kesi weaver's mind holds the entire pattern before the first thread is laid. L
 
 **Reviewing** — hover any `◆` to peek. Press `Cmd+/` to enter review mode: the source recedes, a centered glass **Live Note** becomes the main object of attention, and a companion **thought map** appears beside it.
 
-**Crystallizing** — when a document's thought map is complete, crystallize it. The panel — your structured understanding of that document — enters your kesi.
+**Crystallizing** — when a document's thought map is complete, crystallize it. The panel — your structured understanding of that document — enters your Patterns archive.
 
-**Living in your kesi** — open `/kesi` to see every panel you've ever woven. Each one is a complete piece of thinking, permanently linked to its source. Your personal fabric of understanding, growing one panel at a time.
+**Living in your patterns** — open `/patterns` to see every panel you've ever woven. Each one is a complete piece of thinking, permanently linked to its source. Atlas at `/knowledge` stays collection-shaped; Patterns at `/patterns` stays work-shaped.
 
 ---
 
@@ -105,13 +115,13 @@ It is the discreteness that lets the picture be seen.
 
 - **Not a note app.** Notes are dead text. Thought-anchors are living structures linked to sources.
 - **Not a chat app.** Chats are linear and disposable. Loom anchors understanding to source.
-- **Not a wiki.** Wikis are read by everyone. Your kesi is woven by you.
+- **Not a wiki.** Wikis are read by everyone. Your pattern archive is woven by you.
 - **Not an AI assistant.** AI is the second weaver, never the first.
 - **Not a productivity tool.** Loom doesn't help you do more. It helps you understand more.
 
 ---
 
-> *Think on the Loom. Live in your Kesi.*
+> *Think on the Loom. Live in your Patterns.*
 
 ---
 

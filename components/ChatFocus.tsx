@@ -30,6 +30,12 @@ import { isThoughtPositionCrystallized } from '../lib/thought-containers';
 import { getAiStage, getAiSurface } from '../lib/ai/stage-model';
 import { formatAiRuntimeErrorMessage, resolveAiNotice } from '../lib/ai-provider-health';
 import { runAiText } from '../lib/ai/runtime';
+import {
+  buildClarificationPasses,
+  getCurrentSynthesis,
+  shouldShowClarificationHistory,
+} from '../lib/chat-focus-history';
+import { buildSourceExcerpt } from '../lib/chat-focus-source';
 import { computeChatFocusPosition } from '../lib/chat-focus-layout';
 import { openSettingsPanel } from '../lib/settings-panel';
 import { useAiHealth } from '../lib/use-ai-health';
@@ -762,8 +768,6 @@ export function ChatFocus() {
     close();
   }, [turns, committing, activeTrace, activeTraceId, ctx, anchor, append, streamChat, close, focusedEl, isCurrentContainerLocked]);
 
-  if (!anchor) return null;
-
   const hasEditorialBody =
     turns.length > 0
     || (!!streamBuf && !committing)
@@ -772,6 +776,20 @@ export function ChatFocus() {
     || !!runtimeNotice
     || !availability.canSend;
   const desktopEditorial = !smallScreen;
+  const clarificationPasses = useMemo(() => buildClarificationPasses(turns), [turns]);
+  const currentSynthesis = useMemo(() => getCurrentSynthesis(turns, streamBuf), [turns, streamBuf]);
+  const sourceExcerpt = useMemo(() => buildSourceExcerpt(anchor?.text ?? ''), [anchor?.text]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedPassIndex, setSelectedPassIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!shouldShowClarificationHistory(turns.length)) {
+      setHistoryOpen(false);
+      setSelectedPassIndex(null);
+    }
+  }, [turns.length]);
+
+  if (!anchor) return null;
 
   return (
     <div
@@ -877,9 +895,33 @@ export function ChatFocus() {
           }}
         >×</button>
         ) : null}
+        {hasEditorialBody ? (
+          <div
+            style={{
+              marginBottom: desktopEditorial ? '0.42rem' : '0.72rem',
+              fontSize: '0.74rem',
+              lineHeight: 1.45,
+              color: 'var(--fg-secondary)',
+              opacity: 0.86,
+              borderBottom: desktopEditorial ? '0.5px solid color-mix(in srgb, var(--mat-border) 26%, transparent)' : 'none',
+              paddingBottom: desktopEditorial ? '0.34rem' : 0,
+            }}
+          >
+            <span style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem', marginRight: 8 }}>
+              Current source
+            </span>
+            <span style={{ fontStyle: 'italic' }}>{sourceExcerpt}</span>
+          </div>
+        ) : null}
         {/* Accumulated turns */}
         {turns.map((t, i) => (
-          <div key={i} style={{ marginBottom: desktopEditorial ? '0.72rem' : '1.15rem' }}>
+          <div
+            key={i}
+            style={{
+              marginBottom: desktopEditorial ? '0.72rem' : '1.15rem',
+              display: i === turns.length - 1 ? 'block' : 'none',
+            }}
+          >
             {turns.length > 1 ? (
               <div style={{
                 fontSize: '0.72rem',
@@ -919,6 +961,90 @@ export function ChatFocus() {
             <NoteRenderer source={streamBuf} />
           </div>
         )}
+
+        {shouldShowClarificationHistory(turns.length) ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              marginBottom: desktopEditorial ? '0.75rem' : '0.9rem',
+              color: 'var(--muted)',
+              fontSize: '0.74rem',
+            }}
+          >
+            <button
+              onClick={() => setHistoryOpen((open) => !open)}
+              style={{
+                background: 'transparent',
+                border: 0,
+                padding: 0,
+                cursor: 'pointer',
+                color: 'inherit',
+                fontSize: 'inherit',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                opacity: 0.7,
+              }}
+            >
+              {historyOpen ? 'Hide passes' : 'Previous passes'}
+            </button>
+            {!historyOpen ? (
+              <span style={{ opacity: 0.6 }}>
+                {clarificationPasses.map((pass) => pass.label).join(' · ')}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {historyOpen && clarificationPasses.length > 0 ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: smallScreen ? '1fr' : 'minmax(168px, 220px) minmax(0, 1fr)',
+              gap: 12,
+              marginBottom: desktopEditorial ? '0.82rem' : '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {clarificationPasses.map((pass) => {
+                const active = selectedPassIndex === pass.index;
+                return (
+                  <button
+                    key={pass.index}
+                    onClick={() => setSelectedPassIndex((current) => current === pass.index ? null : pass.index)}
+                    style={{
+                      textAlign: 'left',
+                      background: active ? 'color-mix(in srgb, var(--accent-soft) 48%, transparent)' : 'transparent',
+                      border: active ? '0.5px solid color-mix(in srgb, var(--accent) 26%, var(--mat-border))' : '0.5px solid color-mix(in srgb, var(--mat-border) 48%, transparent)',
+                      borderRadius: 8,
+                      padding: '0.42rem 0.55rem',
+                      cursor: 'pointer',
+                      color: active ? 'var(--fg)' : 'var(--fg-secondary)',
+                      fontSize: '0.78rem',
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {pass.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              className="prose-notion"
+              style={{
+                fontSize: 'inherit',
+                lineHeight: 'inherit',
+                fontFamily: 'var(--serif)',
+                maxWidth: 'none',
+                color: 'var(--fg-secondary)',
+                opacity: 0.92,
+              }}
+            >
+              <NoteRenderer source={clarificationPasses.find((pass) => pass.index === selectedPassIndex)?.answer ?? currentSynthesis} />
+            </div>
+          </div>
+        ) : null}
 
         {committing && (
           <AiInlineHint>{commitStage.title}…</AiInlineHint>
