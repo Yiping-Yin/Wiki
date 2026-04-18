@@ -28,6 +28,7 @@ export async function runCli(prompt: string, opts: {
   cli?: CliKind;
   timeoutMs?: number;
   model?: string;
+  codexConfigOverrides?: string[];
   onChunk?: (chunk: string) => void;
 } = {}): Promise<string> {
   const cli: CliKind = opts.cli === 'claude' || opts.cli === 'codex' ? opts.cli : DEFAULT_CLI;
@@ -55,8 +56,11 @@ export async function runCli(prompt: string, opts: {
       'never',
       '-o',
       codexOutputPath,
-      prompt,
     ];
+    for (const override of opts.codexConfigOverrides ?? []) {
+      args.push('-c', override);
+    }
+    args.push(prompt);
     if (opts.model) args.push('--model', opts.model);
   }
 
