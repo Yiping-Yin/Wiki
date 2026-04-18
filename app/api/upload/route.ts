@@ -7,14 +7,14 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
 import { KNOWLEDGE_ROOT } from '../../../lib/server-config';
+import { runKnowledgeIngest } from '../../../lib/knowledge-ingest';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
-const ALLOWED = new Set(['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.csv', '.tsv', '.json', '.ipynb', '.xlsx', '.xls']);
+const ALLOWED = new Set(['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.mdx', '.csv', '.tsv', '.json', '.ipynb', '.xlsx', '.xls']);
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
 function safeName(name: string): string {
@@ -29,6 +29,10 @@ function slugify(name: string): string {
     .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 80) || 'file';
+}
+
+function isTextExtractable(ext: string) {
+  return ['.txt', '.md', '.mdx'].includes(ext);
 }
 
 export async function POST(req: Request) {
@@ -84,11 +88,7 @@ export async function POST(req: Request) {
 
     // Re-run ingest so the nav updates
     try {
-      await new Promise<void>((resolve, reject) => {
-        execFile('npx', ['tsx', 'scripts/ingest-knowledge.ts'],
-          { cwd: process.cwd(), timeout: 30000 },
-          (err) => err ? reject(err) : resolve());
-      });
+      await runKnowledgeIngest();
     } catch {}
 
     const catSlug = slugify(categoryName);
@@ -98,7 +98,9 @@ export async function POST(req: Request) {
       name: finalName,
       size: file.size,
       href: `/knowledge/${catSlug}`,
+      docHref: `/knowledge/${catSlug}/${slugify(safe)}`,
       category: categoryName,
+      textExtractable: isTextExtractable(ext),
     });
   }
 

@@ -195,3 +195,22 @@ export function recompileSystemPrompt(ctx: {
     LOOM_AI_RULES,
   ].join('\n');
 }
+
+export function organizeIntoNoteSystemPrompt(ctx: {
+  sourceTitle: string;
+  importedSources?: Array<{ name: string; text: string }>;
+}): string {
+  const imported = (ctx.importedSources ?? [])
+    .map((item) => `## ${item.name}\n${item.text.slice(0, 12000)}`)
+    .join('\n\n');
+
+  return [
+    `You are inside Loom. The user is establishing the first source page for "${ctx.sourceTitle}".`,
+    ``,
+    `Your job: rewrite the user's raw draft into one structured markdown note that can live as the canonical first source page.`,
+    `Do not answer like chat. Do not narrate. Output only the document markdown.`,
+    `Use headings and bullet lists when they improve clarity.`,
+    imported ? `Imported source material:\n\n${imported}` : '',
+    LOOM_AI_RULES,
+  ].join('\n');
+}

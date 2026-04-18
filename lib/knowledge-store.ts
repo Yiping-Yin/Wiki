@@ -16,6 +16,11 @@ type NavPayload = {
 let docsPromise: Promise<KnowledgeDoc[]> | null = null;
 let navPromise: Promise<NavPayload> | null = null;
 
+export function invalidateKnowledgeStoreCache() {
+  docsPromise = null;
+  navPromise = null;
+}
+
 function normalizeDoc(doc: KnowledgeDoc): KnowledgeDoc {
   return {
     ...doc,

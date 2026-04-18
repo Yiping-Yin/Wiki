@@ -7,8 +7,8 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
 import { KNOWLEDGE_ROOT } from '../../../../lib/server-config';
+import { runKnowledgeIngest } from '../../../../lib/knowledge-ingest';
 
 export const runtime = 'nodejs';
 
@@ -43,19 +43,12 @@ export async function POST(req: Request) {
     }
 
     // Re-run ingest to update navigation
-    const projectRoot = process.cwd();
-    await new Promise<void>((resolve, reject) => {
-      execFile(
-        'npx', ['tsx', 'scripts/ingest-knowledge.ts'],
-        { cwd: projectRoot, timeout: 30000 },
-        (err) => err ? reject(err) : resolve(),
-      );
-    });
+    await runKnowledgeIngest();
 
     const slug = slugify(trimmed);
     return Response.json({
       slug,
-      href: `/knowledge/${slug}`,
+      href: `/knowledge/${slug}/${slug}`,
       name: trimmed,
     });
   } catch (e: any) {
