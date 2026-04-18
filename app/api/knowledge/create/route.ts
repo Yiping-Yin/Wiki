@@ -7,6 +7,7 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { LOOM_CAPTURE_DOC_MARKER } from '../../../../lib/knowledge-doc-state';
 import { KNOWLEDGE_ROOT } from '../../../../lib/server-config';
 import { runKnowledgeIngest } from '../../../../lib/knowledge-ingest';
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
     await fs.mkdir(dirPath, { recursive: true });
     const readmePath = path.join(dirPath, `${trimmed}.md`);
     try { await fs.access(readmePath); } catch {
-      await fs.writeFile(readmePath, `# ${trimmed}\n`);
+      await fs.writeFile(readmePath, `${LOOM_CAPTURE_DOC_MARKER}\n# ${trimmed}\n`);
     }
 
     // Re-run ingest to update navigation

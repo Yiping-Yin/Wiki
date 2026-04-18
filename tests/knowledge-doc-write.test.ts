@@ -31,6 +31,11 @@ test('writeKnowledgeDocBody writes the source file and reruns ingest', async () 
       fileBody = String(content);
       calls.push('write');
     },
+    readBody: async () => ({
+      id: 'know-demo',
+      title: 'Demo',
+      body: '<!-- loom:capture-doc -->\n# Demo\n',
+    }),
     ingest: async () => {
       calls.push('ingest');
     },
@@ -40,4 +45,35 @@ test('writeKnowledgeDocBody writes the source file and reruns ingest', async () 
   assert.match(fileBody, /## Core idea/);
   assert.deepEqual(calls, ['write', 'ingest']);
   assert.equal(result.href, '/knowledge/demo/demo');
+});
+
+test('writeKnowledgeDocBody rejects non-placeholder source docs', async () => {
+  await assert.rejects(
+    () =>
+      writeKnowledgeDocBody({
+        docId: 'know-demo',
+        body: '# Organized\n\nReal content',
+        loadDocs: async () =>
+          [
+            {
+              id: 'know-demo',
+              title: 'Demo',
+              category: 'Demo',
+              categorySlug: 'demo',
+              fileSlug: 'demo',
+              sourcePath: 'Demo/demo.md',
+              ext: '.md',
+              preview: '',
+              size: 0,
+              hasText: true,
+            },
+          ] as any,
+        readBody: async () => ({
+          id: 'know-demo',
+          title: 'Demo',
+          body: '# Existing imported markdown\n\nHands-written source',
+        }),
+      }),
+    /not a Loom-owned empty capture doc/i,
+  );
 });
