@@ -40,6 +40,8 @@ import {
   type Panel as StoredPanel,
 } from '../lib/panel';
 import { buildWeavePreview, useAllWeaves, type DirectedWeavePreview, type WeavePreviewItem } from '../lib/weave';
+import { BlindRecall } from './unified/BlindRecall';
+import { WeaveKindBadge } from './WeaveKindBadge';
 
 const TINTS = [
   'var(--tint-blue)',   'var(--tint-indigo)', 'var(--tint-purple)',
@@ -127,6 +129,7 @@ export function PatternsView() {
   const [mounted, setMounted] = useState(false);
   const [focusDocId, setFocusDocId] = useState<string | null>(null);
   const [revisionPanelId, setRevisionPanelId] = useState<string | null>(null);
+  const [blindRecallPanel, setBlindRecallPanel] = useState<Panel | null>(null);
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('recent');
@@ -283,25 +286,28 @@ export function PatternsView() {
               const panelReturnLabel = learningTargetReturnLabel(panelTarget, targetState.state);
               return (
             <div key={relatedPanel.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, opacity: panelState?.kind && panelState.kind !== 'pinned' ? 0.9 : 1 }}>
-              <button
-                type="button"
-                onClick={() => focusPanelInPatterns(relatedPanel.panel)}
-                style={{
-                  appearance: 'none',
-                  border: 0,
-                  background: 'transparent',
-                  color: relatedPanel.status === 'confirmed' ? 'var(--accent)' : 'var(--fg-secondary)',
-                  fontSize: '0.72rem',
-                  fontWeight: relatedPanel.status === 'confirmed' ? 700 : 600,
-                  letterSpacing: '0.02em',
-                  padding: 0,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                {relatedPanel.panel.title}
-                {relatedPanel.status === 'confirmed' ? <span style={{ color: 'var(--muted)' }}> · held</span> : null}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => focusPanelInPatterns(relatedPanel.panel)}
+                  style={{
+                    appearance: 'none',
+                    border: 0,
+                    background: 'transparent',
+                    color: relatedPanel.status === 'confirmed' ? 'var(--accent)' : 'var(--fg-secondary)',
+                    fontSize: '0.72rem',
+                    fontWeight: relatedPanel.status === 'confirmed' ? 700 : 600,
+                    letterSpacing: '0.02em',
+                    padding: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {relatedPanel.panel.title}
+                  {relatedPanel.status === 'confirmed' ? <span style={{ color: 'var(--muted)' }}> · held</span> : null}
+                </button>
+                <WeaveKindBadge weaveId={relatedPanel.id} kind={relatedPanel.kind} />
+              </div>
               {panelState && <LearningTargetStateBadge label={panelState.label} />}
               {panelReturnLabel && (
                 <div className="t-caption2" style={{ color: 'var(--muted)' }}>
@@ -556,6 +562,14 @@ export function PatternsView() {
                     style={secondaryLinkStyle}
                   >
                     Relations
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBlindRecallPanel(returnPanel)}
+                    style={secondaryLinkStyle}
+                    title="Test your memory of this panel"
+                  >
+                    Self-test
                   </button>
                   {focusPanel && (
                     <button type="button" onClick={clearFocus} style={secondaryLinkStyle}>
@@ -1053,6 +1067,17 @@ export function PatternsView() {
                           Collection
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBlindRecallPanel(panel);
+                        }}
+                        style={secondaryLinkStyle}
+                        title="Say it from memory — don't look"
+                      >
+                        Recall
+                      </button>
                     </div>
 
                     {panel.sections.length > 0 && (
@@ -1128,9 +1153,17 @@ export function PatternsView() {
       );
 
       return (
-      <PatternsShell>
-      {content}
-      </PatternsShell>
+      <>
+        <PatternsShell>
+          {content}
+        </PatternsShell>
+        {blindRecallPanel && (
+          <BlindRecall
+            panel={blindRecallPanel}
+            onClose={() => setBlindRecallPanel(null)}
+          />
+        )}
+      </>
       );
       }
 

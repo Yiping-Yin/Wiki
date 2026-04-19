@@ -64,6 +64,7 @@ import {
   buildDeskLearningTargetPresenter,
   buildDeskResolvedOutcomePresenter,
 } from '../../lib/shared/desk-presenters';
+import { DueForReview } from '../../components/unified/DueForReview';
 
 type DocLite = {
   id: string;
@@ -351,6 +352,7 @@ export function TodayClient({
       <QuietScene tone="today">
         <QuietSceneColumn>
           <TodayHeader />
+          <DueForReview />
           {focusTarget ? (
             <QuietGuideCard
               {...(() => {

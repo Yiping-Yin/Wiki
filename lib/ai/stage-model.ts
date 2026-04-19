@@ -7,6 +7,7 @@ export type AiStageId =
   | 'rehearsal-transform'
   | 'examiner-question'
   | 'examiner-grade'
+  | 'blind-recall-grade'
   | 'ingestion-summary'
   | 'capture-organize';
 
@@ -117,6 +118,13 @@ const STAGES: Record<AiStageId, AiStageSpec> = {
     title: 'Grade one answer',
     role: 'verifier',
     output: 'one pass/retry judgment',
+  },
+  'blind-recall-grade': {
+    id: 'blind-recall-grade',
+    family: 'examiner',
+    title: 'Grade a blind recall',
+    role: 'recall-grader',
+    output: 'one remembered/misremembered/missed scorecard',
   },
   'ingestion-summary': {
     id: 'ingestion-summary',
