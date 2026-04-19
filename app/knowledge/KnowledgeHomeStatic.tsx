@@ -13,9 +13,22 @@ export function KnowledgeHomeStatic({
   groups,
   totalCollections,
   totalDocs,
-  onAddGroup = () => {},
-  onRenameGroup = () => {},
-  onDeleteGroup = () => {},
+  isAddingGroup = false,
+  newGroupLabel = '',
+  onStartAddGroup = () => {},
+  onCancelAddGroup = () => {},
+  onChangeNewGroupLabel = () => {},
+  onSubmitNewGroup = () => {},
+  editingGroupId = null,
+  editingGroupLabel = '',
+  onStartRenameGroup = () => {},
+  onCancelRenameGroup = () => {},
+  onChangeEditingGroupLabel = () => {},
+  onSubmitRenameGroup = () => {},
+  confirmingDeleteGroupId = null,
+  onRequestDeleteGroup = () => {},
+  onCancelDeleteGroup = () => {},
+  onConfirmDeleteGroup = () => {},
   onMoveCategory = () => {},
   busyKey = null,
   isPending = false,
@@ -43,9 +56,22 @@ export function KnowledgeHomeStatic({
   }>;
   totalCollections: number;
   totalDocs: number;
-  onAddGroup?: () => void;
-  onRenameGroup?: (groupId: string, currentLabel: string) => void;
-  onDeleteGroup?: (groupId: string, currentLabel: string) => void;
+  isAddingGroup?: boolean;
+  newGroupLabel?: string;
+  onStartAddGroup?: () => void;
+  onCancelAddGroup?: () => void;
+  onChangeNewGroupLabel?: (value: string) => void;
+  onSubmitNewGroup?: () => void;
+  editingGroupId?: string | null;
+  editingGroupLabel?: string;
+  onStartRenameGroup?: (groupId: string, currentLabel: string) => void;
+  onCancelRenameGroup?: () => void;
+  onChangeEditingGroupLabel?: (value: string) => void;
+  onSubmitRenameGroup?: (groupId: string, currentLabel: string) => void;
+  confirmingDeleteGroupId?: string | null;
+  onRequestDeleteGroup?: (groupId: string) => void;
+  onCancelDeleteGroup?: () => void;
+  onConfirmDeleteGroup?: (groupId: string) => void;
   onMoveCategory?: (categorySlug: string, groupId: string) => void;
   busyKey?: string | null;
   isPending?: boolean;
@@ -94,9 +120,38 @@ export function KnowledgeHomeStatic({
               <div className="t-caption2" style={{ color: 'var(--muted)' }}>
                 Grouping changes affect Loom metadata only. Original source files stay unchanged.
               </div>
-              <button type="button" onClick={onAddGroup} style={groupActionStyle} aria-busy={busyKey === 'group:add' || isPending}>
-                Add group
-              </button>
+              {isAddingGroup ? (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    onSubmitNewGroup();
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+                >
+                  <input
+                    value={newGroupLabel}
+                    onChange={(event) => onChangeNewGroupLabel(event.target.value)}
+                    placeholder="New source-library group"
+                    aria-label="New source-library group"
+                    style={groupInputStyle}
+                  />
+                  <button type="submit" style={groupActionStyle} aria-busy={busyKey === 'group:add' || isPending}>
+                    Create group
+                  </button>
+                  <button type="button" onClick={onCancelAddGroup} style={groupActionStyle}>
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onStartAddGroup}
+                  style={groupActionStyle}
+                  aria-busy={busyKey === 'group:add' || isPending}
+                >
+                  Add group
+                </button>
+              )}
             </div>
             {errorMessage && (
               <div className="t-caption2" style={{ color: 'var(--tint-red)', marginTop: 10 }}>
@@ -119,39 +174,84 @@ export function KnowledgeHomeStatic({
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <WorkEyebrow subtle>{group.label}</WorkEyebrow>
-                  <div
-                    style={{
-                      fontFamily: 'var(--display)',
-                      fontSize: '1.1rem',
-                      fontWeight: 620,
-                      letterSpacing: '-0.02em',
-                      color: 'var(--fg)',
-                    }}
-                  >
-                    {group.items.length} collection{group.items.length === 1 ? '' : 's'}
-                  </div>
+                  {editingGroupId === group.id ? (
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        onSubmitRenameGroup(group.id, group.label);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+                    >
+                      <input
+                        value={editingGroupLabel}
+                        onChange={(event) => onChangeEditingGroupLabel(event.target.value)}
+                        aria-label={`Rename ${group.label}`}
+                        style={groupInputStyle}
+                      />
+                      <button
+                        type="submit"
+                        style={groupActionStyle}
+                        aria-busy={busyKey === `group:rename:${group.id}` || isPending}
+                      >
+                        Save
+                      </button>
+                      <button type="button" onClick={onCancelRenameGroup} style={groupActionStyle}>
+                        Cancel
+                      </button>
+                    </form>
+                  ) : (
+                    <div
+                      style={{
+                        fontFamily: 'var(--display)',
+                        fontSize: '1.1rem',
+                        fontWeight: 620,
+                        letterSpacing: '-0.02em',
+                        color: 'var(--fg)',
+                      }}
+                    >
+                      {group.items.length} collection{group.items.length === 1 ? '' : 's'}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {group.id !== 'ungrouped' && (
                     <button
                       type="button"
-                      onClick={() => onRenameGroup(group.id, group.label)}
+                      onClick={() => onStartRenameGroup(group.id, group.label)}
                       style={groupActionStyle}
                       aria-busy={busyKey === `group:rename:${group.id}` || isPending}
                     >
                       Rename group
                     </button>
                   )}
-                  {group.id !== 'ungrouped' && (
-                    <button
-                      type="button"
-                      onClick={() => onDeleteGroup(group.id, group.label)}
-                      style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-                      aria-busy={busyKey === `group:delete:${group.id}` || isPending}
-                    >
-                      Delete group
-                    </button>
-                  )}
+                  {group.id !== 'ungrouped' &&
+                    (confirmingDeleteGroupId === group.id ? (
+                      <>
+                        <div className="t-caption2" style={{ color: 'var(--muted)' }}>
+                          Delete this group? Items move back to Ungrouped.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onConfirmDeleteGroup(group.id)}
+                          style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
+                          aria-busy={busyKey === `group:delete:${group.id}` || isPending}
+                        >
+                          Delete now
+                        </button>
+                        <button type="button" onClick={onCancelDeleteGroup} style={groupActionStyle}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onRequestDeleteGroup(group.id)}
+                        style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
+                        aria-busy={busyKey === `group:delete:${group.id}` || isPending}
+                      >
+                        Delete group
+                      </button>
+                    ))}
                   <div className="t-caption2" style={{ color: 'var(--muted)' }}>
                     Start anywhere. Return when a thread changes.
                   </div>
@@ -194,6 +294,16 @@ const groupActionStyle = {
   letterSpacing: '0.01em',
   cursor: 'default',
   opacity: 0.76,
+} satisfies CSSProperties;
+
+const groupInputStyle = {
+  minWidth: 220,
+  border: '0.5px solid var(--mat-border)',
+  background: 'color-mix(in srgb, var(--bg) 90%, transparent)',
+  color: 'var(--fg)',
+  borderRadius: 'var(--r-2)',
+  padding: '0.42rem 0.62rem',
+  fontSize: '0.8rem',
 } satisfies CSSProperties;
 
 function CollectionCard({

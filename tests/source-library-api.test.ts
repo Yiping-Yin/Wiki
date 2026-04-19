@@ -115,7 +115,7 @@ test('groups route exposes fallback group and full CRUD against source-library c
   });
 });
 
-test('concurrent group writes preserve every created group', async (t) => {
+test('concurrent group writes preserve every created group', { concurrency: false }, async (t) => {
   await withTempRepo(t, async () => {
     const groupsRoute = await repoImport('app/api/source-library/groups/route.ts');
     const fsModule = await import('node:fs');

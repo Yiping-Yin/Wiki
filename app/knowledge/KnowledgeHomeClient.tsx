@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
 import { refreshKnowledgeNav } from '../../lib/use-knowledge-nav';
@@ -42,19 +42,38 @@ export function KnowledgeHomeClient({
   const [isPending, startTransition] = useTransition();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [newGroupLabel, setNewGroupLabel] = useState('');
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroupLabel, setEditingGroupLabel] = useState('');
+  const [confirmingDeleteGroupId, setConfirmingDeleteGroupId] = useState<string | null>(null);
 
-  const resolvedGroups = (sourceLibraryGroups ?? groups ?? []).map((group) => ({
-    ...group,
-    items: group.items.map((item) => ({
-      ...item,
-      groupId: item.groupId ?? group.id,
-    })),
-  }));
+  const resolvedGroups = useMemo(
+    () =>
+      (sourceLibraryGroups ?? groups ?? []).map((group) => ({
+        ...group,
+        items: group.items.map((item) => ({
+          ...item,
+          groupId: item.groupId ?? group.id,
+        })),
+      })),
+    [sourceLibraryGroups, groups],
+  );
   const [currentGroups, setCurrentGroups] = useState(resolvedGroups);
 
   useEffect(() => {
     setCurrentGroups(resolvedGroups);
-  }, [sourceLibraryGroups, groups]);
+  }, [resolvedGroups]);
+
+  useEffect(() => {
+    if (editingGroupId && !resolvedGroups.some((group) => group.id === editingGroupId)) {
+      setEditingGroupId(null);
+      setEditingGroupLabel('');
+    }
+    if (confirmingDeleteGroupId && !resolvedGroups.some((group) => group.id === confirmingDeleteGroupId)) {
+      setConfirmingDeleteGroupId(null);
+    }
+  }, [resolvedGroups, editingGroupId, confirmingDeleteGroupId]);
 
   function syncGroups(payload: SourceLibraryGroupRoutePayload) {
     setCurrentGroups((previous) => {
@@ -95,39 +114,89 @@ export function KnowledgeHomeClient({
         throw new Error(payload.error ?? 'Request failed');
       }
       syncGroups(payload);
+      return payload;
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Request failed');
+      return null;
     } finally {
       setBusyKey(null);
     }
   }
 
-  function onAddGroup() {
-    const label = window.prompt('Add a source-library group');
-    if (!label?.trim()) return;
+  function onStartAddGroup() {
+    setIsAddingGroup(true);
+    setNewGroupLabel('');
+    setEditingGroupId(null);
+    setEditingGroupLabel('');
+    setConfirmingDeleteGroupId(null);
+  }
+
+  function onCancelAddGroup() {
+    setIsAddingGroup(false);
+    setNewGroupLabel('');
+  }
+
+  function onSubmitNewGroup() {
+    const label = newGroupLabel.trim();
+    if (!label) return;
     void runMutation('group:add', '/api/source-library/groups', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ label: label.trim() }),
+      body: JSON.stringify({ label }),
+    }).then((payload) => {
+      if (!payload) return;
+      setIsAddingGroup(false);
+      setNewGroupLabel('');
     });
   }
 
-  function onRenameGroup(groupId: string, currentLabel: string) {
-    const label = window.prompt('Rename source-library group', currentLabel);
-    if (!label?.trim() || label.trim() === currentLabel) return;
+  function onStartRenameGroup(groupId: string, currentLabel: string) {
+    setEditingGroupId(groupId);
+    setEditingGroupLabel(currentLabel);
+    setIsAddingGroup(false);
+    setNewGroupLabel('');
+    setConfirmingDeleteGroupId(null);
+  }
+
+  function onCancelRenameGroup() {
+    setEditingGroupId(null);
+    setEditingGroupLabel('');
+  }
+
+  function onSubmitRenameGroup(groupId: string, currentLabel: string) {
+    const label = editingGroupLabel.trim();
+    if (!label || label === currentLabel) return;
     void runMutation(`group:rename:${groupId}`, '/api/source-library/groups', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ groupId, label: label.trim() }),
+      body: JSON.stringify({ groupId, label }),
+    }).then((payload) => {
+      if (!payload) return;
+      setEditingGroupId(null);
+      setEditingGroupLabel('');
     });
   }
 
-  function onDeleteGroup(groupId: string, currentLabel: string) {
-    if (!window.confirm(`Delete "${currentLabel}"? Its categories will move back to Ungrouped.`)) return;
+  function onRequestDeleteGroup(groupId: string) {
+    setConfirmingDeleteGroupId(groupId);
+    setEditingGroupId(null);
+    setEditingGroupLabel('');
+    setIsAddingGroup(false);
+    setNewGroupLabel('');
+  }
+
+  function onCancelDeleteGroup() {
+    setConfirmingDeleteGroupId(null);
+  }
+
+  function onConfirmDeleteGroup(groupId: string) {
     void runMutation(`group:delete:${groupId}`, '/api/source-library/groups', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ groupId }),
+    }).then((payload) => {
+      if (!payload) return;
+      setConfirmingDeleteGroupId(null);
     });
   }
 
@@ -144,9 +213,22 @@ export function KnowledgeHomeClient({
       sourceLibraryGroups={currentGroups}
       totalCollections={totalCollections}
       totalDocs={totalDocs}
-      onAddGroup={onAddGroup}
-      onRenameGroup={onRenameGroup}
-      onDeleteGroup={onDeleteGroup}
+      isAddingGroup={isAddingGroup}
+      newGroupLabel={newGroupLabel}
+      onStartAddGroup={onStartAddGroup}
+      onCancelAddGroup={onCancelAddGroup}
+      onChangeNewGroupLabel={setNewGroupLabel}
+      onSubmitNewGroup={onSubmitNewGroup}
+      editingGroupId={editingGroupId}
+      editingGroupLabel={editingGroupLabel}
+      onStartRenameGroup={onStartRenameGroup}
+      onCancelRenameGroup={onCancelRenameGroup}
+      onChangeEditingGroupLabel={setEditingGroupLabel}
+      onSubmitRenameGroup={onSubmitRenameGroup}
+      confirmingDeleteGroupId={confirmingDeleteGroupId}
+      onRequestDeleteGroup={onRequestDeleteGroup}
+      onCancelDeleteGroup={onCancelDeleteGroup}
+      onConfirmDeleteGroup={onConfirmDeleteGroup}
       onMoveCategory={onMoveCategory}
       busyKey={busyKey}
       isPending={isPending}

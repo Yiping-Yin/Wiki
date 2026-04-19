@@ -68,16 +68,30 @@ test('KnowledgeHomeClient forwards runtime groups and mutation handlers into Kno
   assert.ok(knowledgeHomeStatic, 'KnowledgeHomeStatic callsite not found');
   assert.ok(refreshCall, 'refreshKnowledgeNav call not found');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'sourceLibraryGroups', sourceFile), 'currentGroups');
-  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onAddGroup', sourceFile), 'onAddGroup');
-  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onRenameGroup', sourceFile), 'onRenameGroup');
-  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onDeleteGroup', sourceFile), 'onDeleteGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'isAddingGroup', sourceFile), 'isAddingGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'newGroupLabel', sourceFile), 'newGroupLabel');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onStartAddGroup', sourceFile), 'onStartAddGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onCancelAddGroup', sourceFile), 'onCancelAddGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onChangeNewGroupLabel', sourceFile), 'setNewGroupLabel');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onSubmitNewGroup', sourceFile), 'onSubmitNewGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'editingGroupId', sourceFile), 'editingGroupId');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'editingGroupLabel', sourceFile), 'editingGroupLabel');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onStartRenameGroup', sourceFile), 'onStartRenameGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onCancelRenameGroup', sourceFile), 'onCancelRenameGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onChangeEditingGroupLabel', sourceFile), 'setEditingGroupLabel');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onSubmitRenameGroup', sourceFile), 'onSubmitRenameGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'confirmingDeleteGroupId', sourceFile), 'confirmingDeleteGroupId');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onRequestDeleteGroup', sourceFile), 'onRequestDeleteGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onCancelDeleteGroup', sourceFile), 'onCancelDeleteGroup');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onConfirmDeleteGroup', sourceFile), 'onConfirmDeleteGroup');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onMoveCategory', sourceFile), 'onMoveCategory');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'busyKey', sourceFile), 'busyKey');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'isPending', sourceFile), 'isPending');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'errorMessage', sourceFile), 'errorMessage');
 
-  assert.match(sourceText, /const resolvedGroups = \(sourceLibraryGroups \?\? groups \?\? \[\]\)\.map\(/);
-  assert.match(sourceText, /void runMutation\('group:add', '\/api\/source-library\/groups'/);
+  assert.match(sourceText, /const resolvedGroups = useMemo\(/);
+  assert.match(sourceText, /setIsAddingGroup\(true\)/);
+  assert.match(sourceText, /void runMutation\('group:add', '\/api\/source-library\/groups', \{/);
   assert.match(sourceText, /void runMutation\(`group:rename:\$\{groupId\}`, '\/api\/source-library\/groups', \{/);
   assert.match(sourceText, /void runMutation\(`group:delete:\$\{groupId\}`, '\/api\/source-library\/groups', \{/);
   assert.match(sourceText, /void runMutation\(`membership:\$\{categorySlug\}`, '\/api\/source-library\/membership', \{/);
@@ -88,9 +102,15 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   const { sourceText, sourceFile } = loadTsx('app/knowledge/KnowledgeHomeStatic.tsx');
 
   assert.match(sourceText, /\(sourceLibraryGroups \?\? groups \?\? \[\]\)\.map\(/);
-  assert.match(sourceText, /onAddGroup = \(\) => \{\}/);
-  assert.match(sourceText, /onRenameGroup = \(\) => \{\}/);
-  assert.match(sourceText, /onDeleteGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onStartAddGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onCancelAddGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onSubmitNewGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onStartRenameGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onCancelRenameGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onSubmitRenameGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onRequestDeleteGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onCancelDeleteGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onConfirmDeleteGroup = \(\) => \{\}/);
   assert.match(sourceText, /onMoveCategory = \(\) => \{\}/);
   assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source files stay unchanged\./);
   assert.doesNotMatch(sourceText, /buildSourceLibraryGroups/);
@@ -109,8 +129,12 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
 
   const buttonText = (element: ts.JsxElement) => normalizedJsxText(element, sourceFile);
   const addGroupButton = buttons.find((element) => buttonText(element) === 'Add group');
+  const createGroupButton = buttons.find((element) => buttonText(element) === 'Create group');
   const renameGroupButton = buttons.find((element) => buttonText(element) === 'Rename group');
   const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Delete group');
+  const saveButton = buttons.find((element) => buttonText(element) === 'Save');
+  const deleteNowButton = buttons.find((element) => buttonText(element) === 'Delete now');
+  const cancelButtons = buttons.filter((element) => buttonText(element) === 'Cancel');
   const selectElement = visit(sourceFile, (node) =>
     ts.isJsxElement(node) &&
     ts.isIdentifier(node.openingElement.tagName) &&
@@ -118,18 +142,26 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   ) as ts.JsxElement | undefined;
 
   assert.ok(addGroupButton, 'Add group button not found');
+  assert.ok(createGroupButton, 'Create group button not found');
   assert.ok(renameGroupButton, 'Rename group button not found');
   assert.ok(deleteGroupButton, 'Delete group button not found');
+  assert.ok(saveButton, 'Save button not found');
+  assert.ok(deleteNowButton, 'Delete now button not found');
+  assert.ok(cancelButtons.length >= 2, 'Cancel buttons not found');
   assert.ok(selectElement, 'Move-to-group select not found');
 
-  assert.equal(jsxExpressionText(addGroupButton.openingElement, 'onClick', sourceFile), 'onAddGroup');
+  assert.equal(jsxExpressionText(addGroupButton.openingElement, 'onClick', sourceFile), 'onStartAddGroup');
   assert.equal(
     jsxExpressionText(renameGroupButton.openingElement, 'onClick', sourceFile),
-    '() => onRenameGroup(group.id, group.label)',
+    '() => onStartRenameGroup(group.id, group.label)',
   );
   assert.equal(
     jsxExpressionText(deleteGroupButton.openingElement, 'onClick', sourceFile),
-    '() => onDeleteGroup(group.id, group.label)',
+    '() => onRequestDeleteGroup(group.id)',
+  );
+  assert.equal(
+    jsxExpressionText(deleteNowButton.openingElement, 'onClick', sourceFile),
+    '() => onConfirmDeleteGroup(group.id)',
   );
   assert.equal(
     jsxExpressionText(selectElement.openingElement, 'onChange', sourceFile),
@@ -143,4 +175,27 @@ test('knowledge category routes are constrained to source-library categories onl
 
   assert.match(sourceText, /getSourceLibraryCategories/);
   assert.doesNotMatch(sourceText, /getKnowledgeCategories/);
+});
+
+test('source-library group management uses inline controls instead of browser prompts', () => {
+  const client = loadTsx('app/knowledge/KnowledgeHomeClient.tsx').sourceText;
+  const { sourceText: staticText, sourceFile } = loadTsx('app/knowledge/KnowledgeHomeStatic.tsx');
+
+  assert.doesNotMatch(client, /window\.prompt/);
+  assert.doesNotMatch(client, /window\.confirm/);
+  assert.match(client, /isAddingGroup/);
+  assert.match(client, /editingGroupId/);
+  assert.match(client, /editingGroupLabel/);
+  assert.match(client, /newGroupLabel/);
+
+  assert.match(staticText, /Create group/);
+  assert.match(staticText, /Cancel/);
+
+  const inputElement = visit(sourceFile, (node) =>
+    ts.isJsxSelfClosingElement(node) &&
+    ts.isIdentifier(node.tagName) &&
+    node.tagName.text === 'input'
+  ) as ts.JsxSelfClosingElement | undefined;
+
+  assert.ok(inputElement, 'Inline group-management input not found');
 });
