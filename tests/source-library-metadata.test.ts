@@ -96,6 +96,31 @@ test('source-library metadata persists groups, keeps Ungrouped fallback, and reh
   });
 });
 
+test('source-library metadata can hide a source without touching its underlying file grouping fallback', async (t) => {
+  await withTempRepo(t, async () => {
+    const metadataModule = await repoImport('lib/source-library-metadata.ts');
+    const storeModule = await repoImport('lib/knowledge-store.ts');
+
+    await metadataModule.hideSourceLibraryCategory('beta');
+
+    const metadata = await metadataModule.readSourceLibraryMetadata();
+    assert.deepEqual(metadata.memberships, [
+      { categorySlug: 'beta', groupId: 'ungrouped', order: 9999, hidden: true },
+    ]);
+
+    const grouped = await storeModule.getSourceLibraryGroups();
+    assert.deepEqual(
+      grouped.map((group: { id: string; categories: Array<{ slug: string }> }) => ({
+        id: group.id,
+        categories: group.categories.map((category) => category.slug),
+      })),
+      [
+        { id: 'ungrouped', categories: ['alpha'] },
+      ],
+    );
+  });
+});
+
 test('source-library metadata rejects malformed files instead of treating them as empty', async (t) => {
   await withTempRepo(t, async (root) => {
     const metadataPath = path.join(root, 'knowledge', '.cache', 'manifest', 'source-library-groups.json');

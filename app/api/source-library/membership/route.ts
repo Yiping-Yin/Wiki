@@ -1,4 +1,4 @@
-import { assignCategoryToGroup } from '../../../../lib/source-library-metadata';
+import { assignCategoryToGroup, hideSourceLibraryCategory } from '../../../../lib/source-library-metadata';
 import {
   getKnowledgeCategories,
   getSourceLibraryCategories,
@@ -71,6 +71,34 @@ export async function PATCH(req: Request) {
     }
 
     await assignCategoryToGroup(categorySlug, groupId);
+    return Response.json({ groups: serializeGroups(await getSourceLibraryGroups()) });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await readJsonBody(req);
+    if (!body) return badRequest('invalid json');
+
+    const categorySlug = typeof body.categorySlug === 'string' ? body.categorySlug : '';
+    if (!categorySlug.trim()) {
+      return badRequest('Category slug is required');
+    }
+
+    const [allCategories, sourceCategories] = await Promise.all([
+      getKnowledgeCategories(),
+      getSourceLibraryCategories(),
+    ]);
+    if (!allCategories.some((category) => category.slug === categorySlug)) {
+      throw new Error('Unknown category slug');
+    }
+    if (!sourceCategories.some((category) => category.slug === categorySlug)) {
+      throw new Error('Category is not a source-library category');
+    }
+
+    await hideSourceLibraryCategory(categorySlug);
     return Response.json({ groups: serializeGroups(await getSourceLibraryGroups()) });
   } catch (error) {
     return errorResponse(error);

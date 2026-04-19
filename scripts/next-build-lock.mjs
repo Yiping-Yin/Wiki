@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const DEFAULT_STALE_MS = 10 * 60 * 1000;
 const DEFAULT_POLL_MS = 250;
+const DUPLICATE_ARTIFACT_PATTERN = / \d+(?=\.)/;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -19,7 +20,7 @@ export async function removeDuplicateArtifacts(dir) {
   }
   await Promise.all(entries.map(async (entry) => {
     const fullPath = path.join(dir, entry.name);
-    if (entry.name.includes(' 2')) {
+    if (DUPLICATE_ARTIFACT_PATTERN.test(entry.name)) {
       try {
         await rm(fullPath, { recursive: true, force: true });
       } catch {}

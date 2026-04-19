@@ -29,6 +29,10 @@ export function KnowledgeHomeStatic({
   onRequestDeleteGroup = () => {},
   onCancelDeleteGroup = () => {},
   onConfirmDeleteGroup = () => {},
+  confirmingHideCategorySlug = null,
+  onRequestHideCategory = () => {},
+  onCancelHideCategory = () => {},
+  onConfirmHideCategory = () => {},
   onMoveCategory = () => {},
   busyKey = null,
   isPending = false,
@@ -72,6 +76,10 @@ export function KnowledgeHomeStatic({
   onRequestDeleteGroup?: (groupId: string) => void;
   onCancelDeleteGroup?: () => void;
   onConfirmDeleteGroup?: (groupId: string) => void;
+  confirmingHideCategorySlug?: string | null;
+  onRequestHideCategory?: (categorySlug: string) => void;
+  onCancelHideCategory?: () => void;
+  onConfirmHideCategory?: (categorySlug: string) => void;
   onMoveCategory?: (categorySlug: string, groupId: string) => void;
   busyKey?: string | null;
   isPending?: boolean;
@@ -271,7 +279,15 @@ export function KnowledgeHomeStatic({
                     item={item}
                     allGroups={resolvedGroups}
                     onMoveCategory={onMoveCategory}
-                    busy={busyKey === `membership:${item.slug}` || isPending}
+                    confirmingHide={confirmingHideCategorySlug === item.slug}
+                    onRequestHideCategory={onRequestHideCategory}
+                    onCancelHideCategory={onCancelHideCategory}
+                    onConfirmHideCategory={onConfirmHideCategory}
+                    busy={
+                      busyKey === `membership:${item.slug}`
+                      || busyKey === `category:hide:${item.slug}`
+                      || isPending
+                    }
                   />
                 ))}
               </div>
@@ -309,6 +325,10 @@ const groupInputStyle = {
 function CollectionCard({
   item,
   allGroups,
+  confirmingHide,
+  onRequestHideCategory,
+  onCancelHideCategory,
+  onConfirmHideCategory,
   onMoveCategory,
   busy,
 }: {
@@ -322,6 +342,10 @@ function CollectionCard({
     id: string;
     label: string;
   }>;
+  confirmingHide: boolean;
+  onRequestHideCategory: (categorySlug: string) => void;
+  onCancelHideCategory: () => void;
+  onConfirmHideCategory: (categorySlug: string) => void;
   onMoveCategory: (categorySlug: string, groupId: string) => void;
   busy: boolean;
 }) {
@@ -388,6 +412,33 @@ function CollectionCard({
             </option>
           ))}
         </select>
+        {confirmingHide ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+            <div className="t-caption2" style={{ color: 'var(--muted)' }}>
+              Remove this source from Atlas? Original files stay unchanged.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => onConfirmHideCategory(item.slug)}
+                style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
+              >
+                Remove now
+              </button>
+              <button type="button" onClick={onCancelHideCategory} style={groupActionStyle}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onRequestHideCategory(item.slug)}
+            style={{ ...groupActionStyle, color: 'var(--tint-red)', alignSelf: 'flex-start', marginTop: 6 }}
+          >
+            Remove from Atlas
+          </button>
+        )}
       </div>
     </div>
   );

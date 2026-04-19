@@ -100,6 +100,7 @@ function normalizeMetadata(metadata: SourceLibraryMetadata | null | undefined): 
       categorySlug,
       groupId,
       order: Number.isFinite(membership.order) ? membership.order : DEFAULT_SOURCE_LIBRARY_ORDER,
+      ...(membership.hidden === true ? { hidden: true } : {}),
     });
   }
 
@@ -285,6 +286,29 @@ export async function assignCategoryToGroup(categorySlug: string, groupId: strin
           categorySlug: normalizedCategorySlug,
           groupId: nextGroupId,
           order: DEFAULT_SOURCE_LIBRARY_ORDER,
+        },
+      ],
+    };
+  });
+}
+
+export async function hideSourceLibraryCategory(categorySlug: string) {
+  const normalizedCategorySlug = requireString(categorySlug, 'Category slug is required').trim();
+  if (!normalizedCategorySlug) {
+    throw new Error('Category slug is required');
+  }
+
+  return updateSourceLibraryMetadata((current) => {
+    const existing = current.memberships.find((membership) => membership.categorySlug === normalizedCategorySlug);
+    return {
+      ...current,
+      memberships: [
+        ...current.memberships.filter((membership) => membership.categorySlug !== normalizedCategorySlug),
+        {
+          categorySlug: normalizedCategorySlug,
+          groupId: existing?.groupId ?? FALLBACK_SOURCE_LIBRARY_GROUP_ID,
+          order: existing?.order ?? DEFAULT_SOURCE_LIBRARY_ORDER,
+          hidden: true,
         },
       ],
     };

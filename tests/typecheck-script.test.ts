@@ -29,4 +29,6 @@ test('next build lock creates the lock directory recursively and retries missing
   assert.match(source, /await mkdir\(lockDir, \{ recursive: true \}\);/);
   assert.match(source, /if \(error\?\.code === 'ENOENT'\) \{/);
   assert.match(source, /await rm\(lockDir, \{ recursive: true, force: true \}\);/);
+  assert.match(source, /const DUPLICATE_ARTIFACT_PATTERN = \/ \\d\+\(\?=\\\.\)\//);
+  assert.match(source, /DUPLICATE_ARTIFACT_PATTERN\.test\(entry\.name\)/);
 });
