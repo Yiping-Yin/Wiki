@@ -71,7 +71,7 @@ test('stageRuntimeBundle writes activation atomically via temp file and rename',
 test('stageRuntimeBundle writes a versioned runtime payload and updates current.json after staging', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'loom-stage-runtime-'));
   const buildRoot = path.join(root, '.next-build');
-  await mkdir(path.join(buildRoot, 'standalone', '.next'), { recursive: true });
+  await mkdir(path.join(buildRoot, 'standalone'), { recursive: true });
   await mkdir(path.join(buildRoot, 'static', 'chunks'), { recursive: true });
   await mkdir(path.join(root, 'public', 'assets'), { recursive: true });
   await mkdir(path.join(root, 'public', 'pagefind', 'fragment'), { recursive: true });
@@ -91,12 +91,13 @@ test('stageRuntimeBundle writes a versioned runtime payload and updates current.
 
   assert.equal(path.basename(runtimeRoot), 'build-123');
   await stat(path.join(runtimeRoot, 'standalone', 'server.js'));
-  await stat(path.join(runtimeRoot, 'standalone', '.next', 'static', 'chunks', 'app.js'));
+  await stat(path.join(runtimeRoot, 'standalone', '.next-build', 'static', 'chunks', 'app.js'));
   await stat(path.join(runtimeRoot, 'standalone', 'public', 'assets', 'logo.svg'));
   await stat(path.join(runtimeRoot, 'standalone', 'public', 'pagefind', 'pagefind.js'));
   await stat(path.join(runtimeRoot, 'standalone', 'public', 'pagefind', 'pagefind-entry.json'));
   await stat(path.join(runtimeRoot, 'standalone', 'public', 'pagefind', 'fragment', 'en_123.pf_fragment'));
   await stat(path.join(runtimeRoot, 'standalone', 'public', 'pagefind', 'index', 'en_123.pf_index'));
+  assert.equal(existsSync(path.join(runtimeRoot, 'standalone', '.next', 'static', 'chunks', 'app.js')), false);
   assert.equal(existsSync(path.join(runtimeRoot, 'knowledge', 'secret.txt')), false);
 
   const activationPath = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime', 'current.json');
@@ -153,6 +154,27 @@ test('stageRuntimeBundle validates staged runtime completeness before activation
   assert.equal(existsSync(activationPath), false);
 });
 
+test('stageRuntimeBundle stages production static assets into the runtime distDir', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-stage-runtime-distdir-'));
+  const buildRoot = path.join(root, '.next-build');
+  await mkdir(path.join(buildRoot, 'standalone'), { recursive: true });
+  await mkdir(path.join(buildRoot, 'static', 'css'), { recursive: true });
+  await mkdir(path.join(root, 'public', 'pagefind', 'fragment'), { recursive: true });
+  await mkdir(path.join(root, 'public', 'pagefind', 'index'), { recursive: true });
+  await writeFile(path.join(buildRoot, 'BUILD_ID'), 'build-distdir', 'utf8');
+  await writeFile(path.join(buildRoot, 'standalone', 'server.js'), 'console.log("ok")', 'utf8');
+  await writeFile(path.join(buildRoot, 'static', 'css', 'app.css'), 'body{color:black}', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'pagefind.js'), 'export default {}', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'pagefind-entry.json'), '{}', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'fragment', 'en_123.pf_fragment'), 'fragment', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'index', 'en_123.pf_index'), 'index', 'utf8');
+
+  const runtimeRoot = await stageRuntimeBundle({ repoRoot: root, homeOverride: root });
+
+  await stat(path.join(runtimeRoot, 'standalone', '.next-build', 'static', 'css', 'app.css'));
+  assert.equal(existsSync(path.join(runtimeRoot, 'standalone', '.next', 'static', 'css', 'app.css')), false);
+});
+
 test('stageRuntimeBundle validates pagefind search assets before activation', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'loom-stage-runtime-pagefind-'));
   const buildRoot = path.join(root, '.next-build');
@@ -182,11 +204,11 @@ test('stageRuntimeBundle preserves the active same-build runtime when replacemen
   const runtimeBase = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime');
   const existingRuntimeRoot = path.join(runtimeBase, 'build-stable');
 
-  await mkdir(path.join(existingRuntimeRoot, 'standalone', '.next', 'static', 'chunks'), { recursive: true });
+  await mkdir(path.join(existingRuntimeRoot, 'standalone', '.next-build', 'static', 'chunks'), { recursive: true });
   await mkdir(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'fragment'), { recursive: true });
   await mkdir(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'index'), { recursive: true });
   await writeFile(path.join(existingRuntimeRoot, 'standalone', 'server.js'), 'console.log("old")', 'utf8');
-  await writeFile(path.join(existingRuntimeRoot, 'standalone', '.next', 'static', 'chunks', 'app.js'), 'old-chunk', 'utf8');
+  await writeFile(path.join(existingRuntimeRoot, 'standalone', '.next-build', 'static', 'chunks', 'app.js'), 'old-chunk', 'utf8');
   await writeFile(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'pagefind.js'), 'old-pagefind', 'utf8');
   await writeFile(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'pagefind-entry.json'), '{}', 'utf8');
   await writeFile(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'fragment', 'en_old.pf_fragment'), 'old-fragment', 'utf8');

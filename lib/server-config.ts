@@ -1,8 +1,9 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { resolveContentRoot } from './runtime-roots';
 
 export type CliKind = 'claude' | 'codex';
-export const EXECUTION_ROOT = process.cwd();
+const CWD_ROOT = process.cwd();
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? '';
 
@@ -11,7 +12,7 @@ function fromHome(...parts: string[]) {
 }
 
 function fallbackContentRoot() {
-  return path.resolve(EXECUTION_ROOT);
+  return path.resolve(CWD_ROOT);
 }
 
 function loadContentRoot() {
@@ -34,6 +35,20 @@ const CONTENT_ROOT_STATE = loadContentRoot();
 
 export const CONTENT_ROOT = CONTENT_ROOT_STATE.contentRoot;
 export const CONTENT_ROOT_CONFIG_ERROR = CONTENT_ROOT_STATE.error;
+
+function hasIngestScript(root: string) {
+  return fs.existsSync(path.join(root, 'scripts', 'ingest-knowledge.ts'));
+}
+
+function loadExecutionRoot() {
+  const override = process.env.LOOM_EXECUTION_ROOT?.trim();
+  if (override) return path.resolve(override);
+  if (hasIngestScript(CWD_ROOT)) return path.resolve(CWD_ROOT);
+  if (hasIngestScript(CONTENT_ROOT)) return path.resolve(CONTENT_ROOT);
+  return path.resolve(CWD_ROOT);
+}
+
+export const EXECUTION_ROOT = loadExecutionRoot();
 
 export const KNOWLEDGE_ROOT =
   process.env.LOOM_KNOWLEDGE_ROOT?.trim()

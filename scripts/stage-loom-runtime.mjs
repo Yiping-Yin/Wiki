@@ -44,7 +44,7 @@ async function directoryHasMatchingEntry(dirPath, pattern) {
 async function validateStagedRuntime(targetRoot) {
   const requiredPaths = [
     path.join(targetRoot, 'standalone', 'server.js'),
-    path.join(targetRoot, 'standalone', '.next', 'static'),
+    path.join(targetRoot, 'standalone', '.next-build', 'static'),
     path.join(targetRoot, 'standalone', 'public'),
     path.join(targetRoot, 'standalone', 'public', 'pagefind', 'pagefind.js'),
     path.join(targetRoot, 'standalone', 'public', 'pagefind', 'pagefind-entry.json'),
@@ -93,7 +93,7 @@ export async function stageRuntimeBundle({ repoRoot = process.cwd(), homeOverrid
     await fs.cp(path.join(buildRoot, 'standalone'), standaloneRoot, { recursive: true });
     await fs.cp(
       path.join(buildRoot, 'static'),
-      path.join(standaloneRoot, '.next', 'static'),
+      path.join(standaloneRoot, '.next-build', 'static'),
       { recursive: true },
     );
     await fs.cp(
