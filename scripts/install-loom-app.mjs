@@ -188,8 +188,13 @@ export async function installLoomApp({
   let stagedRuntimeRoot = null;
 
   const prepareInstall = async () => {
-    stagedRuntimeRoot = await stageRuntime({ repoRoot, homeOverride });
-    await persistMetadata({ repoRoot, homeOverride });
+    try {
+      stagedRuntimeRoot = await stageRuntime({ repoRoot, homeOverride });
+      await persistMetadata({ repoRoot, homeOverride });
+    } catch (error) {
+      await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
+      throw error;
+    }
   };
 
   const pruneAfterSuccess = async () => {

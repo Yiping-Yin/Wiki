@@ -5,10 +5,33 @@ import { mkdtemp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/prom
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 
 import { stageRuntimeBundle } from '../scripts/stage-loom-runtime.mjs';
 
 const repoRoot = path.resolve(__dirname, '..');
+const uploadsPageUrl = pathToFileURL(path.join(repoRoot, 'app', 'uploads', 'page.tsx')).href;
+const uploadDocPageUrl = pathToFileURL(path.join(repoRoot, 'app', 'uploads', '[name]', 'page.tsx')).href;
+
+function runIsolatedTsEval(script: string, options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
+  const childEnv: NodeJS.ProcessEnv = { ...process.env };
+  for (const [key, value] of Object.entries(options.env ?? {})) {
+    if (value === undefined) {
+      delete childEnv[key];
+      continue;
+    }
+    childEnv[key] = value;
+  }
+  return execFileSync(
+    process.execPath,
+    ['--import', 'tsx', '--eval', script],
+    {
+      cwd: repoRoot,
+      env: childEnv,
+      encoding: 'utf8',
+    },
+  ).trim();
+}
 
 test('next config can enable standalone output for loom runtime staging', () => {
   const source = readFileSync(path.join(repoRoot, 'next.config.mjs'), 'utf8');
@@ -147,6 +170,49 @@ test('stageRuntimeBundle validates pagefind search assets before activation', as
   const activationPath = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime', 'current.json');
   assert.equal(existsSync(runtimeRoot), false);
   assert.equal(existsSync(activationPath), false);
+});
+
+test('stageRuntimeBundle preserves the active same-build runtime when replacement validation fails', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-stage-runtime-preserve-'));
+  const buildRoot = path.join(root, '.next-build');
+  const runtimeBase = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime');
+  const existingRuntimeRoot = path.join(runtimeBase, 'build-stable');
+
+  await mkdir(path.join(existingRuntimeRoot, 'standalone', '.next', 'static', 'chunks'), { recursive: true });
+  await mkdir(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'fragment'), { recursive: true });
+  await mkdir(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'index'), { recursive: true });
+  await writeFile(path.join(existingRuntimeRoot, 'standalone', 'server.js'), 'console.log("old")', 'utf8');
+  await writeFile(path.join(existingRuntimeRoot, 'standalone', '.next', 'static', 'chunks', 'app.js'), 'old-chunk', 'utf8');
+  await writeFile(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'pagefind.js'), 'old-pagefind', 'utf8');
+  await writeFile(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'pagefind-entry.json'), '{}', 'utf8');
+  await writeFile(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'fragment', 'en_old.pf_fragment'), 'old-fragment', 'utf8');
+  await writeFile(path.join(existingRuntimeRoot, 'standalone', 'public', 'pagefind', 'index', 'en_old.pf_index'), 'old-index', 'utf8');
+  await writeFile(
+    path.join(runtimeBase, 'current.json'),
+    JSON.stringify({ buildId: 'build-stable', runtimeRoot: existingRuntimeRoot }, null, 2),
+    'utf8',
+  );
+
+  await mkdir(path.join(buildRoot, 'standalone'), { recursive: true });
+  await mkdir(path.join(buildRoot, 'static', 'chunks'), { recursive: true });
+  await mkdir(path.join(root, 'public', 'assets'), { recursive: true });
+  await mkdir(path.join(root, 'public', 'pagefind'), { recursive: true });
+  await writeFile(path.join(buildRoot, 'BUILD_ID'), 'build-stable', 'utf8');
+  await writeFile(path.join(buildRoot, 'standalone', 'server.js'), 'console.log("new")', 'utf8');
+  await writeFile(path.join(buildRoot, 'static', 'chunks', 'app.js'), 'new-chunk', 'utf8');
+  await writeFile(path.join(root, 'public', 'assets', 'logo.svg'), '<svg />', 'utf8');
+
+  await assert.rejects(
+    () => stageRuntimeBundle({ repoRoot: root, homeOverride: root }),
+    /pagefind/i,
+  );
+
+  assert.equal(await readFile(path.join(existingRuntimeRoot, 'standalone', 'server.js'), 'utf8'), 'console.log("old")');
+  const activation = JSON.parse(await readFile(path.join(runtimeBase, 'current.json'), 'utf8')) as {
+    buildId?: string;
+    runtimeRoot?: string;
+  };
+  assert.deepEqual(activation, { buildId: 'build-stable', runtimeRoot: existingRuntimeRoot });
 });
 
 test('installRuntimeMetadata persists the repo content root without rewriting runtime activation', async () => {
@@ -300,6 +366,77 @@ test('installLoomApp restores previous runtime metadata if app replacement fails
   assert.deepEqual(contentRoot, { contentRoot: '/tmp/previous-project' });
   assert.equal(existsSync(stagedRuntimeRoot), false);
   assert.equal(existsSync(previousRuntimeRoot), true);
+});
+
+test('installLoomApp rolls back staged runtime metadata if content root persistence fails after staging', async () => {
+  const { installLoomApp } = await import('../scripts/install-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-install-metadata-rollback-'));
+  const appPath = path.join(root, 'Loom.app');
+  const appSupportRoot = path.join(root, 'Library', 'Application Support', 'Loom');
+  const runtimeBase = path.join(appSupportRoot, 'runtime');
+  const previousRuntimeRoot = path.join(runtimeBase, 'build-old');
+  const stagedRuntimeRoot = path.join(runtimeBase, 'build-new');
+
+  await mkdir(path.join(appPath, 'Contents', 'MacOS'), { recursive: true });
+  await mkdir(previousRuntimeRoot, { recursive: true });
+  await writeFile(path.join(appPath, 'Contents', 'Info.plist'), '<plist />', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'MacOS', 'Loom'), '#!/bin/sh\n', 'utf8');
+  await writeFile(
+    path.join(runtimeBase, 'current.json'),
+    JSON.stringify({ buildId: 'build-old', runtimeRoot: previousRuntimeRoot }, null, 2),
+    'utf8',
+  );
+  await writeFile(
+    path.join(appSupportRoot, 'content-root.json'),
+    JSON.stringify({ contentRoot: '/tmp/previous-project' }, null, 2),
+    'utf8',
+  );
+
+  await assert.rejects(
+    () => installLoomApp({
+      mode: 'user',
+      repoRoot: '/tmp/wiki-project',
+      sourceAppPath: appPath,
+      homeOverride: root,
+      dependencies: {
+        stageRuntimeBundle: async ({ homeOverride }) => {
+          const supportRoot = path.join(homeOverride, 'Library', 'Application Support', 'Loom');
+          const nextRuntimeBase = path.join(supportRoot, 'runtime');
+          await mkdir(stagedRuntimeRoot, { recursive: true });
+          await writeFile(
+            path.join(nextRuntimeBase, 'current.json'),
+            JSON.stringify({ buildId: 'build-new', runtimeRoot: stagedRuntimeRoot }, null, 2),
+            'utf8',
+          );
+          return stagedRuntimeRoot;
+        },
+        installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+          await writeFile(
+            path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+            JSON.stringify({ contentRoot: repoRoot }, null, 2),
+            'utf8',
+          );
+          throw new Error('metadata persistence failed');
+        },
+        installTo: async () => {
+          throw new Error('install should not run');
+        },
+      },
+    }),
+    /metadata persistence failed/,
+  );
+
+  const activation = JSON.parse(await readFile(path.join(runtimeBase, 'current.json'), 'utf8')) as {
+    buildId?: string;
+    runtimeRoot?: string;
+  };
+  const contentRoot = JSON.parse(await readFile(path.join(appSupportRoot, 'content-root.json'), 'utf8')) as {
+    contentRoot?: string;
+  };
+
+  assert.deepEqual(activation, { buildId: 'build-old', runtimeRoot: previousRuntimeRoot });
+  assert.deepEqual(contentRoot, { contentRoot: '/tmp/previous-project' });
+  assert.equal(existsSync(stagedRuntimeRoot), false);
 });
 
 test('repo .next-build is only removed after runtime + app install metadata succeeds', async () => {
@@ -509,4 +646,14 @@ test('package script finds Release app bundles before Debug bundles', async () =
 
   const found = await findBuiltApp({ derivedDataRoot, preferredConfiguration: 'Release' });
   assert.equal(found, releaseApp);
+});
+
+test('uploads pages resolve uploads from the shared content root instead of process cwd', () => {
+  const uploadsIndexSource = readFileSync(path.join(repoRoot, 'app', 'uploads', 'page.tsx'), 'utf8');
+  const uploadDetailSource = readFileSync(path.join(repoRoot, 'app', 'uploads', '[name]', 'page.tsx'), 'utf8');
+
+  assert.match(uploadsIndexSource, /resolveContentRoot/);
+  assert.match(uploadDetailSource, /resolveContentRoot/);
+  assert.doesNotMatch(uploadsIndexSource, /process\.cwd\(\)/);
+  assert.doesNotMatch(uploadDetailSource, /process\.cwd\(\)/);
 });

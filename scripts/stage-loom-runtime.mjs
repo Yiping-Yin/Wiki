@@ -74,10 +74,10 @@ export async function stageRuntimeBundle({ repoRoot = process.cwd(), homeOverrid
   const buildId = (await fs.readFile(path.join(buildRoot, 'BUILD_ID'), 'utf8')).trim();
   const runtimeBase = runtimeBaseDir(homePath);
   const targetRoot = path.join(runtimeBase, buildId);
-  const standaloneRoot = path.join(targetRoot, 'standalone');
+  const stagingRoot = path.join(runtimeBase, `${buildId}.staging-${process.pid}-${Date.now()}`);
+  const standaloneRoot = path.join(stagingRoot, 'standalone');
 
   await fs.mkdir(runtimeBase, { recursive: true });
-  await fs.rm(targetRoot, { recursive: true, force: true });
 
   try {
     await fs.mkdir(standaloneRoot, { recursive: true });
@@ -93,11 +93,13 @@ export async function stageRuntimeBundle({ repoRoot = process.cwd(), homeOverrid
       { recursive: true },
     );
 
-    await validateStagedRuntime(targetRoot);
+    await validateStagedRuntime(stagingRoot);
 
+    await fs.rm(targetRoot, { recursive: true, force: true });
+    await fs.rename(stagingRoot, targetRoot);
     await writeActivationRecordAtomic(runtimeBase, { buildId, runtimeRoot: targetRoot });
   } catch (error) {
-    await fs.rm(targetRoot, { recursive: true, force: true });
+    await fs.rm(stagingRoot, { recursive: true, force: true });
     throw error;
   }
 
