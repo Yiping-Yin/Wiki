@@ -38,10 +38,10 @@ test('legacy pinned flag still upgrades to pinned', () => {
   );
 });
 
-test('atlas routes force the sidebar pinned on desktop', () => {
-  assert.equal(shouldForcePinnedSidebarForPath('/atlas'), true);
-  assert.equal(shouldForcePinnedSidebarForPath('/knowledge'), true);
-  assert.equal(shouldForcePinnedSidebarForPath('/knowledge/foundations'), true);
+test('atlas routes respect the user sidebar mode instead of forcing pinned', () => {
+  assert.equal(shouldForcePinnedSidebarForPath('/atlas'), false);
+  assert.equal(shouldForcePinnedSidebarForPath('/knowledge'), false);
+  assert.equal(shouldForcePinnedSidebarForPath('/knowledge/foundations'), false);
 });
 
 test('non-atlas routes do not force the sidebar pinned', () => {
