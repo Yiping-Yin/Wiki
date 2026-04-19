@@ -318,11 +318,12 @@ function SourceLibraryGroupRow({
 }) {
   const active = group.categories.some((category) => (activePath ?? '').startsWith(`/knowledge/${category.slug}`));
   const categorySignature = group.categories.map((category) => category.slug).join('|');
-  const [expanded, setExpanded] = useState(active || group.categories.length <= 3);
+  const defaultExpanded = active || group.categories.length <= 3;
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   useEffect(() => {
-    setExpanded(active || group.categories.length <= 3);
-  }, [active, categorySignature]);
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded, categorySignature]);
 
   return (
     <div

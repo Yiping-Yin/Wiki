@@ -292,7 +292,9 @@ test('Sidebar consumes the runtime sourceLibraryGroups payload directly', () => 
   assert.match(sidebarSource, /<SourceLibraryGroupRow\s+key=\{group\.id\}\s+group=\{group\}/s);
   assert.match(sidebarSource, /<Section title="LLM Wiki"/);
   assert.match(sidebarSource, /const categorySignature = group\.categories\.map\(\(category\) => category\.slug\)\.join\('\|'\);/);
-  assert.match(sidebarSource, /useEffect\(\(\) => \{\s*setExpanded\(active \|\| group\.categories\.length <= 3\);\s*\}, \[active, categorySignature\]\)/s);
+  assert.match(sidebarSource, /const defaultExpanded = active \|\| group\.categories\.length <= 3;/);
+  assert.match(sidebarSource, /const \[expanded, setExpanded\] = useState\(defaultExpanded\);/);
+  assert.match(sidebarSource, /useEffect\(\(\) => \{\s*setExpanded\(defaultExpanded\);\s*\}, \[defaultExpanded, categorySignature\]\)/s);
   assert.doesNotMatch(sidebarSource, /buildSourceLibraryGroups/);
   assert.doesNotMatch(sidebarSource, /knowledgeCategories/);
   assert.doesNotMatch(sidebarSource, /category\.label\.match/);
