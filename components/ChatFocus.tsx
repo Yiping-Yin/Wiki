@@ -32,7 +32,10 @@ import { formatAiRuntimeErrorMessage, resolveAiNotice } from '../lib/ai-provider
 import { runAiText } from '../lib/ai/runtime';
 import {
   buildClarificationPasses,
+  getDisplayedPassAnswer,
   getCurrentSynthesis,
+  resolvePassSelection,
+  resolvePinnedPassAfterTurnChange,
   shouldShowClarificationHistory,
 } from '../lib/chat-focus-history';
 import { buildSourceStub } from '../lib/chat-focus-source';
@@ -171,6 +174,7 @@ export function ChatFocus() {
   const restoreScrollYRef = useRef<number | null>(null);
   const restoreRafRef = useRef<number | null>(null);
   const positionRafRef = useRef<number | null>(null);
+  const previousTurnCountRef = useRef(turns.length);
 
   const ctx = anchor
     ? contextFromPathname(typeof window !== 'undefined' ? window.location.pathname : '/')
@@ -793,8 +797,19 @@ export function ChatFocus() {
   }, [turns.length]);
 
   useEffect(() => {
+    setSelectedPassIndex((current) => resolvePinnedPassAfterTurnChange(current, previousTurnCountRef.current, turns.length));
+    previousTurnCountRef.current = turns.length;
+  }, [turns.length]);
+
+  useEffect(() => {
     setViewMode((current: ClarificationViewMode) => resolveClarificationViewMode(current, hasEditorialBody));
   }, [hasEditorialBody, anchor?.text]);
+
+  const displayedSynthesis = getDisplayedPassAnswer(
+    clarificationPasses,
+    selectedPassIndex,
+    currentSynthesis,
+  );
 
   if (!anchor) return null;
 
@@ -1057,7 +1072,7 @@ export function ChatFocus() {
                 return (
                   <button
                     key={pass.index}
-                    onClick={() => setSelectedPassIndex((current) => current === pass.index ? null : pass.index)}
+                    onClick={() => setSelectedPassIndex((current) => resolvePassSelection(current, pass.index))}
                     style={{
                       textAlign: 'left',
                       background: active ? 'color-mix(in srgb, var(--accent-soft) 48%, transparent)' : 'transparent',
@@ -1091,7 +1106,7 @@ export function ChatFocus() {
                 opacity: 0.92,
               }}
             >
-              <NoteRenderer source={clarificationPasses.find((pass) => pass.index === selectedPassIndex)?.answer ?? currentSynthesis} />
+              <NoteRenderer source={displayedSynthesis} />
             </div>
           </div>
         ) : null}
