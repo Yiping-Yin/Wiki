@@ -1,6 +1,7 @@
 'use client';
 
 import type { ThoughtType } from '../trace/types';
+import { initialSrsState } from './srs';
 import type { Panel, PanelRevision } from './types';
 
 type PanelContractInput = {
@@ -81,5 +82,6 @@ export function applyCrystallizedContract(
     contractSource: 'crystallized',
     contractUpdatedAt: at,
     revisions,
+    srs: panel.srs ?? initialSrsState(at),
   };
 }

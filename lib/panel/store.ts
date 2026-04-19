@@ -159,4 +159,17 @@ export const panelStore = {
       await this.delete(panel.id);
     }
   },
+
+  async updateSrs(id: string, srs: Panel['srs']): Promise<Panel | null> {
+    if (!isClient()) return null;
+    const existing = await this.get(id);
+    if (!existing) return null;
+    const updated: Panel = {
+      ...existing,
+      srs,
+      updatedAt: Date.now(),
+    };
+    await this.put(updated);
+    return updated;
+  },
 };

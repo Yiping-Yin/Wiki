@@ -27,6 +27,21 @@ export function useAllPanels(): { panels: Panel[]; loading: boolean } {
   return { panels, loading };
 }
 
+export async function recordPanelRecall(panelId: string, accuracy: number): Promise<Panel | null> {
+  const { scheduleNextReview, initialSrsState } = await import('./srs');
+  const { emitPanelChange } = await import('./events');
+  const existing = await panelStore.get(panelId);
+  if (!existing) return null;
+  const now = Date.now();
+  const current = existing.srs ?? initialSrsState(now);
+  const nextSrs = scheduleNextReview(accuracy, current, now);
+  const updated = await panelStore.updateSrs(panelId, nextSrs);
+  if (updated) {
+    emitPanelChange({ docIds: [updated.docId], reason: 'recall' });
+  }
+  return updated;
+}
+
 export function usePanel(docId: string | null): { panel: Panel | null; loading: boolean } {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [loading, setLoading] = useState(true);

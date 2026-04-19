@@ -22,6 +22,21 @@ export type PanelRevision = {
   openTensions: string[];
 };
 
+export type PanelSrsState = {
+  /** Simplified SM-2 ease factor. Initialized to 2.5. Range [1.3, 3.0]. */
+  ease: number;
+  /** Days until next review. Starts at 1 after first crystallize. */
+  intervalDays: number;
+  /** Count of successful reviews so far. */
+  reviewCount: number;
+  /** Timestamp of the most recent review attempt. */
+  lastReviewedAt?: number;
+  /** Last recall accuracy, 0..1. */
+  lastAccuracy?: number;
+  /** Timestamp when this Panel is next due. */
+  nextReviewAt?: number;
+};
+
 export type Panel = {
   id: string;
   docId: string;
@@ -49,6 +64,10 @@ export type Panel = {
   updatedAt: number;
   crystallizedAt: number;
   sections: PanelSection[];
+  /** Spaced-repetition schedule. Initialized at first crystallize. Only
+   *  touched when the panel status is 'settled' and the user has completed
+   *  a blind recall. */
+  srs?: PanelSrsState;
 };
 
 export type PanelSnapshotInput = {
