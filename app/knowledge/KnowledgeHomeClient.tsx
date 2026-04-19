@@ -47,6 +47,7 @@ export function KnowledgeHomeClient({
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingGroupLabel, setEditingGroupLabel] = useState('');
   const [confirmingDeleteGroupId, setConfirmingDeleteGroupId] = useState<string | null>(null);
+  const [confirmingHideCategorySlug, setConfirmingHideCategorySlug] = useState<string | null>(null);
 
   const resolvedGroups = useMemo(
     () =>
@@ -73,7 +74,13 @@ export function KnowledgeHomeClient({
     if (confirmingDeleteGroupId && !resolvedGroups.some((group) => group.id === confirmingDeleteGroupId)) {
       setConfirmingDeleteGroupId(null);
     }
-  }, [resolvedGroups, editingGroupId, confirmingDeleteGroupId]);
+    if (
+      confirmingHideCategorySlug
+      && !resolvedGroups.some((group) => group.items.some((item) => item.slug === confirmingHideCategorySlug))
+    ) {
+      setConfirmingHideCategorySlug(null);
+    }
+  }, [resolvedGroups, editingGroupId, confirmingDeleteGroupId, confirmingHideCategorySlug]);
 
   function syncGroups(payload: SourceLibraryGroupRoutePayload) {
     setCurrentGroups((previous) => {
@@ -200,6 +207,25 @@ export function KnowledgeHomeClient({
     });
   }
 
+  function onRequestHideCategory(categorySlug: string) {
+    setConfirmingHideCategorySlug(categorySlug);
+  }
+
+  function onCancelHideCategory() {
+    setConfirmingHideCategorySlug(null);
+  }
+
+  function onConfirmHideCategory(categorySlug: string) {
+    void runMutation(`category:hide:${categorySlug}`, '/api/source-library/membership', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ categorySlug }),
+    }).then((payload) => {
+      if (!payload) return;
+      setConfirmingHideCategorySlug(null);
+    });
+  }
+
   function onMoveCategory(categorySlug: string, groupId: string) {
     void runMutation(`membership:${categorySlug}`, '/api/source-library/membership', {
       method: 'PATCH',
@@ -229,6 +255,10 @@ export function KnowledgeHomeClient({
       onRequestDeleteGroup={onRequestDeleteGroup}
       onCancelDeleteGroup={onCancelDeleteGroup}
       onConfirmDeleteGroup={onConfirmDeleteGroup}
+      confirmingHideCategorySlug={confirmingHideCategorySlug}
+      onRequestHideCategory={onRequestHideCategory}
+      onCancelHideCategory={onCancelHideCategory}
+      onConfirmHideCategory={onConfirmHideCategory}
       onMoveCategory={onMoveCategory}
       busyKey={busyKey}
       isPending={isPending}

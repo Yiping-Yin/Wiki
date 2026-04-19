@@ -291,6 +291,33 @@ test('membership route reassigns a raw-source category and rejects wiki or unkno
     );
     assert.equal(wikiCategoryResponse.status, 400);
     assert.deepEqual(await wikiCategoryResponse.json(), { error: 'Category is not a source-library category' });
+
+    const hiddenResponse = await membershipRoute.DELETE(
+      new Request('http://localhost/api/source-library/membership', {
+        method: 'DELETE',
+        body: JSON.stringify({ categorySlug: 'beta' }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    assert.equal(hiddenResponse.status, 200);
+    assert.deepEqual(await hiddenResponse.json(), {
+      groups: [
+        {
+          id: createdGroup.id,
+          label: 'Coursework',
+          order: createdGroup.order,
+          count: 0,
+          categories: [],
+        },
+        {
+          id: 'ungrouped',
+          label: 'Ungrouped',
+          order: 9999,
+          count: 1,
+          categories: ['alpha'],
+        },
+      ],
+    });
   });
 });
 

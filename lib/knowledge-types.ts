@@ -24,6 +24,7 @@ export type SourceLibraryMembership = {
   categorySlug: string;
   groupId: string;
   order: number;
+  hidden?: boolean;
 };
 
 export type SourceLibraryMetadata = {

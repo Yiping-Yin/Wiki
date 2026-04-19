@@ -173,6 +173,7 @@ export async function getSourceLibraryGroups(): Promise<SourceLibraryGroup[]> {
 
   for (const category of categories) {
     const membership = membershipByCategory.get(category.slug);
+    if (membership?.hidden) continue;
     const groupId = membership && groups.has(membership.groupId)
       ? membership.groupId
       : FALLBACK_SOURCE_LIBRARY_GROUP_ID;

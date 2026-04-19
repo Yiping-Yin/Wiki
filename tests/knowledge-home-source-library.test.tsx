@@ -85,6 +85,10 @@ test('KnowledgeHomeClient forwards runtime groups and mutation handlers into Kno
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onCancelDeleteGroup', sourceFile), 'onCancelDeleteGroup');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onConfirmDeleteGroup', sourceFile), 'onConfirmDeleteGroup');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onMoveCategory', sourceFile), 'onMoveCategory');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'confirmingHideCategorySlug', sourceFile), 'confirmingHideCategorySlug');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onRequestHideCategory', sourceFile), 'onRequestHideCategory');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onCancelHideCategory', sourceFile), 'onCancelHideCategory');
+  assert.equal(jsxExpressionText(knowledgeHomeStatic, 'onConfirmHideCategory', sourceFile), 'onConfirmHideCategory');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'busyKey', sourceFile), 'busyKey');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'isPending', sourceFile), 'isPending');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'errorMessage', sourceFile), 'errorMessage');
@@ -95,6 +99,8 @@ test('KnowledgeHomeClient forwards runtime groups and mutation handlers into Kno
   assert.match(sourceText, /void runMutation\(`group:rename:\$\{groupId\}`, '\/api\/source-library\/groups', \{/);
   assert.match(sourceText, /void runMutation\(`group:delete:\$\{groupId\}`, '\/api\/source-library\/groups', \{/);
   assert.match(sourceText, /void runMutation\(`membership:\$\{categorySlug\}`, '\/api\/source-library\/membership', \{/);
+  assert.match(sourceText, /void runMutation\(`category:hide:\$\{categorySlug\}`, '\/api\/source-library\/membership', \{/);
+  assert.match(sourceText, /method: 'DELETE'/);
   assert.match(sourceText, /void refreshKnowledgeNav\(\);/);
 });
 
@@ -111,6 +117,9 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.match(sourceText, /onRequestDeleteGroup = \(\) => \{\}/);
   assert.match(sourceText, /onCancelDeleteGroup = \(\) => \{\}/);
   assert.match(sourceText, /onConfirmDeleteGroup = \(\) => \{\}/);
+  assert.match(sourceText, /onRequestHideCategory = \(\) => \{\}/);
+  assert.match(sourceText, /onCancelHideCategory = \(\) => \{\}/);
+  assert.match(sourceText, /onConfirmHideCategory = \(\) => \{\}/);
   assert.match(sourceText, /onMoveCategory = \(\) => \{\}/);
   assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source files stay unchanged\./);
   assert.doesNotMatch(sourceText, /buildSourceLibraryGroups/);
@@ -132,8 +141,10 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   const createGroupButton = buttons.find((element) => buttonText(element) === 'Create group');
   const renameGroupButton = buttons.find((element) => buttonText(element) === 'Rename group');
   const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Delete group');
+  const removeSourceButton = buttons.find((element) => buttonText(element) === 'Remove from Atlas');
   const saveButton = buttons.find((element) => buttonText(element) === 'Save');
   const deleteNowButton = buttons.find((element) => buttonText(element) === 'Delete now');
+  const removeNowButton = buttons.find((element) => buttonText(element) === 'Remove now');
   const cancelButtons = buttons.filter((element) => buttonText(element) === 'Cancel');
   const selectElement = visit(sourceFile, (node) =>
     ts.isJsxElement(node) &&
@@ -145,8 +156,10 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.ok(createGroupButton, 'Create group button not found');
   assert.ok(renameGroupButton, 'Rename group button not found');
   assert.ok(deleteGroupButton, 'Delete group button not found');
+  assert.ok(removeSourceButton, 'Remove from Atlas button not found');
   assert.ok(saveButton, 'Save button not found');
   assert.ok(deleteNowButton, 'Delete now button not found');
+  assert.ok(removeNowButton, 'Remove now button not found');
   assert.ok(cancelButtons.length >= 2, 'Cancel buttons not found');
   assert.ok(selectElement, 'Move-to-group select not found');
 
@@ -162,6 +175,14 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.equal(
     jsxExpressionText(deleteNowButton.openingElement, 'onClick', sourceFile),
     '() => onConfirmDeleteGroup(group.id)',
+  );
+  assert.equal(
+    jsxExpressionText(removeSourceButton.openingElement, 'onClick', sourceFile),
+    '() => onRequestHideCategory(item.slug)',
+  );
+  assert.equal(
+    jsxExpressionText(removeNowButton.openingElement, 'onClick', sourceFile),
+    '() => onConfirmHideCategory(item.slug)',
   );
   assert.equal(
     jsxExpressionText(selectElement.openingElement, 'onChange', sourceFile),
