@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { readKnowledgeDocBody } from './knowledge-doc-cache';
 import { getAllDocs } from './knowledge-store';
 import { isEligibleCaptureDoc } from './knowledge-doc-state';
-import { resolveKnowledgePath } from './server-config';
+import { EXECUTION_ROOT, resolveKnowledgePath } from './server-config';
 import { runKnowledgeIngest } from './knowledge-ingest';
 
 type WriteKnowledgeDocBodyOptions = {
@@ -32,7 +32,7 @@ export async function writeKnowledgeDocBody({
 
   const abs = resolveKnowledgePath(doc.sourcePath);
   await writeFile(abs, body, 'utf8');
-  await ingest();
+  await ingest({ cwd: EXECUTION_ROOT });
 
   return {
     href: `/knowledge/${doc.categorySlug}/${doc.fileSlug}`,
