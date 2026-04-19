@@ -41,6 +41,11 @@ export async function installRuntimeMetadata({ repoRoot, homeOverride } = {}) {
   );
 }
 
+export async function maybePruneRepoBuildArtifacts({ repoRoot, installSucceeded } = {}) {
+  if (!installSucceeded) return;
+  await fs.rm(path.join(repoRoot, '.next-build'), { recursive: true, force: true });
+}
+
 function appSupportRootFor(homeOverride) {
   return path.join(homeOverride ?? home, 'Library', 'Application Support', 'Loom');
 }
@@ -177,6 +182,7 @@ export async function installLoomApp({
   const copyApp = dependencies.installTo ?? installTo;
   const stageRuntime = dependencies.stageRuntimeBundle ?? stageRuntimeBundle;
   const persistMetadata = dependencies.installRuntimeMetadata ?? installRuntimeMetadata;
+  const pruneRepoBuildArtifacts = dependencies.maybePruneRepoBuildArtifacts ?? maybePruneRepoBuildArtifacts;
   const source = sourceAppPath ?? await resolveSource();
   const runtimeSnapshot = await snapshotRuntimeState(homeOverride);
   let stagedRuntimeRoot = null;
@@ -184,6 +190,14 @@ export async function installLoomApp({
   const prepareInstall = async () => {
     stagedRuntimeRoot = await stageRuntime({ repoRoot, homeOverride });
     await persistMetadata({ repoRoot, homeOverride });
+  };
+
+  const pruneAfterSuccess = async () => {
+    try {
+      await pruneRepoBuildArtifacts({ repoRoot, installSucceeded: true });
+    } catch (error) {
+      console.warn(`Skipping repo build cache prune: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   if (installMode === 'user') {
@@ -194,6 +208,7 @@ export async function installLoomApp({
       await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
       throw error;
     }
+    await pruneAfterSuccess();
     return { target: fallbackTarget, fallbackUsed: false };
   }
 
@@ -205,6 +220,7 @@ export async function installLoomApp({
       await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
       throw error;
     }
+    await pruneAfterSuccess();
     return { target: primaryTarget, fallbackUsed: false };
   }
 
@@ -212,6 +228,7 @@ export async function installLoomApp({
 
   try {
     await copyApp(primaryTarget, source);
+    await pruneAfterSuccess();
     return { target: primaryTarget, fallbackUsed: false };
   } catch (error) {
     if (!isPermissionFallbackError(error)) {
@@ -226,6 +243,7 @@ export async function installLoomApp({
     await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
     throw error;
   }
+  await pruneAfterSuccess();
   return { target: fallbackTarget, fallbackUsed: true };
 }
 

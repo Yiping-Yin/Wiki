@@ -302,6 +302,108 @@ test('installLoomApp restores previous runtime metadata if app replacement fails
   assert.equal(existsSync(previousRuntimeRoot), true);
 });
 
+test('repo .next-build is only removed after runtime + app install metadata succeeds', async () => {
+  const { maybePruneRepoBuildArtifacts } = await import('../scripts/install-loom-app.mjs');
+  const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-prune-gate-'));
+  await mkdir(path.join(repoRoot, '.next-build'), { recursive: true });
+
+  await maybePruneRepoBuildArtifacts({
+    repoRoot,
+    installSucceeded: false,
+  });
+
+  assert.equal(existsSync(path.join(repoRoot, '.next-build')), true);
+});
+
+test('installLoomApp prunes repo .next-build only after a successful install', async () => {
+  const { installLoomApp } = await import('../scripts/install-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-install-prune-'));
+  const repoRoot = path.join(root, 'repo');
+  const appPath = path.join(root, 'Loom.app');
+  const repoBuildRoot = path.join(repoRoot, '.next-build');
+  const stagedRuntimeRoot = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime', 'build-new');
+
+  await mkdir(path.join(appPath, 'Contents', 'MacOS'), { recursive: true });
+  await mkdir(repoBuildRoot, { recursive: true });
+  await writeFile(path.join(repoBuildRoot, 'BUILD_ID'), 'build-new', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'Info.plist'), '<plist />', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'MacOS', 'Loom'), '#!/bin/sh\n', 'utf8');
+
+  const result = await installLoomApp({
+    mode: 'user',
+    repoRoot,
+    sourceAppPath: appPath,
+    homeOverride: root,
+    dependencies: {
+      stageRuntimeBundle: async () => {
+        await mkdir(stagedRuntimeRoot, { recursive: true });
+        return stagedRuntimeRoot;
+      },
+      installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+        await writeFile(
+          path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+          JSON.stringify({ contentRoot: repoRoot }, null, 2),
+          'utf8',
+        );
+      },
+      installTo: async (target) => {
+        await mkdir(target, { recursive: true });
+      },
+    },
+  });
+
+  assert.equal(result.target, path.join(os.homedir(), 'Applications', 'Loom.app'));
+  assert.equal(result.fallbackUsed, false);
+  assert.equal(existsSync(repoBuildRoot), false);
+  assert.equal(existsSync(path.join(stagedRuntimeRoot)), true);
+});
+
+test('installLoomApp treats repo .next-build pruning as best-effort after a successful install', async () => {
+  const { installLoomApp } = await import('../scripts/install-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-install-prune-best-effort-'));
+  const repoRoot = path.join(root, 'repo');
+  const appPath = path.join(root, 'Loom.app');
+  const repoBuildRoot = path.join(repoRoot, '.next-build');
+  const stagedRuntimeRoot = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime', 'build-new');
+
+  await mkdir(path.join(appPath, 'Contents', 'MacOS'), { recursive: true });
+  await mkdir(repoBuildRoot, { recursive: true });
+  await writeFile(path.join(repoBuildRoot, 'BUILD_ID'), 'build-new', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'Info.plist'), '<plist />', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'MacOS', 'Loom'), '#!/bin/sh\n', 'utf8');
+
+  const result = await installLoomApp({
+    mode: 'user',
+    repoRoot,
+    sourceAppPath: appPath,
+    homeOverride: root,
+    dependencies: {
+      stageRuntimeBundle: async () => {
+        await mkdir(stagedRuntimeRoot, { recursive: true });
+        return stagedRuntimeRoot;
+      },
+      installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+        await writeFile(
+          path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+          JSON.stringify({ contentRoot: repoRoot }, null, 2),
+          'utf8',
+        );
+      },
+      installTo: async (target) => {
+        await mkdir(target, { recursive: true });
+      },
+      maybePruneRepoBuildArtifacts: async () => {
+        throw new Error('prune failed');
+      },
+    },
+  });
+
+  assert.equal(result.target, path.join(os.homedir(), 'Applications', 'Loom.app'));
+  assert.equal(result.fallbackUsed, false);
+  assert.equal(existsSync(repoBuildRoot), true);
+  assert.equal(existsSync(path.join(stagedRuntimeRoot)), true);
+});
+
 test('packageLoomApp writes app and runtime archives plus install instructions', async () => {
   const { packageLoomApp } = await import('../scripts/package-loom-app.mjs');
   const { resolveActiveRuntimeRoot } = await import('../lib/runtime-roots');
