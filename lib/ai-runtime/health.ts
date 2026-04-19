@@ -3,12 +3,36 @@ import { describeCliIssue, type CliHealth } from '../ai-provider-health';
 import { runCli } from '../claude-cli';
 
 const CACHE_TTL_MS = 30_000;
+export const TIMEOUT_CACHE_TTL_MS = 5_000;
 export const CODEX_HEALTH_TIMEOUT_MS = 15_000;
 const DEFAULT_HEALTH_TIMEOUT_MS = 20_000;
 const cache = new Map<AiCliKind, { expiresAt: number; value: CliHealth }>();
 
 export function clearLocalRuntimeHealthCache() {
   cache.clear();
+}
+
+function ttlForHealth(value: CliHealth) {
+  return value.code === 'timeout' ? TIMEOUT_CACHE_TTL_MS : CACHE_TTL_MS;
+}
+
+function cacheLocalRuntimeHealth(value: CliHealth) {
+  cache.set(value.cli, {
+    expiresAt: value.checkedAt + ttlForHealth(value),
+    value,
+  });
+}
+
+export function markLocalRuntimeHealthy(cli: AiCliKind) {
+  const checkedAt = Date.now();
+  cacheLocalRuntimeHealth({
+    cli,
+    ok: true,
+    code: 'ok',
+    summary: cli === 'codex' ? 'Codex CLI is available.' : 'Claude CLI is available.',
+    action: '',
+    checkedAt,
+  });
 }
 
 export async function probeLocalRuntime(
@@ -50,10 +74,7 @@ export async function probeLocalRuntime(
     };
   }
 
-  cache.set(cli, {
-    expiresAt: now + CACHE_TTL_MS,
-    value,
-  });
+  cacheLocalRuntimeHealth(value);
 
   return value;
 }
