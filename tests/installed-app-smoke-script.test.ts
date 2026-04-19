@@ -23,8 +23,24 @@ test('installed app smoke uses the staged runtime with isolated content and know
   assert.match(source, /LOOM_EXECUTION_ROOT/);
   assert.match(source, /LOOM_CONTENT_ROOT/);
   assert.match(source, /LOOM_KNOWLEDGE_ROOT/);
+  assert.match(source, /CODEX_BIN/);
+  assert.match(source, /CLAUDE_BIN/);
+  assert.match(source, /path\.isAbsolute/);
   assert.match(source, /mkdtemp/);
   assert.match(source, /server\.js/);
+});
+
+test('fake codex cli can satisfy installed app smoke requests in CI', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'scripts', 'fake-codex-cli.mjs'),
+    'utf8',
+  );
+
+  assert.match(source, /#!\/usr\/bin\/env node/);
+  assert.match(source, /process\.argv/);
+  assert.match(source, /last-message\.txt|writeFile/);
+  assert.match(source, /reply with exactly/i);
+  assert.match(source, /capture-organize/);
 });
 
 test('installed app smoke verifies health, AI chat, topic creation, and capture writeback', () => {

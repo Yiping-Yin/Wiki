@@ -51,6 +51,12 @@ function parseSseText(body: string) {
   return full;
 }
 
+function resolveOptionalExecutableEnv(value: string | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return path.isAbsolute(trimmed) ? trimmed : path.resolve(repoRoot, trimmed);
+}
+
 async function findAvailablePort(startPort: number) {
   let port = startPort;
   while (port < startPort + 25) {
@@ -85,6 +91,8 @@ async function run() {
       ...process.env,
       HOSTNAME: '127.0.0.1',
       PORT: String(port),
+      CODEX_BIN: resolveOptionalExecutableEnv(process.env.CODEX_BIN),
+      CLAUDE_BIN: resolveOptionalExecutableEnv(process.env.CLAUDE_BIN),
       LOOM_EXECUTION_ROOT: repoRoot,
       LOOM_CONTENT_ROOT: contentRoot,
       LOOM_KNOWLEDGE_ROOT: knowledgeRoot,
