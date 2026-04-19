@@ -21,6 +21,7 @@ const withMDX = createMDX({
 const nextConfig = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   distDir: process.env.LOOM_DIST_DIR || '.next',
+  output: process.env.LOOM_NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
 };
 
 export default withMDX(nextConfig);

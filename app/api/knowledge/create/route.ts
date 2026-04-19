@@ -8,7 +8,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
-import { KNOWLEDGE_ROOT } from '../../../../lib/server-config';
+import { EXECUTION_ROOT, KNOWLEDGE_ROOT } from '../../../../lib/server-config';
 
 export const runtime = 'nodejs';
 
@@ -43,11 +43,10 @@ export async function POST(req: Request) {
     }
 
     // Re-run ingest to update navigation
-    const projectRoot = process.cwd();
     await new Promise<void>((resolve, reject) => {
       execFile(
         'npx', ['tsx', 'scripts/ingest-knowledge.ts'],
-        { cwd: projectRoot, timeout: 30000 },
+        { cwd: EXECUTION_ROOT, timeout: 30000 },
         (err) => err ? reject(err) : resolve(),
       );
     });

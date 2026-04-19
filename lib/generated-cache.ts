@@ -1,8 +1,9 @@
 import path from 'node:path';
+import { CONTENT_ROOT } from './server-config';
 
 export type GeneratedCacheKind = 'summaries' | 'structures' | 'quizzes';
 
-const ROOT = process.cwd();
+const ROOT = CONTENT_ROOT;
 const RUNTIME_CACHE_ROOT = path.join(ROOT, 'knowledge', '.cache', 'generated');
 const LEGACY_PUBLIC_ROOT = path.join(ROOT, 'public', 'knowledge');
 

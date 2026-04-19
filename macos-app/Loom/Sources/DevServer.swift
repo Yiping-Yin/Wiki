@@ -12,9 +12,13 @@ class DevServer: ObservableObject {
         case failed(String)
     }
 
-    private struct RuntimeLaunch {
+    struct RuntimeLaunch {
         let shellCommand: String
         let requiredExecutables: [String]
+        let currentDirectoryPath: String
+        let environment: [String: String]
+        let requiresProjectDependencies: Bool
+        let launchFailureMessage: String?
     }
 
     @Published var status: Status = .idle
@@ -50,26 +54,29 @@ class DevServer: ObservableObject {
         URL(string: "http://localhost:\(currentPort)")!
     }
 
-    private func resolvedServerMode(projectPath: String) -> String {
-        let buildIdPath = "\(projectPath)/.next-build/BUILD_ID"
-        let env = ProcessInfo.processInfo.environment
-        let explicitMode = env["LOOM_APP_SERVER_MODE"]?.lowercased()
+    static func resolvedServerMode(
+        projectPath: String,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        homeDirectory: String = NSHomeDirectory(),
+        fileManager: FileManager = .default,
+        bundlePath: String = Bundle.main.bundlePath
+    ) -> String {
+        let explicitMode = environment["LOOM_APP_SERVER_MODE"]?.lowercased()
 
         if explicitMode == "prod" || explicitMode == "production" {
-            return FileManager.default.fileExists(atPath: buildIdPath) ? "prod" : "dev"
+            return "prod"
         }
         if explicitMode == "dev" || explicitMode == "development" {
             return "dev"
         }
-        let hasUsableProdBuild = FileManager.default.fileExists(atPath: buildIdPath)
-            && Self.prodBuildSupportsWikiPages(projectPath: projectPath)
-        // Default: prefer the production build whenever one exists, even in DEBUG
-        // Xcode builds. Dev mode's 5s-per-page compile wall is a 别让我等 violation;
-        // production mode serves pre-compiled pages with zero per-navigation cost.
-        // If the build is incomplete for MDX wiki routes, fall back to dev so
-        // Atlas → LLM navigation still works instead of serving 500s.
-        // If the user really wants live Next.js dev, set LOOM_APP_SERVER_MODE=dev.
-        return hasUsableProdBuild ? "prod" : "dev"
+
+        let repoRootOverride = environment["LOOM_PROJECT_ROOT"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isDerivedDataBuild = bundlePath.contains("/DerivedData/")
+        if let repoRootOverride, !repoRootOverride.isEmpty, isDerivedDataBuild {
+            return "dev"
+        }
+
+        return "prod"
     }
 
     static func prodBuildSupportsWikiPages(
@@ -194,16 +201,27 @@ class DevServer: ObservableObject {
 
     private func launchProcess(generation: Int) {
         guard startGeneration == generation else { return }
+        let serverMode = Self.resolvedServerMode(projectPath: projectPath ?? "")
+        let runtimeLaunch = Self.runtimeLaunch(
+            projectPath: projectPath,
+            port: currentPort,
+            serverMode: serverMode,
+            environment: ProcessInfo.processInfo.environment
+        )
 
-        guard let projectPath else {
+        if let launchFailureMessage = runtimeLaunch.launchFailureMessage {
+            DispatchQueue.main.async {
+                self.status = .failed(launchFailureMessage)
+            }
+            return
+        }
+
+        guard let projectPath = projectPath ?? runtimeLaunch.environment["LOOM_CONTENT_ROOT"] else {
             DispatchQueue.main.async {
                 self.status = .failed("Could not find project root with package.json. Set LOOM_PROJECT_ROOT or place Wiki at ~/Desktop/Wiki.")
             }
             return
         }
-
-        let serverMode = resolvedServerMode(projectPath: projectPath)
-        let runtimeLaunch = runtimeLaunch(projectPath: projectPath, port: currentPort, serverMode: serverMode)
 
         if let executableMessage = DevServerPreflight.missingExecutableMessage(
             requiredExecutables: runtimeLaunch.requiredExecutables
@@ -214,7 +232,10 @@ class DevServer: ObservableObject {
             return
         }
 
-        if let dependencyMessage = DevServerPreflight.missingDependencyMessage(projectPath: projectPath) {
+        if let dependencyMessage = DevServerPreflight.missingDependencyMessage(
+            projectPath: projectPath,
+            requiresProjectDependencies: runtimeLaunch.requiresProjectDependencies
+        ) {
             DispatchQueue.main.async {
                 self.status = .failed(dependencyMessage)
             }
@@ -227,19 +248,14 @@ class DevServer: ObservableObject {
         DispatchQueue.main.async { self.status = .starting }
 
         let p = Process()
-        p.currentDirectoryURL = URL(fileURLWithPath: projectPath)
+        p.currentDirectoryURL = URL(fileURLWithPath: runtimeLaunch.currentDirectoryPath)
 
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         p.executableURL = URL(fileURLWithPath: shell)
         p.arguments = ["-lc", runtimeLaunch.shellCommand]
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = DevServerPreflight.enrichedPATH(environment: env)
-        if serverMode == "dev" {
-            env["LOOM_DIST_DIR"] = ".next-app-dev"
-        } else {
-            // Production: point Next.js at the pre-built .next-build directory
-            env["LOOM_DIST_DIR"] = ".next-build"
-        }
+        env.merge(runtimeLaunch.environment) { _, new in new }
         p.environment = env
 
         // High priority so local dev server can become responsive quickly
@@ -475,37 +491,89 @@ class DevServer: ObservableObject {
         return snapshot.joined(separator: "\n")
     }
 
-    private func runtimeLaunch(projectPath: String, port: Int, serverMode: String) -> RuntimeLaunch {
-        let buildIdPath = "\(projectPath)/.next-build/BUILD_ID"
-        let devScriptPath = "\(projectPath)/scripts/dev.mjs"
+    static func runtimeLaunch(
+        projectPath: String?,
+        port: Int,
+        serverMode: String,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        homeDirectory: String = NSHomeDirectory(),
+        fileManager: FileManager = .default
+    ) -> RuntimeLaunch {
+        let devScriptPath = projectPath.map { "\($0)/scripts/dev.mjs" }
         let runtimeCommand: String
         let requiredExecutables: [String]
+        let currentDirectoryPath: String
+        var runtimeEnvironment: [String: String] = [:]
+        let requiresProjectDependencies: Bool
+        let launchFailureMessage: String?
 
-        if serverMode == "prod" {
-            if FileManager.default.fileExists(atPath: buildIdPath) {
-                runtimeCommand = "npx next start -p \(port) -H 0.0.0.0"
-                requiredExecutables = ["npx"]
-            } else if FileManager.default.fileExists(atPath: devScriptPath) {
-                runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
-                requiredExecutables = ["node"]
-            } else {
-                runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
-                requiredExecutables = ["npx"]
+        if serverMode == "prod",
+           let runtimeRoot = LoomRuntimePaths.resolveInstalledRuntimeRoot(
+                env: environment,
+                homeDirectory: homeDirectory,
+                fileManager: fileManager
+           ) {
+            runtimeCommand = "node standalone/server.js"
+            requiredExecutables = ["node"]
+            currentDirectoryPath = runtimeRoot
+            runtimeEnvironment["HOSTNAME"] = "0.0.0.0"
+            runtimeEnvironment["PORT"] = String(port)
+            guard let contentRoot = LoomRuntimePaths.resolveContentRoot(
+                env: environment,
+                homeDirectory: homeDirectory,
+                fileManager: fileManager
+            ) ?? projectPath else {
+                return RuntimeLaunch(
+                    shellCommand: "",
+                    requiredExecutables: [],
+                    currentDirectoryPath: runtimeRoot,
+                    environment: runtimeEnvironment,
+                    requiresProjectDependencies: false,
+                    launchFailureMessage: "Loom content root missing. Reconnect or reselect the Loom content root."
+                )
             }
+            runtimeEnvironment["LOOM_CONTENT_ROOT"] = contentRoot
+            requiresProjectDependencies = false
+            launchFailureMessage = nil
+        } else if serverMode == "prod" {
+            runtimeCommand = ""
+            requiredExecutables = []
+            currentDirectoryPath = projectPath ?? homeDirectory
+            requiresProjectDependencies = false
+            launchFailureMessage = "Installed runtime missing. Rebuild and reinstall Loom."
         } else {
-            if FileManager.default.fileExists(atPath: devScriptPath) {
+            guard let projectPath else {
+                return RuntimeLaunch(
+                    shellCommand: "",
+                    requiredExecutables: [],
+                    currentDirectoryPath: homeDirectory,
+                    environment: runtimeEnvironment,
+                    requiresProjectDependencies: false,
+                    launchFailureMessage: "Could not find project root with package.json. Set LOOM_PROJECT_ROOT or place Wiki at ~/Desktop/Wiki."
+                )
+            }
+            currentDirectoryPath = projectPath
+            requiresProjectDependencies = true
+            if let devScriptPath, fileManager.fileExists(atPath: devScriptPath) {
                 runtimeCommand = "node scripts/dev.mjs -p \(port) -H 0.0.0.0"
                 requiredExecutables = ["node"]
+                runtimeEnvironment["LOOM_DIST_DIR"] = ".next-app-dev"
             } else {
                 runtimeCommand = "npx next dev -p \(port) -H 0.0.0.0"
                 requiredExecutables = ["npx"]
+                runtimeEnvironment["LOOM_DIST_DIR"] = ".next-app-dev"
             }
+            launchFailureMessage = nil
         }
         // Create an isolated process group when available so stop() can kill
         // the entire server tree reliably using negative PIDs.
         return RuntimeLaunch(
             shellCommand: "if command -v setsid >/dev/null 2>&1; then exec setsid \(runtimeCommand); else exec \(runtimeCommand); fi",
-            requiredExecutables: requiredExecutables
+            requiredExecutables: requiredExecutables,
+            currentDirectoryPath: currentDirectoryPath,
+            environment: runtimeEnvironment,
+            requiresProjectDependencies: requiresProjectDependencies,
+            launchFailureMessage: launchFailureMessage
         )
     }
 

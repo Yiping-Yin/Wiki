@@ -1,12 +1,13 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { searchIndexPath } from '../../../lib/derived-index-cache';
+import { CONTENT_ROOT } from '../../../lib/server-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const candidates = [searchIndexPath(), path.join(process.cwd(), 'public', 'search-index.json')];
+  const candidates = [searchIndexPath(), path.join(CONTENT_ROOT, 'public', 'search-index.json')];
 
   for (const candidate of candidates) {
     try {

@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { resolveContentRoot } from '../../lib/runtime-roots';
 import { UploadsClient, type UploadListItem } from './UploadsClient';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ function normalizePreview(raw: string) {
 }
 
 export default async function UploadsPage() {
-  const dir = path.join(process.cwd(), 'knowledge', 'uploads');
+  const dir = path.join(resolveContentRoot(), 'knowledge', 'uploads');
   let items: UploadListItem[] = [];
   try {
     await fs.mkdir(dir, { recursive: true });

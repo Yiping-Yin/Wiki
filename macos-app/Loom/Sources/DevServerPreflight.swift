@@ -50,8 +50,10 @@ enum DevServerPreflight {
 
     static func missingDependencyMessage(
         projectPath: String,
+        requiresProjectDependencies: Bool = true,
         fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
     ) -> String? {
+        guard requiresProjectDependencies else { return nil }
         let packageJSONPath = "\(projectPath)/package.json"
         let nextBinaryPath = "\(projectPath)/node_modules/next/dist/bin/next"
         guard fileExists(packageJSONPath) else { return nil }
