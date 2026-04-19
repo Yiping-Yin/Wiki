@@ -27,6 +27,5 @@ export function resolveInitialSidebarMode(options: {
 }
 
 export function shouldForcePinnedSidebarForPath(pathname: string | null | undefined): boolean {
-  if (!pathname) return false;
-  return pathname === '/atlas' || pathname === '/knowledge' || pathname.startsWith('/knowledge/');
+  return false;
 }
