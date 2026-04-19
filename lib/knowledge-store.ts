@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { toKnowledgeRelativePath } from './server-config';
+import { resolveContentRoot } from './runtime-roots';
 import {
   DEFAULT_SOURCE_LIBRARY_ORDER,
   FALLBACK_SOURCE_LIBRARY_GROUP_ID,
@@ -63,7 +64,7 @@ async function fileSignature(file: string): Promise<string> {
 }
 
 export function knowledgeManifestRoot() {
-  return path.join(process.cwd(), 'knowledge', '.cache', 'manifest');
+  return path.join(resolveContentRoot(), 'knowledge', '.cache', 'manifest');
 }
 
 export function knowledgeManifestPath() {
@@ -183,7 +184,10 @@ export async function getSourceLibraryGroups(): Promise<SourceLibraryGroup[]> {
   const sortedGroups = Array.from(groups.values())
     .map((group) => {
       const memberships = new Map(
-        group.categories.map((category) => [category.slug, membershipByCategory.get(category.slug)?.order ?? DEFAULT_SOURCE_LIBRARY_ORDER]),
+        group.categories.map((category) => [
+          category.slug,
+          membershipByCategory.get(category.slug)?.order ?? DEFAULT_SOURCE_LIBRARY_ORDER,
+        ]),
       );
       const sortedCategories = [...group.categories].sort((a, b) => {
         const orderDiff = (memberships.get(a.slug) ?? DEFAULT_SOURCE_LIBRARY_ORDER)

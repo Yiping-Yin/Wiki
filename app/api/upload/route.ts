@@ -7,13 +7,13 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { KNOWLEDGE_ROOT } from '../../../lib/server-config';
+import { CONTENT_ROOT, EXECUTION_ROOT, KNOWLEDGE_ROOT } from '../../../lib/server-config';
 import { runKnowledgeIngest } from '../../../lib/knowledge-ingest';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
+const UPLOAD_DIR = path.join(CONTENT_ROOT, 'knowledge', 'uploads');
 const ALLOWED = new Set(['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.mdx', '.csv', '.tsv', '.json', '.ipynb', '.xlsx', '.xls']);
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
 
     // Re-run ingest so the nav updates
     try {
-      await runKnowledgeIngest();
+      await runKnowledgeIngest({ cwd: EXECUTION_ROOT });
     } catch {}
 
     const catSlug = slugify(categoryName);

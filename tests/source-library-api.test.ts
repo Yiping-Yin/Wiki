@@ -21,6 +21,7 @@ async function waitFor(predicate: () => boolean, attempts = 50) {
 
 async function withTempRepo(t: test.TestContext, fn: () => Promise<void>) {
   const previousCwd = process.cwd();
+  const previousContentRoot = process.env.LOOM_CONTENT_ROOT;
   const root = await mkdtemp(path.join(os.tmpdir(), 'source-library-api-'));
   const manifestRoot = path.join(root, 'knowledge', '.cache', 'manifest');
 
@@ -43,8 +44,14 @@ async function withTempRepo(t: test.TestContext, fn: () => Promise<void>) {
   );
 
   process.chdir(root);
+  process.env.LOOM_CONTENT_ROOT = root;
   t.after(() => {
     process.chdir(previousCwd);
+    if (previousContentRoot === undefined) {
+      delete process.env.LOOM_CONTENT_ROOT;
+    } else {
+      process.env.LOOM_CONTENT_ROOT = previousContentRoot;
+    }
   });
 
   await fn();

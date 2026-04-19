@@ -6,6 +6,7 @@ import { DocViewer } from '../../../components/DocViewer';
 import { TrackView } from '../../../components/TrackView';
 import { DocBodyProvider } from '../../../components/DocBodyProvider';
 import { LiveArtifact } from '../../../components/LiveArtifact';
+import { resolveContentRoot } from '../../../lib/runtime-roots';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ export default async function UploadDocPage({ params }: { params: Promise<{ name
   // path traversal guard
   if (decoded.includes('/') || decoded.includes('..')) notFound();
 
-  const dir = path.join(process.cwd(), 'knowledge', 'uploads');
+  const dir = path.join(resolveContentRoot(), 'knowledge', 'uploads');
   const fullPath = path.join(dir, decoded);
 
   let stat;

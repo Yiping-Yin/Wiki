@@ -1,6 +1,8 @@
 import path from 'node:path';
+import { resolveContentRoot } from './runtime-roots';
 
 export type CliKind = 'claude' | 'codex';
+export const EXECUTION_ROOT = process.cwd();
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? '';
 
@@ -8,10 +10,35 @@ function fromHome(...parts: string[]) {
   return HOME ? path.join(HOME, ...parts) : null;
 }
 
+function fallbackContentRoot() {
+  return path.resolve(EXECUTION_ROOT);
+}
+
+function loadContentRoot() {
+  try {
+    return {
+      contentRoot: resolveContentRoot({
+        fallbackContentRoot: fallbackContentRoot(),
+      }),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      contentRoot: fallbackContentRoot(),
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+const CONTENT_ROOT_STATE = loadContentRoot();
+
+export const CONTENT_ROOT = CONTENT_ROOT_STATE.contentRoot;
+export const CONTENT_ROOT_CONFIG_ERROR = CONTENT_ROOT_STATE.error;
+
 export const KNOWLEDGE_ROOT =
   process.env.LOOM_KNOWLEDGE_ROOT?.trim()
   || fromHome('Desktop', 'Knowledge system')
-  || path.resolve(process.cwd(), '..', 'Knowledge system');
+  || path.resolve(EXECUTION_ROOT, '..', 'Knowledge system');
 
 export const CLAUDE_BIN =
   process.env.CLAUDE_BIN?.trim()

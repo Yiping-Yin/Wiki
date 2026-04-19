@@ -8,7 +8,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { LOOM_CAPTURE_DOC_MARKER } from '../../../../lib/knowledge-doc-state';
-import { KNOWLEDGE_ROOT } from '../../../../lib/server-config';
+import { EXECUTION_ROOT, KNOWLEDGE_ROOT } from '../../../../lib/server-config';
 import { runKnowledgeIngest } from '../../../../lib/knowledge-ingest';
 
 export const runtime = 'nodejs';
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     // Re-run ingest to update navigation
-    await runKnowledgeIngest();
+    await runKnowledgeIngest({ cwd: EXECUTION_ROOT });
 
     const slug = slugify(trimmed);
     return Response.json({

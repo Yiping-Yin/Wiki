@@ -1,7 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { CONTENT_ROOT } from './server-config';
 
-const ROOT = process.cwd();
+const ROOT = CONTENT_ROOT;
 const RUNTIME_DOCS_DIR = path.join(ROOT, 'knowledge', '.cache', 'docs');
 const LEGACY_DOCS_DIR = path.join(ROOT, 'public', 'knowledge', 'docs');
 

@@ -1,6 +1,7 @@
 import path from 'node:path';
+import { CONTENT_ROOT } from './server-config';
 
-const ROOT = process.cwd();
+const ROOT = CONTENT_ROOT;
 const INDEX_ROOT = path.join(ROOT, 'knowledge', '.cache', 'indexes');
 
 export function derivedIndexRoot() {

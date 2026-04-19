@@ -3,6 +3,37 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
+
+/**
+ * @typedef {object} InstallRuntimeMetadataOptions
+ * @property {string} [repoRoot]
+ * @property {string} [homeOverride]
+ */
+
+/**
+ * @typedef {object} PruneRepoBuildArtifactsOptions
+ * @property {string} [repoRoot]
+ * @property {boolean} [installSucceeded]
+ */
+
+/**
+ * @typedef {object} InstallLoomAppDependencies
+ * @property {() => Promise<string>} [findBuiltApp]
+ * @property {(target: string, source: string) => Promise<void>} [installTo]
+ * @property {(options?: { repoRoot?: string, homeOverride?: string }) => Promise<string>} [stageRuntimeBundle]
+ * @property {(options?: InstallRuntimeMetadataOptions) => Promise<void>} [installRuntimeMetadata]
+ * @property {(options?: PruneRepoBuildArtifactsOptions) => Promise<void>} [maybePruneRepoBuildArtifacts]
+ */
+
+/**
+ * @typedef {object} InstallLoomAppOptions
+ * @property {string} [mode]
+ * @property {string} [repoRoot]
+ * @property {string} [homeOverride]
+ * @property {string} [sourceAppPath]
+ * @property {InstallLoomAppDependencies} [dependencies]
+ */
 
 const home = homedir();
 const derivedDataRoot = path.join(home, 'Library/Developer/Xcode/DerivedData');
@@ -28,6 +59,88 @@ export function isPermissionFallbackError(error) {
   return message.includes('permission denied')
     || message.includes('operation not permitted')
     || message.includes('not permitted');
+}
+
+/**
+ * @param {InstallRuntimeMetadataOptions} [options]
+ */
+export async function installRuntimeMetadata({ repoRoot, homeOverride } = {}) {
+  const appSupportRoot = path.join(homeOverride ?? home, 'Library', 'Application Support', 'Loom');
+  await fs.mkdir(appSupportRoot, { recursive: true });
+  await fs.writeFile(
+    path.join(appSupportRoot, 'content-root.json'),
+    JSON.stringify({ contentRoot: repoRoot }, null, 2),
+    'utf8',
+  );
+}
+
+/**
+ * @param {PruneRepoBuildArtifactsOptions} [options]
+ */
+export async function maybePruneRepoBuildArtifacts({ repoRoot, installSucceeded } = {}) {
+  if (!installSucceeded) return;
+  await fs.rm(path.join(repoRoot, '.next-build'), { recursive: true, force: true });
+}
+
+function appSupportRootFor(homeOverride) {
+  return path.join(homeOverride ?? home, 'Library', 'Application Support', 'Loom');
+}
+
+async function readTextIfExists(filePath) {
+  try {
+    return await fs.readFile(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+function parseRuntimeRoot(activationText) {
+  if (!activationText) return null;
+
+  try {
+    const parsed = JSON.parse(activationText);
+    return typeof parsed.runtimeRoot === 'string' && parsed.runtimeRoot.trim()
+      ? parsed.runtimeRoot
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function snapshotRuntimeState(homeOverride) {
+  const appSupportRoot = appSupportRootFor(homeOverride);
+  const activationPath = path.join(appSupportRoot, 'runtime', 'current.json');
+  const contentRootPath = path.join(appSupportRoot, 'content-root.json');
+  const activationText = await readTextIfExists(activationPath);
+  const contentRootText = await readTextIfExists(contentRootPath);
+
+  return {
+    activationPath,
+    activationText,
+    contentRootPath,
+    contentRootText,
+    previousRuntimeRoot: parseRuntimeRoot(activationText),
+  };
+}
+
+async function restoreRuntimeState(snapshot, stagedRuntimeRoot) {
+  if (snapshot.activationText === null) {
+    await fs.rm(snapshot.activationPath, { force: true });
+  } else {
+    await fs.mkdir(path.dirname(snapshot.activationPath), { recursive: true });
+    await fs.writeFile(snapshot.activationPath, snapshot.activationText, 'utf8');
+  }
+
+  if (snapshot.contentRootText === null) {
+    await fs.rm(snapshot.contentRootPath, { force: true });
+  } else {
+    await fs.mkdir(path.dirname(snapshot.contentRootPath), { recursive: true });
+    await fs.writeFile(snapshot.contentRootPath, snapshot.contentRootText, 'utf8');
+  }
+
+  if (stagedRuntimeRoot && stagedRuntimeRoot !== snapshot.previousRuntimeRoot) {
+    await fs.rm(stagedRuntimeRoot, { recursive: true, force: true });
+  }
 }
 
 async function listDirSafe(dir) {
@@ -94,31 +207,96 @@ async function installTo(target, source) {
   });
 }
 
-async function main() {
-  const source = await findBuiltApp();
-  if (mode === 'user') {
-    await installTo(fallbackTarget, source);
-    console.log(`Installed Loom.app to ${fallbackTarget}`);
-    return;
+/**
+ * @param {InstallLoomAppOptions} [options]
+ */
+export async function installLoomApp({
+  mode: installMode = mode,
+  repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+  homeOverride,
+  sourceAppPath,
+  dependencies = {},
+} = {}) {
+  const resolveSource = dependencies.findBuiltApp ?? findBuiltApp;
+  const copyApp = dependencies.installTo ?? installTo;
+  const stageRuntime = dependencies.stageRuntimeBundle ?? stageRuntimeBundle;
+  const persistMetadata = dependencies.installRuntimeMetadata ?? installRuntimeMetadata;
+  const pruneRepoBuildArtifacts = dependencies.maybePruneRepoBuildArtifacts ?? maybePruneRepoBuildArtifacts;
+  const source = sourceAppPath ?? await resolveSource();
+  const runtimeSnapshot = await snapshotRuntimeState(homeOverride);
+  let stagedRuntimeRoot = null;
+
+  const prepareInstall = async () => {
+    try {
+      stagedRuntimeRoot = await stageRuntime({ repoRoot, homeOverride });
+      await persistMetadata({ repoRoot, homeOverride });
+    } catch (error) {
+      await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
+      throw error;
+    }
+  };
+
+  const pruneAfterSuccess = async () => {
+    try {
+      await pruneRepoBuildArtifacts({ repoRoot, installSucceeded: true });
+    } catch (error) {
+      console.warn(`Skipping repo build cache prune: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  if (installMode === 'user') {
+    await prepareInstall();
+    try {
+      await copyApp(fallbackTarget, source);
+    } catch (error) {
+      await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
+      throw error;
+    }
+    await pruneAfterSuccess();
+    return { target: fallbackTarget, fallbackUsed: false };
   }
 
-  if (mode === 'system') {
-    await installTo(primaryTarget, source);
-    console.log(`Installed Loom.app to ${primaryTarget}`);
-    return;
+  if (installMode === 'system') {
+    await prepareInstall();
+    try {
+      await copyApp(primaryTarget, source);
+    } catch (error) {
+      await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
+      throw error;
+    }
+    await pruneAfterSuccess();
+    return { target: primaryTarget, fallbackUsed: false };
+  }
+
+  await prepareInstall();
+
+  try {
+    await copyApp(primaryTarget, source);
+    await pruneAfterSuccess();
+    return { target: primaryTarget, fallbackUsed: false };
+  } catch (error) {
+    if (!isPermissionFallbackError(error)) {
+      await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
+      throw error;
+    }
   }
 
   try {
-    await installTo(primaryTarget, source);
-    console.log(`Installed Loom.app to ${primaryTarget}`);
-    return;
+    await copyApp(fallbackTarget, source);
   } catch (error) {
-    if (!isPermissionFallbackError(error)) throw error;
+    await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
+    throw error;
   }
+  await pruneAfterSuccess();
+  return { target: fallbackTarget, fallbackUsed: true };
+}
 
-  await installTo(fallbackTarget, source);
-  console.log(`Installed Loom.app to ${fallbackTarget}`);
-  console.log('Primary /Applications target was not writable in this environment.');
+async function main() {
+  const { target, fallbackUsed } = await installLoomApp();
+  console.log(`Installed Loom.app to ${target}`);
+  if (fallbackUsed) {
+    console.log('Primary /Applications target was not writable in this environment.');
+  }
 }
 
 const isDirectRun = process.argv[1]
