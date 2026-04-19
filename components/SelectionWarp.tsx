@@ -56,8 +56,6 @@ type Intent = 'ask' | 'capture' | 'highlight';
 const MIN_LEN = 2;
 
 function intentFromInput({
-  metaKey,
-  ctrlKey,
   altKey,
   button,
 }: {
@@ -67,7 +65,6 @@ function intentFromInput({
   button?: number;
 }): Intent {
   if (altKey || button === 2) return 'highlight';
-  if (metaKey || ctrlKey) return 'capture';
   return 'ask';
 }
 
@@ -195,11 +192,46 @@ export function SelectionWarp() {
     };
     const onWindowBlur = () => setIntent('ask');
 
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+      const text = sel.toString().trim();
+      if (text.length < MIN_LEN) return;
+      const main = document.querySelector('main');
+      if (!main || !main.contains(sel.getRangeAt(0).commonAncestorContainer)) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+      }
+      e.preventDefault();
+      void captureCurrentSelection().then((captured) => {
+        if (!captured) return;
+        window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
+        window.dispatchEvent(new CustomEvent('loom:capture:done', {
+          detail: {
+            anchorId: captured.anchorId,
+            quote: captured.quote,
+            reviewHint: '⌘/ Thought Map',
+          },
+        }));
+        window.dispatchEvent(new CustomEvent('loom:capture-success', {
+          detail: { label: 'Captured' },
+        }));
+      });
+      setSpot(null);
+      setHovered(false);
+      setTouchActionsOpen(false);
+    };
+
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('touchend', onTouchEnd);
     document.addEventListener('selectionchange', onSelectionChange);
     window.addEventListener('keydown', onKeyChange);
     window.addEventListener('keyup', onKeyChange);
+    window.addEventListener('keydown', onGlobalKeyDown);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
     window.addEventListener('pageshow', onPageShow);
@@ -213,6 +245,7 @@ export function SelectionWarp() {
       document.removeEventListener('selectionchange', onSelectionChange);
       window.removeEventListener('keydown', onKeyChange);
       window.removeEventListener('keyup', onKeyChange);
+      window.removeEventListener('keydown', onGlobalKeyDown);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       window.removeEventListener('pageshow', onPageShow);
@@ -287,27 +320,7 @@ export function SelectionWarp() {
       return;
     }
     const nextIntent = intentFromInput(e);
-    if (nextIntent === 'capture') {
-      void captureCurrentSelection().then((captured) => {
-        if (!captured) return;
-        window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
-        window.dispatchEvent(new CustomEvent('loom:capture:done', {
-          detail: {
-            anchorId: captured.anchorId,
-            quote: captured.quote,
-            reviewHint: '⌘/ 打开 Thought Map 延伸',
-            viewport: { x: spot.left, y: spot.top, height: spot.height },
-          },
-        }));
-        window.dispatchEvent(new CustomEvent('loom:capture-success', {
-          detail: { label: 'Weft Woven' }
-        }));
-      });
-      setSpot(null);
-      setHovered(false);
-      setTouchActionsOpen(false);
-      setIntent('ask');
-    } else if (nextIntent === 'highlight') {
+    if (nextIntent === 'highlight') {
       const text = spot.text;
       const ctx = contextFromPathname(window.location.pathname);
       void appendEventForDoc(
@@ -327,9 +340,9 @@ export function SelectionWarp() {
     }
   };
 
-  const actionLabel = intent === 'capture' ? 'capture' : intent === 'highlight' ? 'highlight' : 'ask';
-  const actionHint = intent === 'capture' ? '⌘ click' : intent === 'highlight' ? '⌥ click' : 'click';
-  const threadColor = intent === 'capture' ? 'var(--tint-indigo)' : intent === 'highlight' ? tint : 'var(--accent)';
+  const actionLabel = intent === 'highlight' ? 'highlight' : 'ask';
+  const actionHint = intent === 'highlight' ? '⌥ click' : 'click';
+  const threadColor = intent === 'highlight' ? tint : 'var(--accent)';
   const showLabel = !smallScreen && (hovered || intent !== 'ask');
 
   const capture = async () => {
@@ -382,7 +395,7 @@ export function SelectionWarp() {
         highlight(e);
       }}
       aria-label={`${actionLabel} this selection`}
-      title="click → ask AI · ⌘ click → capture · ⌥ click → highlight · ⌘⇧A anywhere"
+      title="click → ask AI · ⌘⏎ → capture · ⌥ click → highlight"
       style={{
         position: 'absolute',
         top: spot.top,
