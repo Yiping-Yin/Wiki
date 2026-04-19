@@ -5,6 +5,36 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
 
+/**
+ * @typedef {object} InstallRuntimeMetadataOptions
+ * @property {string} [repoRoot]
+ * @property {string} [homeOverride]
+ */
+
+/**
+ * @typedef {object} PruneRepoBuildArtifactsOptions
+ * @property {string} [repoRoot]
+ * @property {boolean} [installSucceeded]
+ */
+
+/**
+ * @typedef {object} InstallLoomAppDependencies
+ * @property {() => Promise<string>} [findBuiltApp]
+ * @property {(target: string, source: string) => Promise<void>} [installTo]
+ * @property {(options?: { repoRoot?: string, homeOverride?: string }) => Promise<string>} [stageRuntimeBundle]
+ * @property {(options?: InstallRuntimeMetadataOptions) => Promise<void>} [installRuntimeMetadata]
+ * @property {(options?: PruneRepoBuildArtifactsOptions) => Promise<void>} [maybePruneRepoBuildArtifacts]
+ */
+
+/**
+ * @typedef {object} InstallLoomAppOptions
+ * @property {string} [mode]
+ * @property {string} [repoRoot]
+ * @property {string} [homeOverride]
+ * @property {string} [sourceAppPath]
+ * @property {InstallLoomAppDependencies} [dependencies]
+ */
+
 const home = homedir();
 const derivedDataRoot = path.join(home, 'Library/Developer/Xcode/DerivedData');
 const primaryTarget = '/Applications/Loom.app';
@@ -31,6 +61,9 @@ export function isPermissionFallbackError(error) {
     || message.includes('not permitted');
 }
 
+/**
+ * @param {InstallRuntimeMetadataOptions} [options]
+ */
 export async function installRuntimeMetadata({ repoRoot, homeOverride } = {}) {
   const appSupportRoot = path.join(homeOverride ?? home, 'Library', 'Application Support', 'Loom');
   await fs.mkdir(appSupportRoot, { recursive: true });
@@ -41,6 +74,9 @@ export async function installRuntimeMetadata({ repoRoot, homeOverride } = {}) {
   );
 }
 
+/**
+ * @param {PruneRepoBuildArtifactsOptions} [options]
+ */
 export async function maybePruneRepoBuildArtifacts({ repoRoot, installSucceeded } = {}) {
   if (!installSucceeded) return;
   await fs.rm(path.join(repoRoot, '.next-build'), { recursive: true, force: true });
@@ -171,6 +207,9 @@ async function installTo(target, source) {
   });
 }
 
+/**
+ * @param {InstallLoomAppOptions} [options]
+ */
 export async function installLoomApp({
   mode: installMode = mode,
   repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),

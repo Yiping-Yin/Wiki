@@ -2,6 +2,12 @@ import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+/**
+ * @typedef {object} StageRuntimeBundleOptions
+ * @property {string} [repoRoot]
+ * @property {string} [homeOverride]
+ */
+
 function runtimeBaseDir(homePath) {
   return path.join(homePath, 'Library', 'Application Support', 'Loom', 'runtime');
 }
@@ -68,6 +74,9 @@ async function validateStagedRuntime(targetRoot) {
   }
 }
 
+/**
+ * @param {StageRuntimeBundleOptions} [options]
+ */
 export async function stageRuntimeBundle({ repoRoot = process.cwd(), homeOverride } = {}) {
   const homePath = homeOverride ?? homedir();
   const buildRoot = path.join(repoRoot, '.next-build');

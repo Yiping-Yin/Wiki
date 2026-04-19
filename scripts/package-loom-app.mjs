@@ -6,6 +6,26 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
 
+/**
+ * @typedef {object} FindBuiltAppOptions
+ * @property {string} [derivedDataRoot]
+ * @property {string} [preferredConfiguration]
+ */
+
+/**
+ * @typedef {object} StageRuntimeForPackagingOptions
+ * @property {string} [repoRoot]
+ * @property {string} [homeOverride]
+ */
+
+/**
+ * @typedef {object} PackageLoomAppOptions
+ * @property {string} appPath
+ * @property {string} runtimeRoot
+ * @property {string} [outputRoot]
+ * @property {string} contentRoot
+ */
+
 const home = homedir();
 const derivedDataRoot = path.join(home, 'Library/Developer/Xcode/DerivedData');
 
@@ -33,6 +53,9 @@ async function exists(target) {
   }
 }
 
+/**
+ * @param {FindBuiltAppOptions} [options]
+ */
 export async function findBuiltApp({ derivedDataRoot: searchRoot = derivedDataRoot, preferredConfiguration = 'Release' } = {}) {
   const entries = await listDirSafe(searchRoot);
   const configurations = [preferredConfiguration, 'Release', 'Debug']
@@ -84,6 +107,9 @@ function createRuntimePackagePayload({ runtimeRoot, contentRoot, outputDir }) {
   return { libraryRoot, tempRoot };
 }
 
+/**
+ * @param {StageRuntimeForPackagingOptions} [options]
+ */
 export async function stageRuntimeForPackaging({ repoRoot, homeOverride } = {}) {
   const tempHomeRoot = mkdtempSync(path.join(tmpdir(), 'loom-package-home-'));
 
@@ -101,6 +127,9 @@ export async function stageRuntimeForPackaging({ repoRoot, homeOverride } = {}) 
   }
 }
 
+/**
+ * @param {PackageLoomAppOptions} options
+ */
 export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = outputRoot, contentRoot } = {}) {
   const appArchivePath = path.join(outputDir, 'Loom-replacement.zip');
   const runtimeArchivePath = path.join(outputDir, 'Loom-runtime.zip');

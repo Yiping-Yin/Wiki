@@ -13,6 +13,10 @@ const repoRoot = path.resolve(__dirname, '..');
 const uploadsPageUrl = pathToFileURL(path.join(repoRoot, 'app', 'uploads', 'page.tsx')).href;
 const uploadDocPageUrl = pathToFileURL(path.join(repoRoot, 'app', 'uploads', '[name]', 'page.tsx')).href;
 
+function env(values: Record<string, string>) {
+  return values as unknown as NodeJS.ProcessEnv;
+}
+
 function runIsolatedTsEval(script: string, options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
   const childEnv: NodeJS.ProcessEnv = { ...process.env };
   for (const [key, value] of Object.entries(options.env ?? {})) {
@@ -267,21 +271,21 @@ test('installLoomApp rolls back staged runtime metadata when app bundle install 
       sourceAppPath: appPath,
       homeOverride: root,
       dependencies: {
-        stageRuntimeBundle: async ({ homeOverride }) => {
+        stageRuntimeBundle: async ({ homeOverride } = {}) => {
           stageCalled = true;
           await mkdir(stagedRuntimeRoot, { recursive: true });
           await writeFile(
-            path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'runtime', 'current.json'),
+            path.join(homeOverride ?? root, 'Library', 'Application Support', 'Loom', 'runtime', 'current.json'),
             JSON.stringify({ buildId: 'build-new', runtimeRoot: stagedRuntimeRoot }, null, 2),
             'utf8',
           );
           return stagedRuntimeRoot;
         },
-        installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+        installRuntimeMetadata: async ({ repoRoot: resolvedRepoRoot, homeOverride: resolvedHomeOverride } = {}) => {
           metadataCalled = true;
           await writeFile(
-            path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
-            JSON.stringify({ contentRoot: repoRoot }, null, 2),
+            path.join(resolvedHomeOverride ?? root, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+            JSON.stringify({ contentRoot: resolvedRepoRoot ?? '/tmp/wiki-project' }, null, 2),
             'utf8',
           );
         },
@@ -333,9 +337,9 @@ test('installLoomApp restores previous runtime metadata if app replacement fails
       sourceAppPath: appPath,
       homeOverride: root,
       dependencies: {
-        stageRuntimeBundle: async ({ homeOverride }) => {
+        stageRuntimeBundle: async ({ homeOverride } = {}) => {
           stageCalled = true;
-          const supportRoot = path.join(homeOverride, 'Library', 'Application Support', 'Loom');
+          const supportRoot = path.join(homeOverride ?? root, 'Library', 'Application Support', 'Loom');
           const nextRuntimeBase = path.join(supportRoot, 'runtime');
           await mkdir(stagedRuntimeRoot, { recursive: true });
           await writeFile(
@@ -399,8 +403,8 @@ test('installLoomApp rolls back staged runtime metadata if content root persiste
       sourceAppPath: appPath,
       homeOverride: root,
       dependencies: {
-        stageRuntimeBundle: async ({ homeOverride }) => {
-          const supportRoot = path.join(homeOverride, 'Library', 'Application Support', 'Loom');
+        stageRuntimeBundle: async ({ homeOverride } = {}) => {
+          const supportRoot = path.join(homeOverride ?? root, 'Library', 'Application Support', 'Loom');
           const nextRuntimeBase = path.join(supportRoot, 'runtime');
           await mkdir(stagedRuntimeRoot, { recursive: true });
           await writeFile(
@@ -410,10 +414,10 @@ test('installLoomApp rolls back staged runtime metadata if content root persiste
           );
           return stagedRuntimeRoot;
         },
-        installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+        installRuntimeMetadata: async ({ repoRoot: resolvedRepoRoot, homeOverride: resolvedHomeOverride } = {}) => {
           await writeFile(
-            path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
-            JSON.stringify({ contentRoot: repoRoot }, null, 2),
+            path.join(resolvedHomeOverride ?? root, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+            JSON.stringify({ contentRoot: resolvedRepoRoot ?? '/tmp/wiki-project' }, null, 2),
             'utf8',
           );
           throw new Error('metadata persistence failed');
@@ -476,10 +480,10 @@ test('installLoomApp prunes repo .next-build only after a successful install', a
         await mkdir(stagedRuntimeRoot, { recursive: true });
         return stagedRuntimeRoot;
       },
-      installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+      installRuntimeMetadata: async ({ repoRoot: resolvedRepoRoot, homeOverride: resolvedHomeOverride } = {}) => {
         await writeFile(
-          path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
-          JSON.stringify({ contentRoot: repoRoot }, null, 2),
+          path.join(resolvedHomeOverride ?? root, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+          JSON.stringify({ contentRoot: resolvedRepoRoot ?? repoRoot }, null, 2),
           'utf8',
         );
       },
@@ -519,10 +523,10 @@ test('installLoomApp treats repo .next-build pruning as best-effort after a succ
         await mkdir(stagedRuntimeRoot, { recursive: true });
         return stagedRuntimeRoot;
       },
-      installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+      installRuntimeMetadata: async ({ repoRoot: resolvedRepoRoot, homeOverride: resolvedHomeOverride } = {}) => {
         await writeFile(
-          path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
-          JSON.stringify({ contentRoot: repoRoot }, null, 2),
+          path.join(resolvedHomeOverride ?? root, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+          JSON.stringify({ contentRoot: resolvedRepoRoot ?? repoRoot }, null, 2),
           'utf8',
         );
       },
@@ -586,7 +590,7 @@ test('packageLoomApp writes app and runtime archives plus install instructions',
   assert.equal(activation.runtimeRoot, undefined);
   assert.equal(contentConfig.contentRoot, '/tmp/wiki-project');
   assert.equal(
-    resolveActiveRuntimeRoot({ env: { HOME: extractedRoot } as NodeJS.ProcessEnv }),
+    resolveActiveRuntimeRoot({ env: env({ HOME: extractedRoot }) }),
     path.join(extractedRoot, 'Library', 'Application Support', 'Loom', 'runtime', 'build-123'),
   );
 
