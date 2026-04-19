@@ -307,6 +307,17 @@ test('Sidebar consumes the runtime sourceLibraryGroups payload directly', () => 
   assert.doesNotMatch(hookSource, /label\.toLowerCase\(\)/);
 });
 
+test('Sidebar new topic flow refreshes nav and waits for navigation handoff before closing the editor', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'components/Sidebar.tsx'), 'utf8');
+
+  assert.match(source, /import \{ refreshKnowledgeNav, useKnowledgeNav \} from '\.\.\/lib\/use-knowledge-nav';/);
+  assert.match(source, /function NewTopicButton\(\{ onCreated \}: \{ onCreated: \(href: string\) => void \| Promise<void> \}\)/);
+  assert.match(source, /await Promise\.resolve\(onCreated\(j\.href\)\);/);
+  assert.match(source, /const navRefresh = refreshKnowledgeNav\(\);/);
+  assert.match(source, /router\.push\(href\);/);
+  assert.match(source, /await navRefresh;/);
+});
+
 test('QuickSwitcher builds search groups from runtime sourceLibraryGroups', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'components/QuickSwitcher.tsx'), 'utf8');
 

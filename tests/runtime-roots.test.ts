@@ -184,11 +184,13 @@ test('content-root resolver can point knowledge APIs at a non-cwd project tree',
 test('server-config keeps knowledge root separate from content root', async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-content-project-'));
   const knowledgeRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-knowledge-root-'));
+  await mkdir(path.join(projectRoot, 'scripts'), { recursive: true });
+  await writeFile(path.join(projectRoot, 'scripts', 'ingest-knowledge.ts'), '// script', 'utf8');
   const output = runIsolatedTsEval(
     `
       const mod = await import(${JSON.stringify(serverConfigUrl)});
-      const { CONTENT_ROOT, KNOWLEDGE_ROOT } = mod.default ?? mod;
-      console.log(JSON.stringify({ CONTENT_ROOT, KNOWLEDGE_ROOT }));
+      const { CONTENT_ROOT, KNOWLEDGE_ROOT, EXECUTION_ROOT } = mod.default ?? mod;
+      console.log(JSON.stringify({ CONTENT_ROOT, KNOWLEDGE_ROOT, EXECUTION_ROOT }));
     `,
     {
       env: {
@@ -197,10 +199,37 @@ test('server-config keeps knowledge root separate from content root', async () =
       },
     },
   );
-  const parsed = JSON.parse(output) as { CONTENT_ROOT: string; KNOWLEDGE_ROOT: string };
+  const parsed = JSON.parse(output) as { CONTENT_ROOT: string; KNOWLEDGE_ROOT: string; EXECUTION_ROOT: string };
 
   assert.equal(parsed.CONTENT_ROOT, projectRoot);
   assert.equal(parsed.KNOWLEDGE_ROOT, knowledgeRoot);
+  assert.equal(parsed.EXECUTION_ROOT, canonicalPath(repoRoot));
+});
+
+test('server-config falls back to content root as execution root when cwd has no ingest scripts', async () => {
+  const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-runtime-root-'));
+  const contentRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-content-root-'));
+  await mkdir(path.join(contentRoot, 'scripts'), { recursive: true });
+  await writeFile(path.join(contentRoot, 'scripts', 'ingest-knowledge.ts'), '// script', 'utf8');
+
+  const output = runIsolatedTsEval(
+    `
+      process.chdir(${JSON.stringify(runtimeRoot)});
+      const mod = await import(${JSON.stringify(serverConfigUrl)});
+      const { EXECUTION_ROOT, CONTENT_ROOT } = mod.default ?? mod;
+      console.log(JSON.stringify({ EXECUTION_ROOT, CONTENT_ROOT }));
+    `,
+    {
+      env: {
+        LOOM_CONTENT_ROOT: contentRoot,
+      },
+    },
+  );
+  const parsed = JSON.parse(output) as { EXECUTION_ROOT: string; CONTENT_ROOT: string };
+
+  assert.equal(parsed.CONTENT_ROOT, contentRoot);
+  assert.equal(parsed.EXECUTION_ROOT, contentRoot);
+  assert.notEqual(parsed.EXECUTION_ROOT, runtimeRoot);
 });
 
 test('server-config falls back without throwing when persisted content-root config is malformed', async () => {

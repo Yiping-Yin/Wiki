@@ -7,6 +7,7 @@ test('writeKnowledgeDocBody writes the source file and reruns ingest', async () 
   const calls: string[] = [];
   let filePath = '';
   let fileBody = '';
+  let ingestArg: unknown;
 
   const result = await writeKnowledgeDocBody({
     docId: 'know-demo',
@@ -36,7 +37,8 @@ test('writeKnowledgeDocBody writes the source file and reruns ingest', async () 
       title: 'Demo',
       body: '<!-- loom:capture-doc -->\n# Demo\n',
     }),
-    ingest: async () => {
+    ingest: async (arg) => {
+      ingestArg = arg;
       calls.push('ingest');
     },
   });
@@ -44,6 +46,7 @@ test('writeKnowledgeDocBody writes the source file and reruns ingest', async () 
   assert.match(filePath, /Demo\/demo\.md$/);
   assert.match(fileBody, /## Core idea/);
   assert.deepEqual(calls, ['write', 'ingest']);
+  assert.deepEqual(ingestArg, { cwd: process.cwd() });
   assert.equal(result.href, '/knowledge/demo/demo');
 });
 

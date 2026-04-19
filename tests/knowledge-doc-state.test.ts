@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   canCaptureInline,
+  isEligibleCaptureDoc,
   LOOM_CAPTURE_DOC_MARKER,
   isKnowledgeDocPlaceholder,
   isWritableCaptureDoc,
@@ -56,6 +57,26 @@ test('only Loom-owned placeholder docs are writable by the capture workflow', ()
     isWritableCaptureDoc({
       ext: '.pdf',
       body: `${LOOM_CAPTURE_DOC_MARKER}\n# Imported PDF\n`,
+    }),
+    false,
+  );
+});
+
+test('capture eligibility requires both placeholder shape and Loom ownership marker', () => {
+  assert.equal(
+    isEligibleCaptureDoc({
+      title: 'UI build check',
+      ext: '.md',
+      body: `${LOOM_CAPTURE_DOC_MARKER}\n# UI build check\n`,
+    }),
+    true,
+  );
+
+  assert.equal(
+    isEligibleCaptureDoc({
+      title: 'Build check shell',
+      ext: '.md',
+      body: '# Build check shell',
     }),
     false,
   );

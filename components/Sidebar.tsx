@@ -12,7 +12,7 @@ import {
 } from '../lib/sidebar-mode';
 import { SearchBox } from './SearchBox';
 import chapterMeta from '../lib/chapter-meta.json';
-import { useKnowledgeNav } from '../lib/use-knowledge-nav';
+import { refreshKnowledgeNav, useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { useSmallScreen } from '../lib/use-small-screen';
 
 type ChMeta = { hasVideo?: boolean; hasMath?: boolean; hasCode?: boolean; hasMermaid?: boolean; hasPdf?: boolean; hasWidget?: boolean; wordCount?: number };
@@ -238,7 +238,13 @@ export function Sidebar() {
 
         {/* Personal knowledge */}
         <Section title="The Atlas" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
-          trailing={<NewTopicButton onCreated={(href) => { setOpen(false); router.push(href); }} />}
+          trailing={<NewTopicButton onCreated={async (href) => {
+            setKnowOpen(true);
+            setOpen(false);
+            const navRefresh = refreshKnowledgeNav();
+            router.push(href);
+            await navRefresh;
+          }} />}
         >
           {sourceLibraryGroups.map((group) => (
             <SourceLibraryGroupRow
@@ -566,7 +572,7 @@ function Section({
 }
 
 /** Inline "new topic" creation — §16: click → type → enter → done. */
-function NewTopicButton({ onCreated }: { onCreated: (href: string) => void }) {
+function NewTopicButton({ onCreated }: { onCreated: (href: string) => void | Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -595,9 +601,9 @@ function NewTopicButton({ onCreated }: { onCreated: (href: string) => void }) {
       });
       if (r.ok) {
         const j = await r.json();
+        await Promise.resolve(onCreated(j.href));
         setEditing(false);
         setValue('');
-        onCreated(j.href);
       }
     } catch {} finally { setBusy(false); }
   };
@@ -610,13 +616,13 @@ function NewTopicButton({ onCreated }: { onCreated: (href: string) => void }) {
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') submit();
-          if (e.key === 'Escape') { setEditing(false); setValue(''); }
+          if (e.key === 'Escape' && !busy) { setEditing(false); setValue(''); }
         }}
-        onBlur={() => { if (!value.trim()) { setEditing(false); setValue(''); } }}
-        placeholder="Topic name…"
+        onBlur={() => { if (!busy && !value.trim()) { setEditing(false); setValue(''); } }}
+        placeholder={busy ? 'Opening…' : 'Topic name…'}
         disabled={busy}
         style={{
-          width: 100, border: 0, borderBottom: '1px solid var(--accent)',
+          width: 112, border: 0, borderBottom: '1px solid var(--accent)',
           background: 'transparent', color: 'var(--fg)',
           fontSize: '0.72rem', padding: '2px 0', outline: 'none',
           fontFamily: 'var(--display)',

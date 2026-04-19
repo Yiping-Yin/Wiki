@@ -13,9 +13,11 @@
 		50C1F901B210F46BAC4BB09C /* DevServerPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */; };
 		6432F892116325B00A613D05 /* DevServerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */; };
 		72DFEDD02D325EBAA571412D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */; };
+		78DAAAFE00FED02AD1C5E73B /* LoomRuntimePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA5A2EB4CB4022BE8541513 /* LoomRuntimePaths.swift */; };
 		A16D95B79EEAE3C2337663FA /* LoomWebViewInteractionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */; };
 		B8B8C6F5796088A9F0EA8337 /* LoomCommandScriptsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */; };
 		BEB5D87B0B644A913586CF49 /* LoomCommandScripts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */; };
+		C369B8DA4409AA0965A62B10 /* LoomRuntimePathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A400D99F31C6B036AD121E3 /* LoomRuntimePathsTests.swift */; };
 		DAD1E4E09155B63DFD48EFFB /* LoomWebViewInteractionPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */; };
 		EB23057432E7A926D52C4FD0 /* LoomApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97F465B75FE18597076B7FEE /* LoomApp.swift */; };
 /* End PBXBuildFile section */
@@ -33,6 +35,7 @@
 /* Begin PBXFileReference section */
 		01B6CE70855F78F1B5B70D23 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWebViewInteractionPolicyTests.swift; sourceTree = "<group>"; };
+		2A400D99F31C6B036AD121E3 /* LoomRuntimePathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomRuntimePathsTests.swift; sourceTree = "<group>"; };
 		2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerTests.swift; sourceTree = "<group>"; };
 		4256C4FA4AF59076B3DBBBDC /* DevServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServer.swift; sourceTree = "<group>"; };
 		50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWebViewInteractionPolicy.swift; sourceTree = "<group>"; };
@@ -42,6 +45,7 @@
 		97F465B75FE18597076B7FEE /* LoomApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomApp.swift; sourceTree = "<group>"; };
 		B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFB0FB42BDCFD78AC68A01BF /* Loom.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loom.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DDA5A2EB4CB4022BE8541513 /* LoomRuntimePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomRuntimePaths.swift; sourceTree = "<group>"; };
 		E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerPreflight.swift; sourceTree = "<group>"; };
 		F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomCommandScripts.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -55,6 +59,7 @@
 				E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */,
 				97F465B75FE18597076B7FEE /* LoomApp.swift */,
 				F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */,
+				DDA5A2EB4CB4022BE8541513 /* LoomRuntimePaths.swift */,
 				50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */,
 			);
 			path = Sources;
@@ -85,6 +90,7 @@
 				53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */,
 				2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */,
 				738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */,
+				2A400D99F31C6B036AD121E3 /* LoomRuntimePathsTests.swift */,
 				06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */,
 			);
 			path = Tests;
@@ -181,6 +187,7 @@
 				50C1F901B210F46BAC4BB09C /* DevServerPreflight.swift in Sources */,
 				EB23057432E7A926D52C4FD0 /* LoomApp.swift in Sources */,
 				BEB5D87B0B644A913586CF49 /* LoomCommandScripts.swift in Sources */,
+				78DAAAFE00FED02AD1C5E73B /* LoomRuntimePaths.swift in Sources */,
 				A16D95B79EEAE3C2337663FA /* LoomWebViewInteractionPolicy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -192,6 +199,7 @@
 				4A07C211A0D26822457C750D /* DevServerPreflightTests.swift in Sources */,
 				6432F892116325B00A613D05 /* DevServerTests.swift in Sources */,
 				B8B8C6F5796088A9F0EA8337 /* LoomCommandScriptsTests.swift in Sources */,
+				C369B8DA4409AA0965A62B10 /* LoomRuntimePathsTests.swift in Sources */,
 				DAD1E4E09155B63DFD48EFFB /* LoomWebViewInteractionPolicyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

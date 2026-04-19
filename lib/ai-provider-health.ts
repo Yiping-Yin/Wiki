@@ -243,6 +243,17 @@ export function deriveAiAvailability(
     };
   }
 
+  if (selected.code === 'timeout') {
+    return {
+      selected,
+      alternate,
+      effectiveCli: selected.cli,
+      canSend: true,
+      notice: `${selected.cli === 'codex' ? 'Codex CLI' : 'Claude CLI'} did not respond in time to the health check. Loom can still try this provider, but the request may be slow.`,
+      tone: 'muted',
+    };
+  }
+
   if (selected.code === 'auth' && alternate?.code === 'auth') {
     return {
       selected,

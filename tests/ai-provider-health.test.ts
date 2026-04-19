@@ -129,6 +129,33 @@ test('deriveAiAvailability blocks send when both providers are unavailable', () 
   assert.match(availability.notice ?? '', /not authenticated/i);
 });
 
+test('deriveAiAvailability keeps send available when the preferred provider only timed out', () => {
+  const providers: CliHealth[] = [
+    {
+      cli: 'codex',
+      ok: false,
+      code: 'timeout',
+      summary: 'Codex CLI did not respond in time.',
+      action: 'Retry, or switch to the other provider in Settings.',
+      checkedAt: Date.now(),
+    },
+    {
+      cli: 'claude',
+      ok: false,
+      code: 'auth',
+      summary: 'Claude CLI is not authenticated.',
+      action: 'Open Settings and sign in to Claude CLI, or switch to the other provider.',
+      checkedAt: Date.now(),
+    },
+  ];
+
+  const availability = deriveAiAvailability('codex', providers);
+
+  assert.equal(availability.canSend, true);
+  assert.equal(availability.effectiveCli, 'codex');
+  assert.match(availability.notice ?? '', /did not respond in time/i);
+});
+
 test('deriveAiAvailability keeps send disabled while health is still unknown', () => {
   const availability = deriveAiAvailability('codex', null);
 

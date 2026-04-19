@@ -32,9 +32,15 @@ import { formatAiRuntimeErrorMessage, resolveAiNotice } from '../lib/ai-provider
 import { runAiText } from '../lib/ai/runtime';
 import {
   buildClarificationPasses,
+  getDisplayedPassAnswer,
   getCurrentSynthesis,
+  resolvePassSelection,
+  resolvePinnedPassAfterTurnChange,
   shouldShowClarificationHistory,
 } from '../lib/chat-focus-history';
+import { resolveChatFocusLayoutMode } from '../lib/chat-focus-layout-mode';
+import { computeDesktopChatFocusSpacer } from '../lib/chat-focus-spacing';
+import { resolveChatFocusStage } from '../lib/chat-focus-stage';
 import { buildSourceStub } from '../lib/chat-focus-source';
 import { resolveClarificationViewMode, type ClarificationViewMode } from '../lib/chat-focus-view';
 import { computeChatFocusPosition } from '../lib/chat-focus-layout';
@@ -171,6 +177,8 @@ export function ChatFocus() {
   const restoreScrollYRef = useRef<number | null>(null);
   const restoreRafRef = useRef<number | null>(null);
   const positionRafRef = useRef<number | null>(null);
+  const spacerObserverRef = useRef<ResizeObserver | null>(null);
+  const previousTurnCountRef = useRef(turns.length);
 
   const ctx = anchor
     ? contextFromPathname(typeof window !== 'undefined' ? window.location.pathname : '/')
@@ -259,7 +267,7 @@ export function ChatFocus() {
     const proseContainer = focusedEl.closest('.loom-source-prose') as HTMLElement | null;
     if (!proseContainer) return;
 
-    const blockRect = focusedEl.getBoundingClientRect();
+    const blockRect = (rangeEndElRef.current ?? focusedEl).getBoundingClientRect();
     const proseRect = proseContainer.getBoundingClientRect();
     const proseStyle = window.getComputedStyle(proseContainer);
 
@@ -370,7 +378,7 @@ export function ChatFocus() {
       // exactly aligned with the prose subject. Math/code/media selections can
       // still borrow the prose column width, but the overlay should not invent
       // a second width system of its own.
-      const newRect = (block as HTMLElement).getBoundingClientRect();
+      const newRect = (rangeEndElRef.current ?? block as HTMLElement).getBoundingClientRect();
       const proseRect = (proseContainer as HTMLElement).getBoundingClientRect();
       const proseStyle = window.getComputedStyle(proseContainer as HTMLElement);
       setPosition(
@@ -436,6 +444,10 @@ export function ChatFocus() {
     const desiredTop = restoreViewportTopRef.current;
     const fallbackScrollY = restoreScrollYRef.current;
     if (abortRef.current) abortRef.current.abort();
+    spacerObserverRef.current?.disconnect();
+    spacerObserverRef.current = null;
+    const spacerTarget = rangeEndElRef.current ?? focusedEl;
+    if (spacerTarget) spacerTarget.style.marginBottom = '';
     if (focusedEl) focusedEl.removeAttribute('data-loom-chat-focus');
     document.body.classList.remove(MAIN_FOCUS_CLASS);
     setAnchor(null);
@@ -474,12 +486,16 @@ export function ChatFocus() {
   // in "only one block visible" mode.
   useEffect(() => {
     return () => {
+      spacerObserverRef.current?.disconnect();
       if (restoreRafRef.current) cancelAnimationFrame(restoreRafRef.current);
       if (positionRafRef.current) cancelAnimationFrame(positionRafRef.current);
       document.body.classList.remove(MAIN_FOCUS_CLASS);
       document
         .querySelectorAll('[data-loom-chat-focus]')
-        .forEach((el) => el.removeAttribute('data-loom-chat-focus'));
+        .forEach((el) => {
+          el.removeAttribute('data-loom-chat-focus');
+          (el as HTMLElement).style.marginBottom = '';
+        });
     };
   }, []);
 
@@ -776,13 +792,21 @@ export function ChatFocus() {
     || !!aiError
     || !!runtimeNotice
     || !availability.canSend;
+  const stage = resolveChatFocusStage({
+    turnCount: turns.length,
+    streaming,
+    committing,
+    canSend: availability.canSend,
+    hasNotice: !!(aiError || runtimeNotice || availability.notice),
+  });
   const desktopEditorial = !smallScreen;
+  const layoutMode = resolveChatFocusLayoutMode({ smallScreen, stage });
   const clarificationPasses = useMemo(() => buildClarificationPasses(turns), [turns]);
   const currentSynthesis = useMemo(() => getCurrentSynthesis(turns, streamBuf), [turns, streamBuf]);
   const sourceStub = useMemo(() => buildSourceStub(anchor?.text ?? ''), [anchor?.text]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedPassIndex, setSelectedPassIndex] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<ClarificationViewMode>('source');
+  const [viewModePreference, setViewModePreference] = useState<ClarificationViewMode | null>(null);
   const waitingProviderLabel = effectiveCli === 'claude' ? 'Claude CLI' : 'Codex CLI';
 
   useEffect(() => {
@@ -793,8 +817,55 @@ export function ChatFocus() {
   }, [turns.length]);
 
   useEffect(() => {
-    setViewMode((current: ClarificationViewMode) => resolveClarificationViewMode(current, hasEditorialBody));
-  }, [hasEditorialBody, anchor?.text]);
+    setSelectedPassIndex((current) => resolvePinnedPassAfterTurnChange(current, previousTurnCountRef.current, turns.length));
+    previousTurnCountRef.current = turns.length;
+  }, [turns.length]);
+
+  useEffect(() => {
+    setViewModePreference(null);
+  }, [anchor?.blockId, anchor?.text]);
+
+  const viewMode = resolveClarificationViewMode(viewModePreference, hasEditorialBody);
+  const showSplitLayout = stage === 'accumulate' && layoutMode === 'split';
+  const showHistory = stage === 'accumulate' && shouldShowClarificationHistory(turns.length);
+  const showSourceSummary = stage !== 'accumulate';
+
+  const displayedSynthesis = getDisplayedPassAnswer(
+    clarificationPasses,
+    selectedPassIndex,
+    currentSynthesis,
+  );
+  const latestQuestion = turns[turns.length - 1]?.q ?? '';
+
+  useEffect(() => {
+    const spacerTarget = rangeEndElRef.current ?? focusedEl;
+    if (!focusedEl || !spacerTarget) return;
+
+    const applySpacer = () => {
+      const overlayHeight = overlayRef.current?.getBoundingClientRect().height ?? 0;
+      const spacer = computeDesktopChatFocusSpacer({
+        overlayHeight,
+        active: hasEditorialBody,
+        smallScreen,
+      });
+      spacerTarget.style.marginBottom = spacer > 0 ? `${spacer}px` : '';
+    };
+
+    applySpacer();
+
+    if (typeof ResizeObserver !== 'undefined' && overlayRef.current) {
+      spacerObserverRef.current?.disconnect();
+      const observer = new ResizeObserver(() => applySpacer());
+      observer.observe(overlayRef.current);
+      spacerObserverRef.current = observer;
+    }
+
+    return () => {
+      spacerObserverRef.current?.disconnect();
+      spacerObserverRef.current = null;
+      spacerTarget.style.marginBottom = '';
+    };
+  }, [focusedEl, hasEditorialBody, smallScreen, showSplitLayout, historyOpen, viewMode, draft, streamBuf, turns.length, aiError, runtimeNotice]);
 
   if (!anchor) return null;
 
@@ -903,71 +974,111 @@ export function ChatFocus() {
         >×</button>
         ) : null}
         {hasEditorialBody ? (
-          <div
-            style={{
-              marginBottom: desktopEditorial ? '0.42rem' : '0.72rem',
-              fontSize: '0.74rem',
-              lineHeight: 1.45,
-              color: 'var(--fg-secondary)',
-              opacity: 0.86,
-              borderBottom: desktopEditorial ? '0.5px solid color-mix(in srgb, var(--mat-border) 26%, transparent)' : 'none',
-              paddingBottom: desktopEditorial ? '0.34rem' : 0,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-              <span style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem' }}>
-                {viewMode === 'source' ? 'Current source' : 'Current synthesis'}
-              </span>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <button
-                  onClick={() => setViewMode('synthesis')}
-                  style={{
-                    background: 'transparent',
-                    border: 0,
-                    padding: 0,
-                    cursor: 'pointer',
-                    color: viewMode === 'synthesis' ? 'var(--fg)' : 'var(--muted)',
-                    fontSize: '0.66rem',
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    opacity: viewMode === 'synthesis' ? 0.96 : 0.62,
-                  }}
-                >
-                  Synthesis
-                </button>
-                <button
-                  onClick={() => setViewMode('source')}
-                  style={{
-                    background: 'transparent',
-                    border: 0,
-                    padding: 0,
-                    cursor: 'pointer',
-                    color: viewMode === 'source' ? 'var(--fg)' : 'var(--muted)',
-                    fontSize: '0.66rem',
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    opacity: viewMode === 'source' ? 0.96 : 0.62,
-                  }}
-                >
-                  Source
-                </button>
+          showSplitLayout ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(220px, 0.38fr) minmax(0, 0.62fr)',
+                gap: 20,
+                marginBottom: desktopEditorial ? '0.72rem' : '0.72rem',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.74rem',
+                  lineHeight: 1.48,
+                  color: 'var(--fg-secondary)',
+                  opacity: 0.88,
+                  borderRight: '0.5px solid color-mix(in srgb, var(--mat-border) 22%, transparent)',
+                  paddingRight: 16,
+                }}
+              >
+                <div style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem', marginBottom: 8 }}>
+                  Current source
+                </div>
+                <div style={{ fontStyle: 'normal' }}>{sourceStub.full}</div>
+              </div>
+              <div
+                className="prose-notion"
+                style={{
+                  fontSize: 'inherit',
+                  lineHeight: 'inherit',
+                  fontFamily: 'var(--serif)',
+                  maxWidth: 'none',
+                  color: 'var(--fg)',
+                }}
+              >
+                {displayedSynthesis ? <NoteRenderer source={displayedSynthesis} /> : null}
               </div>
             </div>
-            <div style={{ fontStyle: viewMode === 'source' ? 'normal' : 'italic' }}>
-              {viewMode === 'source' ? sourceStub.full : sourceStub.preview}
+          ) : (
+            <div
+              style={{
+                marginBottom: desktopEditorial ? '0.42rem' : '0.72rem',
+                fontSize: '0.74rem',
+                lineHeight: 1.45,
+                color: 'var(--fg-secondary)',
+                opacity: 0.86,
+                borderBottom: desktopEditorial ? '0.5px solid color-mix(in srgb, var(--mat-border) 26%, transparent)' : 'none',
+                paddingBottom: desktopEditorial ? '0.34rem' : 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem' }}>
+                  {showSourceSummary ? 'Current source' : (viewMode === 'source' ? 'Current source' : 'Current synthesis')}
+                </span>
+                {!showSourceSummary ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <button
+                      onClick={() => setViewModePreference('synthesis')}
+                      style={{
+                        background: 'transparent',
+                        border: 0,
+                        padding: 0,
+                        cursor: 'pointer',
+                        color: viewMode === 'synthesis' ? 'var(--fg)' : 'var(--muted)',
+                        fontSize: '0.66rem',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        opacity: viewMode === 'synthesis' ? 0.96 : 0.62,
+                      }}
+                    >
+                      Synthesis
+                    </button>
+                    <button
+                      onClick={() => setViewModePreference('source')}
+                      style={{
+                        background: 'transparent',
+                        border: 0,
+                        padding: 0,
+                        cursor: 'pointer',
+                        color: viewMode === 'source' ? 'var(--fg)' : 'var(--muted)',
+                        fontSize: '0.66rem',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        opacity: viewMode === 'source' ? 0.96 : 0.62,
+                      }}
+                    >
+                      Source
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div style={{ fontStyle: showSourceSummary || viewMode === 'source' ? 'normal' : 'italic' }}>
+                {showSourceSummary
+                  ? sourceStub.preview
+                  : (viewMode === 'source' ? sourceStub.full : sourceStub.preview)}
+              </div>
             </div>
-          </div>
+          )
         ) : null}
-        {/* Accumulated turns */}
-        {viewMode === 'synthesis' ? turns.map((t, i) => (
+        {!showSplitLayout && viewMode === 'synthesis' && displayedSynthesis ? (
           <div
-            key={i}
             style={{
               marginBottom: desktopEditorial ? '0.72rem' : '1.15rem',
-              display: i === turns.length - 1 ? 'block' : 'none',
             }}
           >
-            {turns.length > 1 ? (
+            {selectedPassIndex == null && turns.length > 1 ? (
               <div style={{
                 fontSize: '0.72rem',
                 fontWeight: 500,
@@ -975,7 +1086,7 @@ export function ChatFocus() {
                 color: 'color-mix(in srgb, var(--accent) 70%, white 30%)',
                 marginBottom: 10,
                 opacity: 0.72,
-              }}>— {t.q}</div>
+              }}>— {latestQuestion}</div>
             ) : null}
             <div className="prose-notion" style={{
               fontSize: 'inherit',
@@ -986,13 +1097,13 @@ export function ChatFocus() {
               color: 'var(--fg)',
               background: desktopEditorial ? 'linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 10%, transparent) 0%, transparent 100%)' : 'none',
             }}>
-              <NoteRenderer source={t.a} />
+              <NoteRenderer source={displayedSynthesis} />
             </div>
           </div>
-        )) : null}
+        ) : null}
 
         {/* In-flight stream */}
-        {viewMode === 'synthesis' && streaming && streamBuf && !committing && (
+        {!showSplitLayout && viewMode === 'synthesis' && streaming && streamBuf && !committing && !turns.length && (
           <div className="prose-notion" style={{
             fontSize: 'inherit',
             lineHeight: 'inherit',
@@ -1007,7 +1118,7 @@ export function ChatFocus() {
           </div>
         )}
 
-        {viewMode === 'synthesis' && shouldShowClarificationHistory(turns.length) ? (
+        {viewMode === 'synthesis' && showHistory ? (
           <div
             style={{
               display: 'flex',
@@ -1057,7 +1168,7 @@ export function ChatFocus() {
                 return (
                   <button
                     key={pass.index}
-                    onClick={() => setSelectedPassIndex((current) => current === pass.index ? null : pass.index)}
+                    onClick={() => setSelectedPassIndex((current) => resolvePassSelection(current, pass.index))}
                     style={{
                       textAlign: 'left',
                       background: active ? 'color-mix(in srgb, var(--accent-soft) 48%, transparent)' : 'transparent',
@@ -1091,7 +1202,7 @@ export function ChatFocus() {
                 opacity: 0.92,
               }}
             >
-              <NoteRenderer source={clarificationPasses.find((pass) => pass.index === selectedPassIndex)?.answer ?? currentSynthesis} />
+              <NoteRenderer source={displayedSynthesis} />
             </div>
           </div>
         ) : null}

@@ -70,6 +70,30 @@ export function getCurrentSynthesis(turns: Turn[], streamBuf: string): string {
   return turns[turns.length - 1]?.a ?? '';
 }
 
+export function resolvePassSelection(
+  currentPinnedIndex: number | null,
+  nextIndex: number,
+): number | null {
+  return currentPinnedIndex === nextIndex ? null : nextIndex;
+}
+
+export function getDisplayedPassAnswer(
+  passes: ClarificationPass[],
+  pinnedIndex: number | null,
+  fallback: string,
+): string {
+  return passes.find((pass) => pass.index === pinnedIndex)?.answer ?? fallback;
+}
+
+export function resolvePinnedPassAfterTurnChange(
+  currentPinnedIndex: number | null,
+  previousTurnCount: number,
+  nextTurnCount: number,
+): number | null {
+  if (currentPinnedIndex == null) return null;
+  return nextTurnCount > previousTurnCount ? null : currentPinnedIndex;
+}
+
 export function shouldShowClarificationHistory(turnCount: number): boolean {
-  return turnCount >= 3;
+  return turnCount >= 2;
 }

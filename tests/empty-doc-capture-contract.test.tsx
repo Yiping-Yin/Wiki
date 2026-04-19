@@ -12,7 +12,8 @@ test('knowledge doc page routes empty docs into the capture surface', () => {
   );
 
   assert.match(source, /EmptyDocCaptureSurface/);
-  assert.match(source, /isKnowledgeDocPlaceholder/);
+  assert.match(source, /isEligibleCaptureDoc/);
+  assert.doesNotMatch(source, /const showCapture = isKnowledgeDocPlaceholder/);
 });
 
 test('capture surface does not reuse Today free-input semantics', () => {
@@ -24,4 +25,31 @@ test('capture surface does not reuse Today free-input semantics', () => {
   assert.doesNotMatch(source, /free-recompile/);
   assert.match(source, /capture-organize/);
   assert.match(source, /Organize into note/);
+});
+
+test('capture surface gates organize on AI availability instead of blindly firing the runtime', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'components/knowledge/EmptyDocCaptureSurface.tsx'),
+    'utf8',
+  );
+
+  assert.match(source, /useAiHealth/);
+  assert.match(source, /resolveAiNotice/);
+  assert.match(source, /!availability\.canSend/);
+  assert.match(source, /Open Settings/);
+});
+
+test('capture surface shows staged progress feedback while organizing the first note', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'components/knowledge/EmptyDocCaptureSurface.tsx'),
+    'utf8',
+  );
+
+  assert.match(source, /type CaptureProgressPhase = 'idle' \| 'organizing' \| 'saving' \| 'opening';/);
+  assert.match(source, /setProgressPhase\('organizing'\)/);
+  assert.match(source, /setProgressPhase\('saving'\)/);
+  assert.match(source, /setProgressPhase\('opening'\)/);
+  assert.match(source, /Preparing the first note with AI/);
+  assert.match(source, /Saving the organized page to this topic/);
+  assert.match(source, /Opening the first organized page/);
 });

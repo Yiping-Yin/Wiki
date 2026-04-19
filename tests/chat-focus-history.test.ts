@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import {
   buildClarificationPasses,
+  getDisplayedPassAnswer,
   getCurrentSynthesis,
+  resolvePassSelection,
+  resolvePinnedPassAfterTurnChange,
   shouldShowClarificationHistory,
 } from '../lib/chat-focus-history';
 
@@ -49,8 +52,32 @@ test('buildClarificationPasses keeps prior passes and labels them for compact hi
   ]);
 });
 
-test('clarification history appears only after the third pass', () => {
+test('clarification history appears once there is a previous pass to revisit', () => {
   assert.equal(shouldShowClarificationHistory(0), false);
-  assert.equal(shouldShowClarificationHistory(2), false);
-  assert.equal(shouldShowClarificationHistory(3), true);
+  assert.equal(shouldShowClarificationHistory(1), false);
+  assert.equal(shouldShowClarificationHistory(2), true);
+});
+
+test('displayed clarification falls back to the latest synthesis when nothing is pinned', () => {
+  assert.equal(getDisplayedPassAnswer([
+    { index: 0, question: 'A', answer: 'First', label: '1 · first', delta: 'Added: first' },
+  ], null, 'Current'), 'Current');
+});
+
+test('displayed clarification prefers the pinned pass when one is selected', () => {
+  assert.equal(getDisplayedPassAnswer([
+    { index: 0, question: 'A', answer: 'First', label: '1 · first', delta: 'Added: first' },
+    { index: 1, question: 'B', answer: 'Second', label: '2 · second', delta: 'Added: second' },
+  ], 1, 'Current'), 'Second');
+});
+
+test('resolvePassSelection toggles the same pass off', () => {
+  assert.equal(resolvePassSelection(1, 1), null);
+  assert.equal(resolvePassSelection(null, 1), 1);
+});
+
+test('pinned pass resets after a new turn completes', () => {
+  assert.equal(resolvePinnedPassAfterTurnChange(1, 3, 4), null);
+  assert.equal(resolvePinnedPassAfterTurnChange(1, 3, 3), 1);
+  assert.equal(resolvePinnedPassAfterTurnChange(null, 3, 4), null);
 });
