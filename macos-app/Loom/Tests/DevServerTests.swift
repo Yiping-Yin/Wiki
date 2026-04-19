@@ -3,6 +3,40 @@ import XCTest
 @testable import Loom
 
 final class DevServerTests: XCTestCase {
+    func testInstalledRuntimeProcessIsRecognizedAsReclaimableStaleServer() {
+        XCTAssertTrue(
+            DevServer.isReclaimableInstalledRuntimeServer(
+                command: "/opt/homebrew/bin/node /Users/test/Library/Application Support/Loom/runtime/build-123/standalone/server.js",
+                runtimeBasePath: "/Users/test/Library/Application Support/Loom/runtime"
+            )
+        )
+    }
+
+    func testInstalledRuntimeNextServerCanBeRecognizedFromItsWorkingDirectory() {
+        XCTAssertTrue(
+            DevServer.isReclaimableInstalledRuntimeServer(
+                command: "next-server (v15.5.15)",
+                runtimeBasePath: "/Users/test/Library/Application Support/Loom/runtime",
+                cwdPath: "/Users/test/Library/Application Support/Loom/runtime/build-123/standalone"
+            )
+        )
+    }
+
+    func testRepoOrUnrelatedServersAreNotReclaimedAsInstalledRuntimeServers() {
+        XCTAssertFalse(
+            DevServer.isReclaimableInstalledRuntimeServer(
+                command: "/opt/homebrew/bin/node /Users/test/Desktop/Wiki/node_modules/next/dist/bin/next dev -p 3001",
+                runtimeBasePath: "/Users/test/Library/Application Support/Loom/runtime"
+            )
+        )
+        XCTAssertFalse(
+            DevServer.isReclaimableInstalledRuntimeServer(
+                command: "/usr/bin/python3 -m http.server 3001",
+                runtimeBasePath: "/Users/test/Library/Application Support/Loom/runtime"
+            )
+        )
+    }
+
     func testResolvedServerModePrefersProdWhenInstalledRuntimeExistsWithoutRepoBuild() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

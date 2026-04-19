@@ -5,6 +5,13 @@ import Darwin
 /// In Xcode Debug builds, prefer a hot-reloading dev server.
 /// In Release builds, prefer a stable production server (`next start`) when a build exists.
 class DevServer: ObservableObject {
+    struct PortListener {
+        let pid: pid_t
+        let ppid: pid_t
+        let command: String
+        let cwdPath: String?
+    }
+
     enum Status: Equatable {
         case idle
         case starting
@@ -112,6 +119,30 @@ class DevServer: ObservableObject {
         }
 
         return true
+    }
+
+    static func isReclaimableInstalledRuntimeServer(
+        command: String,
+        runtimeBasePath: String,
+        cwdPath: String? = nil
+    ) -> Bool {
+        let normalizedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedRuntimeBase = runtimeBasePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedCwd = cwdPath?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if normalizedCommand.contains("\(normalizedRuntimeBase)/"),
+           normalizedCommand.contains("/standalone/server.js") {
+            return true
+        }
+
+        if let normalizedCwd,
+           normalizedCwd.hasPrefix(normalizedRuntimeBase + "/"),
+           normalizedCwd.hasSuffix("/standalone"),
+           normalizedCommand.contains("next-server") {
+            return true
+        }
+
+        return false
     }
 
     deinit {
@@ -312,6 +343,11 @@ class DevServer: ObservableObject {
             guard let self, self.startGeneration == generation else { return }
 
             if alive {
+                if self.reclaimStaleInstalledRuntimeServer(on: self.currentPort) {
+                    self.probePortAndLaunch(generation: generation)
+                    return
+                }
+
                 if let nextPort = self.nextFallbackPort() {
                     self.currentPort = nextPort
                     self.attemptedPorts.insert(nextPort)
@@ -331,6 +367,69 @@ class DevServer: ObservableObject {
 
             self.launchProcess(generation: generation)
         }
+    }
+
+    private func reclaimStaleInstalledRuntimeServer(on port: Int) -> Bool {
+        guard let listener = Self.inspectListeningProcess(on: port) else { return false }
+        guard listener.ppid == 1 else { return false }
+        let runtimeBasePath = LoomRuntimePaths.appSupportRoot() + "/runtime"
+        guard Self.isReclaimableInstalledRuntimeServer(
+            command: listener.command,
+            runtimeBasePath: runtimeBasePath,
+            cwdPath: listener.cwdPath
+        ) else {
+            return false
+        }
+
+        _ = kill(listener.pid, SIGTERM)
+
+        for _ in 0..<10 {
+            usleep(100_000)
+            if kill(listener.pid, 0) != 0 {
+                return true
+            }
+        }
+
+        _ = kill(listener.pid, SIGKILL)
+        return true
+    }
+
+    private static func inspectListeningProcess(on port: Int) -> PortListener? {
+        let pidOutput = shellOutput("/usr/sbin/lsof", ["-nP", "-t", "-iTCP:\(port)", "-sTCP:LISTEN"])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let pid = Int32(pidOutput) else { return nil }
+
+        let psOutput = shellOutput("/bin/ps", ["-p", String(pid), "-o", "ppid=,command="])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !psOutput.isEmpty else { return nil }
+
+        let ppidString = psOutput.prefix { $0.isWhitespace == false }
+        guard let ppid = Int32(ppidString) else { return nil }
+        let command = psOutput.dropFirst(ppidString.count).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let cwdOutput = shellOutput("/usr/sbin/lsof", ["-a", "-p", String(pid), "-d", "cwd", "-Fn"])
+        let cwdPath = cwdOutput
+            .split(separator: "\n")
+            .first(where: { $0.hasPrefix("n") })
+            .map { String($0.dropFirst()) }
+
+        return PortListener(pid: pid, ppid: ppid, command: command, cwdPath: cwdPath)
+    }
+
+    private static func shellOutput(_ launchPath: String, _ arguments: [String]) -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: launchPath)
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return ""
+        }
+        return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
     }
 
     private func startHealthPolling(generation: Int) {
