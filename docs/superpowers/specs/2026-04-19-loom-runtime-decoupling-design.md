@@ -94,6 +94,15 @@ This runtime root contains:
 
 This root is versioned by build and is safe for Loom to replace.
 
+Loom must also maintain one stable activation record, for example:
+
+- `~/Library/Application Support/Loom/runtime/current.json`
+
+That record identifies the currently active installed runtime.
+
+The app must not infer "active runtime" by simply picking the lexicographically newest directory.
+Activation must happen only after a full runtime payload is staged and validated.
+
 ### 5.2 Content Root
 
 The content root is the user/project data Loom reads and writes.
@@ -110,6 +119,22 @@ The content root continues to own:
 - Loom-generated metadata and derived docs that belong to the project
 
 This root is **not** copied into the installed runtime.
+
+Phase 1 must also define how the installed app resolves this path.
+
+The approved rule is:
+
+- the installed app reads a persisted content-root setting
+- installation seeds that setting from the repo used to build/install Loom
+- the app may still support an explicit environment override for development and testing
+
+This means content-root resolution order becomes:
+
+1. explicit environment override
+2. persisted Loom content-root setting
+3. legacy fallback probing only as a temporary compatibility path
+
+The installed app should not rely on `~/Desktop/Wiki` guessing as its long-term primary behavior.
 
 ### 5.3 Separation Rule
 
@@ -137,7 +162,7 @@ The runtime package should be installable outside the repo.
 When the app launches production mode, it should:
 
 1. resolve content root
-2. resolve installed runtime root
+2. resolve the active installed runtime from the runtime activation record
 3. start the standalone server from the runtime root
 4. pass content-root environment to the server process
 
@@ -171,10 +196,12 @@ This is unchanged in Phase 1.
 `npm run app`, `app:user`, and `app:system` should change behavior:
 
 1. build a standalone production runtime
-2. install/copy runtime payload into Application Support
-3. build/install native `Loom.app`
-4. make the installed app point at the installed runtime root
-5. optionally remove repo-local production runtime artifacts after successful install
+2. stage runtime payload into a versioned Application Support directory
+3. validate that staged runtime is complete
+4. update the runtime activation record
+5. build/install native `Loom.app`
+6. seed/update the persisted content-root setting
+7. optionally remove repo-local production runtime artifacts after successful install
 
 After install succeeds, the repo should no longer be required to retain `.next-build`.
 
@@ -252,6 +279,14 @@ If the installed runtime is missing or stale, Loom should report:
 - installed runtime missing
 - rebuild and reinstall required
 
+If the content root cannot be resolved or no longer exists, Loom should report:
+
+- content library missing
+- reconnect or reselect the Loom content root
+
+Runtime failure and content-root failure must remain separate.  
+The app should not misreport a missing content root as a server boot failure.
+
 It should not silently fall back to repo `.next-build` once this project lands.  
 Silent fallback would reintroduce the very dependency this design is trying to remove.
 
@@ -305,9 +340,22 @@ If these are packaged incorrectly, the installed app will boot but render incomp
 Repo `.next-build` must only be removed after:
 
 - runtime install succeeds
+- runtime activation record is updated
 - native app install succeeds
+- content-root setting is persisted
 
 Otherwise the current install path could be left broken midway through.
+
+### 14.4 Partial Runtime Activation
+
+If Loom writes directly into the active runtime location and crashes midway through install, the app may try to boot an incomplete server payload.
+
+The mitigation is:
+
+- stage into a versioned directory
+- validate completeness
+- switch activation only after validation
+- never activate a partially written runtime
 
 ## 15. Recommended Next Step
 
