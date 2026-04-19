@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdtemp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -146,4 +147,264 @@ test('stageRuntimeBundle validates pagefind search assets before activation', as
   const activationPath = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime', 'current.json');
   assert.equal(existsSync(runtimeRoot), false);
   assert.equal(existsSync(activationPath), false);
+});
+
+test('installRuntimeMetadata persists the repo content root without rewriting runtime activation', async () => {
+  const { installRuntimeMetadata } = await import('../scripts/install-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-install-runtime-'));
+  const runtimeBase = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime');
+  const activationPath = path.join(runtimeBase, 'current.json');
+  const activationRecord = {
+    buildId: 'build-123',
+    runtimeRoot: path.join(runtimeBase, 'build-123'),
+  };
+
+  await mkdir(runtimeBase, { recursive: true });
+  await writeFile(activationPath, JSON.stringify(activationRecord, null, 2), 'utf8');
+
+  await installRuntimeMetadata({
+    repoRoot: '/tmp/wiki-project',
+    homeOverride: root,
+  });
+
+  const config = JSON.parse(
+    await readFile(path.join(root, 'Library', 'Application Support', 'Loom', 'content-root.json'), 'utf8'),
+  ) as { contentRoot?: string };
+  const activation = JSON.parse(await readFile(activationPath, 'utf8')) as {
+    buildId?: string;
+    runtimeRoot?: string;
+  };
+
+  assert.equal(config.contentRoot, '/tmp/wiki-project');
+  assert.deepEqual(activation, activationRecord);
+});
+
+test('installLoomApp rolls back staged runtime metadata when app bundle install fails with no prior state', async () => {
+  const { installLoomApp } = await import('../scripts/install-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-package-runtime-'));
+  const appPath = path.join(root, 'Loom.app');
+  const appSupportRoot = path.join(root, 'Library', 'Application Support', 'Loom');
+  const runtimeBase = path.join(appSupportRoot, 'runtime');
+  const stagedRuntimeRoot = path.join(runtimeBase, 'build-new');
+
+  await mkdir(path.join(appPath, 'Contents', 'MacOS'), { recursive: true });
+  await writeFile(path.join(appPath, 'Contents', 'Info.plist'), '<plist />', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'MacOS', 'Loom'), '#!/bin/sh\n', 'utf8');
+
+  let stageCalled = false;
+  let metadataCalled = false;
+
+  await assert.rejects(
+    () => installLoomApp({
+      mode: 'user',
+      repoRoot: '/tmp/wiki-project',
+      sourceAppPath: appPath,
+      homeOverride: root,
+      dependencies: {
+        stageRuntimeBundle: async ({ homeOverride }) => {
+          stageCalled = true;
+          await mkdir(stagedRuntimeRoot, { recursive: true });
+          await writeFile(
+            path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'runtime', 'current.json'),
+            JSON.stringify({ buildId: 'build-new', runtimeRoot: stagedRuntimeRoot }, null, 2),
+            'utf8',
+          );
+          return stagedRuntimeRoot;
+        },
+        installRuntimeMetadata: async ({ repoRoot, homeOverride }) => {
+          metadataCalled = true;
+          await writeFile(
+            path.join(homeOverride, 'Library', 'Application Support', 'Loom', 'content-root.json'),
+            JSON.stringify({ contentRoot: repoRoot }, null, 2),
+            'utf8',
+          );
+        },
+        installTo: async () => {
+          throw new Error('install failed');
+        },
+      },
+    }),
+    /install failed/,
+  );
+
+  assert.equal(stageCalled, true);
+  assert.equal(metadataCalled, true);
+  assert.equal(existsSync(path.join(root, 'Library', 'Application Support', 'Loom', 'content-root.json')), false);
+  assert.equal(existsSync(path.join(runtimeBase, 'current.json')), false);
+  assert.equal(existsSync(stagedRuntimeRoot), false);
+});
+
+test('installLoomApp restores previous runtime metadata if app replacement fails after staging', async () => {
+  const { installLoomApp } = await import('../scripts/install-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-install-rollback-'));
+  const appPath = path.join(root, 'Loom.app');
+  const appSupportRoot = path.join(root, 'Library', 'Application Support', 'Loom');
+  const runtimeBase = path.join(appSupportRoot, 'runtime');
+  const previousRuntimeRoot = path.join(runtimeBase, 'build-old');
+  const stagedRuntimeRoot = path.join(runtimeBase, 'build-new');
+
+  await mkdir(path.join(appPath, 'Contents', 'MacOS'), { recursive: true });
+  await mkdir(previousRuntimeRoot, { recursive: true });
+  await writeFile(path.join(appPath, 'Contents', 'Info.plist'), '<plist />', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'MacOS', 'Loom'), '#!/bin/sh\n', 'utf8');
+  await writeFile(
+    path.join(runtimeBase, 'current.json'),
+    JSON.stringify({ buildId: 'build-old', runtimeRoot: previousRuntimeRoot }, null, 2),
+    'utf8',
+  );
+  await writeFile(
+    path.join(appSupportRoot, 'content-root.json'),
+    JSON.stringify({ contentRoot: '/tmp/previous-project' }, null, 2),
+    'utf8',
+  );
+
+  let stageCalled = false;
+
+  await assert.rejects(
+    () => installLoomApp({
+      mode: 'user',
+      repoRoot: '/tmp/wiki-project',
+      sourceAppPath: appPath,
+      homeOverride: root,
+      dependencies: {
+        stageRuntimeBundle: async ({ homeOverride }) => {
+          stageCalled = true;
+          const supportRoot = path.join(homeOverride, 'Library', 'Application Support', 'Loom');
+          const nextRuntimeBase = path.join(supportRoot, 'runtime');
+          await mkdir(stagedRuntimeRoot, { recursive: true });
+          await writeFile(
+            path.join(nextRuntimeBase, 'current.json'),
+            JSON.stringify({ buildId: 'build-new', runtimeRoot: stagedRuntimeRoot }, null, 2),
+            'utf8',
+          );
+          return stagedRuntimeRoot;
+        },
+        installTo: async () => {
+          throw new Error('install failed after staging');
+        },
+      },
+    }),
+    /install failed after staging/,
+  );
+
+  assert.equal(stageCalled, true);
+  const activation = JSON.parse(await readFile(path.join(runtimeBase, 'current.json'), 'utf8')) as {
+    buildId?: string;
+    runtimeRoot?: string;
+  };
+  const contentRoot = JSON.parse(await readFile(path.join(appSupportRoot, 'content-root.json'), 'utf8')) as {
+    contentRoot?: string;
+  };
+
+  assert.deepEqual(activation, { buildId: 'build-old', runtimeRoot: previousRuntimeRoot });
+  assert.deepEqual(contentRoot, { contentRoot: '/tmp/previous-project' });
+  assert.equal(existsSync(stagedRuntimeRoot), false);
+  assert.equal(existsSync(previousRuntimeRoot), true);
+});
+
+test('packageLoomApp writes app and runtime archives plus install instructions', async () => {
+  const { packageLoomApp } = await import('../scripts/package-loom-app.mjs');
+  const { resolveActiveRuntimeRoot } = await import('../lib/runtime-roots');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-package-runtime-'));
+  const appPath = path.join(root, 'Loom.app');
+  const runtimeRoot = path.join(root, 'Library', 'Application Support', 'Loom', 'runtime', 'build-123');
+  const outputRoot = path.join(root, 'output');
+
+  await mkdir(path.join(appPath, 'Contents', 'MacOS'), { recursive: true });
+  await mkdir(path.join(runtimeRoot, 'standalone'), { recursive: true });
+  await writeFile(path.join(appPath, 'Contents', 'Info.plist'), '<plist />', 'utf8');
+  await writeFile(path.join(appPath, 'Contents', 'MacOS', 'Loom'), '#!/bin/sh\n', 'utf8');
+  await writeFile(path.join(runtimeRoot, 'standalone', 'server.js'), 'console.log("ok")', 'utf8');
+
+  const result = packageLoomApp({
+    appPath,
+    runtimeRoot,
+    outputRoot,
+    contentRoot: '/tmp/wiki-project',
+  });
+
+  await stat(result.appArchivePath);
+  await stat(result.runtimeArchivePath);
+  const outputEntries = await readdir(outputRoot);
+  assert.deepEqual(outputEntries.sort(), ['INSTALL-LOOM.txt', 'Loom-replacement.zip', 'Loom-runtime.zip']);
+
+  const runtimeListing = execFileSync('unzip', ['-Z1', result.runtimeArchivePath], { encoding: 'utf8' });
+  assert.match(runtimeListing, /Library\/Application Support\/Loom\/runtime\/current\.json/);
+  assert.match(runtimeListing, /Library\/Application Support\/Loom\/content-root\.json/);
+  assert.match(runtimeListing, /Library\/Application Support\/Loom\/runtime\/build-123\/standalone\/server\.js/);
+
+  const extractedRoot = path.join(root, 'extracted-runtime');
+  await mkdir(extractedRoot, { recursive: true });
+  execFileSync('ditto', ['-x', '-k', result.runtimeArchivePath, extractedRoot]);
+  const activation = JSON.parse(
+    await readFile(path.join(extractedRoot, 'Library', 'Application Support', 'Loom', 'runtime', 'current.json'), 'utf8'),
+  ) as { buildId?: string; runtimeRoot?: string };
+  const contentConfig = JSON.parse(
+    await readFile(path.join(extractedRoot, 'Library', 'Application Support', 'Loom', 'content-root.json'), 'utf8'),
+  ) as { contentRoot?: string };
+
+  assert.equal(activation.buildId, 'build-123');
+  assert.equal(activation.runtimeRoot, undefined);
+  assert.equal(contentConfig.contentRoot, '/tmp/wiki-project');
+  assert.equal(
+    resolveActiveRuntimeRoot({ env: { HOME: extractedRoot } as NodeJS.ProcessEnv }),
+    path.join(extractedRoot, 'Library', 'Application Support', 'Loom', 'runtime', 'build-123'),
+  );
+
+  const readme = await readFile(path.join(outputRoot, 'INSTALL-LOOM.txt'), 'utf8');
+  assert.match(readme, /Loom-runtime\.zip/);
+  assert.match(readme, /content-root\.json/);
+});
+
+test('stageRuntimeForPackaging does not mutate the caller application support runtime activation', async () => {
+  const { stageRuntimeForPackaging } = await import('../scripts/package-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-package-stage-'));
+  const buildRoot = path.join(root, '.next-build');
+  const liveAppSupportRoot = path.join(root, 'Library', 'Application Support', 'Loom');
+  const liveRuntimeBase = path.join(liveAppSupportRoot, 'runtime');
+  const liveActivationPath = path.join(liveRuntimeBase, 'current.json');
+
+  await mkdir(path.join(buildRoot, 'standalone', '.next'), { recursive: true });
+  await mkdir(path.join(buildRoot, 'static', 'chunks'), { recursive: true });
+  await mkdir(path.join(root, 'public', 'assets'), { recursive: true });
+  await mkdir(path.join(root, 'public', 'pagefind', 'fragment'), { recursive: true });
+  await mkdir(path.join(root, 'public', 'pagefind', 'index'), { recursive: true });
+  await mkdir(liveRuntimeBase, { recursive: true });
+  await writeFile(path.join(buildRoot, 'BUILD_ID'), 'build-package', 'utf8');
+  await writeFile(path.join(buildRoot, 'standalone', 'server.js'), 'console.log("ok")', 'utf8');
+  await writeFile(path.join(buildRoot, 'static', 'chunks', 'app.js'), 'chunk', 'utf8');
+  await writeFile(path.join(root, 'public', 'assets', 'logo.svg'), '<svg />', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'pagefind.js'), 'export default {}', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'pagefind-entry.json'), '{}', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'fragment', 'en_123.pf_fragment'), 'fragment', 'utf8');
+  await writeFile(path.join(root, 'public', 'pagefind', 'index', 'en_123.pf_index'), 'index', 'utf8');
+  await writeFile(
+    liveActivationPath,
+    JSON.stringify({ buildId: 'live-build', runtimeRoot: path.join(liveRuntimeBase, 'live-build') }, null, 2),
+    'utf8',
+  );
+
+  const previousActivation = await readFile(liveActivationPath, 'utf8');
+  const staged = await stageRuntimeForPackaging({ repoRoot: root, homeOverride: root });
+
+  assert.equal(await readFile(liveActivationPath, 'utf8'), previousActivation);
+  assert.notEqual(path.dirname(path.dirname(staged.runtimeRoot)), liveRuntimeBase);
+  await stat(path.join(staged.runtimeRoot, 'standalone', 'server.js'));
+
+  await staged.cleanup();
+  assert.equal(existsSync(staged.runtimeRoot), false);
+});
+
+test('package script finds Release app bundles before Debug bundles', async () => {
+  const { findBuiltApp } = await import('../scripts/package-loom-app.mjs');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'loom-package-derived-data-'));
+  const derivedDataRoot = path.join(root, 'DerivedData');
+  const releaseApp = path.join(derivedDataRoot, 'Loom-release', 'Build', 'Products', 'Release', 'Loom.app');
+  const debugApp = path.join(derivedDataRoot, 'Loom-debug', 'Build', 'Products', 'Debug', 'Loom.app');
+
+  await mkdir(releaseApp, { recursive: true });
+  await mkdir(debugApp, { recursive: true });
+
+  const found = await findBuiltApp({ derivedDataRoot, preferredConfiguration: 'Release' });
+  assert.equal(found, releaseApp);
 });
