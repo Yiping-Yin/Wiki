@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   CODEX_HEALTH_TIMEOUT_MS,
+  TIMEOUT_CACHE_TTL_MS,
   clearLocalRuntimeHealthCache,
+  markLocalRuntimeHealthy,
   probeLocalRuntime,
   probeLocalRuntimesInOrder,
   probePreferredLocalRuntimes,
@@ -96,4 +98,66 @@ test('probeLocalRuntime does not short-circuit to ok from earlier success state'
 
   assert.equal(result.ok, false);
   assert.equal(result.code, 'timeout');
+});
+
+test('timeout probe results expire on a shorter cache window', async () => {
+  clearLocalRuntimeHealthCache();
+  const originalNow = Date.now;
+  let now = 1_000;
+  let calls = 0;
+
+  Date.now = () => now;
+
+  try {
+    const first = await probeLocalRuntime('codex', {
+      runCliImpl: async () => {
+        calls += 1;
+        throw new Error('codex CLI timed out after 15000ms');
+      },
+    });
+
+    assert.equal(first.ok, false);
+    assert.equal(first.code, 'timeout');
+    assert.equal(calls, 1);
+
+    now += TIMEOUT_CACHE_TTL_MS + 1;
+
+    const second = await probeLocalRuntime('codex', {
+      runCliImpl: async () => {
+        calls += 1;
+        return 'ok';
+      },
+    });
+
+    assert.equal(calls, 2);
+    assert.equal(second.ok, true);
+    assert.equal(second.code, 'ok');
+  } finally {
+    Date.now = originalNow;
+    clearLocalRuntimeHealthCache();
+  }
+});
+
+test('successful runtime use overrides a cached timeout result immediately', async () => {
+  clearLocalRuntimeHealthCache();
+
+  await probeLocalRuntime('codex', {
+    runCliImpl: async () => {
+      throw new Error('codex CLI timed out after 15000ms');
+    },
+  });
+
+  markLocalRuntimeHealthy('codex');
+
+  let invoked = false;
+  const result = await probeLocalRuntime('codex', {
+    runCliImpl: async () => {
+      invoked = true;
+      throw new Error('should not re-probe while cached healthy');
+    },
+  });
+
+  assert.equal(invoked, false);
+  assert.equal(result.ok, true);
+  assert.equal(result.code, 'ok');
 });

@@ -9,6 +9,7 @@
  * Each SSE event is `data: {"delta":"chunk"}\n\n` followed by `data: [DONE]\n\n`.
  */
 import { pickCli } from '../../../lib/claude-cli';
+import { markLocalRuntimeHealthy } from '../../../lib/ai-runtime/health';
 import { invokeLocalRuntime } from '../../../lib/ai-runtime/invoke';
 import type { AiStageId } from '../../../lib/ai/stage-model';
 
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
         if (result.runtime === null) {
           safeEnqueue(`data: ${JSON.stringify({ error: result.userMessage })}\n\n`);
         } else {
+          markLocalRuntimeHealthy(result.runtime);
           if (result.notice) {
             safeEnqueue(`data: ${JSON.stringify({ notice: result.notice })}\n\n`);
           }
