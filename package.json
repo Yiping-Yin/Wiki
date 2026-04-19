@@ -27,6 +27,7 @@
     "app:user": "npm run build && cd macos-app/Loom && find . -maxdepth 1 -type d -name 'Loom *.xcodeproj' -exec rm -rf {} + && xcodegen generate && xcodebuild -project Loom.xcodeproj -scheme Loom -configuration Release build && cd ../.. && node scripts/install-loom-app.mjs user; code=$?; node scripts/clean-loom-app-bundles.mjs; if [ $code -eq 0 ]; then echo '✓ Loom.app installed to ~/Applications'; fi; exit $code",
     "app:system": "npm run build && cd macos-app/Loom && find . -maxdepth 1 -type d -name 'Loom *.xcodeproj' -exec rm -rf {} + && xcodegen generate && xcodebuild -project Loom.xcodeproj -scheme Loom -configuration Release build && cd ../.. && node scripts/install-loom-app.mjs system; code=$?; node scripts/clean-loom-app-bundles.mjs; if [ $code -eq 0 ]; then echo '✓ Loom.app installed to /Applications'; fi; exit $code",
     "app:clean": "node scripts/clean-loom-app-bundles.mjs",
+    "app:smoke": "tsx scripts/installed-app-smoke.ts",
     "app:where": "node scripts/where-loom-app.mjs",
     "app:open": "if [ -d \"$HOME/Applications/Loom.app\" ]; then open \"$HOME/Applications/Loom.app\"; else open /Applications/Loom.app; fi"
   },
