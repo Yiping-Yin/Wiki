@@ -22,3 +22,11 @@ test('typecheck script resolves repo root from the script path and serializes bu
   assert.match(source, /withNextBuildLock\(root, async \(\) => \{/);
   assert.match(source, /removeDuplicateArtifacts\(path\.join\(root, '\.next-build'\)\)/);
 });
+
+test('next build lock creates the lock directory recursively and retries missing owner writes', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'scripts/next-build-lock.mjs'), 'utf8');
+
+  assert.match(source, /await mkdir\(lockDir, \{ recursive: true \}\);/);
+  assert.match(source, /if \(error\?\.code === 'ENOENT'\) \{/);
+  assert.match(source, /await rm\(lockDir, \{ recursive: true, force: true \}\);/);
+});

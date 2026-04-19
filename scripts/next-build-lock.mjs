@@ -41,15 +41,19 @@ async function acquireBuildLock(root, { staleMs = DEFAULT_STALE_MS, pollMs = DEF
 
   while (true) {
     try {
-      await mkdir(lockDir);
+      await mkdir(lockDir, { recursive: true });
       await writeFile(ownerFile, JSON.stringify({
         pid: process.pid,
         acquiredAt: Date.now(),
-      }));
+      }), { flag: 'wx' });
       return async () => {
         await rm(lockDir, { recursive: true, force: true });
       };
     } catch (error) {
+      if (error?.code === 'ENOENT') {
+        await rm(lockDir, { recursive: true, force: true });
+        continue;
+      }
       if (error?.code !== 'EEXIST') throw error;
 
       try {
