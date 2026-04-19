@@ -56,3 +56,15 @@ export async function updateWeaveContract(
   }
   return updated;
 }
+
+export async function setWeaveKind(id: string, kind: Weave['kind']) {
+  const updated = await weaveStore.updateKind(id, kind);
+  if (updated) {
+    emitWeaveChange({
+      docIds: [updated.fromPanelId, updated.toPanelId],
+      weaveIds: [updated.id],
+      reason: 'set-weave-kind',
+    });
+  }
+  return updated;
+}

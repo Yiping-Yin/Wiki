@@ -130,6 +130,23 @@ export const weaveStore = {
     return updated;
   },
 
+  async updateKind(id: string, kind: Weave['kind']): Promise<Weave | null> {
+    if (!isClient()) return null;
+    const existing = await this.get(id);
+    if (!existing) return null;
+    if (existing.kind === kind) return existing;
+    const now = Date.now();
+    const updated: Weave = {
+      ...existing,
+      kind,
+      contractSource: 'manual',
+      contractUpdatedAt: now,
+      updatedAt: now,
+    };
+    await this.put(updated);
+    return updated;
+  },
+
   async delete(id: string): Promise<void> {
     if (!isClient()) return;
     await tx<void>('readwrite', (s) => {
