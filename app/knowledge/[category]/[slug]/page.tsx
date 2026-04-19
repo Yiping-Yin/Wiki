@@ -9,6 +9,8 @@ import { PinButton } from '../../../../components/PinButton';
 import { LiveArtifact } from '../../../../components/LiveArtifact';
 import { AnchorLayer } from '../../../../components/AnchorLayer';
 import { readKnowledgeDocBody } from '../../../../lib/knowledge-doc-cache';
+import { EmptyDocCaptureSurface } from '../../../../components/knowledge/EmptyDocCaptureSurface';
+import { isKnowledgeDocPlaceholder } from '../../../../lib/knowledge-doc-state';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +43,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
 
   const body = await loadBody(doc.id);
   const minutes = body ? readingMinutes(body) : 0;
+  const showCapture = isKnowledgeDocPlaceholder({ title: doc.title, body });
   const cat = knowledgeCategories.find((c) => c.slug === categorySlug);
   const { prev, next } = await neighborsInCategory(categorySlug, fileSlug);
   const sourceUrl = `/api/source?p=${encodeURIComponent(doc.sourcePath)}`;
@@ -114,12 +117,22 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
             </div>
           </div>
 
-          <DocBodyProvider body={body} title={doc.title} />
-          <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+          {showCapture ? (
+            <EmptyDocCaptureSurface
+              docId={doc.id}
+              title={doc.title}
+              categoryLabel={doc.category}
+            />
+          ) : (
+            <>
+              <DocBodyProvider body={body} title={doc.title} />
+              <DocViewer ext={doc.ext} sourceUrl={sourceUrl} body={body} title={doc.title} />
+            </>
+          )}
         </div>
 
-        <LiveArtifact docId={`know/${doc.id}`} />
-        <AnchorLayer docId={`know/${doc.id}`} />
+        {!showCapture ? <LiveArtifact docId={`know/${doc.id}`} /> : null}
+        {!showCapture ? <AnchorLayer docId={`know/${doc.id}`} /> : null}
 
         <div
           style={{

@@ -1,12 +1,17 @@
-import { getKnowledgeNav } from '../../../lib/knowledge-store';
+import { getKnowledgeNav, getSourceLibraryGroups } from '../../../lib/knowledge-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return Response.json(await getKnowledgeNav(), {
+  const [nav, sourceLibraryGroups] = await Promise.all([
+    getKnowledgeNav(),
+    getSourceLibraryGroups(),
+  ]);
+
+  return Response.json({ ...nav, sourceLibraryGroups }, {
     headers: {
-      'cache-control': 'public, max-age=300',
+      'cache-control': 'no-store',
     },
   });
 }

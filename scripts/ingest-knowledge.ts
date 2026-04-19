@@ -332,7 +332,7 @@ async function main() {
   for (const d of docs) {
     let c = catMap.get(d.categorySlug);
     if (!c) {
-      c = { slug: d.categorySlug, label: d.category, count: 0, subs: [] };
+      c = { slug: d.categorySlug, label: d.category, count: 0, subs: [], kind: 'source' };
       catMap.set(d.categorySlug, c);
     }
     c.count++;

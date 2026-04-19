@@ -1,20 +1,43 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { CONTENT_ROOT, toKnowledgeRelativePath } from './server-config';
-import type { KnowledgeCategory, KnowledgeDoc } from './knowledge-types';
-
-const ROOT = CONTENT_ROOT;
-const MANIFEST_ROOT = path.join(ROOT, 'knowledge', '.cache', 'manifest');
-const RUNTIME_MANIFEST_PATH = path.join(MANIFEST_ROOT, 'knowledge-manifest.json');
-const RUNTIME_NAV_PATH = path.join(MANIFEST_ROOT, 'knowledge-nav.json');
+import { toKnowledgeRelativePath } from './server-config';
+import { resolveContentRoot } from './runtime-roots';
+import {
+  DEFAULT_SOURCE_LIBRARY_ORDER,
+  FALLBACK_SOURCE_LIBRARY_GROUP_ID,
+  readSourceLibraryMetadata,
+} from './source-library-metadata';
+import type {
+  KnowledgeCategory,
+  KnowledgeCategoryKind,
+  KnowledgeDoc,
+  SourceLibraryGroup,
+} from './knowledge-types';
 
 type NavPayload = {
   knowledgeCategories: KnowledgeCategory[];
   knowledgeTotal: number;
 };
 
+type StoredKnowledgeCategory = Omit<KnowledgeCategory, 'kind'> & {
+  kind?: KnowledgeCategoryKind;
+};
+
 let docsPromise: Promise<KnowledgeDoc[]> | null = null;
 let navPromise: Promise<NavPayload> | null = null;
+let docsCacheKey: string | null = null;
+let navCacheKey: string | null = null;
+let docsCacheSignature: string | null = null;
+let navCacheSignature: string | null = null;
+
+export function invalidateKnowledgeStoreCache() {
+  docsPromise = null;
+  navPromise = null;
+  docsCacheKey = null;
+  navCacheKey = null;
+  docsCacheSignature = null;
+  navCacheSignature = null;
+}
 
 function normalizeDoc(doc: KnowledgeDoc): KnowledgeDoc {
   return {
@@ -31,22 +54,38 @@ async function loadJsonFile<T>(file: string): Promise<T | null> {
   }
 }
 
+async function fileSignature(file: string): Promise<string> {
+  try {
+    const stat = await fs.stat(file);
+    return `${stat.mtimeMs}:${stat.size}`;
+  } catch {
+    return 'missing';
+  }
+}
+
 export function knowledgeManifestRoot() {
-  return MANIFEST_ROOT;
+  return path.join(resolveContentRoot(), 'knowledge', '.cache', 'manifest');
 }
 
 export function knowledgeManifestPath() {
-  return RUNTIME_MANIFEST_PATH;
+  return path.join(knowledgeManifestRoot(), 'knowledge-manifest.json');
 }
 
 export function knowledgeNavPath() {
-  return RUNTIME_NAV_PATH;
+  return path.join(knowledgeManifestRoot(), 'knowledge-nav.json');
 }
 
 export async function getAllDocs(): Promise<KnowledgeDoc[]> {
+  const manifestPath = knowledgeManifestPath();
+  const signature = await fileSignature(manifestPath);
+  if (docsCacheKey !== manifestPath || docsCacheSignature !== signature) {
+    docsPromise = null;
+    docsCacheKey = manifestPath;
+    docsCacheSignature = signature;
+  }
   if (!docsPromise) {
     docsPromise = (async () => {
-      const docs = await loadJsonFile<KnowledgeDoc[]>(RUNTIME_MANIFEST_PATH) ?? [];
+      const docs = await loadJsonFile<KnowledgeDoc[]>(manifestPath) ?? [];
       return docs.map(normalizeDoc);
     })();
   }
@@ -54,9 +93,24 @@ export async function getAllDocs(): Promise<KnowledgeDoc[]> {
 }
 
 export async function getKnowledgeNav(): Promise<NavPayload> {
+  const navPath = knowledgeNavPath();
+  const signature = await fileSignature(navPath);
+  if (navCacheKey !== navPath || navCacheSignature !== signature) {
+    navPromise = null;
+    navCacheKey = navPath;
+    navCacheSignature = signature;
+  }
   if (!navPromise) {
     navPromise = (async () => {
-      return await loadJsonFile<NavPayload>(RUNTIME_NAV_PATH) ?? { knowledgeCategories: [], knowledgeTotal: 0 };
+      const payload = await loadJsonFile<{
+        knowledgeCategories: StoredKnowledgeCategory[];
+        knowledgeTotal: number;
+      }>(navPath) ?? { knowledgeCategories: [], knowledgeTotal: 0 };
+
+      return {
+        knowledgeTotal: payload.knowledgeTotal,
+        knowledgeCategories: payload.knowledgeCategories.map(normalizeKnowledgeCategory),
+      };
     })();
   }
   return navPromise;
@@ -68,6 +122,87 @@ export async function getKnowledgeCategories(): Promise<KnowledgeCategory[]> {
 
 export async function getKnowledgeTotal(): Promise<number> {
   return (await getKnowledgeNav()).knowledgeTotal;
+}
+
+function cloneKnowledgeCategory(category: KnowledgeCategory): KnowledgeCategory {
+  return {
+    ...category,
+    subs: category.subs.map((sub) => ({ ...sub })),
+    kind: knowledgeCategoryKind(category),
+  };
+}
+
+function knowledgeCategoryKind(category: KnowledgeCategory): KnowledgeCategoryKind {
+  return category.kind === 'wiki' ? 'wiki' : 'source';
+}
+
+function normalizeKnowledgeCategory(category: StoredKnowledgeCategory): KnowledgeCategory {
+  return {
+    ...category,
+    subs: (category.subs ?? []).map((sub) => ({ ...sub })),
+    kind: category.kind === 'wiki' ? 'wiki' : 'source',
+  };
+}
+
+export async function getSourceLibraryCategories(): Promise<KnowledgeCategory[]> {
+  const categories = await getKnowledgeCategories();
+  return categories
+    .filter((category) => knowledgeCategoryKind(category) === 'source')
+    .map(cloneKnowledgeCategory);
+}
+
+export async function getSourceLibraryGroups(): Promise<SourceLibraryGroup[]> {
+  const [categories, metadata] = await Promise.all([
+    getSourceLibraryCategories(),
+    readSourceLibraryMetadata(),
+  ]);
+
+  const membershipByCategory = new Map(
+    metadata.memberships.map((membership) => [membership.categorySlug, membership]),
+  );
+  const groups = new Map<string, SourceLibraryGroup>(
+    metadata.groups.map((group) => [
+      group.id,
+      {
+        ...group,
+        count: 0,
+        categories: [],
+      },
+    ]),
+  );
+
+  for (const category of categories) {
+    const membership = membershipByCategory.get(category.slug);
+    const groupId = membership && groups.has(membership.groupId)
+      ? membership.groupId
+      : FALLBACK_SOURCE_LIBRARY_GROUP_ID;
+    const targetGroup = groups.get(groupId);
+    if (!targetGroup) continue;
+    targetGroup.categories.push(cloneKnowledgeCategory(category));
+  }
+
+  const sortedGroups = Array.from(groups.values())
+    .map((group) => {
+      const memberships = new Map(
+        group.categories.map((category) => [
+          category.slug,
+          membershipByCategory.get(category.slug)?.order ?? DEFAULT_SOURCE_LIBRARY_ORDER,
+        ]),
+      );
+      const sortedCategories = [...group.categories].sort((a, b) => {
+        const orderDiff = (memberships.get(a.slug) ?? DEFAULT_SOURCE_LIBRARY_ORDER)
+          - (memberships.get(b.slug) ?? DEFAULT_SOURCE_LIBRARY_ORDER);
+        return orderDiff || a.label.localeCompare(b.label);
+      });
+      return {
+        ...group,
+        count: sortedCategories.length,
+        categories: sortedCategories,
+      };
+    })
+    .sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label));
+
+  return sortedGroups;
 }
 
 export type SubGroup = {

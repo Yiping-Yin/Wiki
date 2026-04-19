@@ -23,7 +23,7 @@ export function Sidebar() {
   const [mode, setMode] = useState<SidebarMode>('hidden');
   const [llmOpen, setLlmOpen] = useState(false);
   const [knowOpen, setKnowOpen] = useState(false);
-  const { knowledgeCategories } = useKnowledgeNav();
+  const { sourceLibraryGroups } = useKnowledgeNav();
 
   // Restore preference + edge-hover peek (only when hidden)
   useEffect(() => {
@@ -240,18 +240,18 @@ export function Sidebar() {
         <Section title="The Atlas" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
           trailing={<NewTopicButton onCreated={(href) => { setOpen(false); router.push(href); }} />}
         >
-          {knowledgeCategories.map((c) => (
-            <CategoryRow
-              key={c.slug}
-              cat={c}
+          {sourceLibraryGroups.map((group) => (
+            <SourceLibraryGroupRow
+              key={group.id}
+              group={group}
               activePath={pathname}
               onNav={() => setOpen(false)}
             />
           ))}
         </Section>
 
-        {/* LLM reference wiki */}
-        <Section title="LLM Reference" open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
+        {/* LLM wiki stays separate from editable source groups */}
+        <Section title="LLM Wiki" open={llmOpen} onToggle={() => setLlmOpen((o) => !o)}>
           {sections.map((sec) => (
             <div key={sec} style={{ marginTop: '0.5rem' }}>
               <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '0.2rem' }}>
@@ -304,6 +304,91 @@ export function Sidebar() {
             not telling the user how many docs they've visited. */}
       </aside>
     </>
+  );
+}
+
+function SourceLibraryGroupRow({
+  group,
+  activePath,
+  onNav,
+}: {
+  group: { id: string; label: string; categories: { slug: string; label: string; count: number; subs: { label: string; order: number; count: number }[] }[] };
+  activePath?: string | null;
+  onNav: () => void;
+}) {
+  const active = group.categories.some((category) => (activePath ?? '').startsWith(`/knowledge/${category.slug}`));
+  const categorySignature = group.categories.map((category) => category.slug).join('|');
+  const defaultExpanded = active || group.categories.length <= 3;
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  useEffect(() => {
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded, categorySignature]);
+
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        padding: '0.36rem 0.4rem 0.44rem',
+        borderRadius: 8,
+        border: '0.5px solid color-mix(in srgb, var(--mat-border) 72%, transparent)',
+        background: active ? 'color-mix(in srgb, var(--accent-soft) 70%, transparent)' : 'color-mix(in srgb, var(--mat-thick-bg) 76%, transparent)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          onClick={() => setExpanded((open) => !open)}
+          aria-label={expanded ? `Collapse ${group.label}` : `Expand ${group.label}`}
+          style={{
+            width: 18,
+            height: 22,
+            padding: 0,
+            border: 0,
+            background: 'transparent',
+            color: 'var(--muted)',
+            cursor: 'pointer',
+            fontSize: '0.68rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {expanded ? '▾' : '▸'}
+        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              fontFamily: 'var(--display)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: 'var(--fg)',
+              letterSpacing: '-0.01em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {group.label}
+          </div>
+          <div className="t-caption2" style={{ color: 'var(--muted)' }}>
+            {group.categories.length} source{group.categories.length === 1 ? '' : 's'}
+          </div>
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
+          {group.categories.map((category) => (
+            <CategoryRow
+              key={category.slug}
+              cat={category}
+              activePath={activePath}
+              onNav={onNav}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

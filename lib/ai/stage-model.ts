@@ -7,9 +7,10 @@ export type AiStageId =
   | 'rehearsal-transform'
   | 'examiner-question'
   | 'examiner-grade'
-  | 'ingestion-summary';
+  | 'ingestion-summary'
+  | 'capture-organize';
 
-export type AiSurfaceId = 'selection' | 'free' | 'rehearsal' | 'examiner' | 'ingestion';
+export type AiSurfaceId = 'selection' | 'free' | 'rehearsal' | 'examiner' | 'ingestion' | 'capture';
 
 export type AiSurfaceSpec = {
   id: AiSurfaceId;
@@ -65,6 +66,13 @@ const SURFACES: Record<AiSurfaceId, AiSurfaceSpec> = {
     launcherTitle: 'Import',
     helper: 'Drop one source, then let Loom hold the first thread',
   },
+  capture: {
+    id: 'capture',
+    title: 'Organize into note',
+    launcherTitle: 'Capture',
+    helper: 'One source page · one organized note',
+    placeholder: 'Start writing, paste rough notes, or drop one source…',
+  },
 };
 
 const STAGES: Record<AiStageId, AiStageSpec> = {
@@ -116,6 +124,13 @@ const STAGES: Record<AiStageId, AiStageSpec> = {
     title: SURFACES.ingestion.title,
     role: 'ingester',
     output: 'one structured source summary',
+  },
+  'capture-organize': {
+    id: 'capture-organize',
+    family: 'capture',
+    title: SURFACES.capture.title,
+    role: 'organizer',
+    output: 'one structured source note rewrite',
   },
 };
 

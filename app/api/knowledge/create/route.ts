@@ -7,8 +7,9 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { LOOM_CAPTURE_DOC_MARKER } from '../../../../lib/knowledge-doc-state';
 import { EXECUTION_ROOT, KNOWLEDGE_ROOT } from '../../../../lib/server-config';
+import { runKnowledgeIngest } from '../../../../lib/knowledge-ingest';
 
 export const runtime = 'nodejs';
 
@@ -39,22 +40,16 @@ export async function POST(req: Request) {
     await fs.mkdir(dirPath, { recursive: true });
     const readmePath = path.join(dirPath, `${trimmed}.md`);
     try { await fs.access(readmePath); } catch {
-      await fs.writeFile(readmePath, `# ${trimmed}\n`);
+      await fs.writeFile(readmePath, `${LOOM_CAPTURE_DOC_MARKER}\n# ${trimmed}\n`);
     }
 
     // Re-run ingest to update navigation
-    await new Promise<void>((resolve, reject) => {
-      execFile(
-        'npx', ['tsx', 'scripts/ingest-knowledge.ts'],
-        { cwd: EXECUTION_ROOT, timeout: 30000 },
-        (err) => err ? reject(err) : resolve(),
-      );
-    });
+    await runKnowledgeIngest({ cwd: EXECUTION_ROOT });
 
     const slug = slugify(trimmed);
     return Response.json({
       slug,
-      href: `/knowledge/${slug}`,
+      href: `/knowledge/${slug}/${slug}`,
       name: trimmed,
     });
   } catch (e: any) {

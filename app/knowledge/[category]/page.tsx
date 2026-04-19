@@ -1,15 +1,17 @@
 import { notFound } from 'next/navigation';
-import { docsByCategory, getKnowledgeCategories, groupBySubcategory } from '../../../lib/knowledge-store';
+import { docsByCategory, getSourceLibraryCategories, groupBySubcategory } from '../../../lib/knowledge-store';
 import { CategoryLandingClient, type CategoryDocCard, type CategoryGroupCard } from './CategoryLandingClient';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateStaticParams() {
-  const knowledgeCategories = await getKnowledgeCategories();
+  const knowledgeCategories = await getSourceLibraryCategories();
   return knowledgeCategories.map((c) => ({ category: c.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
-  const knowledgeCategories = await getKnowledgeCategories();
+  const knowledgeCategories = await getSourceLibraryCategories();
   const cat = knowledgeCategories.find((item) => item.slug === category);
   return {
     title: cat ? `${cat.label} · Atlas` : 'Atlas · Loom',
@@ -42,7 +44,7 @@ function toGroupCard(group: ReturnType<typeof groupBySubcategory>[number]): Cate
 
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
-  const knowledgeCategories = await getKnowledgeCategories();
+  const knowledgeCategories = await getSourceLibraryCategories();
   const cat = knowledgeCategories.find((c) => c.slug === category);
   if (!cat) notFound();
 
