@@ -170,6 +170,36 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.equal(jsxExpressionText(selectElement.openingElement, 'disabled', sourceFile), 'busy');
 });
 
+test('KnowledgeHomeStatic renders Atlas entry sections and collection tiles through the refreshed shell', () => {
+  const { sourceText } = loadTsx('app/knowledge/KnowledgeHomeStatic.tsx');
+
+  assert.match(sourceText, /<StageShell/);
+  assert.match(sourceText, /<QuietScene tone="atlas"/);
+  assert.match(
+    sourceText,
+    /<QuietSceneIntro[\s\S]*meta=\{\s*<span>\s*\{totalCollections\} collections · \{totalDocs\} docs\s*<\/span>\s*\}[\s\S]*summary=/,
+  );
+  assert.match(sourceText, /Raw sources stay quiet until a thread warms them\./);
+  assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source files stay unchanged\./);
+  assert.match(
+    sourceText,
+    /function CollectionCard\([\s\S]*<Link[\s\S]*href=\{`\/knowledge\/\$\{item\.slug\}`\}[\s\S]*<PatternSwatch[\s\S]*<\/Link>/,
+  );
+  assert.doesNotMatch(sourceText, /CollectionCard[\s\S]*<button[\s\S]*Open collection/);
+  assert.match(sourceText, /Open collection/);
+  assert.match(sourceText, /PatternSwatch/);
+  assert.match(sourceText, /formatCount\(group\.items\.length, 'collection'\)/);
+  assert.match(sourceText, /formatCount\(item\.count, 'doc'\)/);
+});
+
+test('KnowledgeHome page forwards collection and document totals into the Atlas shell', () => {
+  const { sourceText } = loadTsx('app/knowledge/page.tsx');
+
+  assert.match(sourceText, /const totalCollections = sourceLibraryGroups\.reduce/);
+  assert.match(sourceText, /const totalDocs = sourceLibraryGroups\.reduce/);
+  assert.match(sourceText, /<KnowledgeHomeClient[\s\S]*totalCollections=\{totalCollections\}[\s\S]*totalDocs=\{totalDocs\}/);
+});
+
 test('knowledge category routes are constrained to source-library categories only', () => {
   const { sourceText } = loadTsx('app/knowledge/[category]/page.tsx');
 
