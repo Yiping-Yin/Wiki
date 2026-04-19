@@ -26,3 +26,15 @@ test('capture surface does not reuse Today free-input semantics', () => {
   assert.match(source, /capture-organize/);
   assert.match(source, /Organize into note/);
 });
+
+test('capture surface gates organize on AI availability instead of blindly firing the runtime', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'components/knowledge/EmptyDocCaptureSurface.tsx'),
+    'utf8',
+  );
+
+  assert.match(source, /useAiHealth/);
+  assert.match(source, /resolveAiNotice/);
+  assert.match(source, /!availability\.canSend/);
+  assert.match(source, /Open Settings/);
+});

@@ -1,10 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { resolveAiNotice } from '../../lib/ai-provider-health';
 import { runAiText } from '../../lib/ai/runtime';
 import { getAiStage } from '../../lib/ai/stage-model';
 import { organizeIntoNoteSystemPrompt } from '../../lib/ai/system-prompt';
 import { canCaptureInline } from '../../lib/knowledge-doc-state';
+import { openSettingsPanel } from '../../lib/settings-panel';
+import { useAiHealth } from '../../lib/use-ai-health';
+import { AiInlineHint } from '../unified/AiStagePrimitives';
 
 type AttachedSource = {
   name: string;
@@ -26,11 +30,14 @@ export function EmptyDocCaptureSurface({
   const [sources, setSources] = useState<AttachedSource[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { availability } = useAiHealth();
+  const activeNotice = resolveAiNotice(availability.notice);
 
   const importedSources = useMemo(
     () => sources.filter((item) => item.textExtractable && item.text),
     [sources],
   );
+  const canOrganize = availability.canSend && !busy && (draft.trim().length > 0 || importedSources.length > 0);
 
   async function attachFile(file: File) {
     const fd = new FormData();
@@ -63,6 +70,10 @@ export function EmptyDocCaptureSurface({
 
   async function organize() {
     if (!draft.trim() && importedSources.length === 0) return;
+    if (!availability.canSend) {
+      setError(availability.notice ?? 'AI unavailable — Open Settings to check provider status, then retry.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -218,19 +229,30 @@ export function EmptyDocCaptureSurface({
         </div>
       ) : null}
 
+      {!error && activeNotice.message ? (
+        <AiInlineHint
+          tone={availability.tone ?? 'muted'}
+          actionLabel={activeNotice.action?.label}
+          onAction={activeNotice.action?.kind === 'open-settings' ? openSettingsPanel : null}
+        >
+          {activeNotice.message}
+        </AiInlineHint>
+      ) : null}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={organize}
-          disabled={busy || (!draft.trim() && importedSources.length === 0)}
+          disabled={!canOrganize}
           style={{
             borderRadius: 999,
             border: '0.5px solid var(--accent)',
             background: busy ? 'transparent' : 'color-mix(in srgb, var(--accent) 12%, transparent)',
-            color: busy ? 'var(--muted)' : 'var(--fg)',
+            color: canOrganize ? 'var(--fg)' : 'var(--muted)',
             padding: '0.62rem 0.95rem',
             fontSize: '0.86rem',
-            cursor: busy ? 'default' : 'pointer',
+            cursor: canOrganize ? 'pointer' : 'default',
+            opacity: canOrganize ? 1 : 0.6,
           }}
         >
           {busy ? 'Organizing…' : 'Organize into note'}
