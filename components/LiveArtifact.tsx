@@ -301,7 +301,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
             <button
               onClick={crystallize}
               aria-label="Crystallize this panel into your Patterns"
-              title="Crystallize · settle this panel into Patterns"
+              title="Crystallize · finalize this panel in Patterns"
               style={{
                 background: 'transparent', border: 0, cursor: 'pointer',
                 color: 'var(--muted)', padding: '0 6px',
@@ -390,7 +390,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                 marginBottom: incomingDocThreads + outgoingDocThreads > 0 ? 8 : 0,
               }}
             >
-              {settledSummary || readingTrace?.crystallizedSummary || 'This panel is no longer provisional. It now lives in your Patterns.'}
+              {settledSummary || readingTrace?.crystallizedSummary || 'This panel is no longer provisional. It is now finalized in Patterns.'}
             </div>
             {incomingDocThreads + outgoingDocThreads > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -706,7 +706,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
             aria-label={isCrystallized ? 'Uncrystallize this panel' : 'Crystallize this panel into your Patterns'}
             title={isCrystallized
               ? 'Crystallized — click to undo'
-              : 'Crystallize · settle this panel into Patterns'}
+              : 'Crystallize · finalize this panel in Patterns'}
             style={{
               background: 'transparent', border: 0, cursor: 'pointer',
               color: isCrystallized ? 'var(--accent)' : 'var(--muted)',

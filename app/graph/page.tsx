@@ -562,7 +562,7 @@ export default function GraphPage() {
         <GraphQuietState
           eyebrow="Relations"
           title="Preparing the relation surface"
-          summary="Graph is reading the current pattern and weave layer. This should settle in a moment."
+          summary="Graph is reading the current pattern and weave layer. This should load in a moment."
         />
       </StageShell>
     );
@@ -581,8 +581,8 @@ export default function GraphPage() {
       >
         <GraphQuietState
           eyebrow="Relations"
-          title="No woven relations yet"
-          summary="Graph becomes meaningful after patterns have been settled and references start holding between them. Start from Atlas, read a source, and let a few patterns crystallize first."
+          title="No relations yet"
+          summary="Graph becomes meaningful after you crystallize a few patterns and add references between them. Start from Atlas, read a source, and crystallize the first pattern."
           actions={[
             { label: 'Open Atlas', onClick: () => router.push('/atlas'), primary: true },
             { label: 'Open Patterns', onClick: () => router.push('/patterns') },

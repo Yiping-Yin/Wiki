@@ -229,7 +229,7 @@ export function CategoryLandingClient({
           }
           detail={
             <div className="t-caption2" style={{ color: 'var(--muted)', marginTop: 6 }}>
-              Group headers keep the long list legible; the source rows stay quiet until a thread needs attention.
+              Group headers keep the long list legible; source rows are deprioritized until you interact with one.
             </div>
           }
           actions={

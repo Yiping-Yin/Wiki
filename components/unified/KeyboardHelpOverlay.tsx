@@ -33,7 +33,7 @@ const GROUPS: Group[] = [
     items: [
       { keys: '⌘P', label: 'Search everything (docs, tools, export)' },
       { keys: '⌘K', label: 'Search docs' },
-      { keys: 'Relations', label: 'Open the active panel’s relation layer from settled surfaces' },
+      { keys: 'Relations', label: 'Open the active panel\'s relations from crystallized panels' },
       { keys: 'Esc', label: 'Close any open panel' },
       { keys: '?', label: 'Toggle this help' },
     ],

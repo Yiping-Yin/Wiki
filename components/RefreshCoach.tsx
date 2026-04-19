@@ -137,18 +137,18 @@ export function RefreshCoach() {
           }}
         >
           {completion === 'settled'
-            ? 'Settled again'
+            ? 'Re-finalized'
             : completion === 'verified'
-              ? 'Held up'
-              : 'Keep this weave warm'}
+              ? 'Passed'
+              : 'Keep this active'}
         </span>
       </div>
 
       <div className="t-footnote" style={{ color: 'var(--fg-secondary)', lineHeight: 1.5 }}>
         {completion === 'settled'
-          ? 'This panel is no longer cooling. It has settled back into your patterns.'
+          ? 'This panel is no longer stale. It has been re-finalized in your patterns.'
           : completion === 'verified'
-            ? 'Your latest examiner pass held. Keep going only if you want to deepen the weave.'
+            ? 'Your latest examiner pass succeeded. Keep going only if you want to deepen the understanding.'
             : bodyText}
       </div>
 
@@ -203,12 +203,12 @@ function refreshBodyText(learning: LearningSurfaceSummary, source?: RefreshResum
     return 'Re-enter review and warm the panel back up.';
   }
   if (learning.nextAction === 'rehearse') {
-    return 'The panel needs another written pass before it will hold.';
+    return 'The panel needs another written pass before it is stable.';
   }
   if (learning.nextAction === 'examine') {
-    return 'The panel is ready to verify while the weave is still warm.';
+    return 'The panel is ready to verify while the thinking is still fresh.';
   }
-  return 'Review the current shape and decide whether to deepen or settle it.';
+  return 'Review the current shape and decide whether to deepen or finalize it.';
 }
 
 function actionStyle(primary: boolean) {

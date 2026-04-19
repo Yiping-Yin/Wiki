@@ -157,9 +157,9 @@ export function HomeClient() {
       <QuietScene tone="home">
         <QuietSceneColumn className="loom-home-workbench__column">
           <QuietSceneIntro
-            eyebrow="Observation deck"
-            title="One foreground object. The rest stays quiet."
-            summary="Sidebar holds the Atlas. Shuttle moves anywhere. This desk keeps the next quiet move legible."
+            eyebrow="Home"
+            title="One foreground object at a time."
+            summary="Sidebar holds the Atlas. Shuttle moves anywhere. This page shows the next action."
           />
         </QuietSceneColumn>
 
@@ -172,7 +172,7 @@ export function HomeClient() {
             {hasResolved ? (
               <HomeSupportSection
                 eyebrow="Resolved recently"
-                title="Completed moves stay nearby, but quiet."
+                title="Completed work, kept in reach."
               >
                 <HomeResolvedList items={resolvedOutcomes} />
               </HomeSupportSection>
@@ -194,8 +194,8 @@ export function HomeClient() {
             {hasRecentThreads ? (
               <HomeSupportSection
                 eyebrow="Recent threads"
-                title="Return paths stay visible after the work settles."
-                aside="Quiet resume threads, not a second navigation layer."
+                title="Return paths, after the work completes."
+                aside="Resume points, not a navigation menu."
               >
                 <HomeRecentThreadsList items={recentThreads} />
               </HomeSupportSection>

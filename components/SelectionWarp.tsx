@@ -358,7 +358,7 @@ export function SelectionWarp() {
       },
     }));
     window.dispatchEvent(new CustomEvent('loom:capture-success', {
-      detail: { label: 'Weft Woven' }
+      detail: { label: 'Captured' }
     }));
     setSpot(null);
     setHovered(false);

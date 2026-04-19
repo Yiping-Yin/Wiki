@@ -279,7 +279,7 @@ export function TodayClient({
             <QuietEmptyState
               eyebrow="Today"
               title="Nothing is asking for attention yet."
-              summary="Enter a source from the Sidebar or open the Shuttle. Once you read, capture, or weave, today’s returns settle back onto this desk."
+              summary="Enter a source from the Sidebar or open the Shuttle. Once you read, capture, or weave, today's items appear here."
               primaryLabel="Open Shuttle"
               onPrimary={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
               secondaryLabel="Open Atlas"
@@ -391,7 +391,7 @@ export function TodayClient({
             />
           ) : focusSurface && (
             <QuietGuideCard
-              eyebrow="Keep this thread warm"
+              eyebrow="Keep this active"
               title={focusSurface.title}
               tone="primary"
               density="roomy"
@@ -615,7 +615,7 @@ function QuietEmptyState({
     eyebrow,
     title,
     summary,
-    detail: 'Today stays quiet until a source actually changes.',
+    detail: 'Today shows nothing until a source changes.',
   });
 
   return (

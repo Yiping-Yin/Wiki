@@ -1198,8 +1198,8 @@ function LoadingPatternsShell() {
       >
         <QuietSceneIntro
           eyebrow="Patterns"
-          title="Preparing your settled fabric"
-          summary="Patterns is reading the current panel and weave layer. This should settle in a moment."
+          title="Loading your patterns"
+          summary="Patterns is reading the current panel and weave layer. This should load in a moment."
         />
       </QuietSceneColumn>
     </PatternsShell>
@@ -1459,8 +1459,8 @@ function EmptyPatternsCanvas() {
     >
       <QuietSceneIntro
         eyebrow="Patterns"
-        title="No settled patterns yet"
-        summary="Patterns becomes meaningful after a few source threads have been interlaced, reviewed, and crystallized. Start from Atlas, read one source, and let the first pattern settle."
+        title="No patterns yet"
+        summary="Patterns becomes meaningful after you capture, review, and crystallize a few sources. Start from Atlas, read one source, and crystallize the first pattern."
         actions={[
           { label: 'Open Atlas', onClick: () => window.location.assign('/atlas'), primary: true },
           { label: 'Open Today', onClick: () => window.location.assign('/today') },

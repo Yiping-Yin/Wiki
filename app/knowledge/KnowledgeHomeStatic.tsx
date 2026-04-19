@@ -104,13 +104,13 @@ export function KnowledgeHomeStatic({
         <QuietSceneColumn>
           <QuietSceneIntro
             eyebrow="Atlas"
-            title="Raw sources stay quiet until a thread warms them."
+            title="Sources"
             meta={
               <span>
                 {totalCollections} collections · {totalDocs} docs
               </span>
             }
-            summary="Browse the grouped raw-source library below. Each swatch is woven from actual panel and weave activity, so the Atlas stays grounded in work rather than decorative chrome."
+            summary="Your source library, grouped. Grouping changes only affect Loom metadata — original files are untouched."
           />
         </QuietSceneColumn>
 
