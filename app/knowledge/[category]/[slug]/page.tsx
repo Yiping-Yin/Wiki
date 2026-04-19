@@ -10,7 +10,7 @@ import { LiveArtifact } from '../../../../components/LiveArtifact';
 import { AnchorLayer } from '../../../../components/AnchorLayer';
 import { readKnowledgeDocBody } from '../../../../lib/knowledge-doc-cache';
 import { EmptyDocCaptureSurface } from '../../../../components/knowledge/EmptyDocCaptureSurface';
-import { isKnowledgeDocPlaceholder } from '../../../../lib/knowledge-doc-state';
+import { isEligibleCaptureDoc } from '../../../../lib/knowledge-doc-state';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +43,7 @@ export default async function DocPage({ params }: { params: Promise<{ category: 
 
   const body = await loadBody(doc.id);
   const minutes = body ? readingMinutes(body) : 0;
-  const showCapture = isKnowledgeDocPlaceholder({ title: doc.title, body });
+  const showCapture = isEligibleCaptureDoc({ title: doc.title, ext: doc.ext, body });
   const cat = knowledgeCategories.find((c) => c.slug === categorySlug);
   const { prev, next } = await neighborsInCategory(categorySlug, fileSlug);
   const sourceUrl = `/api/source?p=${encodeURIComponent(doc.sourcePath)}`;

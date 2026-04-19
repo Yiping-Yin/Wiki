@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { readKnowledgeDocBody } from './knowledge-doc-cache';
 import { getAllDocs } from './knowledge-store';
-import { isKnowledgeDocPlaceholder, isWritableCaptureDoc } from './knowledge-doc-state';
+import { isEligibleCaptureDoc } from './knowledge-doc-state';
 import { resolveKnowledgePath } from './server-config';
 import { runKnowledgeIngest } from './knowledge-ingest';
 
@@ -26,7 +26,7 @@ export async function writeKnowledgeDocBody({
   const doc = docs.find((item) => item.id === docId);
   if (!doc) throw new Error(`Knowledge doc not found: ${docId}`);
   const existingBody = await readBody(doc.id);
-  if (!existingBody || !isWritableCaptureDoc({ ext: doc.ext, body: existingBody.body }) || !isKnowledgeDocPlaceholder({ title: existingBody.title, body: existingBody.body })) {
+  if (!existingBody || !isEligibleCaptureDoc({ title: existingBody.title, ext: doc.ext, body: existingBody.body })) {
     throw new Error('This document is not a Loom-owned empty capture doc.');
   }
 

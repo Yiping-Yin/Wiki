@@ -12,7 +12,8 @@ test('knowledge doc page routes empty docs into the capture surface', () => {
   );
 
   assert.match(source, /EmptyDocCaptureSurface/);
-  assert.match(source, /isKnowledgeDocPlaceholder/);
+  assert.match(source, /isEligibleCaptureDoc/);
+  assert.doesNotMatch(source, /const showCapture = isKnowledgeDocPlaceholder/);
 });
 
 test('capture surface does not reuse Today free-input semantics', () => {

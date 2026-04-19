@@ -30,3 +30,8 @@ export function isWritableCaptureDoc(input: { ext: string; body: string }): bool
   if (!input.body.includes(LOOM_CAPTURE_DOC_MARKER)) return false;
   return true;
 }
+
+export function isEligibleCaptureDoc(input: { title: string; ext: string; body: string }): boolean {
+  return isWritableCaptureDoc({ ext: input.ext, body: input.body })
+    && isKnowledgeDocPlaceholder({ title: input.title, body: input.body });
+}
