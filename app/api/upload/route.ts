@@ -8,12 +8,12 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
-import { KNOWLEDGE_ROOT } from '../../../lib/server-config';
+import { CONTENT_ROOT, EXECUTION_ROOT, KNOWLEDGE_ROOT } from '../../../lib/server-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
+const UPLOAD_DIR = path.join(CONTENT_ROOT, 'knowledge', 'uploads');
 const ALLOWED = new Set(['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.csv', '.tsv', '.json', '.ipynb', '.xlsx', '.xls']);
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     try {
       await new Promise<void>((resolve, reject) => {
         execFile('npx', ['tsx', 'scripts/ingest-knowledge.ts'],
-          { cwd: process.cwd(), timeout: 30000 },
+          { cwd: EXECUTION_ROOT, timeout: 30000 },
           (err) => err ? reject(err) : resolve());
       });
     } catch {}

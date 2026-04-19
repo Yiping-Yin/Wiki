@@ -11,12 +11,13 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
+import { CONTENT_ROOT } from '../../../lib/server-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const WIKI_DIR = path.join(process.cwd(), 'app', 'wiki');
-const UPLOAD_DIR = path.join(process.cwd(), 'knowledge', 'uploads');
+const WIKI_DIR = path.join(CONTENT_ROOT, 'app', 'wiki');
+const UPLOAD_DIR = path.join(CONTENT_ROOT, 'knowledge', 'uploads');
 
 function isWithinDir(root: string, target: string) {
   const rel = path.relative(root, target);

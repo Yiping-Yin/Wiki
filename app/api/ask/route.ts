@@ -5,6 +5,7 @@ import { embedQuery, cosine } from '../../../lib/embed';
 import { pickCli } from '../../../lib/claude-cli';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
 import { ragIndexPath } from '../../../lib/derived-index-cache';
+import { CONTENT_ROOT } from '../../../lib/server-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ async function loadBody(id: string): Promise<string> {
   try {
     if (id.startsWith('wiki/')) {
       const slug = id.slice('wiki/'.length);
-      const p = path.join(process.cwd(), 'app', 'wiki', slug, 'page.mdx');
+      const p = path.join(CONTENT_ROOT, 'app', 'wiki', slug, 'page.mdx');
       body = await fs.readFile(p, 'utf-8');
     } else if (id.startsWith('know/')) {
       const docId = id.slice('know/'.length);

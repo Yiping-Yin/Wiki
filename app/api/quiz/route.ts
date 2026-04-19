@@ -12,12 +12,13 @@ import { pickCli } from '../../../lib/claude-cli';
 import { extractJson } from '../../../lib/ai/extract-json';
 import { legacyPublicCachePath, runtimeCacheDir, runtimeCachePath } from '../../../lib/generated-cache';
 import { readKnowledgeDocBody } from '../../../lib/knowledge-doc-cache';
+import { CONTENT_ROOT } from '../../../lib/server-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const WIKI_DIR = path.join(process.cwd(), 'app', 'wiki');
+const WIKI_DIR = path.join(CONTENT_ROOT, 'app', 'wiki');
 
 function safeId(id: string): string | null {
   if (!/^[a-z0-9_\-\u4e00-\u9fa5/]+$/.test(id)) return null;

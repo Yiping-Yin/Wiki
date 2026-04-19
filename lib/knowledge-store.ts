@@ -1,9 +1,9 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { toKnowledgeRelativePath } from './server-config';
+import { CONTENT_ROOT, toKnowledgeRelativePath } from './server-config';
 import type { KnowledgeCategory, KnowledgeDoc } from './knowledge-types';
 
-const ROOT = process.cwd();
+const ROOT = CONTENT_ROOT;
 const MANIFEST_ROOT = path.join(ROOT, 'knowledge', '.cache', 'manifest');
 const RUNTIME_MANIFEST_PATH = path.join(MANIFEST_ROOT, 'knowledge-manifest.json');
 const RUNTIME_NAV_PATH = path.join(MANIFEST_ROOT, 'knowledge-nav.json');
