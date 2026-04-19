@@ -146,6 +146,47 @@ function priorVersionsBlock(versions: { summary: string; at: number }[]): string
 }
 
 /**
+ * §§ Socratic posture guidance for passage-bound discussion.
+ *
+ * Loom is curiosity-led (user → AI) not quiz-led (AI → user). But within
+ * curiosity-led flow, AI can still support deeper thinking by sometimes
+ * asking a narrowing question instead of instantly answering — Socratic
+ * style. The decision is based on turn count and the shape of the user's
+ * message itself (which the model can inspect).
+ *
+ * The goal is to preserve the user's self-explanation / construction work
+ * (Chi 1994) without being annoyingly withholding.
+ */
+function socraticPostureBlock(turnCount: number): string {
+  if (turnCount >= 2) {
+    // User has already had 2+ exchanges on this passage. Don't withhold.
+    return [
+      ``,
+      `POSTURE: The user has already exchanged twice on this passage. Answer directly — no more Socratic follow-ups. They want the answer now.`,
+      ``,
+    ].join('\n');
+  }
+  if (turnCount === 1) {
+    return [
+      ``,
+      `POSTURE: This is the user's second turn on this passage. Give a direct substantive answer. Optionally end with exactly ONE short open question (<=12 words) that could deepen their thinking, but only if genuinely useful — no forced follow-ups.`,
+      ``,
+    ].join('\n');
+  }
+  // turnCount === 0: first engagement.
+  return [
+    ``,
+    `POSTURE (first engagement with this passage):`,
+    `Before answering, inspect the user's message:`,
+    `- If it states a prediction or their own model ("I think…", "I guess…", "isn't it…", "so this means…"): respond to THEIR model first — confirm / refine / challenge — then add your view. Do NOT bypass their model.`,
+    `- If the question is broad and imprecise ("what does this mean?", "explain", "help"): respond with ONE short clarifying question that narrows the target (the claim / the reasoning / the implication / a specific term). Do not pre-answer. Stop after the question.`,
+    `- If the question is specific and well-formed ("why does X imply Y?", "what is Z?"): give a direct substantive answer. Optionally end with ONE short open question.`,
+    `Never begin with "Great question". Never apologize. Keep clarifying questions under 15 words.`,
+    ``,
+  ].join('\n');
+}
+
+/**
  * Build the system prompt for passage-bound discussion WITH awareness
  * of existing anchored notes. Used by ChatFocus.send().
  */
@@ -157,10 +198,14 @@ export function discussionSystemPrompt(ctx: {
   /** Prior iterations on the EXACT passage being discussed right now,
    *  oldest first. See priorVersionsBlock for how these are surfaced to the AI. */
   priorVersionsOnThisPassage?: { summary: string; at: number }[];
+  /** Number of completed turns (q+a pairs) already exchanged in the CURRENT
+   *  scratch session. Drives Socratic posture — see socraticPostureBlock. */
+  turnCount?: number;
 }): string {
   return [
     `You are inside Loom, a personal learning tool. The user is on: "${ctx.sourceTitle}" (${ctx.href}).`,
     `They have selected a passage and are asking you about it.`,
+    socraticPostureBlock(ctx.turnCount ?? 0),
     priorVersionsBlock(ctx.priorVersionsOnThisPassage ?? []),
     priorNotesBlock(ctx.existingNotes ?? []),
     bodyBlock(ctx.sourceBody),

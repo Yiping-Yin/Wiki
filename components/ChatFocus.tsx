@@ -59,6 +59,10 @@ import { getCurrentDocBody } from './DocBodyProvider';
 import { WeftShuttle } from './DocViewer';
 import { rootReadingTraces } from './thought-anchor-model';
 import { AiInlineHint } from './unified/AiStagePrimitives';
+import { ThoughtTypePicker } from './ThoughtTypePicker';
+import { RelatesToPicker } from './RelatesToPicker';
+import { createManualWeave, type WeaveKind } from '../lib/weave';
+import { usePanel } from '../lib/panel';
 
 const NoteRenderer = dynamic(() => import('./NoteRenderer').then((m) => m.NoteRenderer), { ssr: false });
 
@@ -157,6 +161,9 @@ export function ChatFocus() {
   const [streamBuf, setStreamBuf] = useState('');
   const [showWaitingIndicator, setShowWaitingIndicator] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [thoughtTypeOverride, setThoughtTypeOverride] = useState<ThoughtType | null>(null);
+  const effectiveThoughtType: ThoughtType = thoughtTypeOverride ?? inferThoughtType(turns);
+  const [relatesTo, setRelatesTo] = useState<{ panelId: string; panelTitle: string; kind: WeaveKind } | null>(null);
   /** Inline error state for AI-unreachable / streaming failure. Shown as a
    *  quiet hint in the input area (tier-3 actionable, but non-modal and
    *  self-clearing on next keystroke). Not a toast. */
@@ -183,6 +190,7 @@ export function ChatFocus() {
   const ctx = anchor
     ? contextFromPathname(typeof window !== 'undefined' ? window.location.pathname : '/')
     : null;
+  const currentPanel = usePanel(ctx?.docId ?? null);
   const { traces, loading } = useTracesForDoc(ctx?.docId ?? null);
   const append = useAppendEvent();
   const [activeTraceId, setActiveTraceId] = useState<string | null>(null);
@@ -607,6 +615,7 @@ export function ChatFocus() {
         sourceBody: getCurrentDocBody(),
         existingNotes,
         priorVersionsOnThisPassage,
+        turnCount: turns.length,
       }),
       false,
       null,
@@ -777,13 +786,32 @@ export function ChatFocus() {
         summary,
         content,
         quote: anchor.text,
-        thoughtType: inferThoughtType(turns),
+        thoughtType: effectiveThoughtType,
         attribution: 'mixed',
         at: Date.now(),
       });
+
+      if (relatesTo && ctx) {
+        try {
+          await createManualWeave({
+            fromPanelId: ctx.docId,
+            toPanelId: relatesTo.panelId,
+            fromTitle: currentPanel.panel?.title ?? ctx.sourceTitle ?? ctx.docId,
+            toTitle: relatesTo.panelTitle,
+            kind: relatesTo.kind,
+            evidence: [{
+              anchorId,
+              snippet: summary || content.slice(0, 96),
+              at: Date.now(),
+            }],
+          });
+        } catch {
+          // best-effort — don't block commit flow
+        }
+      }
     }
     close();
-  }, [turns, committing, activeTrace, activeTraceId, ctx, anchor, append, streamChat, close, focusedEl, isCurrentContainerLocked]);
+  }, [turns, committing, activeTrace, activeTraceId, ctx, anchor, append, streamChat, close, focusedEl, isCurrentContainerLocked, effectiveThoughtType, relatesTo, currentPanel.panel?.title]);
 
   const hasEditorialBody =
     turns.length > 0
@@ -1314,22 +1342,38 @@ export function ChatFocus() {
             </div>
           )}
           {turns.length > 0 && !streaming && !committing && (
-            <button
-              className="loom-chat-focus-commit"
-              onClick={commit}
-              disabled={isCurrentContainerLocked}
-              aria-label={isCurrentContainerLocked ? 'Container locked · unlock with ◈ to iterate' : 'Commit anchored note'}
-                  title={isCurrentContainerLocked ? '◈ This local thought is locked. Unlock it on the card to iterate.' : '✓ Commit anchored note'}
-              style={{
-                background: 'transparent', border: 0,
-                cursor: isCurrentContainerLocked ? 'not-allowed' : 'pointer',
-                color: isCurrentContainerLocked ? 'var(--tint-indigo)' : 'var(--accent)',
-                padding: '0 2px',
-                fontSize: '0.84rem', lineHeight: 1, flexShrink: 0,
-                opacity: smallScreen ? (isCurrentContainerLocked ? 0.36 : 0.62) : 0.16,
-                transition: 'opacity 160ms var(--ease), color 160ms var(--ease)',
-              }}
-            >{isCurrentContainerLocked ? '◈' : '✓'}</button>
+            <>
+              <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 8 }}>
+                <ThoughtTypePicker
+                  value={effectiveThoughtType}
+                  onChange={setThoughtTypeOverride}
+                  disabled={isCurrentContainerLocked}
+                />
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 8, minWidth: 0, flex: '1 1 auto' }}>
+                <RelatesToPicker
+                  currentDocId={ctx?.docId ?? null}
+                  value={relatesTo}
+                  onChange={setRelatesTo}
+                />
+              </span>
+              <button
+                className="loom-chat-focus-commit"
+                onClick={commit}
+                disabled={isCurrentContainerLocked}
+                aria-label={isCurrentContainerLocked ? 'Container locked · unlock with ◈ to iterate' : 'Commit anchored note'}
+                    title={isCurrentContainerLocked ? '◈ This local thought is locked. Unlock it on the card to iterate.' : '✓ Commit anchored note'}
+                style={{
+                  background: 'transparent', border: 0,
+                  cursor: isCurrentContainerLocked ? 'not-allowed' : 'pointer',
+                  color: isCurrentContainerLocked ? 'var(--tint-indigo)' : 'var(--accent)',
+                  padding: '0 2px',
+                  fontSize: '0.84rem', lineHeight: 1, flexShrink: 0,
+                  opacity: smallScreen ? (isCurrentContainerLocked ? 0.36 : 0.62) : 0.16,
+                  transition: 'opacity 160ms var(--ease), color 160ms var(--ease)',
+                }}
+              >{isCurrentContainerLocked ? '◈' : '✓'}</button>
+            </>
           )}
         </div>
       </div>
