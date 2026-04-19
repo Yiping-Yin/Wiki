@@ -52,10 +52,10 @@ test('buildClarificationPasses keeps prior passes and labels them for compact hi
   ]);
 });
 
-test('clarification history appears only after the third pass', () => {
+test('clarification history appears once there is a previous pass to revisit', () => {
   assert.equal(shouldShowClarificationHistory(0), false);
-  assert.equal(shouldShowClarificationHistory(2), false);
-  assert.equal(shouldShowClarificationHistory(3), true);
+  assert.equal(shouldShowClarificationHistory(1), false);
+  assert.equal(shouldShowClarificationHistory(2), true);
 });
 
 test('displayed clarification falls back to the latest synthesis when nothing is pinned', () => {

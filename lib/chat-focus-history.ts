@@ -95,5 +95,5 @@ export function resolvePinnedPassAfterTurnChange(
 }
 
 export function shouldShowClarificationHistory(turnCount: number): boolean {
-  return turnCount >= 3;
+  return turnCount >= 2;
 }
