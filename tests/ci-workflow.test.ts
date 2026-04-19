@@ -16,4 +16,6 @@ test('CI includes a dedicated macOS app smoke job', () => {
   assert.match(source, /brew install xcodegen/);
   assert.match(source, /npm run app:user/);
   assert.match(source, /npm run app:smoke/);
+  assert.match(source, /chmod \+x scripts\/fake-codex-cli\.mjs/);
+  assert.match(source, /CODEX_BIN:\s*\.\/scripts\/fake-codex-cli\.mjs/);
 });
