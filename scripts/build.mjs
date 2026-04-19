@@ -25,10 +25,13 @@ function run(cmd, args, extraEnv = {}) {
 
 await withNextBuildLock(root, async () => {
   rmSync(path.join(root, 'tsconfig.tsbuildinfo'), { force: true });
+  rmSync(path.join(root, '.next-app-dev', 'types'), { recursive: true, force: true });
+  rmSync(path.join(root, 'public', 'pagefind'), { recursive: true, force: true });
   await removeDuplicateArtifacts(path.join(root, '.next-build'));
 
   await run(process.execPath, [nextBin, 'build'], {
     LOOM_DIST_DIR: '.next-build',
+    LOOM_NEXT_OUTPUT: 'standalone',
     LOOM_NEXT_BUILD_LOCK_HELD: '1',
   });
 
