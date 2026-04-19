@@ -23,6 +23,9 @@ test('installed app smoke uses the staged runtime with isolated content and know
   assert.match(source, /LOOM_EXECUTION_ROOT/);
   assert.match(source, /LOOM_CONTENT_ROOT/);
   assert.match(source, /LOOM_KNOWLEDGE_ROOT/);
+  assert.match(source, /CODEX_BIN/);
+  assert.match(source, /CLAUDE_BIN/);
+  assert.match(source, /path\.isAbsolute/);
   assert.match(source, /mkdtemp/);
   assert.match(source, /server\.js/);
 });

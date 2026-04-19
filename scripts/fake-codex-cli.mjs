@@ -33,7 +33,7 @@ if (!outputPath) usage();
 const prompt = promptParts.join(' ').trim();
 
 function buildResponse(input) {
-  if (/reply with exactly:? ok\.?$/i.test(input)) {
+  if (/reply with exactly:? ok\b/i.test(input)) {
     return 'OK';
   }
 
