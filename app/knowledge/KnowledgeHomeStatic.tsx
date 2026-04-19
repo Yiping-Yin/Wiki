@@ -209,7 +209,7 @@ export function KnowledgeHomeStatic({
                         color: 'var(--fg)',
                       }}
                     >
-                      {group.items.length} collection{group.items.length === 1 ? '' : 's'}
+                      {formatCount(group.items.length, 'collection')}
                     </div>
                   )}
                 </div>
@@ -361,7 +361,7 @@ function CollectionCard({
             {item.label}
           </div>
           <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-            {item.count} doc{item.count === 1 ? '' : 's'}
+            {formatCount(item.count, 'doc')}
           </div>
         </div>
         <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -391,6 +391,10 @@ function CollectionCard({
       </div>
     </div>
   );
+}
+
+function formatCount(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 const groupSelectStyle = {
