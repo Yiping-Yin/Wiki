@@ -17,6 +17,8 @@ type AttachedSource = {
   textExtractable: boolean;
 };
 
+type CaptureProgressPhase = 'idle' | 'organizing' | 'saving' | 'opening';
+
 export function EmptyDocCaptureSurface({
   docId,
   title,
@@ -29,6 +31,7 @@ export function EmptyDocCaptureSurface({
   const [draft, setDraft] = useState('');
   const [sources, setSources] = useState<AttachedSource[]>([]);
   const [busy, setBusy] = useState(false);
+  const [progressPhase, setProgressPhase] = useState<CaptureProgressPhase>('idle');
   const [error, setError] = useState<string | null>(null);
   const { availability } = useAiHealth();
   const activeNotice = resolveAiNotice(availability.notice);
@@ -38,6 +41,13 @@ export function EmptyDocCaptureSurface({
     [sources],
   );
   const canOrganize = availability.canSend && !busy && (draft.trim().length > 0 || importedSources.length > 0);
+  const progressMessage = progressPhase === 'organizing'
+    ? 'Preparing the first note with AI…'
+    : progressPhase === 'saving'
+      ? 'Saving the organized page to this topic…'
+      : progressPhase === 'opening'
+        ? 'Opening the first organized page…'
+        : null;
 
   async function attachFile(file: File) {
     const fd = new FormData();
@@ -75,6 +85,7 @@ export function EmptyDocCaptureSurface({
       return;
     }
     setBusy(true);
+    setProgressPhase('organizing');
     setError(null);
     try {
       let full = '';
@@ -93,6 +104,7 @@ export function EmptyDocCaptureSurface({
         },
       });
 
+      setProgressPhase('saving');
       const save = await fetch('/api/knowledge/doc', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -101,9 +113,11 @@ export function EmptyDocCaptureSurface({
       const json = await save.json();
       if (!save.ok) throw new Error(json.error ?? 'Save failed');
 
+      setProgressPhase('opening');
       window.location.assign(json.href);
     } catch (e: any) {
       setError(e.message ?? 'Organize failed');
+      setProgressPhase('idle');
     } finally {
       setBusy(false);
     }
@@ -120,6 +134,7 @@ export function EmptyDocCaptureSurface({
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Start writing, paste rough notes, or drop one source…"
         rows={12}
+        disabled={busy}
         style={{
           width: '100%',
           minHeight: 280,
@@ -178,6 +193,7 @@ export function EmptyDocCaptureSurface({
             type="file"
             accept=".md,.mdx,.txt,.pdf,.docx,.doc,.pptx,.ppt"
             multiple
+            disabled={busy}
             onChange={async (e) => {
               try {
                 if (e.target.files) await onInputFiles(e.target.files);
@@ -239,6 +255,12 @@ export function EmptyDocCaptureSurface({
         </AiInlineHint>
       ) : null}
 
+      {!error && progressMessage ? (
+        <div style={{ color: 'var(--muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          {progressMessage}
+        </div>
+      ) : null}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
@@ -255,7 +277,13 @@ export function EmptyDocCaptureSurface({
             opacity: canOrganize ? 1 : 0.6,
           }}
         >
-          {busy ? 'Organizing…' : 'Organize into note'}
+          {progressPhase === 'saving'
+            ? 'Saving…'
+            : progressPhase === 'opening'
+              ? 'Opening…'
+              : busy
+                ? 'Organizing…'
+                : 'Organize into note'}
         </button>
       </div>
     </div>

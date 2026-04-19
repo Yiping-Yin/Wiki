@@ -38,3 +38,18 @@ test('capture surface gates organize on AI availability instead of blindly firin
   assert.match(source, /!availability\.canSend/);
   assert.match(source, /Open Settings/);
 });
+
+test('capture surface shows staged progress feedback while organizing the first note', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'components/knowledge/EmptyDocCaptureSurface.tsx'),
+    'utf8',
+  );
+
+  assert.match(source, /type CaptureProgressPhase = 'idle' \| 'organizing' \| 'saving' \| 'opening';/);
+  assert.match(source, /setProgressPhase\('organizing'\)/);
+  assert.match(source, /setProgressPhase\('saving'\)/);
+  assert.match(source, /setProgressPhase\('opening'\)/);
+  assert.match(source, /Preparing the first note with AI/);
+  assert.match(source, /Saving the organized page to this topic/);
+  assert.match(source, /Opening the first organized page/);
+});
