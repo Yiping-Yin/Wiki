@@ -97,6 +97,13 @@ export function AIExaminer({ docId, contextNotes }: Props) {
   const [draft, setDraft] = useState(() => loadSession(docId).draft);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const examinerHistory = useMemo(() => deriveExaminerHistory(contextNotes), [contextNotes]);
+  const captureNotes = useMemo(
+    () => contextNotes.filter((note) => note.anchor.blockId !== 'loom-examiner-root'),
+    [contextNotes],
+  );
+  const MIN_CAPTURES_FOR_EXAMINER = 3;
+  const gateReady = captureNotes.length >= MIN_CAPTURES_FOR_EXAMINER;
+  const capturesNeeded = Math.max(0, MIN_CAPTURES_FOR_EXAMINER - captureNotes.length);
 
   // Persist session on phase/draft change
   useEffect(() => {
@@ -268,14 +275,24 @@ export function AIExaminer({ docId, contextNotes }: Props) {
         }
       />
 
-      {/* Idle: show "start" button */}
+      {/* Idle: show "start" button (or gate message if not enough captures yet) */}
       {phase.kind === 'idle' && (
+        gateReady ? (
           <AiStageEmptyState
-            message="Stay with the unfinished edge of this panel."
-            actionLabel={contextNotes.length === 0 ? 'Capture first' : examinerSurface.launcherTitle}
+            message="Ready when you are."
+            actionLabel={examinerSurface.launcherTitle}
             onAction={() => void generateQuestion()}
-            actionDisabled={contextNotes.length === 0}
           />
+        ) : (
+          <AiStageEmptyState
+            message={`Capture ${capturesNeeded} more thought${capturesNeeded === 1 ? '' : 's'} on this source first. The examiner probes what you have already captured — there must be something to probe.`}
+            actionLabel={docId ? 'Open source' : 'Choose a doc'}
+            onAction={() => {
+              if (docId) router.push(docHrefFromDocId(docId));
+            }}
+            actionDisabled={!docId}
+          />
+        )
       )}
 
       {/* Generating */}
