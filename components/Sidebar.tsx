@@ -242,7 +242,11 @@ export function Sidebar() {
 
         {/* Personal knowledge — user-editable source library, distinct from
          * the /atlas entry above which is the overview page. */}
-        <Section title="Library" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
+        <Section
+          title="Library"
+          sectionActive={pathname?.startsWith('/knowledge') || pathname === '/atlas' || false}
+          open={knowOpen}
+          onToggle={() => setKnowOpen((o) => !o)}
           trailing={<NewTopicButton onCreated={async (href) => {
             setKnowOpen(true);
             setOpen(false);
@@ -433,7 +437,7 @@ function SourceLibraryGroupRow({
         <span
           style={{
             fontFamily: 'var(--display)',
-            fontSize: '0.82rem',
+            fontSize: '0.85rem',
             fontWeight: 600,
             color: empty ? 'var(--muted)' : 'var(--fg)',
             letterSpacing: '-0.01em',
@@ -544,16 +548,17 @@ function CategoryRow({
   );
 }
 
-function ZoneLabel({ children }: { children: React.ReactNode }) {
+function ZoneLabel({ children, active = false }: { children: React.ReactNode; active?: boolean }) {
   return (
     <div
       style={{
-        color: 'var(--muted)',
+        color: active ? 'var(--accent)' : 'var(--muted)',
         fontSize: '0.7rem',
         fontWeight: 600,
         letterSpacing: 0,
         padding: '0.3rem 0',
         fontFamily: 'var(--display)',
+        transition: 'color 0.15s var(--ease)',
       }}
     >
       {children}
@@ -597,7 +602,7 @@ function SubtleLink({
       style={{
         display: 'block',
         padding: '0.18rem 0.2rem',
-        fontSize: '0.8rem',
+        fontSize: '0.85rem',
         color: active ? 'var(--accent)' : 'var(--muted)',
         textDecoration: 'none',
         fontWeight: active ? 600 : 500,
@@ -615,6 +620,7 @@ function Section({
   trailing,
   children,
   collapsible = true,
+  sectionActive = false,
 }: {
   title: string;
   open: boolean;
@@ -622,7 +628,9 @@ function Section({
   trailing?: React.ReactNode;
   children: React.ReactNode;
   collapsible?: boolean;
+  sectionActive?: boolean;
 }) {
+  const labelColor = sectionActive ? 'var(--accent)' : 'var(--muted)';
   return (
     <div style={{ marginTop: '1.2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -631,13 +639,14 @@ function Section({
             onClick={onToggle}
             style={{
               flex: 1, textAlign: 'left', background: 'transparent', border: 0,
-              color: 'var(--muted)',
+              color: labelColor,
               cursor: 'pointer', padding: '0.3rem 0',
               fontSize: '0.7rem',
               fontWeight: 600,
               letterSpacing: 0,
               textTransform: 'none',
               fontFamily: 'var(--display)',
+              transition: 'color 0.15s var(--ease)',
             }}
           >
             {title}
@@ -646,11 +655,12 @@ function Section({
           <div
             style={{
               flex: 1,
-              color: 'var(--muted)',
+              color: labelColor,
               padding: '0.3rem 0',
               fontSize: '0.7rem',
               fontWeight: 600,
               fontFamily: 'var(--display)',
+              transition: 'color 0.15s var(--ease)',
             }}
           >
             {title}
