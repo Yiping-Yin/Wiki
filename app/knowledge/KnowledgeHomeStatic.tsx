@@ -374,6 +374,16 @@ function CollectionCard({
   return (
     <div
       className="loom-atlas-card"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/x-loom-category-slug', item.slug);
+        e.dataTransfer.setData('text/plain', item.label);
+        e.dataTransfer.effectAllowed = 'move';
+        (e.currentTarget as HTMLElement).style.opacity = '0.5';
+      }}
+      onDragEnd={(e) => {
+        (e.currentTarget as HTMLElement).style.opacity = '';
+      }}
       style={{
         position: 'relative',
         display: 'flex',
@@ -385,7 +395,8 @@ function CollectionCard({
         border: '0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent)',
         background: 'color-mix(in srgb, var(--mat-thick-bg) 78%, transparent)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28)',
-        transition: 'transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease)',
+        transition: 'transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease), opacity 0.15s var(--ease)',
+        cursor: 'grab',
       }}
     >
       <button

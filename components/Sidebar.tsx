@@ -324,23 +324,66 @@ function SourceLibraryGroupRow({
   activePath?: string | null;
   onNav: () => void;
 }) {
+  const router = useRouter();
   const active = group.categories.some((category) => (activePath ?? '').startsWith(`/knowledge/${category.slug}`));
   const categorySignature = group.categories.map((category) => category.slug).join('|');
   const defaultExpanded = active || group.categories.length <= 3;
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [dropTarget, setDropTarget] = useState(false);
 
   useEffect(() => {
     setExpanded(defaultExpanded);
   }, [defaultExpanded, categorySignature]);
 
+  const onDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDropTarget(false);
+    const slug = event.dataTransfer.getData('application/x-loom-category-slug');
+    if (!slug) return;
+    try {
+      await fetch('/api/source-library/membership', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ categorySlug: slug, groupId: group.id }),
+      });
+      await refreshKnowledgeNav();
+      router.refresh();
+    } catch {
+      // Silent best-effort. User can retry.
+    }
+  };
+
   return (
     <div
+      onDragOver={(event) => {
+        if (!event.dataTransfer.types.includes('application/x-loom-category-slug')) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        if (!dropTarget) setDropTarget(true);
+      }}
+      onDragEnter={(event) => {
+        if (!event.dataTransfer.types.includes('application/x-loom-category-slug')) return;
+        event.preventDefault();
+        setDropTarget(true);
+      }}
+      onDragLeave={(event) => {
+        const related = event.relatedTarget as Node | null;
+        if (related && event.currentTarget.contains(related)) return;
+        setDropTarget(false);
+      }}
+      onDrop={onDrop}
       style={{
         marginTop: 6,
         padding: '0.36rem 0.4rem 0.44rem',
         borderRadius: 8,
-        border: '0.5px solid color-mix(in srgb, var(--mat-border) 72%, transparent)',
-        background: active ? 'color-mix(in srgb, var(--accent-soft) 70%, transparent)' : 'color-mix(in srgb, var(--mat-thick-bg) 76%, transparent)',
+        border: dropTarget
+          ? '1px dashed var(--accent)'
+          : '0.5px solid color-mix(in srgb, var(--mat-border) 72%, transparent)',
+        background: dropTarget
+          ? 'color-mix(in srgb, var(--accent-soft) 90%, transparent)'
+          : active ? 'color-mix(in srgb, var(--accent-soft) 70%, transparent)' : 'color-mix(in srgb, var(--mat-thick-bg) 76%, transparent)',
+        transition: 'border-color 0.15s var(--ease), background 0.15s var(--ease)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
