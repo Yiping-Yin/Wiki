@@ -230,11 +230,14 @@ export function Sidebar() {
         </div>
         {smallScreen && <SearchBox />}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '0.8rem 0 0.4rem' }}>
-          <NavLink href="/today" active={isActive('/today')}>Today</NavLink>
-          <NavLink href="/atlas" active={isActive('/atlas')}>Atlas</NavLink>
-          <NavLink href="/patterns" active={isActive('/patterns')}>Patterns</NavLink>
-          <NavLink href="/graph" active={isActive('/graph')}>Relations</NavLink>
+        <div style={{ margin: '0.8rem 0 0.2rem' }}>
+          <ZoneLabel>Workspaces</ZoneLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+            <NavLink href="/today" active={isActive('/today')}>Today</NavLink>
+            <NavLink href="/atlas" active={isActive('/atlas')}>Atlas</NavLink>
+            <NavLink href="/patterns" active={isActive('/patterns')}>Patterns</NavLink>
+            <NavLink href="/graph" active={isActive('/graph')}>Relations</NavLink>
+          </div>
         </div>
 
         {/* Personal knowledge — user-editable source library, distinct from
@@ -302,10 +305,13 @@ export function Sidebar() {
           ))}
         </Section>
 
-        <div style={{ marginTop: '1.2rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <SubtleLink href="/browse" active={isActive('/browse')} onNav={() => setOpen(false)}>Browse</SubtleLink>
-          <SubtleLink href="/about" active={isActive('/about')} onNav={() => setOpen(false)}>About</SubtleLink>
-          <SubtleLink href="/help" active={isActive('/help')} onNav={() => setOpen(false)}>Help</SubtleLink>
+        <div style={{ marginTop: '1.2rem' }}>
+          <ZoneLabel>More</ZoneLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+            <SubtleLink href="/browse" active={isActive('/browse')} onNav={() => setOpen(false)}>Browse</SubtleLink>
+            <SubtleLink href="/about" active={isActive('/about')} onNav={() => setOpen(false)}>About</SubtleLink>
+            <SubtleLink href="/help" active={isActive('/help')} onNav={() => setOpen(false)}>Help</SubtleLink>
+          </div>
         </div>
 
         {/* §11, §31 — no footer chrome. The sidebar's job is navigation,
@@ -354,6 +360,11 @@ function SourceLibraryGroupRow({
     }
   };
 
+  const empty = group.categories.length === 0;
+  const countLabel = empty
+    ? 'empty'
+    : `${group.categories.length} collection${group.categories.length === 1 ? '' : 's'}`;
+
   return (
     <div
       onDragOver={(event) => {
@@ -374,60 +385,79 @@ function SourceLibraryGroupRow({
       }}
       onDrop={onDrop}
       style={{
-        marginTop: 6,
-        padding: '0.36rem 0.4rem 0.44rem',
+        marginTop: empty ? 4 : 6,
+        padding: empty ? '0.28rem 0.4rem' : '0.32rem 0.4rem 0.4rem',
         borderRadius: 8,
         border: dropTarget
           ? '1px dashed var(--accent)'
-          : '0.5px solid color-mix(in srgb, var(--mat-border) 72%, transparent)',
+          : empty
+            ? '0.5px dashed color-mix(in srgb, var(--mat-border) 72%, transparent)'
+            : '0.5px solid color-mix(in srgb, var(--mat-border) 72%, transparent)',
         background: dropTarget
           ? 'color-mix(in srgb, var(--accent-soft) 90%, transparent)'
           : active ? 'color-mix(in srgb, var(--accent-soft) 70%, transparent)' : 'color-mix(in srgb, var(--mat-thick-bg) 76%, transparent)',
         transition: 'border-color 0.15s var(--ease), background 0.15s var(--ease)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button
-          onClick={() => setExpanded((open) => !open)}
-          aria-label={expanded ? `Collapse ${group.label}` : `Expand ${group.label}`}
+      <button
+        type="button"
+        onClick={() => !empty && setExpanded((open) => !open)}
+        aria-label={empty ? `${group.label} (empty)` : expanded ? `Collapse ${group.label}` : `Expand ${group.label}`}
+        aria-expanded={empty ? undefined : expanded}
+        disabled={empty}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: 0,
+          border: 0,
+          background: 'transparent',
+          cursor: empty ? 'default' : 'pointer',
+          textAlign: 'left',
+          minHeight: 22,
+        }}
+      >
+        <span
+          aria-hidden
           style={{
-            width: 18,
-            height: 22,
-            padding: 0,
-            border: 0,
-            background: 'transparent',
-            color: 'var(--muted)',
-            cursor: 'pointer',
+            width: 14,
             fontSize: '0.68rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            color: 'var(--muted)',
             flexShrink: 0,
+            opacity: empty ? 0 : 1,
           }}
         >
           {expanded ? '▾' : '▸'}
-        </button>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
-          <div
-            style={{
-              fontFamily: 'var(--display)',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: 'var(--fg)',
-              letterSpacing: '-0.01em',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {group.label}
-          </div>
-          <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-            {group.categories.length} source{group.categories.length === 1 ? '' : 's'}
-          </div>
-        </div>
-      </div>
-      {expanded && (
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--display)',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            color: empty ? 'var(--muted)' : 'var(--fg)',
+            letterSpacing: '-0.01em',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flexShrink: 1,
+            minWidth: 0,
+          }}
+        >
+          {group.label}
+        </span>
+        <span
+          className="t-caption2"
+          style={{
+            color: 'var(--muted)',
+            fontSize: '0.68rem',
+            flexShrink: 0,
+          }}
+        >
+          · {countLabel}
+        </span>
+      </button>
+      {expanded && !empty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
           {group.categories.map((category) => (
             <CategoryRow
@@ -510,6 +540,23 @@ function CategoryRow({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ZoneLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        color: 'var(--muted)',
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        letterSpacing: 0,
+        padding: '0.3rem 0',
+        fontFamily: 'var(--display)',
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -664,8 +711,8 @@ function NewTopicButton({ onCreated }: { onCreated: (href: string) => void | Pro
           if (e.key === 'Escape' && !busy) { setEditing(false); setValue(''); }
         }}
         onBlur={() => { if (!busy && !value.trim()) { setEditing(false); setValue(''); } }}
-        placeholder={busy ? 'Opening…' : 'Topic name…'}
-        aria-label="New topic name"
+        placeholder={busy ? 'Opening…' : 'Collection name…'}
+        aria-label="New collection name"
         disabled={busy}
         style={{
           width: 112, border: 0, borderBottom: '1px solid var(--accent)',
@@ -681,8 +728,8 @@ function NewTopicButton({ onCreated }: { onCreated: (href: string) => void | Pro
     <button
       type="button"
       onClick={() => setEditing(true)}
-      aria-label="New topic"
-      title="New topic"
+      aria-label="New collection"
+      title="New collection"
       style={{
         background: 'transparent', border: 0, cursor: 'pointer',
         color: 'var(--muted)', fontSize: '0.85rem', lineHeight: 1,
