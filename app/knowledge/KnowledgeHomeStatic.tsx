@@ -115,61 +115,58 @@ export function KnowledgeHomeStatic({
         </QuietSceneColumn>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 4 }}>
-          <WorkSurface tone="quiet" density="regular">
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                flexWrap: 'wrap',
-              }}
-            >
-              <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-                Grouping changes affect Loom metadata only. Original source files stay unchanged.
-              </div>
-              {isAddingGroup ? (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    onSubmitNewGroup();
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
-                >
-                  <input
-                    value={newGroupLabel}
-                    onChange={(event) => onChangeNewGroupLabel(event.target.value)}
-                    placeholder="New source-library group"
-                    aria-label="New source-library group"
-                    style={groupInputStyle}
-                  />
-                  <button type="submit" style={groupActionStyle} aria-busy={busyKey === 'group:add' || isPending}>
-                    Create group
-                  </button>
-                  <button type="button" onClick={onCancelAddGroup} style={groupActionStyle}>
-                    Cancel
-                  </button>
-                </form>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onStartAddGroup}
-                  style={groupActionStyle}
-                  aria-busy={busyKey === 'group:add' || isPending}
-                >
-                  Add group
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            {isAddingGroup ? (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  onSubmitNewGroup();
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+              >
+                <input
+                  value={newGroupLabel}
+                  onChange={(event) => onChangeNewGroupLabel(event.target.value)}
+                  placeholder="New group name"
+                  aria-label="New group name"
+                  style={groupInputStyle}
+                  autoFocus
+                />
+                <button type="submit" style={groupActionStyle} aria-busy={busyKey === 'group:add' || isPending}>
+                  Create
                 </button>
-              )}
-            </div>
-            {errorMessage && (
-              <div className="t-caption2" style={{ color: 'var(--tint-red)', marginTop: 10 }}>
-                {errorMessage}
-              </div>
+                <button type="button" onClick={onCancelAddGroup} style={groupActionStyle}>
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={onStartAddGroup}
+                style={groupActionStyle}
+                aria-busy={busyKey === 'group:add' || isPending}
+              >
+                + Add group
+              </button>
             )}
-          </WorkSurface>
+          </div>
+          {errorMessage && (
+            <div className="t-caption2" style={{ color: 'var(--tint-red)' }}>
+              {errorMessage}
+            </div>
+          )}
 
           {resolvedGroups.map((group) => (
-            <WorkSurface key={group.id} tone="quiet" density="regular">
+            <div key={group.id} className="loom-atlas-group">
+            <WorkSurface tone="quiet" density="regular">
               <header
                 style={{
                   display: 'flex',
@@ -195,6 +192,7 @@ export function KnowledgeHomeStatic({
                         onChange={(event) => onChangeEditingGroupLabel(event.target.value)}
                         aria-label={`Rename ${group.label}`}
                         style={groupInputStyle}
+                        autoFocus
                       />
                       <button
                         type="submit"
@@ -221,19 +219,12 @@ export function KnowledgeHomeStatic({
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {group.id !== 'ungrouped' && (
-                    <button
-                      type="button"
-                      onClick={() => onStartRenameGroup(group.id, group.label)}
-                      style={groupActionStyle}
-                      aria-busy={busyKey === `group:rename:${group.id}` || isPending}
-                    >
-                      Rename group
-                    </button>
-                  )}
-                  {group.id !== 'ungrouped' &&
-                    (confirmingDeleteGroupId === group.id ? (
+                {group.id !== 'ungrouped' && editingGroupId !== group.id && (
+                  <div
+                    className="loom-atlas-group-actions"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+                  >
+                    {confirmingDeleteGroupId === group.id ? (
                       <>
                         <div className="t-caption2" style={{ color: 'var(--muted)' }}>
                           Delete this group? Items move back to Ungrouped.
@@ -251,19 +242,27 @@ export function KnowledgeHomeStatic({
                         </button>
                       </>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => onRequestDeleteGroup(group.id)}
-                        style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-                        aria-busy={busyKey === `group:delete:${group.id}` || isPending}
-                      >
-                        Delete group
-                      </button>
-                    ))}
-                  <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-                    Start anywhere. Return when a thread changes.
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onStartRenameGroup(group.id, group.label)}
+                          style={groupActionStyle}
+                          aria-busy={busyKey === `group:rename:${group.id}` || isPending}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onRequestDeleteGroup(group.id)}
+                          style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
+                          aria-busy={busyKey === `group:delete:${group.id}` || isPending}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </div>
-                </div>
+                )}
               </header>
 
               <div
@@ -292,9 +291,30 @@ export function KnowledgeHomeStatic({
                 ))}
               </div>
             </WorkSurface>
+            </div>
           ))}
         </div>
       </QuietScene>
+      <style>{`
+        .loom-atlas-group .loom-atlas-group-actions {
+          opacity: 0;
+          transition: opacity 0.16s var(--ease);
+        }
+        .loom-atlas-group:hover .loom-atlas-group-actions,
+        .loom-atlas-group:focus-within .loom-atlas-group-actions {
+          opacity: 1;
+        }
+        .loom-atlas-card .loom-atlas-card-actions {
+          opacity: 0;
+          transition: opacity 0.16s var(--ease);
+          pointer-events: none;
+        }
+        .loom-atlas-card:hover .loom-atlas-card-actions,
+        .loom-atlas-card:focus-within .loom-atlas-card-actions {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `}</style>
     </StageShell>
   );
 }
@@ -351,6 +371,7 @@ function CollectionCard({
 }) {
   return (
     <div
+      className="loom-atlas-card"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -388,58 +409,64 @@ function CollectionCard({
             {formatCount(item.count, 'doc')}
           </div>
         </div>
-        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-            Open collection
-          </div>
-          <span style={textActionStyle(true)}>Enter</span>
+        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+          <span style={textActionStyle(true)}>Open →</span>
         </div>
       </Link>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto' }}>
-        <label className="t-caption2" style={{ color: 'var(--muted)' }}>
-          Move to group
-        </label>
-        <select
-          value={item.groupId ?? 'ungrouped'}
-          onChange={(event) => onMoveCategory(item.slug, event.target.value)}
-          disabled={busy}
-          style={groupSelectStyle}
-        >
-          {allGroups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.label}
-            </option>
-          ))}
-        </select>
-        {confirmingHide ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
-            <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-              Remove this source from Atlas? Original files stay unchanged.
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => onConfirmHideCategory(item.slug)}
-                style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-              >
-                Remove now
-              </button>
-              <button type="button" onClick={onCancelHideCategory} style={groupActionStyle}>
-                Cancel
-              </button>
-            </div>
+      {confirmingHide ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '0.5px solid var(--mat-border)' }}>
+          <div className="t-caption2" style={{ color: 'var(--muted)' }}>
+            Remove this source from Atlas? Original files stay unchanged.
           </div>
-        ) : (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => onConfirmHideCategory(item.slug)}
+              style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
+            >
+              Remove now
+            </button>
+            <button type="button" onClick={onCancelHideCategory} style={groupActionStyle}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="loom-atlas-card-actions"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: '0.5px solid var(--mat-border)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <select
+            value={item.groupId ?? 'ungrouped'}
+            onChange={(event) => onMoveCategory(item.slug, event.target.value)}
+            disabled={busy}
+            aria-label="Move to group"
+            style={{ ...groupSelectStyle, flex: 1, minWidth: 110 }}
+          >
+            {allGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                Move → {group.label}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={() => onRequestHideCategory(item.slug)}
-            style={{ ...groupActionStyle, color: 'var(--tint-red)', alignSelf: 'flex-start', marginTop: 6 }}
+            style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
           >
-            Remove from Atlas
+            Remove
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
