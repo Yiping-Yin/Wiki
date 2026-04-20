@@ -234,10 +234,12 @@ export function Sidebar() {
           <NavLink href="/today" active={isActive('/today')}>Today</NavLink>
           <NavLink href="/atlas" active={isActive('/atlas')}>Atlas</NavLink>
           <NavLink href="/patterns" active={isActive('/patterns')}>Patterns</NavLink>
+          <NavLink href="/graph" active={isActive('/graph')}>Relations</NavLink>
         </div>
 
-        {/* Personal knowledge */}
-        <Section title="The Atlas" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
+        {/* Personal knowledge — user-editable source library, distinct from
+         * the /atlas entry above which is the overview page. */}
+        <Section title="Library" open={knowOpen} onToggle={() => setKnowOpen((o) => !o)}
           trailing={<NewTopicButton onCreated={async (href) => {
             setKnowOpen(true);
             setOpen(false);
