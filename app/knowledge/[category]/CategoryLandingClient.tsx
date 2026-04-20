@@ -185,6 +185,46 @@ export function CategoryLandingClient({
     });
   }, [groups, surfaceById]);
 
+  /**
+   * Two-level grouping. Subcategory labels like "ASSESSMENT / ASSESSMENT 1"
+   * carry an implicit hierarchy (top-level = "ASSESSMENT", sub = "Assessment
+   * 1"). Group the flat group list by top-level prefix so we render:
+   *
+   *   ASSESSMENT
+   *     ├─ Assessment 1 (3 items)
+   *     ├─ Assessment 2 (...)
+   *   WEEK
+   *     ├─ Week 1 (4 items)
+   *     ├─ Week 2 (...)
+   *
+   * instead of every "ASSESSMENT / ASSESSMENT 1" as a top-level card.
+   */
+  const twoLevelGroups = useMemo(() => {
+    type SubSummary = typeof groupSummaries[number];
+    const sections = new Map<string, { top: string; subs: SubSummary[]; totalDocs: number }>();
+    for (const summary of groupSummaries) {
+      const rawLabel = summary.group.label ?? '';
+      const parts = rawLabel.split(/\s*\/\s*/);
+      const top = parts.length > 1 ? parts[0] : '';
+      const section = sections.get(top) ?? { top, subs: [], totalDocs: 0 };
+      // Swap in the stripped sub-label on a shallow clone so the inner card
+      // reads "Assessment 1" instead of "ASSESSMENT / ASSESSMENT 1".
+      const subLabel = parts.length > 1 ? parts.slice(1).join(' / ') : rawLabel;
+      section.subs.push({
+        ...summary,
+        group: { ...summary.group, label: subLabel },
+      });
+      section.totalDocs += summary.group.docs.length;
+      sections.set(top, section);
+    }
+    return Array.from(sections.values()).sort((a, b) => {
+      // Empty top (flat groups) go last.
+      if (!a.top && b.top) return 1;
+      if (a.top && !b.top) return -1;
+      return a.top.localeCompare(b.top);
+    });
+  }, [groupSummaries]);
+
   const openPrimaryAction = (surface: CategorySurface) => {
     continuePanelLifecycle(router, {
       href: surface.href,
@@ -246,8 +286,39 @@ export function CategoryLandingClient({
           }
         />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {groupSummaries.map(({ group, activeCount: groupActiveCount, latestTouchedAt, focusSurface }) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          {twoLevelGroups.map((section) => (
+            <div key={section.top || '_root'} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {section.top && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 10,
+                    paddingBottom: 8,
+                    borderBottom: '0.5px solid color-mix(in srgb, var(--mat-border) 60%, transparent)',
+                  }}
+                >
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontFamily: 'var(--display)',
+                      fontSize: '1.15rem',
+                      fontWeight: 700,
+                      letterSpacing: '-0.015em',
+                      color: 'var(--fg)',
+                    }}
+                  >
+                    {section.top}
+                  </h2>
+                  <span className="t-caption2" style={{ color: 'var(--muted)' }}>
+                    {section.subs.length} group{section.subs.length === 1 ? '' : 's'} · {section.totalDocs} item{section.totalDocs === 1 ? '' : 's'}
+                  </span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {section.subs.map(({ group, activeCount: groupActiveCount, latestTouchedAt, focusSurface }) => (
             <WorkSurface key={group.label || '_root'} tone="quiet">
               <div
                 id={encodeURIComponent(group.label || '_all')}
@@ -406,6 +477,9 @@ export function CategoryLandingClient({
                 </div>
               </div>
             </WorkSurface>
+          ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
