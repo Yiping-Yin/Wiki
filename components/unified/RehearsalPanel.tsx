@@ -226,6 +226,7 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
       <textarea
         ref={textareaRef}
         value={draft}
+        aria-label="Rehearsal note"
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={

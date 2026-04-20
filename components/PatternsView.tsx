@@ -701,6 +701,7 @@ export function PatternsView() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Find a pattern…"
+            aria-label="Find a pattern"
             style={{
               flex: 1,
               minWidth: 0,

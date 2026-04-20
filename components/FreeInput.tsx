@@ -227,6 +227,7 @@ export function FreeInput() {
           <textarea
             ref={taRef}
             value={value}
+            aria-label="Free-mode input"
             onChange={(e) => {
               if (runtimeNotice) setRuntimeNotice(null);
               setValue(e.target.value);

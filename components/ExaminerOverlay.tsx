@@ -65,7 +65,24 @@ export function ExaminerOverlay() {
     >
       <div style={{ padding: '10px 16px', borderBottom: '0.5px solid var(--mat-border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem' }}>
         <strong style={{ color: 'var(--fg-secondary)', flex: 1, fontWeight: 600 }}>{examinerSurface.launcherTitle}</strong>
-        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '0.62rem', cursor: 'pointer', opacity: 0.6 }} onClick={() => close(true)}>Esc</span>
+        <button
+          type="button"
+          onClick={() => close(true)}
+          aria-label="Close examiner (Esc)"
+          style={{
+            appearance: 'none',
+            border: 0,
+            background: 'transparent',
+            color: 'var(--fg-secondary)',
+            fontFamily: 'var(--mono)',
+            fontSize: '0.62rem',
+            cursor: 'pointer',
+            padding: '2px 4px',
+            borderRadius: 3,
+          }}
+        >
+          Esc
+        </button>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '10px 14px 14px' }}>
         <ExaminerInner docId={ctx.docId} />

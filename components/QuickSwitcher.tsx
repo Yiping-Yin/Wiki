@@ -342,6 +342,7 @@ export function QuickSwitcher() {
                 else if (e.key === 'Enter') { e.preventDefault(); goto(active); }
               }}
               placeholder="Search collections, weeks, documents…"
+              aria-label="Shuttle search"
               style={{
                 flex: 1, padding: 0, border: 0,
                 background: 'transparent', color: 'var(--fg)',

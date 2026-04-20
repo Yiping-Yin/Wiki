@@ -637,6 +637,7 @@ export default function GraphPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Find a panel…"
+            aria-label="Find a panel"
             style={{
               flex: 1,
               minWidth: 0,
@@ -967,18 +968,21 @@ export default function GraphPage() {
                           value={editClaim}
                           onChange={(e) => setEditClaim(e.target.value)}
                           placeholder="Relation claim"
+                          aria-label="Relation claim"
                           style={weaveEditorStyle}
                         />
                         <textarea
                           value={editWhyItHolds}
                           onChange={(e) => setEditWhyItHolds(e.target.value)}
                           placeholder="Why this relation holds"
+                          aria-label="Why this relation holds"
                           style={weaveEditorStyle}
                         />
                         <textarea
                           value={editTensions}
                           onChange={(e) => setEditTensions(e.target.value)}
                           placeholder="One open tension per line"
+                          aria-label="Open tensions, one per line"
                           style={{ ...weaveEditorStyle, minHeight: 72 }}
                         />
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

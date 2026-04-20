@@ -620,6 +620,7 @@ function NewTopicButton({ onCreated }: { onCreated: (href: string) => void | Pro
         }}
         onBlur={() => { if (!busy && !value.trim()) { setEditing(false); setValue(''); } }}
         placeholder={busy ? 'Opening…' : 'Topic name…'}
+        aria-label="New topic name"
         disabled={busy}
         style={{
           width: 112, border: 0, borderBottom: '1px solid var(--accent)',

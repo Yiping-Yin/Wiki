@@ -133,6 +133,7 @@ export function EmptyDocCaptureSurface({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Start writing, paste rough notes, or drop one source…"
+        aria-label="Start writing, paste notes, or drop a source"
         rows={12}
         disabled={busy}
         style={{

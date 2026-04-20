@@ -308,6 +308,7 @@ export function AIExaminer({ docId, contextNotes }: Props) {
             ref={textareaRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            aria-label="Your answer"
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault();

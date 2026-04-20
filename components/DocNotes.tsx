@@ -103,6 +103,7 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
             ref={taRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
+            aria-label="Doc note (markdown)"
             onKeyDown={(e) => {
               if (e.key === 'Tab' && suggestion) { e.preventDefault(); accept(); }
               else if (e.key === 'Escape' && suggestion) { e.preventDefault(); dismiss(); }

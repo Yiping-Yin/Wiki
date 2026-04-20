@@ -137,7 +137,8 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find a source that has already landed…"
+          placeholder="Find a source…"
+          aria-label="Find a source"
           style={{
             flex: 1,
             minWidth: 0,

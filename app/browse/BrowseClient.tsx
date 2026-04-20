@@ -155,6 +155,7 @@ export function BrowseClient({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Find a chapter or collection…"
+          aria-label="Search chapters and collections"
           style={{
             flex: 1,
             minWidth: 0,

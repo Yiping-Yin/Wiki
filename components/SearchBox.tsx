@@ -126,6 +126,7 @@ export function SearchBox() {
                 else if (e.key === 'Enter') { e.preventDefault(); goto(activeIdx); }
               }}
               placeholder="Search documents…"
+              aria-label="Search documents"
               style={{
                 width: '100%',
                 padding: smallScreen ? '1rem 1rem 0.95rem' : '1.1rem 1.3rem',

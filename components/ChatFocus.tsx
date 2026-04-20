@@ -1288,6 +1288,7 @@ export function ChatFocus() {
                 ref={inputRef}
                 className="loom-chat-focus-input"
                 value={draft}
+                aria-label="Ask about this passage"
                 onChange={(e) => {
                   setDraft(e.target.value);
                   if (aiError) setAiError(null);
