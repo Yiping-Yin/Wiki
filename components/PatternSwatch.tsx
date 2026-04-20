@@ -27,7 +27,7 @@ function buildSwatchCells(
   panels: Array<{
     docId: string;
     href: string;
-    status: 'settled' | 'provisional' | 'contested' | 'superseded';
+    status: 'settled' | 'provisional' | 'contested';
     crystallizedAt: number;
     revisions: Array<{ at: number }>;
   }>,

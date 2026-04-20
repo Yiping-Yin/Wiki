@@ -3,7 +3,7 @@
 import type { LearningNextAction, LearningRecency } from '../learning-status';
 import type { ThoughtType, Trace } from '../trace/types';
 
-export type PanelStatus = 'settled' | 'provisional' | 'contested' | 'superseded';
+export type PanelStatus = 'settled' | 'provisional' | 'contested';
 
 export type PanelSection = {
   key: string;

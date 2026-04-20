@@ -8,7 +8,7 @@ export type KnowledgeCategoryMeta = {
 };
 
 export function isRenderablePanel(panel: Panel): boolean {
-  return panel.status !== 'provisional' && panel.status !== 'superseded';
+  return panel.status !== 'provisional';
 }
 
 function comparePanels(a: Panel, b: Panel): number {

@@ -91,11 +91,13 @@ export type TraceEvent =
    * while the historical crystallization remains auditable.
    */
   | { kind: 'panel-reopen'; at: number; }
-  | { kind: 'prereq-resolved'; concept: string; childTraceId?: string; at: number; }
-  | { kind: 'spec-locked'; content: string; at: number; }
-  | { kind: 'execute-step'; content: string; verified?: boolean; at: number; }
+  /**
+   * §X · Legacy kind preserved for migrate.ts backward-compat. No new code
+   * should emit 'mastery-update' — scoring lives in Panel status + learning
+   * derivations, not in trace events. Safe to remove once no user has
+   * un-migrated legacy traces.
+   */
   | { kind: 'mastery-update'; from: number; to: number; reason?: string; at: number; }
-  | { kind: 'sticky'; text: string; scrollY: number; at: number; }
   /**
    * §8 · A new full version of the Live Artifact for this trace's doc.
    * Recompile events are the only source of the visible main-frame note;
