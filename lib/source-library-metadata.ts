@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import type {
   SourceLibraryGroupRecord,
@@ -26,8 +27,62 @@ function fallbackGroup(): SourceLibraryGroupRecord {
   };
 }
 
+/**
+ * Source-library metadata (groups, memberships, hides) lives in a stable
+ * user-data directory — NOT inside the runtime bundle.
+ *
+ * Why: the macOS app's `stage-loom-runtime.mjs` replaces the runtime root
+ * atomically on every `npm run app:user`. If user metadata lived inside
+ * that root (as it did pre-2026-04-20), every rebuild wiped the user's
+ * Atlas decisions (hides, group moves, group renames).
+ *
+ * Stable location (macOS only, per product canon):
+ *   ~/Library/Application Support/Loom/user-data/knowledge/manifest/
+ *
+ * Overridable via LOOM_USER_DATA_ROOT for tests and scripted migrations.
+ */
 function sourceLibraryManifestRoot() {
+  const override = process.env.LOOM_USER_DATA_ROOT?.trim();
+  if (override) {
+    return path.join(override, 'knowledge', 'manifest');
+  }
+  return path.join(
+    homedir(),
+    'Library',
+    'Application Support',
+    'Loom',
+    'user-data',
+    'knowledge',
+    'manifest',
+  );
+}
+
+/**
+ * Legacy runtime-local manifest path, only used during one-time migration.
+ * Returns the path that the old (pre-2026-04-20) code would have written to.
+ */
+function legacySourceLibraryManifestRoot() {
   return path.join(process.cwd(), 'knowledge', '.cache', 'manifest');
+}
+
+let legacyMigrationAttempted = false;
+
+async function migrateLegacyManifestIfNeeded() {
+  if (legacyMigrationAttempted) return;
+  legacyMigrationAttempted = true;
+  const target = path.join(sourceLibraryManifestRoot(), 'source-library-groups.json');
+  try {
+    await fs.access(target);
+    return;
+  } catch {}
+  const legacyPath = path.join(legacySourceLibraryManifestRoot(), 'source-library-groups.json');
+  try {
+    const legacyBody = await fs.readFile(legacyPath, 'utf8');
+    await fs.mkdir(sourceLibraryManifestRoot(), { recursive: true });
+    await fs.writeFile(target, legacyBody, 'utf8');
+  } catch {
+    // No legacy manifest — fresh install. Fine.
+  }
 }
 
 function normalizeLabel(label: string) {
@@ -111,6 +166,7 @@ function normalizeMetadata(metadata: SourceLibraryMetadata | null | undefined): 
 }
 
 async function loadSourceLibraryMetadata(): Promise<SourceLibraryMetadata> {
+  await migrateLegacyManifestIfNeeded();
   try {
     const raw = await fs.readFile(sourceLibraryMetadataPath(), 'utf8');
     return normalizeMetadata(JSON.parse(raw) as SourceLibraryMetadata);
