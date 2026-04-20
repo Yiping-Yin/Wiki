@@ -1,14 +1,26 @@
 'use client';
 
 import type { Panel } from '../panel/types';
-import type { Weave, WeaveContractSource, WeaveEvidence, WeaveRevision, WeaveStatus } from './types';
+import type { Weave, WeaveContractSource, WeaveEvidence, WeaveKind, WeaveRevision, WeaveStatus } from './types';
 
 type WeaveContractInput = {
   fromPanel: Panel;
   toPanel: Panel;
   evidence: WeaveEvidence[];
   status: WeaveStatus;
+  kind?: WeaveKind;
 };
+
+function kindVerbClause(kind: WeaveKind | undefined): { verb: string; suffix: string } {
+  switch (kind) {
+    case 'supports': return { verb: 'supports', suffix: 'with compatible evidence.' };
+    case 'refines': return { verb: 'refines', suffix: 'as a more precise statement.' };
+    case 'contradicts': return { verb: 'contradicts', suffix: 'on a core claim.' };
+    case 'depends-on': return { verb: 'depends on', suffix: 'as a prerequisite.' };
+    case 'references':
+    default: return { verb: 'points to', suffix: 'as part of the same weave.' };
+  }
+}
 
 const SUGGESTED_STATUS_TENSION = 'This relation is still only suggested.';
 
@@ -17,13 +29,14 @@ function uniqueLines(items: string[]) {
 }
 
 export function buildWeaveContract(input: WeaveContractInput) {
-  const { fromPanel, toPanel, evidence, status } = input;
+  const { fromPanel, toPanel, evidence, status, kind } = input;
   const primarySnippet = evidence[0]?.snippet ?? '';
-  const claim = `${fromPanel.title} points to ${toPanel.title} as part of the same weave.`;
+  const { verb, suffix } = kindVerbClause(kind);
+  const claim = `${fromPanel.title} ${verb} ${toPanel.title} ${suffix}`;
 
   const whyItHolds = primarySnippet
     ? primarySnippet
-    : `${fromPanel.title} explicitly links outward toward ${toPanel.title}.`;
+    : `${fromPanel.title} ${verb} ${toPanel.title}.`;
 
   const tensions = uniqueLines([
     status === 'suggested' ? SUGGESTED_STATUS_TENSION : '',

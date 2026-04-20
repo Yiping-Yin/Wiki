@@ -102,6 +102,7 @@ export function deriveSuggestedWeavesForSourcePanels({
       toPanel,
       evidence: deduped,
       status,
+      kind: existing?.kind ?? 'references',
     });
     const evidenceChanged =
       !existing

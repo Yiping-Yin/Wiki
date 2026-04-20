@@ -122,5 +122,9 @@ export function derivePanelFromTraces(input: PanelSnapshotInput): Panel | null {
     updatedAt,
     crystallizedAt,
     sections,
+    // SRS is only meaningful on settled panels (see srs.ts isDueForReview).
+    // On re-derive, preserve existing srs iff the panel is still settled;
+    // any transition to provisional/contested clears it (C4 fix).
+    srs: status === 'settled' ? existing?.srs : undefined,
   };
 }

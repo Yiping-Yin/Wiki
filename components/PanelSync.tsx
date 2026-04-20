@@ -7,6 +7,8 @@ import { createPendingSyncQueue } from '../lib/sync/pending-queue';
 import { TRACE_CHANGE_EVENT, type TraceChangeDetail } from '../lib/trace/events';
 import { traceStore } from '../lib/trace/store';
 import type { Trace } from '../lib/trace/types';
+import { weaveStore } from '../lib/weave';
+import { emitWeaveChange } from '../lib/weave';
 
 function rootReadingTraces(traces: Trace[]) {
   return traces.filter((trace) => trace.kind === 'reading' && !trace.parentId && trace.source?.docId);
@@ -33,6 +35,7 @@ export function PanelSync() {
       const changedDocIds: string[] = [];
       const panelsToPut = [];
       const panelIdsToDelete: string[] = [];
+      const deletedDocIds: string[] = [];
 
       for (const docId of targetDocIds) {
         if (cancelled) return;
@@ -48,6 +51,7 @@ export function PanelSync() {
         if (!maybePanel) {
           if (existing) {
             panelIdsToDelete.push(existing.id);
+            deletedDocIds.push(docId);
             changedDocIds.push(docId);
           }
           lastDocSignaturesRef.current.set(docId, `${panelTraceSignature(traceSet)}||${panelRecordSignature(null)}`);
@@ -63,6 +67,26 @@ export function PanelSync() {
 
       if (panelIdsToDelete.length > 0) {
         await panelStore.deleteMany(panelIdsToDelete);
+      }
+      if (deletedDocIds.length > 0) {
+        // Cascade: delete weaves that referenced the now-gone panels.
+        // weave.fromPanelId / toPanelId are actually docIds (not pl_* ids).
+        try {
+          const allWeaves = await weaveStore.getAll();
+          const orphanWeaveIds = allWeaves
+            .filter((weave) => deletedDocIds.includes(weave.fromPanelId) || deletedDocIds.includes(weave.toPanelId))
+            .map((weave) => weave.id);
+          if (orphanWeaveIds.length > 0) {
+            await weaveStore.deleteMany(orphanWeaveIds);
+            emitWeaveChange({
+              docIds: deletedDocIds,
+              weaveIds: orphanWeaveIds,
+              reason: 'panel-delete-cascade',
+            });
+          }
+        } catch {
+          // Best-effort cascade. If weave store unavailable we leave orphans.
+        }
       }
       if (panelsToPut.length > 0) {
         await panelStore.putMany(panelsToPut);
