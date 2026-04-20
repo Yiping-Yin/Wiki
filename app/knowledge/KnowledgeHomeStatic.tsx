@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { PatternSwatch } from '../../components/PatternSwatch';
 import { QuietScene, QuietSceneColumn } from '../../components/QuietScene';
 import { QuietSceneIntro } from '../../components/QuietSceneIntro';
 import { StageShell } from '../../components/StageShell';
@@ -114,60 +113,19 @@ export function KnowledgeHomeStatic({
           />
         </QuietSceneColumn>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 4 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: 8,
-              flexWrap: 'wrap',
-            }}
-          >
-            {isAddingGroup ? (
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  onSubmitNewGroup();
-                }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
-              >
-                <input
-                  value={newGroupLabel}
-                  onChange={(event) => onChangeNewGroupLabel(event.target.value)}
-                  placeholder="New group name"
-                  aria-label="New group name"
-                  style={groupInputStyle}
-                  autoFocus
-                />
-                <button type="submit" style={groupActionStyle} aria-busy={busyKey === 'group:add' || isPending}>
-                  Create
-                </button>
-                <button type="button" onClick={onCancelAddGroup} style={groupActionStyle}>
-                  Cancel
-                </button>
-              </form>
-            ) : (
-              <button
-                type="button"
-                onClick={onStartAddGroup}
-                style={groupActionStyle}
-                aria-busy={busyKey === 'group:add' || isPending}
-              >
-                + Add group
-              </button>
-            )}
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
           {errorMessage && (
             <div className="t-caption2" style={{ color: 'var(--tint-red)' }}>
               {errorMessage}
             </div>
           )}
 
-          {resolvedGroups.map((group) => (
+          {resolvedGroups.map((group) => {
+            const empty = group.items.length === 0;
+            return (
             <div
               key={group.id}
-              className="loom-atlas-group"
+              className={empty ? 'loom-atlas-group loom-atlas-group-empty' : 'loom-atlas-group'}
               data-group-drop-target={group.id}
               onDragOver={(event) => {
                 if (!event.dataTransfer.types.includes('application/x-loom-category-slug')) return;
@@ -187,6 +145,76 @@ export function KnowledgeHomeStatic({
                 if (slug) onMoveCategory(slug, group.id);
               }}
             >
+            {empty ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '0.55rem 1rem',
+                  borderRadius: 'var(--r-2)',
+                  border: '0.5px dashed var(--mat-border)',
+                  background: 'transparent',
+                  color: 'var(--muted)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <WorkEyebrow subtle>{group.label}</WorkEyebrow>
+                <span className="t-caption2" style={{ color: 'var(--muted)' }}>
+                  empty · drop a card here
+                </span>
+                {group.id !== 'ungrouped' && editingGroupId !== group.id && (
+                  <div
+                    className="loom-atlas-group-actions"
+                    style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onStartRenameGroup(group.id, group.label)}
+                      style={groupActionStyle}
+                      aria-busy={busyKey === `group:rename:${group.id}` || isPending}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRequestDeleteGroup(group.id)}
+                      style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
+                      aria-busy={busyKey === `group:delete:${group.id}` || isPending}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+                {editingGroupId === group.id && (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      onSubmitRenameGroup(group.id, group.label);
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}
+                  >
+                    <input
+                      value={editingGroupLabel}
+                      onChange={(event) => onChangeEditingGroupLabel(event.target.value)}
+                      aria-label={`Rename ${group.label}`}
+                      style={groupInputStyle}
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      style={groupActionStyle}
+                      aria-busy={busyKey === `group:rename:${group.id}` || isPending}
+                    >
+                      Save
+                    </button>
+                    <button type="button" onClick={onCancelRenameGroup} style={groupActionStyle}>
+                      Cancel
+                    </button>
+                  </form>
+                )}
+              </div>
+            ) : (
             <WorkSurface tone="quiet" density="regular">
               <header
                 style={{
@@ -313,8 +341,76 @@ export function KnowledgeHomeStatic({
                 ))}
               </div>
             </WorkSurface>
+            )}
             </div>
-          ))}
+            );
+          })}
+
+          {/* Add group as end-of-list affordance — not a floating button. */}
+          {isAddingGroup ? (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                onSubmitNewGroup();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '0.55rem 1rem',
+                borderRadius: 'var(--r-2)',
+                border: '0.5px dashed var(--mat-border)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <input
+                value={newGroupLabel}
+                onChange={(event) => onChangeNewGroupLabel(event.target.value)}
+                placeholder="New group name"
+                aria-label="New group name"
+                style={groupInputStyle}
+                autoFocus
+              />
+              <button type="submit" style={groupActionStyle} aria-busy={busyKey === 'group:add' || isPending}>
+                Create
+              </button>
+              <button type="button" onClick={onCancelAddGroup} style={groupActionStyle}>
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={onStartAddGroup}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '0.55rem 1rem',
+                borderRadius: 'var(--r-2)',
+                border: '0.5px dashed var(--mat-border)',
+                background: 'transparent',
+                color: 'var(--muted)',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                letterSpacing: '0.01em',
+                cursor: 'pointer',
+                transition: 'color 0.15s var(--ease), border-color 0.15s var(--ease)',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--fg-secondary)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--fg-secondary)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--muted)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--mat-border)';
+              }}
+              aria-busy={busyKey === 'group:add' || isPending}
+            >
+              + Add group
+            </button>
+          )}
         </div>
       </QuietScene>
       <style>{`
@@ -461,7 +557,6 @@ function CollectionCard({
         href={`/knowledge/${item.slug}`}
         style={{ display: 'flex', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit' }}
       >
-        <PatternSwatch categorySlug={item.slug} height={28} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div
             style={{
