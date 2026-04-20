@@ -388,38 +388,36 @@ function CollectionCard({
         transition: 'transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease)',
       }}
     >
-      {!confirmingHide && (
-        <button
-          type="button"
-          className="loom-atlas-card-remove"
-          onClick={() => onRequestHideCategory(item.slug)}
-          aria-label={`Remove ${item.label} from Atlas`}
-          title="Remove from Atlas"
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            appearance: 'none',
-            border: 0,
-            background: 'transparent',
-            color: 'var(--muted)',
-            cursor: 'pointer',
-            width: 20,
-            height: 20,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.9rem',
-            lineHeight: 1,
-            borderRadius: 4,
-            opacity: 0.32,
-            transition: 'opacity 0.15s var(--ease), color 0.15s var(--ease), background 0.15s var(--ease)',
-            zIndex: 2,
-          }}
-        >
-          ×
-        </button>
-      )}
+      <button
+        type="button"
+        className="loom-atlas-card-remove"
+        onClick={() => onConfirmHideCategory(item.slug)}
+        aria-label={`Remove ${item.label} from Atlas`}
+        title="Remove from Atlas (original file stays)"
+        style={{
+          position: 'absolute',
+          top: 6,
+          right: 6,
+          appearance: 'none',
+          border: 0,
+          background: 'transparent',
+          color: 'var(--muted)',
+          cursor: 'pointer',
+          width: 20,
+          height: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.9rem',
+          lineHeight: 1,
+          borderRadius: 4,
+          opacity: 0.32,
+          transition: 'opacity 0.15s var(--ease), color 0.15s var(--ease), background 0.15s var(--ease)',
+          zIndex: 2,
+        }}
+      >
+        ×
+      </button>
 
       <Link
         href={`/knowledge/${item.slug}`}
@@ -458,27 +456,7 @@ function CollectionCard({
         </div>
       </Link>
 
-      {confirmingHide && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingTop: 6, borderTop: '0.5px solid var(--mat-border)' }}>
-          <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-            Remove this source from Atlas? Original files stay unchanged.
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => onConfirmHideCategory(item.slug)}
-              style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-            >
-              Remove now
-            </button>
-            <button type="button" onClick={onCancelHideCategory} style={groupActionStyle}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {allGroups.length > 1 && !confirmingHide && (
+      {allGroups.length > 1 && (
         <select
           className="loom-atlas-card-move"
           value={item.groupId ?? 'ungrouped'}
