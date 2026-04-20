@@ -304,15 +304,15 @@ export function KnowledgeHomeStatic({
         .loom-atlas-group:focus-within .loom-atlas-group-actions {
           opacity: 1;
         }
-        .loom-atlas-card .loom-atlas-card-actions {
-          opacity: 0;
-          transition: opacity 0.16s var(--ease);
-          pointer-events: none;
-        }
-        .loom-atlas-card:hover .loom-atlas-card-actions,
-        .loom-atlas-card:focus-within .loom-atlas-card-actions {
+        .loom-atlas-card:hover .loom-atlas-card-remove,
+        .loom-atlas-card:focus-within .loom-atlas-card-remove {
           opacity: 1;
-          pointer-events: auto;
+          color: var(--tint-red);
+          background: color-mix(in srgb, var(--tint-red) 10%, transparent);
+        }
+        .loom-atlas-card:hover .loom-atlas-card-move select,
+        .loom-atlas-card:focus-within .loom-atlas-card-move select {
+          opacity: 0.7;
         }
       `}</style>
     </StageShell>
@@ -373,10 +373,11 @@ function CollectionCard({
     <div
       className="loom-atlas-card"
       style={{
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        gap: 10,
-        padding: '0.92rem 0.98rem',
+        gap: 8,
+        padding: '0.8rem 0.9rem',
         color: 'var(--fg)',
         borderRadius: 'var(--r-3)',
         border: '0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent)',
@@ -385,37 +386,78 @@ function CollectionCard({
         transition: 'transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease)',
       }}
     >
+      {!confirmingHide && (
+        <button
+          type="button"
+          className="loom-atlas-card-remove"
+          onClick={() => onRequestHideCategory(item.slug)}
+          aria-label={`Remove ${item.label} from Atlas`}
+          title="Remove from Atlas"
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            appearance: 'none',
+            border: 0,
+            background: 'transparent',
+            color: 'var(--muted)',
+            cursor: 'pointer',
+            width: 20,
+            height: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.9rem',
+            lineHeight: 1,
+            borderRadius: 4,
+            opacity: 0.32,
+            transition: 'opacity 0.15s var(--ease), color 0.15s var(--ease), background 0.15s var(--ease)',
+            zIndex: 2,
+          }}
+        >
+          ×
+        </button>
+      )}
+
       <Link
         href={`/knowledge/${item.slug}`}
-        style={{ display: 'flex', flexDirection: 'column', gap: 10, textDecoration: 'none', color: 'inherit' }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit' }}
       >
-        <PatternSwatch categorySlug={item.slug} height={32} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <PatternSwatch categorySlug={item.slug} height={28} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div
             style={{
               color: 'var(--fg)',
               fontFamily: 'var(--display)',
-              fontSize: '0.98rem',
+              fontSize: '0.96rem',
               fontWeight: 560,
               letterSpacing: '-0.015em',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              paddingRight: 18,
             }}
           >
             {item.label}
           </div>
-          <div className="t-caption2" style={{ color: 'var(--muted)' }}>
-            {formatCount(item.count, 'doc')}
+          <div
+            className="t-caption2"
+            style={{
+              color: 'var(--muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+            }}
+          >
+            <span>{formatCount(item.count, 'doc')}</span>
+            <span style={textActionStyle(true)}>Open →</span>
           </div>
-        </div>
-        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-          <span style={textActionStyle(true)}>Open →</span>
         </div>
       </Link>
 
-      {confirmingHide ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '0.5px solid var(--mat-border)' }}>
+      {confirmingHide && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingTop: 6, borderTop: '0.5px solid var(--mat-border)' }}>
           <div className="t-caption2" style={{ color: 'var(--muted)' }}>
             Remove this source from Atlas? Original files stay unchanged.
           </div>
@@ -432,41 +474,34 @@ function CollectionCard({
             </button>
           </div>
         </div>
-      ) : (
-        <div
-          className="loom-atlas-card-actions"
+      )}
+
+      <div className="loom-atlas-card-move" style={{ display: allGroups.length > 1 ? 'block' : 'none' }}>
+        <select
+          value={item.groupId ?? 'ungrouped'}
+          onChange={(event) => onMoveCategory(item.slug, event.target.value)}
+          disabled={busy}
+          aria-label="Move to group"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginTop: 8,
-            paddingTop: 8,
-            borderTop: '0.5px solid var(--mat-border)',
-            flexWrap: 'wrap',
+            width: '100%',
+            marginTop: 6,
+            border: 0,
+            background: 'transparent',
+            color: 'var(--muted)',
+            fontSize: '0.7rem',
+            padding: '2px 0',
+            cursor: 'pointer',
+            opacity: 0,
+            transition: 'opacity 0.15s var(--ease)',
           }}
         >
-          <select
-            value={item.groupId ?? 'ungrouped'}
-            onChange={(event) => onMoveCategory(item.slug, event.target.value)}
-            disabled={busy}
-            aria-label="Move to group"
-            style={{ ...groupSelectStyle, flex: 1, minWidth: 110 }}
-          >
-            {allGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                Move → {group.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => onRequestHideCategory(item.slug)}
-            style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-          >
-            Remove
-          </button>
-        </div>
-      )}
+          {allGroups.map((group) => (
+            <option key={group.id} value={group.id}>
+              Move → {group.label}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }
