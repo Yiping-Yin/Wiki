@@ -680,8 +680,10 @@ function SessionStatusStrip({
         <span aria-hidden style={{ opacity: 0.35 }}>·</span>
         <span style={{ color: 'var(--fg)' }}>
           {resolvedSession.active
-            ? (resolvedSession.finished ? 'Session complete' : `${resolvedSession.completedCount + 1} of ${resolvedSession.totalCount}`)
-            : `${readyCount} targets ready`}
+            ? (resolvedSession.finished
+                ? 'Session complete'
+                : `${resolvedSession.totalCount - resolvedSession.completedCount} remaining`)
+            : `${readyCount} ready`}
         </span>
         {resolvedSession.active && !resolvedSession.finished && resolvedSession.nextTarget ? (
           <>

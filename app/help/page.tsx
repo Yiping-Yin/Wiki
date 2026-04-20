@@ -133,9 +133,9 @@ export default function HelpPage() {
           <Kbd>Esc</Kbd> to cancel
         </li>
         <li>
-          The <strong>× Remove</strong> button in the bottom-right → two-step
-          confirmation (first click turns red "Delete?", second click actually
-          deletes) → soft delete
+          The <strong>×</strong> button in each card's top-right → one click
+          removes the source from Atlas. Original file untouched. Soft delete
+          (preserved in the trace, just no longer rendered).
         </li>
       </ul>
       <p>
