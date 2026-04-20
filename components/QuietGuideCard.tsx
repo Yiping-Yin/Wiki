@@ -51,7 +51,7 @@ export function QuietGuideCard({
         >
           <WorkEyebrow subtle style={{ letterSpacing: '0.08em' }}>{eyebrow}</WorkEyebrow>
           <span aria-hidden style={{ opacity: 0.4 }}>·</span>
-          <span style={{ color: 'var(--fg)', fontWeight: 560 }}>{title}</span>
+          <span style={{ color: 'var(--fg)', fontWeight: 600 }}>{title}</span>
           {meta ? (
             <>
               <span aria-hidden style={{ opacity: 0.4 }}>·</span>
@@ -112,7 +112,7 @@ export function QuietGuideCard({
             style={{
               fontFamily: 'var(--display)',
               fontSize: '1.16rem',
-              fontWeight: 620,
+              fontWeight: 600,
               letterSpacing: '-0.02em',
               lineHeight: 1.25,
               marginBottom: meta || summary ? 6 : 0,

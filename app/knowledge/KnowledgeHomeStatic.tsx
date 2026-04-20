@@ -210,7 +210,7 @@ export function KnowledgeHomeStatic({
                       style={{
                         fontFamily: 'var(--display)',
                         fontSize: '1.1rem',
-                        fontWeight: 620,
+                        fontWeight: 600,
                         letterSpacing: '-0.02em',
                         color: 'var(--fg)',
                       }}
@@ -430,7 +430,7 @@ function CollectionCard({
               color: 'var(--fg)',
               fontFamily: 'var(--display)',
               fontSize: '0.96rem',
-              fontWeight: 560,
+              fontWeight: 600,
               letterSpacing: '-0.015em',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

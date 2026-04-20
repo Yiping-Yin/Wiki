@@ -620,7 +620,7 @@ export default function GraphPage() {
         }}
       >
       <div style={{ padding: '1rem 1.5rem 0.9rem', borderBottom: '0.5px solid var(--mat-border)' }}>
-        <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 650, letterSpacing: '-0.02em' }}>
+        <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
           Relations
         </h1>
         <div
@@ -1209,7 +1209,7 @@ const focusLinkStyle = {
   background: 'transparent',
   color: 'var(--fg-secondary)',
   fontSize: '0.71rem',
-  fontWeight: 650,
+  fontWeight: 700,
   letterSpacing: '0.03em',
   padding: 0,
   cursor: 'pointer',

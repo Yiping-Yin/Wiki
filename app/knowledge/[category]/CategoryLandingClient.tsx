@@ -325,7 +325,7 @@ export function CategoryLandingClient({
                             style={{
                               fontFamily: 'var(--display)',
                               fontSize: '1rem',
-                              fontWeight: 560,
+                              fontWeight: 600,
                               letterSpacing: '-0.015em',
                               lineHeight: 1.25,
                             }}

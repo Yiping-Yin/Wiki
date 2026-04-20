@@ -110,7 +110,7 @@ export function RelatesToPicker({ currentDocId, value, onChange }: Props) {
               border: 0,
               background: 'transparent',
               color: colorFor(value.kind),
-              fontWeight: 650,
+              fontWeight: 700,
               cursor: 'pointer',
               padding: 0,
             }}

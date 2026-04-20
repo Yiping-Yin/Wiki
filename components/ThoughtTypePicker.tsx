@@ -88,7 +88,7 @@ export function ThoughtTypePicker({ value, onChange, disabled = false }: Props) 
           background: 'transparent',
           color: colorFor(value),
           fontSize: '0.68rem',
-          fontWeight: 650,
+          fontWeight: 700,
           letterSpacing: '0.02em',
           padding: 0,
           cursor: disabled ? 'not-allowed' : 'pointer',
@@ -140,7 +140,7 @@ export function ThoughtTypePicker({ value, onChange, disabled = false }: Props) 
               <span style={{
                 color: colorFor(t),
                 fontSize: '0.74rem',
-                fontWeight: 650,
+                fontWeight: 700,
                 letterSpacing: '0.02em',
               }}>
                 {t}

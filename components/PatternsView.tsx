@@ -434,7 +434,7 @@ export function PatternsView() {
                   style={{
                     fontFamily: 'var(--display)',
                     fontSize: compactSurface ? '1.08rem' : '1.18rem',
-                    fontWeight: 650,
+                    fontWeight: 700,
                     letterSpacing: '-0.02em',
                     lineHeight: 1.25,
                     marginBottom: 6,
@@ -944,7 +944,7 @@ export function PatternsView() {
                           flex: 1,
                           fontFamily: 'var(--display)',
                           fontSize: compactSurface ? '1rem' : '1.1rem',
-                          fontWeight: 650,
+                          fontWeight: 700,
                           letterSpacing: '-0.02em',
                           lineHeight: 1.3,
                         }}
@@ -1265,7 +1265,7 @@ function inlineMetaActionStyle(active: boolean) {
     background: 'transparent',
     color: active ? 'var(--accent)' : 'var(--fg-secondary)',
     fontSize: '0.71rem',
-    fontWeight: 650,
+    fontWeight: 700,
     letterSpacing: '0.03em',
     padding: 0,
     cursor: 'pointer',
@@ -1278,7 +1278,7 @@ const secondaryLinkStyle = {
   background: 'transparent',
   color: 'var(--fg-secondary)',
   fontSize: '0.71rem',
-  fontWeight: 650,
+  fontWeight: 700,
   letterSpacing: '0.03em',
   padding: 0,
   cursor: 'pointer',
@@ -1292,7 +1292,7 @@ function actionStyle(primary: boolean) {
     background: primary ? 'color-mix(in srgb, var(--accent-soft) 72%, transparent)' : 'transparent',
     color: primary ? 'var(--fg)' : 'var(--fg-secondary)',
     fontSize: '0.74rem',
-    fontWeight: 650,
+    fontWeight: 700,
     letterSpacing: '0.03em',
     cursor: 'pointer',
   } as const;
@@ -1364,7 +1364,7 @@ function PanelRevisionTimeline({
               style={{
                 fontFamily: 'var(--display)',
                 fontSize: compact ? '0.88rem' : '0.94rem',
-                fontWeight: 650,
+                fontWeight: 700,
                 letterSpacing: '-0.012em',
                 lineHeight: 1.4,
                 marginBottom: 6,

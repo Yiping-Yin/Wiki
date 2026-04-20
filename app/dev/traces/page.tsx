@@ -357,7 +357,7 @@ export default function TraceInspectorPage() {
           }}>
             Dev
           </div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 650, letterSpacing: '-0.03em' }}>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.03em' }}>
             Trace inspector
           </h1>
           <div className="t-footnote" style={{ marginTop: 8, color: 'var(--muted)' }}>

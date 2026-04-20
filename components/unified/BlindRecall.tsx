@@ -137,7 +137,7 @@ export function BlindRecall({ panel, onClose }: Props) {
               flex: 1,
               fontFamily: 'var(--display)',
               fontSize: '1.02rem',
-              fontWeight: 650,
+              fontWeight: 700,
               letterSpacing: '-0.015em',
               lineHeight: 1.3,
               color: 'var(--fg)',
