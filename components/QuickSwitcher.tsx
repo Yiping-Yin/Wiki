@@ -151,7 +151,7 @@ export function QuickSwitcher() {
     { kind: 'doc' as const, key: 'tool:relations', title: 'Relations', sub: ctx.isFree ? 'Open the relations graph' : 'Open the current panel in relations', href: ctx.isFree ? '/graph' : `__action:relations:${ctx.docId}` },
     { kind: 'doc' as const, key: 'tool:ingestion', title: ingestionSurface.launcherTitle, sub: ingestionSurface.title, href: '__action:ingestion' },
     { kind: 'doc' as const, key: 'tool:recursing', title: 'Reconstructions', sub: 'Past rehearsals', href: '__action:recursing' },
-    { kind: 'doc' as const, key: 'tool:thoughtmap', title: 'Thought Map', sub: '⌘/ · Open the current weave', href: '__action:thoughtmap' },
+    { kind: 'doc' as const, key: 'tool:thoughtmap', title: 'Thought Map', sub: '⌘/ · Open the thought map for current doc', href: '__action:thoughtmap' },
     { kind: 'doc' as const, key: 'tool:help', title: 'Help', sub: 'Usage guide', href: '/help' },
     { kind: 'doc' as const, key: 'tool:export-json', title: 'Export Notes (JSON)', sub: 'Full backup', href: '__action:export-json' },
     { kind: 'doc' as const, key: 'tool:export-md', title: 'Export Notes (Markdown)', sub: 'Human-readable', href: '__action:export-md' },
@@ -383,7 +383,7 @@ export function QuickSwitcher() {
                 Preparing the Shuttle
               </div>
               <div className="t-footnote">
-                Pulling your source library, LLM Wiki, and available actions into one quiet lane.
+                Pulling your source library, LLM Wiki, and available actions into one view.
               </div>
             </div>
           ) : flat.length === 0 && q ? (

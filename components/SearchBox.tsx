@@ -34,8 +34,10 @@ export function SearchBox() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // ⌘K is owned by QuickSwitcher (canonical Shuttle). SearchBox only
+    // listens for Escape to close itself; clicking the sidebar entry is
+    // the way to open it, or using the Shuttle's doc results.
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setOpen(true); }
       if (e.key === 'Escape') setOpen(false);
     };
     window.addEventListener('keydown', onKey);

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { callAiPrompt } from '../../lib/ai/runtime';
+import { LOOM_AI_RULES } from '../../lib/ai/system-prompt';
 import { recordPanelRecall } from '../../lib/panel';
 import type { Panel } from '../../lib/panel/types';
 import { AiStageBusyState, aiStageButtonStyle } from './AiStagePrimitives';
@@ -413,6 +414,8 @@ function buildRecallPrompt(panel: Panel, recall: string): string {
     '- Base MISSED on the panel\'s distinctions and tensions',
     '- Keep every bullet concrete and under 100 chars',
     '- Do not add commentary outside the format',
+    '',
+    LOOM_AI_RULES,
   ].join('\n');
 }
 

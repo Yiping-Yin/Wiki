@@ -23,7 +23,7 @@ const GROUPS: Group[] = [
     title: 'Tools (via ⌘P)',
     items: [
       { keys: 'Write', label: 'Deepen a panel from memory · ⌘K shape · ⌘S save' },
-      { keys: 'Ask', label: 'Verify a woven understanding · ⌘↩ submit' },
+      { keys: 'Ask', label: 'Verify understanding · ⌘↩ submit' },
       { keys: 'Import', label: 'Drag-drop .md/.txt files' },
       { keys: 'Export', label: 'Download notes as JSON or Markdown' },
     ],
@@ -31,8 +31,7 @@ const GROUPS: Group[] = [
   {
     title: 'Navigation',
     items: [
-      { keys: '⌘P', label: 'Search everything (docs, tools, export)' },
-      { keys: '⌘K', label: 'Search docs' },
+      { keys: '⌘P · ⌘K', label: 'Open Shuttle — search everything (docs, tools, export)' },
       { keys: 'Relations', label: 'Open the active panel\'s relations from crystallized panels' },
       { keys: 'Esc', label: 'Close any open panel' },
       { keys: '?', label: 'Toggle this help' },

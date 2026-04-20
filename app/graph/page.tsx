@@ -636,7 +636,7 @@ export default function GraphPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a woven panel…"
+            placeholder="Find a panel…"
             style={{
               flex: 1,
               minWidth: 0,

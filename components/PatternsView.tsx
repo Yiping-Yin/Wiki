@@ -700,7 +700,7 @@ export function PatternsView() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a woven pattern…"
+            placeholder="Find a pattern…"
             style={{
               flex: 1,
               minWidth: 0,
