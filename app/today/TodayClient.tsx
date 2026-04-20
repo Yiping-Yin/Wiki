@@ -403,7 +403,7 @@ export function TodayClient({
                   onClick: () => openPrimaryAction(focusSurface),
                   primary: true,
                 },
-                { label: 'Open source', onClick: () => router.push(focusSurface.href) },
+                { label: 'Source', onClick: () => router.push(focusSurface.href) },
               ]}
             />
           )}
@@ -509,11 +509,11 @@ function TodayHeader() {
             color: 'var(--fg)',
           }}
         >
-          The next return should be obvious at a glance.
+          What to pick up today.
         </div>
       </div>
       <div className="t-caption2" style={{ color: 'var(--muted)', maxWidth: 420 }}>
-        No rings, no scoreboards, no dashboard theater. Just the thread that changed and the work that belongs to it.
+        Your active source at top. Recently touched below. Open to continue where you left off.
       </div>
     </header>
   );
@@ -736,7 +736,7 @@ function ResumeList({
   return (
     <WorkSurface tone="quiet" density="compact" style={{ marginTop: '1.2rem' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <WorkEyebrow subtle>Warm threads</WorkEyebrow>
+        <WorkEyebrow subtle>Recently touched</WorkEyebrow>
       {items.map((item, index) => (
         <div
           key={item.id}
@@ -787,7 +787,7 @@ function ResumeList({
                 WebkitBoxOrient: 'vertical',
               }}
             >
-              {item.latestSummary || item.latestQuote || item.preview}
+              {cleanPreview(item.latestSummary || item.latestQuote || item.preview)}
             </div>
           )}
 
@@ -810,11 +810,32 @@ function ResumeList({
   );
 }
 
+/**
+ * Strip markdown-rendering artifacts that have no business in a preview
+ * caption: HTML comments (Loom's own capture-doc markers), leading ATX
+ * heading hashes, stray leading/trailing whitespace.
+ */
+function cleanPreview(input: string): string {
+  if (!input) return '';
+  return input
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/^\s*#+\s*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function timeOfDay(ts: number): string {
+  if (!ts) return '';
+  const diffMs = Date.now() - ts;
+  const diffMin = Math.round(diffMs / 60_000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.round(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
   const d = new Date(ts);
-  const h = d.getHours();
-  const m = d.getMinutes();
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function todayPrimaryActionLabel(nextAction: LearningSurfaceSummary['nextAction']) {
