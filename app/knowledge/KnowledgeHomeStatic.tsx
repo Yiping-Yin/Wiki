@@ -165,7 +165,28 @@ export function KnowledgeHomeStatic({
           )}
 
           {resolvedGroups.map((group) => (
-            <div key={group.id} className="loom-atlas-group">
+            <div
+              key={group.id}
+              className="loom-atlas-group"
+              data-group-drop-target={group.id}
+              onDragOver={(event) => {
+                if (!event.dataTransfer.types.includes('application/x-loom-category-slug')) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+                event.currentTarget.setAttribute('data-drop-active', 'true');
+              }}
+              onDragLeave={(event) => {
+                const related = event.relatedTarget as Node | null;
+                if (related && event.currentTarget.contains(related)) return;
+                event.currentTarget.removeAttribute('data-drop-active');
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.currentTarget.removeAttribute('data-drop-active');
+                const slug = event.dataTransfer.getData('application/x-loom-category-slug');
+                if (slug) onMoveCategory(slug, group.id);
+              }}
+            >
             <WorkSurface tone="quiet" density="regular">
               <header
                 style={{
@@ -304,6 +325,12 @@ export function KnowledgeHomeStatic({
         .loom-atlas-group:hover .loom-atlas-group-actions,
         .loom-atlas-group:focus-within .loom-atlas-group-actions {
           opacity: 1;
+        }
+        .loom-atlas-group[data-drop-active="true"] > :first-child {
+          outline: 2px dashed var(--accent);
+          outline-offset: -2px;
+          background: color-mix(in srgb, var(--accent-soft) 60%, transparent);
+          transition: outline 0.12s var(--ease), background 0.12s var(--ease);
         }
         .loom-atlas-card:hover .loom-atlas-card-remove,
         .loom-atlas-card:focus-within .loom-atlas-card-remove {
