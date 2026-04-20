@@ -268,8 +268,9 @@ export function KnowledgeHomeStatic({
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                  gap: 12,
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                  gap: 10,
+                  alignItems: 'start',
                 }}
               >
                 {group.items.map((item) => (
@@ -310,9 +311,10 @@ export function KnowledgeHomeStatic({
           color: var(--tint-red);
           background: color-mix(in srgb, var(--tint-red) 10%, transparent);
         }
-        .loom-atlas-card:hover .loom-atlas-card-move select,
-        .loom-atlas-card:focus-within .loom-atlas-card-move select {
-          opacity: 0.7;
+        .loom-atlas-card:hover .loom-atlas-card-move,
+        .loom-atlas-card:focus-within .loom-atlas-card-move {
+          opacity: 0.85;
+          pointer-events: auto;
         }
       `}</style>
     </StageShell>
@@ -476,23 +478,29 @@ function CollectionCard({
         </div>
       )}
 
-      <div className="loom-atlas-card-move" style={{ display: allGroups.length > 1 ? 'block' : 'none' }}>
+      {allGroups.length > 1 && !confirmingHide && (
         <select
+          className="loom-atlas-card-move"
           value={item.groupId ?? 'ungrouped'}
           onChange={(event) => onMoveCategory(item.slug, event.target.value)}
           disabled={busy}
           aria-label="Move to group"
           style={{
-            width: '100%',
-            marginTop: 6,
+            position: 'absolute',
+            bottom: 6,
+            left: 8,
+            right: 8,
             border: 0,
-            background: 'transparent',
+            background: 'color-mix(in srgb, var(--bg-elevated) 92%, transparent)',
             color: 'var(--muted)',
-            fontSize: '0.7rem',
-            padding: '2px 0',
+            fontSize: '0.68rem',
+            padding: '2px 4px',
             cursor: 'pointer',
             opacity: 0,
+            pointerEvents: 'none',
             transition: 'opacity 0.15s var(--ease)',
+            borderRadius: 4,
+            zIndex: 2,
           }}
         >
           {allGroups.map((group) => (
@@ -501,7 +509,7 @@ function CollectionCard({
             </option>
           ))}
         </select>
-      </div>
+      )}
     </div>
   );
 }
