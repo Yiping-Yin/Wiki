@@ -83,7 +83,7 @@ export function RehearsalOverlay() {
           borderTop: '0.5px solid var(--mat-border)',
           borderBottom: '0.5px solid var(--mat-border)',
           borderRadius: 0,
-          boxShadow: smallScreen ? 'none' : '0 16px 36px rgba(0,0,0,0.08)',
+          boxShadow: smallScreen ? 'none' : 'var(--shadow-2)',
           overflow: 'hidden',
           animation: visible
             ? 'loom-overlay-fade-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both'

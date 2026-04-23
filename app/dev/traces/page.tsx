@@ -374,8 +374,10 @@ export default function TraceInspectorPage() {
             borderBottom: '0.5px solid var(--accent)',
           }}>
             <div className="t-caption2" style={{
-              color: 'var(--accent)', textTransform: 'uppercase',
-              letterSpacing: '0.10em', fontWeight: 700, marginBottom: 5,
+              color: 'var(--accent)',
+              fontFamily: 'var(--serif)', fontStyle: 'italic',
+              fontVariant: 'small-caps', textTransform: 'lowercase',
+              letterSpacing: '0.05em', fontWeight: 500, marginBottom: 5,
             }}>
               Embedding · {indexProgress.done} / {indexProgress.total}
             </div>
@@ -495,10 +497,16 @@ function TraceDetail({ trace }: { trace: Trace }) {
   return (
     <div>
       <div className="t-caption2" style={{
-        textTransform: 'uppercase', letterSpacing: '0.10em',
-        color: 'var(--muted)', fontWeight: 700,
+        fontFamily: 'var(--serif)', fontStyle: 'italic',
+        fontVariant: 'small-caps', textTransform: 'lowercase',
+        letterSpacing: '0.05em',
+        color: 'var(--muted)', fontWeight: 500,
       }}>{trace.kind} · {trace.id}</div>
-      <h2 className="t-title2" style={{ margin: '4px 0 12px', color: 'var(--fg)', padding: 0, border: 0 }}>
+      <h2 style={{
+        margin: '4px 0 12px', color: 'var(--fg)', padding: 0, border: 0,
+        fontFamily: 'var(--serif)', fontStyle: 'italic', fontWeight: 500,
+        fontSize: 'var(--t-title2)', letterSpacing: '-0.01em',
+      }}>
         {trace.title}
       </h2>
 
@@ -516,7 +524,7 @@ function TraceDetail({ trace }: { trace: Trace }) {
           borderTop: '0.5px solid var(--mat-border)',
           borderBottom: '0.5px solid var(--mat-border)',
         }}>
-          <div className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>Source</div>
+          <div className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--serif)', fontStyle: 'italic', fontVariant: 'small-caps', textTransform: 'lowercase', letterSpacing: '0.05em', fontWeight: 500, marginBottom: 4 }}>source</div>
           <div className="t-footnote" style={{ color: 'var(--fg)' }}>
             <code style={{ fontFamily: 'var(--mono)' }}>{trace.source.docId}</code>
             <a href={trace.source.href} style={{ marginLeft: 8, color: 'var(--accent)' }}>{trace.source.href} ↗</a>
@@ -530,7 +538,7 @@ function TraceDetail({ trace }: { trace: Trace }) {
           borderTop: '0.5px solid var(--accent)',
           borderBottom: '0.5px solid var(--accent)',
         }}>
-          <div className="t-caption2" style={{ color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>Crystallized</div>
+          <div className="t-caption2" style={{ color: 'var(--accent)', fontFamily: 'var(--serif)', fontStyle: 'italic', fontVariant: 'small-caps', textTransform: 'lowercase', letterSpacing: '0.05em', fontWeight: 500, marginBottom: 4 }}>crystallized</div>
           <div className="t-footnote" style={{ color: 'var(--fg)' }}>{trace.crystallizedSummary}</div>
         </div>
       )}
@@ -623,7 +631,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
       padding: '0.45rem 0',
       borderBottom: '0.5px solid var(--mat-border)',
     }}>
-      <div className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>{label}</div>
+      <div className="t-caption2" style={{ color: 'var(--muted)', fontFamily: 'var(--serif)', fontStyle: 'italic', fontVariant: 'small-caps', textTransform: 'lowercase', letterSpacing: '0.05em', fontWeight: 500 }}>{label}</div>
       <div className="t-headline" style={{ color: 'var(--fg)', marginTop: 2 }}>{value}</div>
     </div>
   );

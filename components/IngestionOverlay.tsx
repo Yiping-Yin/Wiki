@@ -33,7 +33,7 @@ export function IngestionOverlay() {
         display: 'flex', flexDirection: 'column',
         background: 'var(--bg)',
         borderLeft: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
-        boxShadow: smallScreen ? 'none' : '-8px 0 24px rgba(0,0,0,0.12)',
+        boxShadow: smallScreen ? 'none' : 'var(--shadow-panel-left)',
         animation: visible
           ? 'loom-slide-in-right 0.25s cubic-bezier(0.22, 1, 0.36, 1) both'
           : 'loom-slide-out-right 0.2s cubic-bezier(0.22, 1, 0.36, 1) both',

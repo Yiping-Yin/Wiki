@@ -14,8 +14,10 @@ export default function OfflinePage() {
         borderTop: '0.5px solid var(--mat-border)',
         borderBottom: '0.5px solid var(--mat-border)',
       }}>
-        <h1 className="t-title2" style={{
+        <h1 style={{
           margin: 0, color: 'var(--fg)', padding: 0, border: 0,
+          fontFamily: 'var(--serif)', fontStyle: 'italic', fontWeight: 500,
+          fontSize: 'var(--t-title2)', letterSpacing: '-0.01em',
         }}>This source isn&rsquo;t cached yet</h1>
         <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* eslint-disable @next/next/no-html-link-for-pages */}

@@ -31,7 +31,7 @@ export function SoftmaxPlayground() {
       </label>
       <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
         {probs.map((p, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', fontFamily: 'ui-monospace, monospace' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', fontFamily: 'var(--mono)' }}>
             <span style={{ width: 32 }}>{labels[i]}</span>
             <div style={{ flex: 1, background: 'var(--border)', height: 14, borderRadius: 3, overflow: 'hidden' }}>
               <div style={{ width: `${p * 100}%`, height: '100%', background: 'var(--accent)' }} />

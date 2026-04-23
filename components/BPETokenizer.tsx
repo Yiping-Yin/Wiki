@@ -27,7 +27,7 @@ function trainBPE(text: string, numMerges: number) {
   return { ids, merges };
 }
 
-const PALETTE = ['#fecaca', '#fed7aa', '#fde68a', '#bbf7d0', '#bae6fd', '#c7d2fe', '#e9d5ff', '#fbcfe8'];
+const PALETTE = ['#8F4646', '#A8783E', '#B98E3F', '#5C6E4E', '#3A477A', '#5E3D5C', '#5C3F2A', '#9E7C3E'];
 
 export function BPETokenizer({ initial = 'the cat sat on the mat. the cat sat.' }: { initial?: string }) {
   const [text, setText] = useState(initial);
@@ -59,9 +59,9 @@ export function BPETokenizer({ initial = 'the cat sat on the mat. the cat sat.' 
         merges: {merges}
         <input type="range" min={0} max={50} value={merges} onChange={(e) => setMerges(parseInt(e.target.value))} style={{ flex: 1 }} />
       </label>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, fontFamily: 'ui-monospace, monospace', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, fontFamily: 'var(--mono)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
         {tokens.map((t, i) => (
-          <span key={i} style={{ background: PALETTE[result.ids[i] % PALETTE.length], color: '#111', padding: '2px 5px', borderRadius: 3, whiteSpace: 'pre' }}>
+          <span key={i} style={{ background: PALETTE[result.ids[i] % PALETTE.length], color: '#FAF7EC', padding: '2px 5px', borderRadius: 3, whiteSpace: 'pre' }}>
             {t.replace(/\n/g, '⏎')}
           </span>
         ))}

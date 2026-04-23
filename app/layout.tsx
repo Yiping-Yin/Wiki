@@ -1,12 +1,28 @@
 import './globals.css';
 import type { ReactNode } from 'react';
-import { Sidebar } from '../components/Sidebar';
+import { Cormorant_Garamond } from 'next/font/google';
+import { FocusLayerProvider } from '../lib/focus-layer';
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  style: ['italic', 'normal'],
+  variable: '--font-cormorant',
+  display: 'swap',
+});
+// Sidebar retired 2026-04-22 — web component is now a null shell; the
+// native SwiftUI `KnowledgeSidebarView` is Loom's only sidebar. See
+// components/Sidebar.tsx for the historic-import stub.
 import { CopyButtonInjector } from '../components/CopyButton';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
-import { QuickSwitcher } from '../components/QuickSwitcher';
+// QuickSwitcher retired 2026-04-21 — replaced by native SwiftUI Shuttle
+// (⌘K) with doc search via search-index.json. File stays on disk until
+// Phase 5 sweep; two tests still reference its source as fixture.
 import { DropZone } from '../components/DropZone';
-import { SettingsPanel } from '../components/SettingsPanel';
+// SettingsPanel retired 2026-04-21 — replaced by native SwiftUI Settings
+// scene (Appearance / AI / Data tabs) reached via ⌘, in the Loom Mac app.
+// The web component file stays in place as dead code until Phase 5 sweeps.
 import { TraceMigrator } from '../components/TraceMigrator';
 import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
@@ -14,12 +30,18 @@ import { IngestionOverlay } from '../components/IngestionOverlay';
 import { RecursingOverlay } from '../components/RecursingOverlay';
 import { RehearsalOverlay } from '../components/RehearsalOverlay';
 import { ExaminerOverlay } from '../components/ExaminerOverlay';
-import { KeyboardHelpOverlay } from '../components/unified/KeyboardHelpOverlay';
+// KeyboardHelpOverlay retired 2026-04-21 — replaced by native SwiftUI
+// Keyboard Shortcuts window (⌘⇧?) in the Loom Mac app. The web-only
+// modal is no longer mounted; the component file stays in place as
+// dead code until Phase 5 deletes it.
 import { ExportAction } from '../components/ExportAction';
 import { CrystallizeListener } from '../components/CrystallizeListener';
 import { PanelSync } from '../components/PanelSync';
 import { WeaveSync } from '../components/WeaveSync';
 import { PageScopedChrome } from '../components/PageScopedChrome';
+import { AiKeyMissingBanner } from '../components/AiKeyMissingBanner';
+import { MigrationInstaller } from '../components/MigrationInstaller';
+import { InterlaceInstaller } from '../components/InterlaceInstaller';
 
 
 export const metadata = {
@@ -36,8 +58,8 @@ export const metadata = {
 
 export const viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)',  color: '#000000' },
+    { media: '(prefers-color-scheme: light)', color: '#F4F0E4' },
+    { media: '(prefers-color-scheme: dark)',  color: '#1A1815' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -47,11 +69,11 @@ export const viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={cormorant.variable} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{localStorage.removeItem('wiki:reading-mode');}catch(e){}try{var root=document.documentElement;var t=localStorage.getItem('theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=t==='dark'||(!t&&p);root.classList.toggle('dark',d);root.classList.toggle('light',t==='light');var a=localStorage.getItem('wiki:accent');if(a){var P=[['#0071e3','#0a84ff'],['#5856d6','#5e5ce6'],['#af52de','#bf5af2'],['#ff2d55','#ff375f'],['#ff3b30','#ff453a'],['#ff9500','#ff9f0a'],['#34c759','#30d158'],['#30b0c7','#40c8e0']];var i=parseInt(a,10);if(P[i]){var c=d?P[i][1]:P[i][0];root.style.setProperty('--accent',c);root.style.setProperty('--accent-soft','color-mix(in srgb, '+c+' 14%, transparent)');}}var sb=localStorage.getItem('wiki:sidebar:mode');var legacyPinned=localStorage.getItem('wiki:sidebar:pinned');var defaultSidebar=window.innerWidth>900?'pinned':'hidden';if((sb==='pinned')||(!sb&&legacyPinned==='1')||(!sb&&!legacyPinned&&defaultSidebar==='pinned'))document.body&&document.body.classList.add('sidebar-pinned');}catch(e){}`,
+            __html: `try{localStorage.removeItem('wiki:reading-mode');}catch(e){}try{var root=document.documentElement;var t=localStorage.getItem('wiki:theme');if(t==='dark'){root.classList.add('dark');root.classList.remove('light');}else if(t==='light'){root.classList.add('light');root.classList.remove('dark');}}catch(e){}`,
           }}
         />
         <script
@@ -61,33 +83,34 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
+        <FocusLayerProvider>
         <div className="loom-grain" />
         <div className="loom-vignette" />
         <div className="layout">
-          <Sidebar />
           <main id="main" tabIndex={-1}>
+            <AiKeyMissingBanner />
             {children}
             <GlobalLiveArtifact />
             <FreeInput />
           </main>
         </div>
         <CopyButtonInjector />
-        <SettingsPanel />
         <TraceMigrator />
         <KeyboardShortcuts />
         <LinkPreview />
-        <QuickSwitcher />
         <DropZone />
         <RehearsalOverlay />
         <ExaminerOverlay />
         <PageScopedChrome />
         <IngestionOverlay />
         <RecursingOverlay />
-        <KeyboardHelpOverlay />
         <ExportAction />
         <CrystallizeListener />
         <PanelSync />
         <WeaveSync />
+        <MigrationInstaller />
+        <InterlaceInstaller />
+        </FocusLayerProvider>
       </body>
     </html>
   );

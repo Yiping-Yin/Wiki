@@ -91,7 +91,7 @@ export function BatchRunner({
     <div style={{
       margin: '0.6rem 0', padding: '0.9rem 1.1rem',
       border: '1px solid var(--border)', borderRadius: 10,
-      background: 'linear-gradient(135deg, rgba(37,99,235,0.05), rgba(168,85,247,0.05))',
+      background: 'linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-secondary) 14%, transparent))',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
@@ -104,7 +104,7 @@ export function BatchRunner({
           onClick={running ? () => { abortedRef.current = true; } : run}
           disabled={cachedCount === eligible.length && !running}
           style={{
-            background: running ? '#dc2626' : 'var(--accent)',
+            background: running ? 'var(--tint-red)' : 'var(--accent)',
             color: '#fff', border: 0, borderRadius: 6,
             padding: '0.45rem 0.9rem', cursor: cachedCount === eligible.length && !running ? 'default' : 'pointer',
             fontSize: '0.82rem', fontWeight: 600,
@@ -122,7 +122,7 @@ export function BatchRunner({
       <div style={{ display: 'flex', gap: '0.9rem', marginTop: 5, fontSize: '0.7rem', color: 'var(--muted)' }}>
         <span>✓ {cachedCount}</span>
         {runningCount > 0 && <span style={{ color: 'var(--accent)' }}>● {runningCount}</span>}
-        {errorCount > 0 && <span style={{ color: '#dc2626' }}>✗ {errorCount}</span>}
+        {errorCount > 0 && <span style={{ color: 'var(--tint-red, #8F4646)' }}>✗ {errorCount}</span>}
         <span style={{ marginLeft: 'auto' }}>{pct}%</span>
       </div>
     </div>

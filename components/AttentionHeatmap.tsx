@@ -46,7 +46,7 @@ export function AttentionHeatmap({ initial = 'the quick brown fox jumps' }: { in
       <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--muted)', margin: '0.5rem 0' }}>
         <input type="checkbox" checked={causal} onChange={(e) => setCausal(e.target.checked)} /> causal mask
       </label>
-      <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${tokens.length}, 1fr)`, gap: 2, fontSize: '0.7rem', fontFamily: 'ui-monospace, monospace' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${tokens.length}, 1fr)`, gap: 2, fontSize: '0.7rem', fontFamily: 'var(--mono)' }}>
         <div></div>
         {tokens.map((t, j) => <div key={`c${j}`} style={{ textAlign: 'center', color: 'var(--muted)' }}>{t}</div>)}
         {matrix.map((row, i) => (

@@ -48,7 +48,7 @@ export function PyodideRunner({ code: initial }: { code: string }) {
         </button>
       </div>
       <textarea value={code} onChange={(e) => setCode(e.target.value)} rows={Math.min(14, code.split('\n').length + 1)}
-        style={{ width: '100%', border: 0, padding: '0.7rem', fontFamily: 'ui-monospace, monospace', fontSize: '0.82rem', background: 'var(--code-bg)', color: 'var(--fg)', outline: 'none', resize: 'vertical' }} />
+        style={{ width: '100%', border: 0, padding: '0.7rem', fontFamily: 'var(--mono)', fontSize: '0.82rem', background: 'var(--code-bg)', color: 'var(--fg)', outline: 'none', resize: 'vertical' }} />
       {out && <pre style={{ margin: 0, padding: '0.7rem', background: 'var(--bg)', borderTop: '1px solid var(--border)', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>{out}</pre>}
     </div>
   );

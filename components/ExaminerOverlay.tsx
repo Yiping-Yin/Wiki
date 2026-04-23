@@ -57,7 +57,7 @@ export function ExaminerOverlay() {
         display: 'flex', flexDirection: 'column',
         background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
         borderLeft: smallScreen ? 'none' : '0.5px solid color-mix(in srgb, var(--mat-border) 80%, transparent)',
-        boxShadow: smallScreen ? 'none' : '-6px 0 18px rgba(0,0,0,0.08)',
+        boxShadow: smallScreen ? 'none' : 'var(--shadow-panel-left)',
         animation: visible
           ? 'loom-slide-in-right 0.25s cubic-bezier(0.22, 1, 0.36, 1) both'
           : 'loom-slide-out-right 0.2s cubic-bezier(0.22, 1, 0.36, 1) both',
