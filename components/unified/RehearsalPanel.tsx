@@ -106,8 +106,8 @@ export function RehearsalPanel({ docId, onSaved, seedDraft = '', seedLabel = '' 
    *
    * Flow:
    *  1. Get the textarea's current selection
-   *  2. POST to /api/chat with a system prompt asking for formal transform
-   *  3. Stream the SSE response, accumulate
+   *  2. Call `callAiPrompt` (Swift bridge) with a formal-transform system prompt
+   *  3. Stream deltas, accumulate
    *  4. Replace the selection with the result
    *  5. User continues editing (AI output is just text in the textarea)
    */

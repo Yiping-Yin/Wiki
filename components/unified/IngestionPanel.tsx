@@ -7,7 +7,7 @@ import { callAiPrompt } from '../../lib/ai/runtime';
  * MVP scope (Round 6):
  *   - Drop .md, .txt, .mdx files onto the panel
  *   - Read file content via FileReader
- *   - Send to /api/chat with a summarize + extract-key-points prompt
+ *   - Send via `callAiPrompt` (Swift bridge) with summarize + extract-key-points prompt
  *   - Receive AI output
  *   - Save the whole thing (file content + AI summary) as a Note anchored
  *     to a synthetic "ingested:<filename>" pseudo-doc id

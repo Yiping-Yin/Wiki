@@ -15,7 +15,7 @@ import { callAiPrompt } from '../../lib/ai/runtime';
  *   2. AIExaminer generates a question from the doc's accumulated notes
  *   3. User types an answer in the textarea
  *   4. "Submit answer" button sends answer + question + notes as context
- *      to /api/chat with a grading prompt
+ *      via `callAiPrompt` (Swift bridge) with a grading prompt
  *   5. AI returns either PASS or a follow-up question
  *   6. On PASS, the answer is saved as a Note and the examiner either
  *      generates a new question or marks the session complete
