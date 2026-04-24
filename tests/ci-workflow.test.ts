@@ -20,3 +20,16 @@ test('CI includes a dedicated macOS app build job', () => {
   assert.match(source, /npm run app:smoke/);
   assert.doesNotMatch(source, /CODEX_BIN:\s*\.\/scripts\/fake-codex-cli\.mjs/);
 });
+
+test('macOS project checker supports nested Swift sources and path roots', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'scripts', 'check-loom-macos-project-files.mjs'),
+    'utf8',
+  );
+
+  assert.match(source, /function walk\(dir\)/);
+  assert.match(source, /entry\.isDirectory\(\)/);
+  assert.match(source, /walk\(fullPath\)/);
+  assert.ok(source.includes('(?:path:\\\\s*)?'));
+  assert.match(source, /escapeRegExp\(requiredSource\)/);
+});

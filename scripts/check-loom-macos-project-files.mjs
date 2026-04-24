@@ -13,11 +13,24 @@ function read(relativePath) {
 }
 
 function listSwiftFiles(relativeDir) {
-  return fs
-    .readdirSync(path.join(repoRoot, relativeDir), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.swift'))
-    .map((entry) => entry.name)
-    .sort();
+  const root = path.join(repoRoot, relativeDir);
+  const names = [];
+
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith('.swift')) {
+        names.push(entry.name);
+      }
+    }
+  }
+
+  walk(root);
+  return names.sort();
 }
 
 function fail(message) {
@@ -81,8 +94,13 @@ if (!project.includes('PrivacyInfo.xcprivacy in Resources')) {
   fail('PrivacyInfo.xcprivacy exists but is missing from the Loom resources build phase');
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 for (const requiredSource of ['Sources', 'Assets.xcassets', 'Resources', 'Tests']) {
-  if (!new RegExp(`-\\s+${requiredSource}\\b`).test(spec)) {
+  const sourcePattern = new RegExp(`-\\s+(?:path:\\s*)?${escapeRegExp(requiredSource)}\\b`);
+  if (!sourcePattern.test(spec)) {
     fail(`project.yml no longer includes ${requiredSource} as a source/resource root`);
   }
 }
