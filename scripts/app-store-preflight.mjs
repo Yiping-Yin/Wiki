@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const screenshotDir = path.join(repoRoot, '.app-store', 'screenshots');
 const maxScreenshotBytes = 1_500_000;
+const minScreenshotBytes = 120_000;
 const expectedWidth = 2880;
 const expectedHeight = 1800;
 const maxAppNameChars = 30;
@@ -166,6 +167,9 @@ function checkScreenshots() {
     const file = path.join(screenshotDir, name);
     if (!fs.existsSync(file)) continue;
     const buffer = fs.readFileSync(file);
+    if (buffer.length < minScreenshotBytes) {
+      fail(`${name} appears blank or under-rendered: ${buffer.length} bytes < ${minScreenshotBytes}`);
+    }
     if (buffer.length > maxScreenshotBytes) {
       fail(`${name} is too large: ${buffer.length} bytes > ${maxScreenshotBytes}`);
     }

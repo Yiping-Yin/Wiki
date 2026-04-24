@@ -96,6 +96,8 @@ test('app store preflight covers submission artifacts', () => {
     '03-draft.jpg',
     '05-frontispiece.jpg',
     'jpegSize',
+    'minScreenshotBytes',
+    'appears blank or under-rendered',
     'maxKeywordsChars',
     'maxPromotionalTextChars',
     'App Store keywords are too long',
