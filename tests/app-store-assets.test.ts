@@ -35,9 +35,16 @@ test('screenshot script defaults to Mac App Store dimensions and configurable in
   assert.match(source, /LOOM_SCREENSHOT_WIDTH \?\? 2880/);
   assert.match(source, /LOOM_SCREENSHOT_HEIGHT \?\? 1800/);
   assert.match(source, /LOOM_SCREENSHOT_SCALE \?\? 2/);
+  assert.match(source, /LOOM_SCREENSHOT_FORMAT \?\? 'jpeg'/);
+  assert.match(source, /LOOM_SCREENSHOT_QUALITY \?\? 86/);
   assert.match(source, /const WIDTH = Math\.round\(OUT_WIDTH \/ SCALE\)/);
   assert.match(source, /const HEIGHT = Math\.round\(OUT_HEIGHT \/ SCALE\)/);
   assert.match(source, /\.app-store\/screenshots/);
+  assert.match(source, /slug: '01-library',\s+url: '\/desk'/);
+  assert.match(source, /slug: '03-draft',\s+url: '\/soan'/);
+  assert.doesNotMatch(source, /url: '\/knowledge'/);
+  assert.match(source, /sessionStorage\.setItem\('loom:ai-key-banner-dismissed', '1'\)/);
+  assert.match(source, /nextjs-portal/);
   assert.match(source, /deviceScaleFactor: SCALE/);
   assert.match(gitignore, /^\.app-store\/$/m);
 });
