@@ -25,7 +25,7 @@ final class DevServerTests: XCTestCase {
     func testRepoOrUnrelatedServersAreNotReclaimedAsInstalledRuntimeServers() {
         XCTAssertFalse(
             DevServer.isReclaimableInstalledRuntimeServer(
-                command: "/opt/homebrew/bin/node /Users/test/Desktop/Wiki/node_modules/next/dist/bin/next dev -p 3001",
+                command: "/opt/homebrew/bin/node /Users/test/Desktop/LOOM/node_modules/next/dist/bin/next dev -p 3001",
                 runtimeBasePath: "/Users/test/Library/Application Support/Loom/runtime"
             )
         )

@@ -189,12 +189,13 @@ class DevServer: ObservableObject {
     }
 
     init() {
-        // The Wiki project lives next to the macos-app directory
+        // The LOOM project lives next to the macos-app directory
         let appDir = Bundle.main.bundlePath
-        // In dev: project is at ~/Desktop/Wiki
+        // In dev: project is usually at ~/Desktop/LOOM
         // Fallback: check common locations
         let candidates = [
             ProcessInfo.processInfo.environment["LOOM_PROJECT_ROOT"],
+            NSHomeDirectory() + "/Desktop/LOOM",
             NSHomeDirectory() + "/Desktop/Wiki",
             NSHomeDirectory() + "/Desktop/wiki",
             (appDir as NSString).deletingLastPathComponent + "/../../..",
@@ -306,7 +307,7 @@ class DevServer: ObservableObject {
 
         guard let projectPath = projectPath ?? runtimeLaunch.environment["LOOM_CONTENT_ROOT"] else {
             DispatchQueue.main.async {
-                self.status = .failed("Could not find project root with package.json. Set LOOM_PROJECT_ROOT or place Wiki at ~/Desktop/Wiki.")
+                self.status = .failed("Could not find project root with package.json. Set LOOM_PROJECT_ROOT or place LOOM at ~/Desktop/LOOM.")
             }
             return
         }
@@ -706,7 +707,7 @@ class DevServer: ObservableObject {
                     currentDirectoryPath: homeDirectory,
                     environment: runtimeEnvironment,
                     requiresProjectDependencies: false,
-                    launchFailureMessage: "Could not find project root with package.json. Set LOOM_PROJECT_ROOT or place Wiki at ~/Desktop/Wiki."
+                    launchFailureMessage: "Could not find project root with package.json. Set LOOM_PROJECT_ROOT or place LOOM at ~/Desktop/LOOM."
                 )
             }
             currentDirectoryPath = projectPath

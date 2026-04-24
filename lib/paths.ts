@@ -3,7 +3,7 @@
  *
  * Division of responsibility:
  *
- * 1. **Build artifacts** live inside the repo (`~/Desktop/wiki/.next-build/`,
+ * 1. **Build artifacts** live inside the repo (`~/Desktop/LOOM/.next-build/`,
  *    `knowledge/.cache/`, etc.) and inside the runtime bundle
  *    (`~/Library/Application Support/Loom/runtime/<buildId>/...`).
  *    The stage/install pipeline (scripts/stage-loom-runtime.mjs) assumes

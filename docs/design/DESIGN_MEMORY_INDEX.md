@@ -10,34 +10,34 @@ mother document.
 
 ## Core Identity
 
-- [Design Onboarding](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_ONBOARDING.md)
+- [Design Onboarding](/Users/yinyiping/Desktop/LOOM/docs/design/DESIGN_ONBOARDING.md)
   Fastest collaborator entry point
 
-- [Current Design Canon](/Users/yinyiping/Desktop/Wiki/docs/design/CURRENT_DESIGN_CANON.md)
+- [Current Design Canon](/Users/yinyiping/Desktop/LOOM/docs/design/CURRENT_DESIGN_CANON.md)
   Current operative truth
 
-- [Design Memory](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_MEMORY.md)
+- [Design Memory](/Users/yinyiping/Desktop/LOOM/docs/design/DESIGN_MEMORY.md)
   Full constitutional memory
 
-- [Design Memory Operating Model](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_MEMORY_OPERATING_MODEL.md)
+- [Design Memory Operating Model](/Users/yinyiping/Desktop/LOOM/docs/design/DESIGN_MEMORY_OPERATING_MODEL.md)
   How memory, canon, specs, and implementation should stay in sync
 
 ## Current Interaction Direction
 
-- [Capture Spec](/Users/yinyiping/Desktop/Wiki/docs/design/CAPTURE_SPEC.md)
+- [Capture Spec](/Users/yinyiping/Desktop/LOOM/docs/design/CAPTURE_SPEC.md)
   Current capture-first / wide-thought-map direction
 
-- [Canvas Spec (Historical)](/Users/yinyiping/Desktop/Wiki/docs/design/CANVAS_SPEC.md)
+- [Canvas Spec (Historical)](/Users/yinyiping/Desktop/LOOM/docs/design/CANVAS_SPEC.md)
   Historical, superseded document
 
 ## Brand
 
-- [Logo Brief](/Users/yinyiping/Desktop/Wiki/docs/design/LOGO_BRIEF.md)
+- [Logo Brief](/Users/yinyiping/Desktop/LOOM/docs/design/LOGO_BRIEF.md)
   Product mark, warp/weft logic, icon system
 
 ## Review Aid
 
-- [Design Review Checklist](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_REVIEW_CHECKLIST.md)
+- [Design Review Checklist](/Users/yinyiping/Desktop/LOOM/docs/design/DESIGN_REVIEW_CHECKLIST.md)
   Short review-time checklist for UI / interaction changes
 
 ## Recommended Reading Order
