@@ -61,6 +61,44 @@ class DevServer: ObservableObject {
         URL(string: "http://localhost:\(currentPort)")!
     }
 
+    /// Whether the app is running under the App Sandbox. Detected by
+    /// checking if the container path is present in NSHomeDirectory —
+    /// sandboxed apps get `~/Library/Containers/<bundle-id>/Data`. Used to
+    /// short-circuit node-server launch attempts that would be blocked
+    /// anyway and to force the webview onto the `loom://` content channel.
+    static var isSandboxed: Bool {
+        NSHomeDirectory().contains("/Containers/")
+    }
+
+    /// URL the webview should load. Defaults to the native `loom://`
+    /// content channel — that's the shipped mode and what every end-user
+    /// will run. Dev mode is an explicit opt-in via
+    /// `LOOM_USE_DEV_SERVER=1` for people actively editing the Next.js
+    /// side and wanting hot-reload. The legacy `LOOM_USE_STATIC_EXPORT`
+    /// toggle stays as a no-op so old scripts don't break.
+    ///
+    /// Inverted 2026-04-22: previously defaulted to localhost:3001 in
+    /// Debug builds, which meant the webview silently served the dev
+    /// server's stale `.next/` cache alongside the shipped
+    /// `.next-export/` bundle. Users saw two divergent sidebars (one
+    /// from each source) depending on which loaded faster. Making the
+    /// static bundle the default kills that split-brain entirely.
+    var webviewURL: URL {
+        if ProcessInfo.processInfo.environment["LOOM_USE_DEV_SERVER"] == "1" {
+            return serverURL
+        }
+        return URL(string: "loom://bundle/index.html")!
+    }
+
+    /// Called by `AppDelegate` when we're launching in static-bundle
+    /// mode (no dev server). The `loom://` scheme handler is always
+    /// live — there's nothing to boot — so publish `.ready` right away
+    /// so `ContentView.detailColumn` actually mounts the webview
+    /// instead of sitting on the loading shimmer forever.
+    func markReadyForStaticBundle() {
+        status = .ready
+    }
+
     static func resolvedServerMode(
         projectPath: String,
         environment: [String: String] = ProcessInfo.processInfo.environment,
@@ -168,6 +206,15 @@ class DevServer: ObservableObject {
         pendingRetry?.cancel()
         pendingRetry = nil
 
+        // Under App Sandbox, Process.launch() can't run /opt/homebrew/bin/node
+        // and we don't need to — content comes from the bundled static export
+        // via the `loom://` URL scheme handler. Short-circuit straight to
+        // ready so the webview mounts immediately.
+        if DevServer.isSandboxed {
+            status = .ready
+            return
+        }
+
         if let p = process, p.isRunning {
             stop()
         }
@@ -189,6 +236,16 @@ class DevServer: ObservableObject {
             logQueue.sync { recentLogs = [] }
         }
         probePortAndLaunch(generation: generation)
+    }
+
+    /// Restart the node server so it re-reads API keys from the Keychain on
+    /// next spawn. Called from `AIProviderSettingsView` after the user saves
+    /// or removes a key; the BYO-key broker (`shouldUseHttpForClaude`) picks
+    /// up the change automatically once the fresh child inherits the injected
+    /// env vars.
+    func reloadFromKeychain() {
+        stop(invalidateGeneration: false)
+        start(resetRetry: true)
     }
 
     func stop(invalidateGeneration: Bool = true) {
@@ -287,6 +344,7 @@ class DevServer: ObservableObject {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = DevServerPreflight.enrichedPATH(environment: env)
         env.merge(runtimeLaunch.environment) { _, new in new }
+        applyKeychainSecretsToChildEnv(&env)
         p.environment = env
 
         // High priority so local dev server can become responsive quickly

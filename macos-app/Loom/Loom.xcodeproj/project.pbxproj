@@ -7,19 +7,74 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01184E33CD6679345175F778 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BEBD4BB8D9C5730C215127 /* AboutView.swift */; };
 		02C2B3A4C02B66E7B7F76245 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01B6CE70855F78F1B5B70D23 /* ContentView.swift */; };
+		02EC41AE8D104B4D2F7FF029 /* LoomTraceWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87FAF953904D7676C1AEDF9 /* LoomTraceWriterTests.swift */; };
+		0505806677A4C74E9C32308D /* ExaminerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DDB997F52D3D77DEFE401A4 /* ExaminerView.swift */; };
+		0A33CF69C9CB7A623FC846CC /* KeychainStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7838A33BEFC23E835A507546 /* KeychainStoreTests.swift */; };
+		0A694EE3E798F683EEFC762D /* KeyboardHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0736D5D3EE82DC3E4B358DF9 /* KeyboardHelpView.swift */; };
+		0C013696680E1068E2720195 /* LoomDataModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F182BFBEA095BF2AEFA47130 /* LoomDataModel.swift */; };
+		1376B0190BCC5092CEA14A03 /* AIStreamBridgeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F62F9059E4C2A4A22411693 /* AIStreamBridgeHandler.swift */; };
+		13FADEDD4AB86C27F49B49F9 /* EveningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C36FF34A5323442D949C158 /* EveningView.swift */; };
+		144BFEF1903E1ACC2E1DE2D0 /* LoomExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4CACBB394F77A58E8AC670 /* LoomExport.swift */; };
+		1779D22A3CF0C319D60089CE /* ShuttleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F404A51FFFC4215A4DACB2C /* ShuttleView.swift */; };
+		1A721B8D7F00C56477EFA186 /* CLIRuntimeClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C7150E29C609C574638AA92 /* CLIRuntimeClientTests.swift */; };
+		1E0499C305F030037453F810 /* MigrationBridgeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86249B04CF088CB0AA74F360 /* MigrationBridgeHandler.swift */; };
 		23CE85EE6E1FF90E11496A02 /* DevServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4256C4FA4AF59076B3DBBBDC /* DevServer.swift */; };
+		23DEC6B5F490E3DD57C3F99E /* ReconstructionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B434DF7CA2742B2A34B68C /* ReconstructionsView.swift */; };
+		274FC90F9C45C13A5DAE0582 /* CustomEndpointClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE18F301846375F2AA33FFC3 /* CustomEndpointClientTests.swift */; };
+		2FB87ABB0263E1565BE4E2D3 /* AIProviderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98C3B6C04E21197A82A218C /* AIProviderSettingsView.swift */; };
+		317E7110A8CC4324BFFC2889 /* IngestionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D658FFE18D925548FA72223C /* IngestionView.swift */; };
+		33BE23BF446958A4A653E403 /* KnowledgeSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5790767AAC074AC30057D6E9 /* KnowledgeSidebarView.swift */; };
+		34A5AC9BDC88A4B84BFFC1FC /* CLIRuntimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9991A8B46F80260F1654A940 /* CLIRuntimeClient.swift */; };
+		34ADAD0AE80A2254DBDDD625 /* AskAIRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 940707A3D2714DC2DB60358D /* AskAIRunnerTests.swift */; };
+		34EDC9CDD79A48A8FB22EDE7 /* AnthropicClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00599DFB275B7B8000591296 /* AnthropicClientTests.swift */; };
+		351B60B8E6F17E78A7860DED /* NavigationBridgeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1253932E73830C2DD9B059 /* NavigationBridgeHandler.swift */; };
+		35A89DEBE88F6EFE38A870C8 /* LoomMigrationImporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9902715B7EE5A8B25248F051 /* LoomMigrationImporterTests.swift */; };
 		4A07C211A0D26822457C750D /* DevServerPreflightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */; };
+		4E0CF1C5476C505763E46097 /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B37504F9F0ED3D43A8C341 /* AppearanceSettingsView.swift */; };
 		50C1F901B210F46BAC4BB09C /* DevServerPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */; };
+		51923102F8EE735FF7E6D5BF /* LoomSoanWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F49042F2CED678F4FBF4DC /* LoomSoanWriter.swift */; };
+		54B34835946DF92144FB14D5 /* FirstRunProviderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74E03AAF4C0E97ED691F3793 /* FirstRunProviderSheet.swift */; };
+		57B5D9DC1353AFD625AAEF5D /* LoomDataModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F15ABB1ACE29DE47CE756B2F /* LoomDataModelTests.swift */; };
+		582A5DD8517D1126509216D0 /* EmbeddingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D618D7BF0962CD6E39207B1 /* EmbeddingClient.swift */; };
 		6432F892116325B00A613D05 /* DevServerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */; };
+		6C8D0093C9BA4FF328AA3605 /* OverlayDataFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13B5941E45CEDF2AFAFB493 /* OverlayDataFlowTests.swift */; };
+		70CB370592F2AA33745BD3F9 /* OllamaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19B1CAD81EF9A7257E0A312 /* OllamaClient.swift */; };
 		72DFEDD02D325EBAA571412D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */; };
+		73CB7FC5A01BBAE29816A792 /* AskAIWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2394997C8F0A3A3728DB182F /* AskAIWindow.swift */; };
 		78DAAAFE00FED02AD1C5E73B /* LoomRuntimePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA5A2EB4CB4022BE8541513 /* LoomRuntimePaths.swift */; };
+		8069DADB5832AC567AC29F5C /* OpenAIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25231BBD91A2A3C053329A27 /* OpenAIClientTests.swift */; };
+		962B946A862C0E17C9727266 /* SecurityScopedFolderStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3080D41F3CA22A6933AC963 /* SecurityScopedFolderStoreTests.swift */; };
+		979AE8B7341A7872167406D8 /* LoomURLSchemeHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E248B305C252056D2D519F4D /* LoomURLSchemeHandlerTests.swift */; };
 		A16D95B79EEAE3C2337663FA /* LoomWebViewInteractionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */; };
+		A3EBD4EC180DF539EA4181A9 /* OpenAIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F05E1D0F5B49D598380A3D76 /* OpenAIClient.swift */; };
+		A46E42AD3C9FE8F181BBA4DF /* LoomTraceWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1687BC8ADBB27D3FD0C502D7 /* LoomTraceWriter.swift */; };
+		AE6F0A722A9686EB45C7DC89 /* SecurityScopedFolderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4534DD512710116134F47530 /* SecurityScopedFolderStore.swift */; };
+		AFA2F0FE79F1217849CAE424 /* LoomTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C8C21FA61DBCDC92202589A /* LoomTokens.swift */; };
+		B01F20EA3955B00E256ECD7E /* EmbeddingBridgeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 238C0F1FC1A1955AE4835BCF /* EmbeddingBridgeHandler.swift */; };
+		B5B9141245300C12B3CF8139 /* AnthropicClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37648FF54251961A8E82D0C1 /* AnthropicClient.swift */; };
+		B6CD9CD89ED30455F805D569 /* ExaminerVerdictParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C554FF435D8BD9AC4D76B8 /* ExaminerVerdictParserTests.swift */; };
 		B8B8C6F5796088A9F0EA8337 /* LoomCommandScriptsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */; };
+		B8B8C97E6FE0672756447FF8 /* EmbeddingClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98677EAB28D6F8769007F99 /* EmbeddingClientTests.swift */; };
 		BEB5D87B0B644A913586CF49 /* LoomCommandScripts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */; };
+		BFB726EBDF5D15BE36C6D507 /* CustomEndpointClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851FFDE99CAC84D87F11ABA8 /* CustomEndpointClient.swift */; };
 		C369B8DA4409AA0965A62B10 /* LoomRuntimePathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A400D99F31C6B036AD121E3 /* LoomRuntimePathsTests.swift */; };
+		C4943D8BA5C235AA04568629 /* LoomMigrationImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE07613A2A3AEC0C6CD3049 /* LoomMigrationImporter.swift */; };
+		C5B93934406C13D7BD3F272C /* LoomURLSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48CB48D6E4655513E3F8CD54 /* LoomURLSchemeHandler.swift */; };
+		C61541C082D7DDDB4DC7AF9A /* LoomWeaveWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 652BA7E02AD1FCC49B0F406B /* LoomWeaveWriter.swift */; };
+		C65E968959C88DBBA2DDEE5F /* RehearsalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91309B1785AAA0FD9BBCAB9B /* RehearsalView.swift */; };
+		D050FC6FF87BE9CBEC8E7BD9 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F12807AEF51F6633743BA3 /* KeychainStore.swift */; };
+		D6C670EC4AB12F9BD0E0DFDB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5B34F36F6EAFC6BA0A1FF9CC /* PrivacyInfo.xcprivacy */; };
+		D717753C694893E6DAF0B37B /* LoomPursuitWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60E3169E26CB01CA6A193C /* LoomPursuitWriter.swift */; };
 		DAD1E4E09155B63DFD48EFFB /* LoomWebViewInteractionPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */; };
+		E10A4000D7A554BB504CF09F /* LoomDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981E8D9084E2AB6C27B00080 /* LoomDataStore.swift */; };
+		E8131489A49BBB6A0F5120CF /* SelectableTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2746C5548C8E8ABC409DE737 /* SelectableTextEditor.swift */; };
 		EB23057432E7A926D52C4FD0 /* LoomApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97F465B75FE18597076B7FEE /* LoomApp.swift */; };
+		F06E2B8248EB533ECD13BED7 /* OllamaClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42CBC6D39383AB0937C610AD /* OllamaClientTests.swift */; };
+		FAB902DBC5EB28F9DA3E9EBD /* DataSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B31374C524298382B25CAE5 /* DataSettingsView.swift */; };
+		FD24DA818041F396BDC48AC5 /* AIBridgeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA6438304555F6CAE340A0B /* AIBridgeHandler.swift */; };
+		FF3D3D73D9A47572BC8647E4 /* DataSettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836EFEC359F06F01E235EA2B /* DataSettingsRows.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,20 +88,75 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		00599DFB275B7B8000591296 /* AnthropicClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicClientTests.swift; sourceTree = "<group>"; };
 		01B6CE70855F78F1B5B70D23 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWebViewInteractionPolicyTests.swift; sourceTree = "<group>"; };
+		0736D5D3EE82DC3E4B358DF9 /* KeyboardHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHelpView.swift; sourceTree = "<group>"; };
+		0DDB997F52D3D77DEFE401A4 /* ExaminerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExaminerView.swift; sourceTree = "<group>"; };
+		1687BC8ADBB27D3FD0C502D7 /* LoomTraceWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomTraceWriter.swift; sourceTree = "<group>"; };
+		1C8C21FA61DBCDC92202589A /* LoomTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomTokens.swift; sourceTree = "<group>"; };
+		1F404A51FFFC4215A4DACB2C /* ShuttleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShuttleView.swift; sourceTree = "<group>"; };
+		238C0F1FC1A1955AE4835BCF /* EmbeddingBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddingBridgeHandler.swift; sourceTree = "<group>"; };
+		2394997C8F0A3A3728DB182F /* AskAIWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskAIWindow.swift; sourceTree = "<group>"; };
+		25231BBD91A2A3C053329A27 /* OpenAIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIClientTests.swift; sourceTree = "<group>"; };
+		2746C5548C8E8ABC409DE737 /* SelectableTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectableTextEditor.swift; sourceTree = "<group>"; };
 		2A400D99F31C6B036AD121E3 /* LoomRuntimePathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomRuntimePathsTests.swift; sourceTree = "<group>"; };
 		2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerTests.swift; sourceTree = "<group>"; };
+		2DA6438304555F6CAE340A0B /* AIBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIBridgeHandler.swift; sourceTree = "<group>"; };
+		2F62F9059E4C2A4A22411693 /* AIStreamBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStreamBridgeHandler.swift; sourceTree = "<group>"; };
+		37648FF54251961A8E82D0C1 /* AnthropicClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicClient.swift; sourceTree = "<group>"; };
 		4256C4FA4AF59076B3DBBBDC /* DevServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServer.swift; sourceTree = "<group>"; };
+		42CBC6D39383AB0937C610AD /* OllamaClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaClientTests.swift; sourceTree = "<group>"; };
+		4534DD512710116134F47530 /* SecurityScopedFolderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedFolderStore.swift; sourceTree = "<group>"; };
+		48CB48D6E4655513E3F8CD54 /* LoomURLSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomURLSchemeHandler.swift; sourceTree = "<group>"; };
 		50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWebViewInteractionPolicy.swift; sourceTree = "<group>"; };
 		53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerPreflightTests.swift; sourceTree = "<group>"; };
+		5790767AAC074AC30057D6E9 /* KnowledgeSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeSidebarView.swift; sourceTree = "<group>"; };
+		5B34F36F6EAFC6BA0A1FF9CC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		652BA7E02AD1FCC49B0F406B /* LoomWeaveWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWeaveWriter.swift; sourceTree = "<group>"; };
+		68B37504F9F0ED3D43A8C341 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSettingsView.swift; sourceTree = "<group>"; };
+		6B4CACBB394F77A58E8AC670 /* LoomExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomExport.swift; sourceTree = "<group>"; };
+		6D618D7BF0962CD6E39207B1 /* EmbeddingClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddingClient.swift; sourceTree = "<group>"; };
 		738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomCommandScriptsTests.swift; sourceTree = "<group>"; };
+		74E03AAF4C0E97ED691F3793 /* FirstRunProviderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunProviderSheet.swift; sourceTree = "<group>"; };
+		7838A33BEFC23E835A507546 /* KeychainStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStoreTests.swift; sourceTree = "<group>"; };
+		836EFEC359F06F01E235EA2B /* DataSettingsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSettingsRows.swift; sourceTree = "<group>"; };
+		851FFDE99CAC84D87F11ABA8 /* CustomEndpointClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEndpointClient.swift; sourceTree = "<group>"; };
+		86249B04CF088CB0AA74F360 /* MigrationBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationBridgeHandler.swift; sourceTree = "<group>"; };
+		8C36FF34A5323442D949C158 /* EveningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveningView.swift; sourceTree = "<group>"; };
+		91309B1785AAA0FD9BBCAB9B /* RehearsalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehearsalView.swift; sourceTree = "<group>"; };
+		91B434DF7CA2742B2A34B68C /* ReconstructionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReconstructionsView.swift; sourceTree = "<group>"; };
+		940707A3D2714DC2DB60358D /* AskAIRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskAIRunnerTests.swift; sourceTree = "<group>"; };
 		965174FB87136638BA643B4C /* LoomTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoomTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		97F465B75FE18597076B7FEE /* LoomApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomApp.swift; sourceTree = "<group>"; };
+		981E8D9084E2AB6C27B00080 /* LoomDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomDataStore.swift; sourceTree = "<group>"; };
+		9902715B7EE5A8B25248F051 /* LoomMigrationImporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomMigrationImporterTests.swift; sourceTree = "<group>"; };
+		9991A8B46F80260F1654A940 /* CLIRuntimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIRuntimeClient.swift; sourceTree = "<group>"; };
+		9B31374C524298382B25CAE5 /* DataSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSettingsView.swift; sourceTree = "<group>"; };
+		9C7150E29C609C574638AA92 /* CLIRuntimeClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIRuntimeClientTests.swift; sourceTree = "<group>"; };
+		A6BEBD4BB8D9C5730C215127 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		A87FAF953904D7676C1AEDF9 /* LoomTraceWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomTraceWriterTests.swift; sourceTree = "<group>"; };
 		B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BA1253932E73830C2DD9B059 /* NavigationBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationBridgeHandler.swift; sourceTree = "<group>"; };
 		CFB0FB42BDCFD78AC68A01BF /* Loom.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loom.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3080D41F3CA22A6933AC963 /* SecurityScopedFolderStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedFolderStoreTests.swift; sourceTree = "<group>"; };
+		D658FFE18D925548FA72223C /* IngestionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngestionView.swift; sourceTree = "<group>"; };
+		D7C554FF435D8BD9AC4D76B8 /* ExaminerVerdictParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExaminerVerdictParserTests.swift; sourceTree = "<group>"; };
+		D98677EAB28D6F8769007F99 /* EmbeddingClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddingClientTests.swift; sourceTree = "<group>"; };
+		D98C3B6C04E21197A82A218C /* AIProviderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProviderSettingsView.swift; sourceTree = "<group>"; };
+		DC60E3169E26CB01CA6A193C /* LoomPursuitWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomPursuitWriter.swift; sourceTree = "<group>"; };
 		DDA5A2EB4CB4022BE8541513 /* LoomRuntimePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomRuntimePaths.swift; sourceTree = "<group>"; };
+		DE18F301846375F2AA33FFC3 /* CustomEndpointClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEndpointClientTests.swift; sourceTree = "<group>"; };
+		E19B1CAD81EF9A7257E0A312 /* OllamaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaClient.swift; sourceTree = "<group>"; };
+		E248B305C252056D2D519F4D /* LoomURLSchemeHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomURLSchemeHandlerTests.swift; sourceTree = "<group>"; };
 		E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerPreflight.swift; sourceTree = "<group>"; };
+		EDE07613A2A3AEC0C6CD3049 /* LoomMigrationImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomMigrationImporter.swift; sourceTree = "<group>"; };
+		F05E1D0F5B49D598380A3D76 /* OpenAIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIClient.swift; sourceTree = "<group>"; };
+		F0F12807AEF51F6633743BA3 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		F0F49042F2CED678F4FBF4DC /* LoomSoanWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomSoanWriter.swift; sourceTree = "<group>"; };
+		F13B5941E45CEDF2AFAFB493 /* OverlayDataFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayDataFlowTests.swift; sourceTree = "<group>"; };
+		F15ABB1ACE29DE47CE756B2F /* LoomDataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomDataModelTests.swift; sourceTree = "<group>"; };
+		F182BFBEA095BF2AEFA47130 /* LoomDataModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomDataModel.swift; sourceTree = "<group>"; };
 		F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomCommandScripts.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -54,13 +164,52 @@
 		6114BBD5F32D87A441F33A24 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				A6BEBD4BB8D9C5730C215127 /* AboutView.swift */,
+				2DA6438304555F6CAE340A0B /* AIBridgeHandler.swift */,
+				D98C3B6C04E21197A82A218C /* AIProviderSettingsView.swift */,
+				2F62F9059E4C2A4A22411693 /* AIStreamBridgeHandler.swift */,
+				37648FF54251961A8E82D0C1 /* AnthropicClient.swift */,
+				68B37504F9F0ED3D43A8C341 /* AppearanceSettingsView.swift */,
+				2394997C8F0A3A3728DB182F /* AskAIWindow.swift */,
+				9991A8B46F80260F1654A940 /* CLIRuntimeClient.swift */,
 				01B6CE70855F78F1B5B70D23 /* ContentView.swift */,
+				851FFDE99CAC84D87F11ABA8 /* CustomEndpointClient.swift */,
+				836EFEC359F06F01E235EA2B /* DataSettingsRows.swift */,
+				9B31374C524298382B25CAE5 /* DataSettingsView.swift */,
 				4256C4FA4AF59076B3DBBBDC /* DevServer.swift */,
 				E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */,
+				238C0F1FC1A1955AE4835BCF /* EmbeddingBridgeHandler.swift */,
+				6D618D7BF0962CD6E39207B1 /* EmbeddingClient.swift */,
+				8C36FF34A5323442D949C158 /* EveningView.swift */,
+				0DDB997F52D3D77DEFE401A4 /* ExaminerView.swift */,
+				74E03AAF4C0E97ED691F3793 /* FirstRunProviderSheet.swift */,
+				D658FFE18D925548FA72223C /* IngestionView.swift */,
+				0736D5D3EE82DC3E4B358DF9 /* KeyboardHelpView.swift */,
+				F0F12807AEF51F6633743BA3 /* KeychainStore.swift */,
+				5790767AAC074AC30057D6E9 /* KnowledgeSidebarView.swift */,
 				97F465B75FE18597076B7FEE /* LoomApp.swift */,
 				F1E17B9A3E4690E90B752D76 /* LoomCommandScripts.swift */,
+				F182BFBEA095BF2AEFA47130 /* LoomDataModel.swift */,
+				981E8D9084E2AB6C27B00080 /* LoomDataStore.swift */,
+				6B4CACBB394F77A58E8AC670 /* LoomExport.swift */,
+				EDE07613A2A3AEC0C6CD3049 /* LoomMigrationImporter.swift */,
+				DC60E3169E26CB01CA6A193C /* LoomPursuitWriter.swift */,
 				DDA5A2EB4CB4022BE8541513 /* LoomRuntimePaths.swift */,
+				F0F49042F2CED678F4FBF4DC /* LoomSoanWriter.swift */,
+				1C8C21FA61DBCDC92202589A /* LoomTokens.swift */,
+				1687BC8ADBB27D3FD0C502D7 /* LoomTraceWriter.swift */,
+				48CB48D6E4655513E3F8CD54 /* LoomURLSchemeHandler.swift */,
+				652BA7E02AD1FCC49B0F406B /* LoomWeaveWriter.swift */,
 				50EE3AEE1B9EC24DFEC8541D /* LoomWebViewInteractionPolicy.swift */,
+				86249B04CF088CB0AA74F360 /* MigrationBridgeHandler.swift */,
+				BA1253932E73830C2DD9B059 /* NavigationBridgeHandler.swift */,
+				E19B1CAD81EF9A7257E0A312 /* OllamaClient.swift */,
+				F05E1D0F5B49D598380A3D76 /* OpenAIClient.swift */,
+				91B434DF7CA2742B2A34B68C /* ReconstructionsView.swift */,
+				91309B1785AAA0FD9BBCAB9B /* RehearsalView.swift */,
+				4534DD512710116134F47530 /* SecurityScopedFolderStore.swift */,
+				2746C5548C8E8ABC409DE737 /* SelectableTextEditor.swift */,
+				1F404A51FFFC4215A4DACB2C /* ShuttleView.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -78,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */,
+				EDDA3936F04F3310193794A3 /* Resources */,
 				6114BBD5F32D87A441F33A24 /* Sources */,
 				BEEE710EB30DC84354D7E0F0 /* Tests */,
 				AE2495C2DD7C4012BED6E594 /* Products */,
@@ -87,13 +237,36 @@
 		BEEE710EB30DC84354D7E0F0 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				00599DFB275B7B8000591296 /* AnthropicClientTests.swift */,
+				940707A3D2714DC2DB60358D /* AskAIRunnerTests.swift */,
+				9C7150E29C609C574638AA92 /* CLIRuntimeClientTests.swift */,
+				DE18F301846375F2AA33FFC3 /* CustomEndpointClientTests.swift */,
 				53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */,
 				2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */,
+				D98677EAB28D6F8769007F99 /* EmbeddingClientTests.swift */,
+				D7C554FF435D8BD9AC4D76B8 /* ExaminerVerdictParserTests.swift */,
+				7838A33BEFC23E835A507546 /* KeychainStoreTests.swift */,
 				738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */,
+				F15ABB1ACE29DE47CE756B2F /* LoomDataModelTests.swift */,
+				9902715B7EE5A8B25248F051 /* LoomMigrationImporterTests.swift */,
 				2A400D99F31C6B036AD121E3 /* LoomRuntimePathsTests.swift */,
+				A87FAF953904D7676C1AEDF9 /* LoomTraceWriterTests.swift */,
+				E248B305C252056D2D519F4D /* LoomURLSchemeHandlerTests.swift */,
 				06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */,
+				42CBC6D39383AB0937C610AD /* OllamaClientTests.swift */,
+				25231BBD91A2A3C053329A27 /* OpenAIClientTests.swift */,
+				F13B5941E45CEDF2AFAFB493 /* OverlayDataFlowTests.swift */,
+				D3080D41F3CA22A6933AC963 /* SecurityScopedFolderStoreTests.swift */,
 			);
 			path = Tests;
+			sourceTree = "<group>";
+		};
+		EDDA3936F04F3310193794A3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				5B34F36F6EAFC6BA0A1FF9CC /* PrivacyInfo.xcprivacy */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -103,6 +276,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A89C1ED79CFFB2D69BAF407A /* Build configuration list for PBXNativeTarget "Loom" */;
 			buildPhases = (
+				EAA24BAD64D422687FA9EDE8 /* Stage Next.js static export into bundle Resources */,
 				11E15E109E1D18FEFC194441 /* Sources */,
 				8BB123B3A0B5C3FB4CF01850 /* Resources */,
 			);
@@ -172,23 +346,85 @@
 			buildActionMask = 2147483647;
 			files = (
 				72DFEDD02D325EBAA571412D /* Assets.xcassets in Resources */,
+				D6C670EC4AB12F9BD0E0DFDB /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		EAA24BAD64D422687FA9EDE8 /* Stage Next.js static export into bundle Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Stage Next.js static export into bundle Resources";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nREPO=\"${PROJECT_DIR}/../..\"\nEXPORT=\"${REPO}/.next-export\"\nDEST=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Contents/Resources/web\"\nif [ ! -d \"$EXPORT\" ]; then\n  echo \"Loom: .next-export/ not found — skipping web bundle stage.\"\n  echo \"       Run 'node scripts/build-static-export.mjs' from the repo root\"\n  echo \"       before a Release build to bundle the pre-rendered pages.\"\n  exit 0\nfi\nmkdir -p \"$DEST\"\nif command -v rsync >/dev/null 2>&1; then\n  if ! rsync -a --delete \"$EXPORT/\" \"$DEST/\"; then\n    echo \"Loom: rsync failed — falling back to cp -R\"\n    rm -rf \"$DEST\"\n    mkdir -p \"$DEST\"\n    cp -R \"$EXPORT\"/. \"$DEST\"/\n  fi\nelse\n  rm -rf \"$DEST\"\n  mkdir -p \"$DEST\"\n  cp -R \"$EXPORT\"/. \"$DEST\"/\nfi\necho \"Loom: staged $(find \"$DEST\" -type f | wc -l | tr -d ' ') files to Resources/web\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		11E15E109E1D18FEFC194441 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FD24DA818041F396BDC48AC5 /* AIBridgeHandler.swift in Sources */,
+				2FB87ABB0263E1565BE4E2D3 /* AIProviderSettingsView.swift in Sources */,
+				1376B0190BCC5092CEA14A03 /* AIStreamBridgeHandler.swift in Sources */,
+				01184E33CD6679345175F778 /* AboutView.swift in Sources */,
+				B5B9141245300C12B3CF8139 /* AnthropicClient.swift in Sources */,
+				4E0CF1C5476C505763E46097 /* AppearanceSettingsView.swift in Sources */,
+				73CB7FC5A01BBAE29816A792 /* AskAIWindow.swift in Sources */,
+				34A5AC9BDC88A4B84BFFC1FC /* CLIRuntimeClient.swift in Sources */,
 				02C2B3A4C02B66E7B7F76245 /* ContentView.swift in Sources */,
+				BFB726EBDF5D15BE36C6D507 /* CustomEndpointClient.swift in Sources */,
+				FF3D3D73D9A47572BC8647E4 /* DataSettingsRows.swift in Sources */,
+				FAB902DBC5EB28F9DA3E9EBD /* DataSettingsView.swift in Sources */,
 				23CE85EE6E1FF90E11496A02 /* DevServer.swift in Sources */,
 				50C1F901B210F46BAC4BB09C /* DevServerPreflight.swift in Sources */,
+				B01F20EA3955B00E256ECD7E /* EmbeddingBridgeHandler.swift in Sources */,
+				582A5DD8517D1126509216D0 /* EmbeddingClient.swift in Sources */,
+				13FADEDD4AB86C27F49B49F9 /* EveningView.swift in Sources */,
+				0505806677A4C74E9C32308D /* ExaminerView.swift in Sources */,
+				54B34835946DF92144FB14D5 /* FirstRunProviderSheet.swift in Sources */,
+				317E7110A8CC4324BFFC2889 /* IngestionView.swift in Sources */,
+				0A694EE3E798F683EEFC762D /* KeyboardHelpView.swift in Sources */,
+				D050FC6FF87BE9CBEC8E7BD9 /* KeychainStore.swift in Sources */,
+				33BE23BF446958A4A653E403 /* KnowledgeSidebarView.swift in Sources */,
 				EB23057432E7A926D52C4FD0 /* LoomApp.swift in Sources */,
 				BEB5D87B0B644A913586CF49 /* LoomCommandScripts.swift in Sources */,
+				0C013696680E1068E2720195 /* LoomDataModel.swift in Sources */,
+				E10A4000D7A554BB504CF09F /* LoomDataStore.swift in Sources */,
+				144BFEF1903E1ACC2E1DE2D0 /* LoomExport.swift in Sources */,
+				C4943D8BA5C235AA04568629 /* LoomMigrationImporter.swift in Sources */,
+				D717753C694893E6DAF0B37B /* LoomPursuitWriter.swift in Sources */,
 				78DAAAFE00FED02AD1C5E73B /* LoomRuntimePaths.swift in Sources */,
+				51923102F8EE735FF7E6D5BF /* LoomSoanWriter.swift in Sources */,
+				AFA2F0FE79F1217849CAE424 /* LoomTokens.swift in Sources */,
+				A46E42AD3C9FE8F181BBA4DF /* LoomTraceWriter.swift in Sources */,
+				C5B93934406C13D7BD3F272C /* LoomURLSchemeHandler.swift in Sources */,
+				C61541C082D7DDDB4DC7AF9A /* LoomWeaveWriter.swift in Sources */,
 				A16D95B79EEAE3C2337663FA /* LoomWebViewInteractionPolicy.swift in Sources */,
+				1E0499C305F030037453F810 /* MigrationBridgeHandler.swift in Sources */,
+				351B60B8E6F17E78A7860DED /* NavigationBridgeHandler.swift in Sources */,
+				70CB370592F2AA33745BD3F9 /* OllamaClient.swift in Sources */,
+				A3EBD4EC180DF539EA4181A9 /* OpenAIClient.swift in Sources */,
+				23DEC6B5F490E3DD57C3F99E /* ReconstructionsView.swift in Sources */,
+				C65E968959C88DBBA2DDEE5F /* RehearsalView.swift in Sources */,
+				AE6F0A722A9686EB45C7DC89 /* SecurityScopedFolderStore.swift in Sources */,
+				E8131489A49BBB6A0F5120CF /* SelectableTextEditor.swift in Sources */,
+				1779D22A3CF0C319D60089CE /* ShuttleView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,11 +432,26 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				34EDC9CDD79A48A8FB22EDE7 /* AnthropicClientTests.swift in Sources */,
+				34ADAD0AE80A2254DBDDD625 /* AskAIRunnerTests.swift in Sources */,
+				1A721B8D7F00C56477EFA186 /* CLIRuntimeClientTests.swift in Sources */,
+				274FC90F9C45C13A5DAE0582 /* CustomEndpointClientTests.swift in Sources */,
 				4A07C211A0D26822457C750D /* DevServerPreflightTests.swift in Sources */,
 				6432F892116325B00A613D05 /* DevServerTests.swift in Sources */,
+				B8B8C97E6FE0672756447FF8 /* EmbeddingClientTests.swift in Sources */,
+				B6CD9CD89ED30455F805D569 /* ExaminerVerdictParserTests.swift in Sources */,
+				0A33CF69C9CB7A623FC846CC /* KeychainStoreTests.swift in Sources */,
 				B8B8C6F5796088A9F0EA8337 /* LoomCommandScriptsTests.swift in Sources */,
+				57B5D9DC1353AFD625AAEF5D /* LoomDataModelTests.swift in Sources */,
+				35A89DEBE88F6EFE38A870C8 /* LoomMigrationImporterTests.swift in Sources */,
 				C369B8DA4409AA0965A62B10 /* LoomRuntimePathsTests.swift in Sources */,
+				02EC41AE8D104B4D2F7FF029 /* LoomTraceWriterTests.swift in Sources */,
+				979AE8B7341A7872167406D8 /* LoomURLSchemeHandlerTests.swift in Sources */,
 				DAD1E4E09155B63DFD48EFFB /* LoomWebViewInteractionPolicyTests.swift in Sources */,
+				F06E2B8248EB533ECD13BED7 /* OllamaClientTests.swift in Sources */,
+				8069DADB5832AC567AC29F5C /* OpenAIClientTests.swift in Sources */,
+				6C8D0093C9BA4FF328AA3605 /* OverlayDataFlowTests.swift in Sources */,
+				962B946A862C0E17C9727266 /* SecurityScopedFolderStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,8 +491,10 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_CFBundleGetInfoString = "Loom — a screen that replaces paper";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_LSApplicationSecondaryCategoryType = "public.app-category.reference";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -263,8 +516,10 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_CFBundleGetInfoString = "Loom — a screen that replaces paper";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_LSApplicationSecondaryCategoryType = "public.app-category.reference";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

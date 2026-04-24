@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	Loom Privacy Manifest.
+	Required since macOS Sequoia (May 2024) for App Store submission.
+	Update before every App Store release if data flows or API usage changes.
+	-->
+
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!--
+	Required-reason API usage. Each declared API is one Loom (or its
+	bundled Next.js runtime) actually invokes; reasons follow Apple's
+	taxonomy in the Privacy Manifest spec.
+	-->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!-- UserDefaults: theme, accent, sidebar mode, first-run flags,
+			     AI provider selection, content-root bookmark, migration status. -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- File timestamps may be read by the webview's pre-rendered pages
+			     and any future FileManager "modified recently" orderings. Kept
+			     declared so additions don't regress compliance. -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+
+	<!--
+	Data leaving the device. Swift's per-provider AI clients
+	(AnthropicClient, OpenAIClient, OllamaClient, CustomEndpointClient,
+	CLIRuntimeClient) send user-typed prompts to whichever provider the
+	user chose. Loom has no servers, does not store this data, and does
+	not link it to user identity beyond the user's own API key — which
+	the user supplies and stores in macOS Keychain.
+	-->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

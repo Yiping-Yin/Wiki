@@ -47,4 +47,39 @@ final class LoomRuntimePathsTests: XCTestCase {
             "/persisted/wiki"
         )
     }
+
+    func testSourcesReloadFeedbackStringsMatchSidebarContract() {
+        XCTAssertEqual(LibraryReloadFeedback.idle.actionLabel, "Reload sources")
+        XCTAssertEqual(LibraryReloadFeedback.loading.actionLabel, "Reloading…")
+        XCTAssertNil(LibraryReloadFeedback.loading.statusMessage)
+        XCTAssertEqual(LibraryReloadFeedback.success.actionLabel, "Reloaded")
+        XCTAssertNil(LibraryReloadFeedback.success.statusMessage)
+        XCTAssertEqual(
+            LibraryReloadFeedback.missingFolder.statusMessage,
+            "Choose a source folder in Settings -> Data."
+        )
+        XCTAssertEqual(
+            LibraryReloadFeedback.missingManifest.statusMessage,
+            "No source manifest yet. Run npm run ingest or use Ingestion."
+        )
+    }
+
+    func testSidebarThemeResolutionUsesSingleResolvedColorSchemeSource() {
+        XCTAssertEqual(
+            SidebarThemeResolution.resolvedColorScheme(theme: "dark", systemIsDark: false),
+            .dark
+        )
+        XCTAssertEqual(
+            SidebarThemeResolution.resolvedColorScheme(theme: "light", systemIsDark: true),
+            .light
+        )
+        XCTAssertEqual(
+            SidebarThemeResolution.resolvedColorScheme(theme: "auto", systemIsDark: true),
+            .dark
+        )
+        XCTAssertEqual(
+            SidebarThemeResolution.resolvedColorScheme(theme: "auto", systemIsDark: false),
+            .light
+        )
+    }
 }
