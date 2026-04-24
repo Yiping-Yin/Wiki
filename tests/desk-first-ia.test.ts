@@ -19,11 +19,14 @@ test('Desk becomes the shelf-first home and Atlas routes degrade to Desk', () =>
   assert.match(deskPage, /AtlasClient/);
   assert.match(deskPage, /TodayClient/);
   assert.match(atlasClient, /const sourceShelf = useMemo/);
-  assert.match(atlasClient, /doc\.href\.startsWith\('\/knowledge\/'\)/);
+  assert.match(atlasClient, /sourceLibraryGroups\.flatMap/);
+  assert.match(atlasClient, /const displayShelf = useMemo/);
+  assert.match(atlasClient, /title: 'LLM Wiki'/);
+  assert.match(atlasClient, /is-reference-only/);
   assert.match(atlasClient, /const referenceDocs = useMemo/);
   assert.match(atlasClient, /doc\.href\.startsWith\('\/wiki\/'\)/);
   assert.match(atlasClient, /<h1 className="loom-atlas-title">Your sources<\/h1>/);
-  assert.match(atlasClient, /aria-label="LLM Wiki reference"/);
+  assert.doesNotMatch(atlasClient, /aria-label="LLM Wiki reference"/);
   assert.match(atlasPage, /redirect\('\/desk'\)/);
   assert.match(atlasShelfPage, /redirect\('\/desk'\)/);
 });

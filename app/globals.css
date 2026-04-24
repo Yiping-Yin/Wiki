@@ -2903,6 +2903,10 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   padding-bottom: 3rem;
 }
 
+.loom-atlas-shelf-area.is-reference-only {
+  padding-bottom: 0.875rem;
+}
+
 /* Upper shelf shadow — mockup loom-habitat.jsx:67. A soft dark band
    at the very top of the shelf area that reads as "the shelf above
    these books", adding depth without rendering a second board.
@@ -3009,6 +3013,11 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   z-index: 2;
   flex-wrap: wrap;
   min-height: 20rem;
+}
+
+.loom-atlas-shelf-area.is-reference-only .loom-atlas-books {
+  min-height: 16rem;
+  padding-left: clamp(1rem, 2.5vw, 2.5rem);
 }
 
 .loom-atlas-book {

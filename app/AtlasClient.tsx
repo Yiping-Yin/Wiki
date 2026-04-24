@@ -26,6 +26,7 @@ import {
   loadLatestRecentRecord,
 } from '../lib/loom-recent-records';
 import { fetchSearchIndex } from '../lib/search-index-client';
+import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 
 type AtlasDoc = {
   href: string;
@@ -75,6 +76,7 @@ function parseIndexPayload(payload: unknown): AtlasDoc[] {
 }
 
 export default function AtlasClient() {
+  const { sourceLibraryGroups } = useKnowledgeNav();
   const [docs, setDocs] = useState<AtlasDoc[]>([]);
   const [activeHref, setActiveHref] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -127,10 +129,15 @@ export default function AtlasClient() {
     });
   }, [docs]);
 
-  const sourceShelf = useMemo(
-    () => shelf.filter((doc) => doc.href.startsWith('/knowledge/')),
-    [shelf],
-  );
+  const sourceShelf = useMemo(() => {
+    return sourceLibraryGroups.flatMap((group) =>
+      group.categories.map((category) => ({
+        href: `/knowledge/${category.slug}`,
+        title: category.label,
+        category: category.count === 1 ? '1 source' : `${category.count} sources`,
+      })),
+    );
+  }, [sourceLibraryGroups]);
   const referenceDocs = useMemo(
     () => shelf.filter((doc) => doc.href.startsWith('/wiki/')),
     [shelf],
@@ -142,6 +149,17 @@ export default function AtlasClient() {
 
   const totalBound = sourceShelf.length;
   const totalReferences = referenceDocs.length;
+  const referenceBook = useMemo<AtlasDoc>(() => ({
+    href: '/llm-wiki',
+    title: 'LLM Wiki',
+    category: totalReferences > 0
+      ? `${referenceSections} section${referenceSections === 1 ? '' : 's'}`
+      : 'Reference',
+  }), [referenceSections, totalReferences]);
+  const displayShelf = useMemo(
+    () => [...sourceShelf, referenceBook],
+    [sourceShelf, referenceBook],
+  );
 
   // Threads remain omitted until the recurring-phrase pipeline is
   // mirrored here. An absent ledger is more honest than fabricated
@@ -151,8 +169,8 @@ export default function AtlasClient() {
   const subtitle = !loaded
     ? 'gathering the shelf…'
     : totalBound === 0
-      ? ''
-      : `${totalBound} source${totalBound === 1 ? '' : 's'}.`;
+      ? 'No sources yet.'
+      : `${totalBound} source collection${totalBound === 1 ? '' : 's'}.`;
 
   return (
     <div className="loom-atlas">
@@ -206,6 +224,23 @@ export default function AtlasClient() {
         </div>
       </header>
 
+      <section className={`loom-atlas-shelf-area${totalBound === 0 ? ' is-reference-only' : ''}`}>
+        <div className="loom-atlas-shelf-board" aria-hidden="true" />
+        <div className="loom-atlas-books" role="list">
+          {displayShelf.map((doc, i) => (
+            <Book
+              key={doc.href}
+              doc={doc}
+              active={doc.href === activeHref || (doc.href === '/llm-wiki' && activeHref?.startsWith('/wiki/') === true)}
+              color={hashSpineColor(doc.href)}
+              glyph={GLYPHS[i % GLYPHS.length]}
+              heightVariance={(i * 37) % 90}
+              widthVariance={(i * 13) % 22}
+            />
+          ))}
+        </div>
+      </section>
+
       {loaded && totalBound === 0 ? (
         <div className="loom-empty-state" role="note">
           <div className="loom-empty-state-ornament" aria-hidden="true">── · ──</div>
@@ -217,67 +252,6 @@ export default function AtlasClient() {
             Open sources →
           </Link>
         </div>
-      ) : (
-        <section className="loom-atlas-shelf-area">
-          <div className="loom-atlas-shelf-board" aria-hidden="true" />
-          <div className="loom-atlas-books" role="list">
-            {sourceShelf.map((doc, i) => (
-              <Book
-                key={doc.href}
-                doc={doc}
-                active={doc.href === activeHref}
-                color={hashSpineColor(doc.href)}
-                glyph={GLYPHS[i % GLYPHS.length]}
-                heightVariance={(i * 37) % 90}
-                widthVariance={(i * 13) % 22}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {loaded && totalReferences > 0 ? (
-        <section
-          aria-label="LLM Wiki reference"
-          style={{
-            marginTop: '2.25rem',
-            paddingTop: '1.15rem',
-            borderTop: '0.5px solid var(--mat-border)',
-            display: 'flex',
-            alignItems: 'baseline',
-            justifyContent: 'space-between',
-            gap: 'var(--space-4)',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div className="loom-atlas-eyebrow">Reference</div>
-            <div
-              style={{
-                fontFamily: 'var(--display)',
-                fontStyle: 'italic',
-                fontSize: '1.1rem',
-                color: 'var(--fg)',
-              }}
-            >
-              LLM Wiki
-            </div>
-            <div style={{ color: 'var(--muted)', fontSize: '0.82rem' }}>
-              {referenceSections} sections · {totalReferences} bundled notes
-            </div>
-          </div>
-          <Link
-            href="/llm-wiki"
-            style={{
-              textDecoration: 'none',
-              color: 'var(--fg-secondary)',
-              fontFamily: 'var(--serif)',
-              fontStyle: 'italic',
-            }}
-          >
-            Browse reference →
-          </Link>
-        </section>
       ) : null}
 
       {threads.length > 0 && (

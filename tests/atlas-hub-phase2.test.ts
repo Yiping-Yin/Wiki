@@ -47,6 +47,7 @@ test('/llm-wiki has a dedicated home route', () => {
   const wikiPage = read('app/llm-wiki/page.tsx');
 
   assert.match(wikiPage, /title: 'LLM Wiki · Loom'/);
+  assert.match(wikiPage, /<StageShell/);
   assert.match(wikiPage, /getWikiHomeSections/);
   assert.match(wikiPage, /eyebrow="Reference"/);
 });
