@@ -21,6 +21,23 @@ const SURFACES = [
   { slug: 'help',            url: '/help' },
   { slug: 'colophon',        url: '/colophon' },
   { slug: 'frontispiece',    url: '/frontispiece' },
+  { slug: 'atelier',         url: '/atelier' },
+  { slug: 'branching',       url: '/branching' },
+  { slug: 'constellation',   url: '/constellation' },
+  { slug: 'cover',           url: '/cover' },
+  { slug: 'contents',        url: '/contents' },
+  { slug: 'kesi',            url: '/kesi' },
+  { slug: 'letter',          url: '/letter' },
+  { slug: 'palimpsest',      url: '/palimpsest' },
+  { slug: 'panel',           url: '/panel' },
+  { slug: 'pursuits',        url: '/pursuits' },
+  { slug: 'quizzes',         url: '/quizzes' },
+  { slug: 'salon',           url: '/salon' },
+  { slug: 'soan',            url: '/soan' },
+  { slug: 'uploads',         url: '/uploads' },
+  { slug: 'browse',          url: '/browse' },
+  { slug: 'about',           url: '/about' },
+  { slug: 'onboarding',      url: '/onboarding' },
 ];
 
 const VIEWPORTS = [
@@ -45,7 +62,7 @@ async function main() {
       } catch (e) {
         console.warn(`! ${slug} (${label}) goto failed: ${e.message}`);
       }
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(2000);
       await page.screenshot({ path: file, fullPage: false });
       console.log(`✓ ${slug} (${label})`);
     }
