@@ -3,19 +3,20 @@ import SwiftUI
 /// Native left-column navigator — the **only** sidebar in Loom post-2026-04-22.
 ///
 /// Replaces the web-side `components/Sidebar.tsx` entirely. Rendered as the
-/// sidebar column of `NavigationSplitView` in ContentView. Six sections:
+/// sidebar column of `NavigationSplitView` in ContentView. Four sections:
 ///
-    ///   1. **Workspaces** — top-level navigation: Home / Desk / Coworks /
-    ///      Patterns / Weaves. Keyboard shortcuts ⌘1–⌘5.
+///   1. **Workspaces** — top-level navigation: Home / Desk / Coworks /
+///      Patterns / Weaves. Keyboard shortcuts ⌘1–⌘5.
 ///   2. **Actions** — mode surfaces: Rehearsal / Examiner / Ingestion /
 ///      Reconstructions. Keyboard shortcuts ⌘⇧R / ⌘⇧X / ⌘⇧I.
 ///   3. **Recent** — most recently-visited docs, UserDefaults MRU list.
-///   4. **Sources** — user-owned material categories, read from
-///      `loom://content/knowledge/.cache/manifest/knowledge-nav.json`.
-///   5. **LLM Wiki** — bundled curriculum categories from the bundle index.
-///   6. **More** — reload / folder / help utilities.
+///   4. **More** — reload / folder / help utilities.
 ///
-/// Sources + LLM Wiki are Desk content domains, not peer workspaces.
+/// Desk owns the content domains:
+///   - **Sources** — user-owned material categories, read from
+///     `loom://content/knowledge/.cache/manifest/knowledge-nav.json`.
+///   - **Reference / LLM Wiki** — bundled curriculum from the bundle index,
+///     shown as secondary read-only reference rather than the primary shelf.
 /// Active-state coloring uses the system accent (which is the Vellum bronze
 /// once `LoomTokens` tints AppKit — see `LoomTokens.swift`). Icons are
 /// SF Symbols so they automatically carry the system's warm tone.
@@ -114,6 +115,23 @@ struct KnowledgeSidebarView: View {
     }
 
     private var wikiCategories: [Category] { bundleCategories.filter { $0.kind == .wiki } }
+    private var filteredWikiCategories: [Category] { filteredBundleCategories.filter { $0.kind == .wiki } }
+
+    private var sourceDocCount: Int {
+        userCategories.reduce(0) { $0 + $1.count }
+    }
+
+    private var wikiDocCount: Int {
+        wikiCategories.reduce(0) { $0 + $1.docs.count }
+    }
+
+    private var shouldShowDeskSourceDetails: Bool {
+        !query.isEmpty || currentHref == "/desk" || isSourcesContentPath(currentHref)
+    }
+
+    private var shouldShowDeskReferenceDetails: Bool {
+        !query.isEmpty || isWikiContentPath(currentHref)
+    }
 
     private var usesNightSidebarPalette: Bool {
         SidebarThemeResolution.usesNightPalette(colorScheme: colorScheme)
@@ -225,35 +243,23 @@ struct KnowledgeSidebarView: View {
                         sectionHeader("Workspaces")
                         ForEach(Self.workspaces) { link in
                             workspaceRow(link)
+                            if link.id == "desk" {
+                                deskContentRows
+                            }
                         }
 
                         sectionHeader("Actions")
                         ForEach(Self.actions) { link in
                             actionRow(link)
                         }
+                    } else {
+                        sectionHeader("Desk")
+                        deskContentRows
                     }
                     if query.isEmpty && !recentDocs.isEmpty {
                         sectionHeader("Recent")
                         ForEach(recentDocs) { doc in
                             recentRow(doc)
-                        }
-                    }
-                    if !filteredUserCategories.isEmpty {
-                        sectionHeader("Sources", destination: "/sources", isActive: isSourcesContentPath(currentHref))
-                        ForEach(filteredUserCategories) { cat in
-                            userCategoryRow(cat)
-                        }
-                    } else if query.isEmpty {
-                        sectionHeader("Sources", destination: "/sources", isActive: isSourcesContentPath(currentHref))
-                        libraryEmptyState
-                    }
-                    if !wikiCategories.isEmpty {
-                        let wiki = filteredBundleCategories.filter { $0.kind == .wiki }
-                        if !wiki.isEmpty {
-                            sectionHeader("LLM Wiki", destination: "/llm-wiki", isActive: isWikiContentPath(currentHref))
-                            ForEach(wiki) { category in
-                                categoryRow(category)
-                            }
                         }
                     }
                     if query.isEmpty {
@@ -343,6 +349,97 @@ struct KnowledgeSidebarView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var deskContentRows: some View {
+        deskContentRow(
+            label: "Sources",
+            detail: "your material",
+            icon: "folder",
+            count: sourceDocCount > 0 ? sourceDocCount : nil,
+            destination: "/sources",
+            isActive: isSourcesContentPath(currentHref),
+            isPrimary: true
+        )
+
+        if shouldShowDeskSourceDetails {
+            if !filteredUserCategories.isEmpty {
+                ForEach(filteredUserCategories) { cat in
+                    userCategoryRow(cat)
+                        .padding(.leading, 28)
+                }
+            } else if query.isEmpty {
+                libraryEmptyState
+                    .padding(.leading, 28)
+            }
+        }
+
+        deskContentRow(
+            label: "Reference",
+            detail: "LLM Wiki",
+            icon: "books.vertical",
+            count: wikiDocCount > 0 ? wikiDocCount : nil,
+            destination: "/llm-wiki",
+            isActive: isWikiContentPath(currentHref),
+            isPrimary: false
+        )
+
+        if shouldShowDeskReferenceDetails && !filteredWikiCategories.isEmpty {
+            ForEach(filteredWikiCategories) { category in
+                categoryRow(category)
+                    .padding(.leading, 28)
+            }
+        }
+    }
+
+    private func deskContentRow(
+        label: String,
+        detail: String,
+        icon: String,
+        count: Int?,
+        destination: String,
+        isActive: Bool,
+        isPrimary: Bool
+    ) -> some View {
+        let iconColor: Color = isActive || isPrimary ? LoomTokens.thread : sidebarSecondaryText
+        let titleColor: Color = isActive ? LoomTokens.thread : (isPrimary ? sidebarPrimaryText : sidebarSecondaryText)
+        let detailColor: Color = isActive ? LoomTokens.thread.opacity(0.82) : sidebarTertiaryText
+        return Button {
+            navigate(to: destination)
+        } label: {
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(sidebarTertiaryText.opacity(0.32))
+                    .frame(width: 1, height: 18)
+                    .padding(.leading, 6)
+                Image(systemName: icon)
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(iconColor)
+                    .font(.system(size: 11, weight: isPrimary ? .medium : .regular))
+                    .frame(width: 15, alignment: .center)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(label)
+                        .font(.system(size: 11, weight: isActive || isPrimary ? .semibold : .regular))
+                        .foregroundStyle(titleColor)
+                        .lineLimit(1)
+                    Text(detail)
+                        .font(.system(size: 9))
+                        .foregroundStyle(detailColor)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if let count {
+                    Text("\(count)")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(isActive ? LoomTokens.thread : sidebarTertiaryText)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder

@@ -32,8 +32,11 @@ test('primary native navigation uses the canonical vocabulary', () => {
   assert.match(shuttle, /label: "Weaves"[\s\S]*keywords: \[[^\]]*"relations"/);
   assert.match(sidebar, /label: "Desk"/);
   assert.match(sidebar, /href: "\/desk"/);
-  assert.match(sidebar, /sectionHeader\("Sources", destination: "\/sources"/);
-  assert.match(sidebar, /sectionHeader\("LLM Wiki", destination: "\/llm-wiki"/);
+  assert.match(sidebar, /private var deskContentRows/);
+  assert.match(sidebar, /label: "Sources"[\s\S]*destination: "\/sources"[\s\S]*isPrimary: true/);
+  assert.match(sidebar, /label: "Reference"[\s\S]*detail: "LLM Wiki"[\s\S]*destination: "\/llm-wiki"[\s\S]*isPrimary: false/);
+  assert.doesNotMatch(sidebar, /sectionHeader\("Sources"/);
+  assert.doesNotMatch(sidebar, /sectionHeader\("LLM Wiki"/);
   assert.match(sidebar, /label: "Weaves"/);
   assert.match(sidebar, /href: "\/weaves"/);
   assert.match(app, /Button\("Desk"\)/);

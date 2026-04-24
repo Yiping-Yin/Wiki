@@ -34,6 +34,7 @@ public/knowledge/quizzes/
 public/knowledge/structures/
 public/knowledge/summaries/
 macos-app/Loom/Loom *.xcodeproj/
+macos-app/Loom/.build/
 
 # build / tooling artifacts — generated, never commit
 .next-export/

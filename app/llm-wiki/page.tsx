@@ -23,13 +23,13 @@ export default async function LLMWikiPage() {
               <span>LLM Wiki</span>
             </>
           }
-          eyebrow="LLM Wiki"
-          title="Bundled course notes"
+          eyebrow="Reference"
+          title="LLM Wiki"
           description={
             <>
               <span>{sections.length} sections · {totalDocs} entries</span>
               <br />
-              Built-in curriculum grouped by topic. These pages ship with Loom and do not depend on your chosen source folder.
+              Built-in curriculum grouped by topic. These pages are read-only reference beside your own sources.
             </>
           }
         >

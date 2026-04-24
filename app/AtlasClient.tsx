@@ -127,7 +127,21 @@ export default function AtlasClient() {
     });
   }, [docs]);
 
-  const totalBound = shelf.length;
+  const sourceShelf = useMemo(
+    () => shelf.filter((doc) => doc.href.startsWith('/knowledge/')),
+    [shelf],
+  );
+  const referenceDocs = useMemo(
+    () => shelf.filter((doc) => doc.href.startsWith('/wiki/')),
+    [shelf],
+  );
+  const referenceSections = useMemo(
+    () => new Set(referenceDocs.map((doc) => doc.category).filter(Boolean)).size,
+    [referenceDocs],
+  );
+
+  const totalBound = sourceShelf.length;
+  const totalReferences = referenceDocs.length;
 
   // Threads remain omitted until the recurring-phrase pipeline is
   // mirrored here. An absent ledger is more honest than fabricated
@@ -138,14 +152,14 @@ export default function AtlasClient() {
     ? 'gathering the shelf…'
     : totalBound === 0
       ? ''
-      : `${totalBound} bound.`;
+      : `${totalBound} source${totalBound === 1 ? '' : 's'}.`;
 
   return (
     <div className="loom-atlas">
       <header className="loom-atlas-header" style={{ position: 'relative' }}>
         <div className="loom-atlas-eyebrow">Desk</div>
         <div className="loom-atlas-title-row">
-          <h1 className="loom-atlas-title">Your library</h1>
+          <h1 className="loom-atlas-title">Your sources</h1>
           {subtitle && <p className="loom-atlas-subtitle">{subtitle}</p>}
         </div>
         <div
@@ -179,7 +193,7 @@ export default function AtlasClient() {
               fontStyle: 'italic',
             }}
           >
-            Open LLM Wiki
+            Open reference
           </Link>
         </div>
         {/* Shelf legend — mockup loom-habitat.jsx:52. Tells the reader
@@ -196,8 +210,8 @@ export default function AtlasClient() {
         <div className="loom-empty-state" role="note">
           <div className="loom-empty-state-ornament" aria-hidden="true">── · ──</div>
           <p className="loom-empty-state-copy">
-            No books on the shelf yet. Open a folder in Settings → Data
-            (⌘,) to build your sources shelf.
+            No sources on the shelf yet. Open a folder in Settings → Data
+            (⌘,) to build your working shelf.
           </p>
           <Link href="/sources" className="loom-empty-state-action">
             Open sources →
@@ -207,7 +221,7 @@ export default function AtlasClient() {
         <section className="loom-atlas-shelf-area">
           <div className="loom-atlas-shelf-board" aria-hidden="true" />
           <div className="loom-atlas-books" role="list">
-            {shelf.map((doc, i) => (
+            {sourceShelf.map((doc, i) => (
               <Book
                 key={doc.href}
                 doc={doc}
@@ -221,6 +235,50 @@ export default function AtlasClient() {
           </div>
         </section>
       )}
+
+      {loaded && totalReferences > 0 ? (
+        <section
+          aria-label="LLM Wiki reference"
+          style={{
+            marginTop: '2.25rem',
+            paddingTop: '1.15rem',
+            borderTop: '0.5px solid var(--mat-border)',
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 'var(--space-4)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="loom-atlas-eyebrow">Reference</div>
+            <div
+              style={{
+                fontFamily: 'var(--display)',
+                fontStyle: 'italic',
+                fontSize: '1.1rem',
+                color: 'var(--fg)',
+              }}
+            >
+              LLM Wiki
+            </div>
+            <div style={{ color: 'var(--muted)', fontSize: '0.82rem' }}>
+              {referenceSections} sections · {totalReferences} bundled notes
+            </div>
+          </div>
+          <Link
+            href="/llm-wiki"
+            style={{
+              textDecoration: 'none',
+              color: 'var(--fg-secondary)',
+              fontFamily: 'var(--serif)',
+              fontStyle: 'italic',
+            }}
+          >
+            Browse reference →
+          </Link>
+        </section>
+      ) : null}
 
       {threads.length > 0 && (
         <section className="loom-atlas-threads">

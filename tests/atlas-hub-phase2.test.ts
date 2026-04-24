@@ -16,7 +16,9 @@ test('/desk becomes the shelf-first primary surface', () => {
 
   assert.match(deskPage, /AtlasClient/);
   assert.match(deskPage, /TodayClient/);
-  assert.match(atlasClient, /loom-atlas-title">Your library</);
+  assert.match(atlasClient, /loom-atlas-title">Your sources</);
+  assert.match(atlasClient, /sourceShelf/);
+  assert.match(atlasClient, /referenceDocs/);
   assert.match(atlasClient, /href="\/sources"/);
   assert.match(atlasClient, /href="\/llm-wiki"/);
 });
@@ -46,4 +48,5 @@ test('/llm-wiki has a dedicated home route', () => {
 
   assert.match(wikiPage, /title: 'LLM Wiki · Loom'/);
   assert.match(wikiPage, /getWikiHomeSections/);
+  assert.match(wikiPage, /eyebrow="Reference"/);
 });

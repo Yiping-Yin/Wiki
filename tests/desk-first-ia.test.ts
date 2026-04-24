@@ -12,16 +12,23 @@ function read(relativePath: string) {
 
 test('Desk becomes the shelf-first home and Atlas routes degrade to Desk', () => {
   const deskPage = read('app/desk/DeskPage.tsx');
+  const atlasClient = read('app/AtlasClient.tsx');
   const atlasPage = read('app/atlas/page.tsx');
   const atlasShelfPage = read('app/atlas/shelf/page.tsx');
 
   assert.match(deskPage, /AtlasClient/);
   assert.match(deskPage, /TodayClient/);
+  assert.match(atlasClient, /const sourceShelf = useMemo/);
+  assert.match(atlasClient, /doc\.href\.startsWith\('\/knowledge\/'\)/);
+  assert.match(atlasClient, /const referenceDocs = useMemo/);
+  assert.match(atlasClient, /doc\.href\.startsWith\('\/wiki\/'\)/);
+  assert.match(atlasClient, /<h1 className="loom-atlas-title">Your sources<\/h1>/);
+  assert.match(atlasClient, /aria-label="LLM Wiki reference"/);
   assert.match(atlasPage, /redirect\('\/desk'\)/);
   assert.match(atlasShelfPage, /redirect\('\/desk'\)/);
 });
 
-test('native sidebar demotes Sources from Workspaces into Desk content sections', () => {
+test('native sidebar puts Sources and LLM reference inside Desk content rows', () => {
   const sidebar = read('macos-app/Loom/Sources/KnowledgeSidebarView.swift');
   const app = read('macos-app/Loom/Sources/LoomApp.swift');
   const help = read('macos-app/Loom/Sources/KeyboardHelpView.swift');
@@ -30,8 +37,13 @@ test('native sidebar demotes Sources from Workspaces into Desk content sections'
   assert.match(sidebar, /static let workspaces: \[WorkspaceLink\] = \[/);
   assert.match(sidebar, /label: "Desk"[\s\S]*href: "\/desk"/);
   assert.doesNotMatch(sidebar, /\.init\(id: "sources",\s+label: "Sources"/);
-  assert.match(sidebar, /sectionHeader\("Sources", destination: "\/sources"/);
-  assert.match(sidebar, /sectionHeader\("LLM Wiki", destination: "\/llm-wiki"/);
+  assert.match(sidebar, /private var deskContentRows/);
+  assert.match(sidebar, /label: "Sources"[\s\S]*detail: "your material"[\s\S]*destination: "\/sources"[\s\S]*isPrimary: true/);
+  assert.match(sidebar, /label: "Reference"[\s\S]*detail: "LLM Wiki"[\s\S]*destination: "\/llm-wiki"[\s\S]*isPrimary: false/);
+  assert.doesNotMatch(sidebar, /sectionHeader\("Sources"/);
+  assert.doesNotMatch(sidebar, /sectionHeader\("LLM Wiki"/);
+  assert.match(sidebar, /shouldShowDeskSourceDetails/);
+  assert.match(sidebar, /shouldShowDeskReferenceDetails/);
   assert.ok(!sidebar.includes("return \"Sources · \\(rootDisplayName)\""));
   assert.match(sidebar, /link\.href == "\/desk"[\s\S]*isDeskContentPath\(currentHref\)/);
 

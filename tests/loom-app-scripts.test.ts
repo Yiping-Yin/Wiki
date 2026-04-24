@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   buildInstallFailure,
@@ -14,6 +14,8 @@ import {
   packageLoomApp,
   resolveOutputRoot,
 } from '../scripts/package-loom-app.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 test('install script treats ditto permission stderr as fallback-eligible', () => {
   const error = buildInstallFailure(1, 'ditto: /Applications/Loom.app: Permission denied\n') as Error & { code?: string };
@@ -97,9 +99,9 @@ test('release app scripts build the static export before Xcode Release packaging
   assert.equal(pkg.scripts?.['app:package'], 'node scripts/package-loom-app.mjs');
 
   for (const name of ['app', 'app:user', 'app:system']) {
-    const script = pkg.scripts?.[name] ?? '';
-    const exportIndex = script.indexOf('node scripts/build-static-export.mjs');
-    const xcodeIndex = script.indexOf('xcodebuild -project Loom.xcodeproj -scheme Loom -configuration Release build');
+    const script: string = pkg.scripts?.[name] ?? '';
+    const exportIndex: number = script.indexOf('node scripts/build-static-export.mjs');
+    const xcodeIndex: number = script.indexOf('xcodebuild -project Loom.xcodeproj -scheme Loom -configuration Release build');
 
     assert.notEqual(exportIndex, -1, `${name} must run build-static-export.mjs`);
     assert.notEqual(xcodeIndex, -1, `${name} must run the Release Xcode build`);
