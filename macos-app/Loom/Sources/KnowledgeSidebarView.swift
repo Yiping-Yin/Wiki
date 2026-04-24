@@ -466,7 +466,6 @@ struct KnowledgeSidebarView: View {
         }
     }
 
-    @ViewBuilder
     private func recentRow(_ doc: Doc) -> some View {
         let isCurrent = doc.href == currentHref
         return HStack(spacing: 6) {
@@ -818,7 +817,7 @@ struct KnowledgeSidebarView: View {
         }
     }
 
-    private static func readBundleCategories(hostRoots: [String: URL]) throws -> [Category] {
+    nonisolated private static func readBundleCategories(hostRoots: [String: URL]) throws -> [Category] {
         guard let url = URL(string: "loom://bundle/search-index.json") else { return [] }
         let data = try LoomLocalResourceLoader.data(
             from: url,
@@ -859,7 +858,7 @@ struct KnowledgeSidebarView: View {
             .sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
     }
 
-    private static func readUserCategories(hostRoots: [String: URL]) throws -> [UserCategory] {
+    nonisolated private static func readUserCategories(hostRoots: [String: URL]) throws -> [UserCategory] {
         guard let url = URL(string: "loom://content/knowledge/.cache/manifest/knowledge-nav.json") else { return [] }
         let data = try LoomLocalResourceLoader.data(
             from: url,

@@ -51,6 +51,7 @@ targets:
         # localhost-dev mode without staged content, but Release/App Store
         # builds must fail if `.next-export/` is missing.
         runOnlyWhenInstalling: false
+        basedOnDependencyAnalysis: false
         script: |
           set -eu
           REPO="${PROJECT_DIR}/../.."

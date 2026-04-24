@@ -48,8 +48,9 @@ final class AIStreamBridgeHandler: NSObject, WKScriptMessageHandler {
                 guard let webView else { return }
                 let escaped = escapeForJS(chunk)
                 let escapedId = escapeForJS(streamId)
-                webView.evaluateJavaScript(
-                    "window.__loomAI && window.__loomAI.onChunk('\(escapedId)', '\(escaped)')"
+                await Self.evaluateJavaScript(
+                    "window.__loomAI && window.__loomAI.onChunk('\(escapedId)', '\(escaped)')",
+                    in: webView
                 )
             }
         }
@@ -94,42 +95,41 @@ final class AIStreamBridgeHandler: NSObject, WKScriptMessageHandler {
                     opts.onChunk = onChunkClosure
                     _ = try await AnthropicClient.send(prompt: prompt, options: opts)
                 }
-                await MainActor.run { [weak webView] in
-                    guard let webView else { return }
-                    let escapedId = escapeForJS(streamId)
-                    webView.evaluateJavaScript(
-                        "window.__loomAI && window.__loomAI.onDone('\(escapedId)')"
-                    )
-                }
+                let escapedId = escapeForJS(streamId)
+                await Self.evaluateJavaScript(
+                    "window.__loomAI && window.__loomAI.onDone('\(escapedId)')",
+                    in: webView
+                )
             } catch is CancellationError {
-                await MainActor.run { [weak webView] in
-                    guard let webView else { return }
-                    let escapedId = escapeForJS(streamId)
-                    webView.evaluateJavaScript(
-                        "window.__loomAI && window.__loomAI.onError('\(escapedId)', 'cancelled')"
-                    )
-                }
+                let escapedId = escapeForJS(streamId)
+                await Self.evaluateJavaScript(
+                    "window.__loomAI && window.__loomAI.onError('\(escapedId)', 'cancelled')",
+                    in: webView
+                )
             } catch {
-                await MainActor.run { [weak webView] in
-                    guard let webView else { return }
-                    let message = (error as? AnthropicClient.Failure)?.errorDescription
-                        ?? (error as? OpenAIClient.Failure)?.errorDescription
-                        ?? (error as? CustomEndpointClient.Failure)?.errorDescription
-                        ?? (error as? OllamaClient.Failure)?.errorDescription
-                        ?? (error as? CLIRuntimeClient.Failure)?.errorDescription
-                        ?? error.localizedDescription
-                    let escapedId = escapeForJS(streamId)
-                    let escapedMsg = escapeForJS(message)
-                    webView.evaluateJavaScript(
-                        "window.__loomAI && window.__loomAI.onError('\(escapedId)', '\(escapedMsg)')"
-                    )
-                }
+                let message = (error as? AnthropicClient.Failure)?.errorDescription
+                    ?? (error as? OpenAIClient.Failure)?.errorDescription
+                    ?? (error as? CustomEndpointClient.Failure)?.errorDescription
+                    ?? (error as? OllamaClient.Failure)?.errorDescription
+                    ?? (error as? CLIRuntimeClient.Failure)?.errorDescription
+                    ?? error.localizedDescription
+                let escapedId = escapeForJS(streamId)
+                let escapedMsg = escapeForJS(message)
+                await Self.evaluateJavaScript(
+                    "window.__loomAI && window.__loomAI.onError('\(escapedId)', '\(escapedMsg)')",
+                    in: webView
+                )
             }
             await MainActor.run { [weak self] in
-                self?.tasks.removeValue(forKey: streamId)
+                _ = self?.tasks.removeValue(forKey: streamId)
             }
         }
         tasks[streamId] = task
+    }
+
+    private static func evaluateJavaScript(_ script: String, in webView: WKWebView?) async {
+        guard let webView else { return }
+        _ = try? await webView.evaluateJavaScript(script)
     }
 }
 

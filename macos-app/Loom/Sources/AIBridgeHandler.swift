@@ -51,7 +51,7 @@ final class AIBridgeHandler: NSObject, WKScriptMessageHandlerWithReply {
                     customOpts.maxTokens = options.maxTokens
                     text = try await CustomEndpointClient.send(prompt: prompt, options: customOpts)
                 case .ollama:
-                    var ollamaOpts = OllamaClient.Options()
+                    let ollamaOpts = OllamaClient.Options()
                     text = try await OllamaClient.send(prompt: prompt, options: ollamaOpts)
                 case .claudeCli:
                     var cliOpts = CLIRuntimeClient.Options()

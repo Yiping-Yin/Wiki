@@ -2792,7 +2792,7 @@ struct LoomWebView: NSViewRepresentable {
             if let url = navigationAction.request.url,
                url.scheme?.lowercased() == LoomURLSchemeHandler.scheme,
                url.host == "bundle" {
-                var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+                let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
                 var relative = url.path
                 if relative.hasSuffix(".html") { relative.removeLast(5) }
                 else if relative.hasSuffix(".mdx") { relative.removeLast(4) }
