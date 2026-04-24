@@ -12,6 +12,11 @@ struct AIProviderSettingsView: View {
     @AppStorage(CustomEndpointClient.modelDefaultsKey) private var customModel: String = ""
     @AppStorage(OllamaClient.hostDefaultsKey) private var ollamaHost: String = OllamaClient.defaultHost
     @AppStorage(OllamaClient.modelDefaultsKey) private var ollamaModel: String = ""
+    /// Phase 5 ingest opt-out (plan §4 Phase 5 deliverable F;
+    /// feedback_loom_never_do#2). DEFAULT false — the Extract button
+    /// gate is the default. Power users can flip this on to skip the
+    /// gate and auto-run extraction on drop.
+    @AppStorage("loom.ingest.autoRunExtraction") private var autoRunExtraction: Bool = false
     @State private var anthropicKey: String = ""
     @State private var savedAnthropicKey: String = ""
     @State private var openAIKey: String = ""
@@ -182,6 +187,18 @@ struct AIProviderSettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            // Phase 5 ingest gate — opt-out for power users. Default
+            // OFF per feedback_loom_never_do#2.
+            Section {
+                Toggle("Auto-run extraction on drop", isOn: $autoRunExtraction)
+            } header: {
+                Text("Ingest")
+            } footer: {
+                Text("When off (default), Loom extracts the plain text and shows a preview. Click Extract to run the chosen extractor. When on, the extractor runs immediately — skips the opt-in gate.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

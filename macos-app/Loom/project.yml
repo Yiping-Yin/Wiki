@@ -131,6 +131,7 @@ targets:
       - path: Tests
         excludes:
           - fixtures/**/README.md
+          - fixtures/**/generate_fixtures.py
     dependencies:
       - target: Loom
     settings:

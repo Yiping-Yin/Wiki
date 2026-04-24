@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
+import { isNativeMode } from '../../lib/is-native-mode';
+import { mutateSourceLibrary } from '../../lib/source-library-client';
 import { refreshKnowledgeNav } from '../../lib/use-knowledge-nav';
 
 type KnowledgeHomeGroup = {
@@ -26,6 +28,21 @@ type SourceLibraryGroupRoutePayload = {
   }>;
   error?: string;
 };
+
+type SourceLibraryGroupsFromNav = Awaited<ReturnType<typeof refreshKnowledgeNav>>['sourceLibraryGroups'];
+
+function groupsFromNav(sourceLibraryGroups: SourceLibraryGroupsFromNav): KnowledgeHomeGroup[] {
+  return sourceLibraryGroups.map((group) => ({
+    id: group.id,
+    label: group.label,
+    items: group.categories.map((category) => ({
+      slug: category.slug,
+      label: category.label,
+      count: category.count,
+      groupId: group.id,
+    })),
+  }));
+}
 
 export function KnowledgeHomeClient({
   sourceLibraryGroups,
@@ -60,27 +77,38 @@ export function KnowledgeHomeClient({
       })),
     [sourceLibraryGroups, groups],
   );
-  const [currentGroups, setCurrentGroups] = useState(resolvedGroups);
+  const [currentGroups, setCurrentGroups] = useState<KnowledgeHomeGroup[]>(resolvedGroups);
 
   useEffect(() => {
     setCurrentGroups(resolvedGroups);
   }, [resolvedGroups]);
 
   useEffect(() => {
-    if (editingGroupId && !resolvedGroups.some((group) => group.id === editingGroupId)) {
+    if (!isNativeMode()) return;
+    let cancelled = false;
+    void refreshKnowledgeNav().then((payload) => {
+      if (!cancelled) setCurrentGroups(groupsFromNav(payload.sourceLibraryGroups));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (editingGroupId && !currentGroups.some((group) => group.id === editingGroupId)) {
       setEditingGroupId(null);
       setEditingGroupLabel('');
     }
-    if (confirmingDeleteGroupId && !resolvedGroups.some((group) => group.id === confirmingDeleteGroupId)) {
+    if (confirmingDeleteGroupId && !currentGroups.some((group) => group.id === confirmingDeleteGroupId)) {
       setConfirmingDeleteGroupId(null);
     }
     if (
       confirmingHideCategorySlug
-      && !resolvedGroups.some((group) => group.items.some((item) => item.slug === confirmingHideCategorySlug))
+      && !currentGroups.some((group) => group.items.some((item) => item.slug === confirmingHideCategorySlug))
     ) {
       setConfirmingHideCategorySlug(null);
     }
-  }, [resolvedGroups, editingGroupId, confirmingDeleteGroupId, confirmingHideCategorySlug]);
+  }, [currentGroups, editingGroupId, confirmingDeleteGroupId, confirmingHideCategorySlug]);
 
   function syncGroups(payload: SourceLibraryGroupRoutePayload) {
     setCurrentGroups((previous) => {
@@ -115,11 +143,7 @@ export function KnowledgeHomeClient({
     setBusyKey(requestKey);
     setErrorMessage(null);
     try {
-      const response = await fetch(input, init);
-      const payload = await response.json() as SourceLibraryGroupRoutePayload;
-      if (!response.ok) {
-        throw new Error(payload.error ?? 'Request failed');
-      }
+      const payload = await mutateSourceLibrary(input, init);
       syncGroups(payload);
       return payload;
     } catch (error) {

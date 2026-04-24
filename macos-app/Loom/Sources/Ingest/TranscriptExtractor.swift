@@ -53,8 +53,14 @@ struct TranscriptExtractor: IngestExtractor {
     func extract(
         text: String,
         filename: String,
-        docId: String
+        docId: String,
+        pageRanges: [PageRange]? = nil
     ) async throws -> TranscriptSchema {
+        // Transcripts are time-indexed (not paginated). The typical
+        // .vtt/.srt path passes nil for pageRanges; the rarer
+        // timestamped-.txt-in-a-pdf path (transcript-style content
+        // rendered to PDF) flows pageRanges through to verifySpans so
+        // any quotes it emits still get pageNum derived.
         // 1. Deterministic segmentation — cut on timestamps.
         let rawSegments = Self.segmentByTimestamps(text: text)
 
@@ -111,7 +117,7 @@ struct TranscriptExtractor: IngestExtractor {
 
         let filenameStems = SyllabusPDFExtractor.filenameStems(from: filename)
         func verify<T: Codable>(_ fr: FieldResult<T>) -> FieldResult<T> {
-            let v = verifySpans(fr, sourceText: text, docId: docId)
+            let v = verifySpans(fr, sourceText: text, docId: docId, pageRanges: pageRanges)
             return SyllabusPDFExtractor.demoteIfFilenameQuote(v, filenameStems: filenameStems)
         }
 

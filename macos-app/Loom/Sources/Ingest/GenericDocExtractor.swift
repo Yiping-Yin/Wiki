@@ -45,8 +45,13 @@ struct GenericDocExtractor: IngestExtractor {
     func extract(
         text: String,
         filename: String,
-        docId: String
+        docId: String,
+        pageRanges: [PageRange]? = nil
     ) async throws -> GenericSchema {
+        // GenericDocExtractor is the un-typed fallback — it emits no
+        // SourceSpans, so pageRanges has no landing site. Accepted for
+        // protocol conformance; unused.
+        _ = pageRanges
         // Prompt copied verbatim from the pre-refactor
         // `IngestionView.summarise` (lines 550–581 of IngestionView.swift
         // as of 2026-04-24). Do not edit in Phase 0 — any change here

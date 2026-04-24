@@ -74,7 +74,8 @@ struct TextbookChapterExtractor: IngestExtractor {
     func extract(
         text: String,
         filename: String,
-        docId: String
+        docId: String,
+        pageRanges: [PageRange]? = nil
     ) async throws -> TextbookSchema {
         let prompt = Self.buildPrompt(sourceText: text)
         let schema = Self.jsonSchema
@@ -105,7 +106,8 @@ struct TextbookChapterExtractor: IngestExtractor {
             schema: raw,
             sourceText: text,
             docId: docId,
-            filenameStems: filenameStems
+            filenameStems: filenameStems,
+            pageRanges: pageRanges
         )
     }
 
@@ -138,10 +140,11 @@ struct TextbookChapterExtractor: IngestExtractor {
         schema: TextbookSchema,
         sourceText: String,
         docId: String,
-        filenameStems: [String]
+        filenameStems: [String],
+        pageRanges: [PageRange]? = nil
     ) -> TextbookSchema {
         func verify<T: Codable>(_ fr: FieldResult<T>) -> FieldResult<T> {
-            let verified = verifySpans(fr, sourceText: sourceText, docId: docId)
+            let verified = verifySpans(fr, sourceText: sourceText, docId: docId, pageRanges: pageRanges)
             return SyllabusPDFExtractor.demoteIfFilenameQuote(verified, filenameStems: filenameStems)
         }
         return TextbookSchema(

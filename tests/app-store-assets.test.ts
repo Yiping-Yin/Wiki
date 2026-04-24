@@ -154,3 +154,28 @@ test('mac app Info.plist carries the category that archive validation expects', 
   assert.match(project, /LSApplicationCategoryType: "public\.app-category\.education"/);
   assert.match(infoPlist, /<key>LSApplicationCategoryType<\/key>\s*<string>public\.app-category\.education<\/string>/);
 });
+
+test('mac app launch scene presents the main window by default', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'macos-app', 'Loom', 'Sources', 'LoomApp.swift'),
+    'utf8',
+  );
+
+  assert.match(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.doesNotMatch(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
+});
+
+test('first-run sheet is refreshed from current defaults instead of restored state', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'macos-app', 'Loom', 'Sources', 'ContentView.swift'),
+    'utf8',
+  );
+
+  assert.match(source, /@State private var firstRunSheetVisible = false/);
+  assert.match(source, /private func refreshFirstRunSheetVisibility\(\)/);
+  assert.match(source, /private var firstRunSheetBinding: Binding<Bool>/);
+  assert.match(source, /get:\s*\{\s*firstRunSheetVisible && AIProviderKind\.firstRunShouldPrompt\s*\}/);
+  assert.match(source, /\.sheet\(isPresented:\s*firstRunSheetBinding\)/);
+  assert.match(source, /\.onAppear\s*\{[\s\S]*refreshFirstRunSheetVisibility\(\)/);
+  assert.doesNotMatch(source, /@State private var firstRunSheetVisible = AIProviderKind\.firstRunShouldPrompt/);
+});

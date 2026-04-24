@@ -32,12 +32,12 @@ const FALLBACK_GROUP_LABEL = 'Ungrouped';
 const FALLBACK_GROUP_ORDER = 9999;
 const DEFAULT_MEMBERSHIP_ORDER = 9999;
 
-// Both manifests live under the user's content-root; the loom:// scheme
-// handler resolves `loom://content/…` to that root. Missing files → 404 →
+// The nav manifest lives under the user's content-root; shelf metadata is
+// user data served by Swift from `loom://native/…`. Missing files → 404 →
 // graceful empty payload (same as the server's behavior when the cache
 // hasn't been built yet).
 const NAV_URL = 'loom://content/knowledge/.cache/manifest/knowledge-nav.json';
-const GROUPS_URL = 'loom://content/knowledge/.cache/manifest/source-library-groups.json';
+const GROUPS_URL = 'loom://native/source-library-groups.json';
 
 export async function fetchKnowledgeNav(): Promise<KnowledgeNavPayload> {
   if (isNativeMode()) {

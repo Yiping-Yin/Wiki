@@ -13,6 +13,10 @@ function loadTsx(relativePath: string) {
   return { sourceText, sourceFile };
 }
 
+function readText(relativePath: string) {
+  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+}
+
 function visit(node: ts.Node, predicate: (node: ts.Node) => boolean): ts.Node | undefined {
   if (predicate(node)) return node;
   let found: ts.Node | undefined;
@@ -67,6 +71,9 @@ test('KnowledgeHomeClient forwards runtime groups and mutation handlers into Kno
 
   assert.ok(knowledgeHomeStatic, 'KnowledgeHomeStatic callsite not found');
   assert.ok(refreshCall, 'refreshKnowledgeNav call not found');
+  assert.match(sourceText, /import \{ mutateSourceLibrary \} from '\.\.\/\.\.\/lib\/source-library-client'/);
+  assert.match(sourceText, /const payload = await mutateSourceLibrary\(input, init\)/);
+  assert.match(sourceText, /if \(!isNativeMode\(\)\) return;/);
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'sourceLibraryGroups', sourceFile), 'currentGroups');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'isAddingGroup', sourceFile), 'isAddingGroup');
   assert.equal(jsxExpressionText(knowledgeHomeStatic, 'newGroupLabel', sourceFile), 'newGroupLabel');
@@ -141,6 +148,7 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   const createGroupButton = buttons.find((element) => buttonText(element) === 'Create shelf');
   const renameGroupButton = buttons.find((element) => buttonText(element) === 'Relabel');
   const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Remove');
+  const hideCategoryButton = buttons.find((element) => buttonText(element) === 'Hide');
   const saveButton = buttons.find((element) => buttonText(element) === 'Save');
   const deleteNowButton = buttons.find((element) => buttonText(element) === 'Remove now');
   const cancelButtons = buttons.filter((element) => buttonText(element) === 'Cancel');
@@ -154,10 +162,14 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.ok(createGroupButton, 'Create shelf button not found');
   assert.ok(renameGroupButton, 'Relabel shelf button not found');
   assert.ok(deleteGroupButton, 'Remove shelf button not found');
+  assert.ok(hideCategoryButton, 'Hide category button not found');
   assert.ok(saveButton, 'Save button not found');
   assert.ok(deleteNowButton, 'Remove now button not found');
   assert.ok(cancelButtons.length >= 2, 'Cancel buttons not found');
   assert.ok(selectElement, 'Re-shelve select not found');
+  assert.match(sourceText, /title="Drag to another shelf, or use the Re-shelve menu\."/);
+  assert.match(sourceText, /title="Hide from shelves \(original files stay read-only\)"/);
+  assert.match(sourceText, /loom-source-sample__move[\s\S]*pointer-events:\s*auto;/);
 
   assert.equal(jsxExpressionText(addGroupButton.openingElement, 'onClick', sourceFile), 'onStartAddGroup');
   assert.equal(
@@ -235,4 +247,25 @@ test('source-library group management uses inline controls instead of browser pr
   ) as ts.JsxSelfClosingElement | undefined;
 
   assert.ok(inputElement, 'Inline group-management input not found');
+});
+
+test('native Loom app routes source-library shelf edits through a reply bridge', () => {
+  const sourceLibraryClient = readText('lib/source-library-client.ts');
+  const knowledgeNavClient = readText('lib/knowledge-nav-client.ts');
+  const contentView = readText('macos-app/Loom/Sources/ContentView.swift');
+  const bridge = readText('macos-app/Loom/Sources/SourceLibraryBridgeHandler.swift');
+  const scheme = readText('macos-app/Loom/Sources/LoomURLSchemeHandler.swift');
+
+  assert.match(sourceLibraryClient, /isNativeMode\(\)/);
+  assert.match(sourceLibraryClient, /loomSourceLibrary/);
+  assert.match(sourceLibraryClient, /bridgeRequestFor\(input, init\)/);
+  assert.match(sourceLibraryClient, /action: 'assignCategory'/);
+  assert.match(sourceLibraryClient, /action: 'hideCategory'/);
+  assert.match(knowledgeNavClient, /loom:\/\/native\/source-library-groups\.json/);
+  assert.match(contentView, /SourceLibraryBridgeHandler\.name/);
+  assert.match(bridge, /WKScriptMessageHandlerWithReply/);
+  assert.match(bridge, /SourceLibraryNativeStore\.mutate/);
+  assert.match(bridge, /metadataWriteURLs\(\) -> \[URL\]\s*\{\s*\[userDataMetadataURL\(\)\]\s*\}/);
+  assert.match(scheme, /case sourceLibraryGroups/);
+  assert.match(scheme, /case "source-library-groups\.json"/);
 });

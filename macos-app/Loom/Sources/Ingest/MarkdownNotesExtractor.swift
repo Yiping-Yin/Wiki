@@ -64,8 +64,12 @@ struct MarkdownNotesExtractor: IngestExtractor {
     func extract(
         text: String,
         filename: String,
-        docId: String
+        docId: String,
+        pageRanges: [PageRange]? = nil
     ) async throws -> MarkdownNotesSchema {
+        // Markdown notes are non-paginated by construction — pageRanges
+        // never arrives here in practice. Accepted for protocol conformance.
+        _ = pageRanges
         // No AI call. All deterministic.
         let headings = Self.extractHeadings(from: text)
         let title = Self.deriveTitle(from: headings, filename: filename)

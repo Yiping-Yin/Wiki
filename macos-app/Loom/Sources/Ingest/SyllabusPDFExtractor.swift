@@ -46,6 +46,19 @@ struct SyllabusPDFExtractor: IngestExtractor {
         "guide",
     ]
 
+    /// Body-of-document phrases we sniff when the filename alone isn't
+    /// diagnostic (e.g. UNSW's `CO_MATH1241_…pdf` — "CO_" prefix hides
+    /// the intent). Checked against the first ~500 chars of `sample`.
+    static let syllabusBodyPhrases: [String] = [
+        "course outline",
+        "course overview",
+        "course handbook",
+        "course information",
+        "syllabus",
+        "assessment handbook",
+        "assessment guide",
+    ]
+
     static func match(
         filename: String,
         parentPath: String,
@@ -60,8 +73,20 @@ struct SyllabusPDFExtractor: IngestExtractor {
         let lower = filename.lowercased()
         for keyword in syllabusKeywords {
             if lower.range(of: keyword) != nil {
-                // Anchored hit — confident this is the right extractor.
+                // Anchored hit on filename — confident this is the right extractor.
                 return 0.9
+            }
+        }
+
+        // Fallback — body sniff on the first ~500 chars. Catches UNSW's
+        // `CO_*.pdf` Course Outline exports where the filename is a
+        // cryptic abbreviation but the body opens with "Course Outline".
+        // Lower score (0.75) than a filename hit since body keywords can
+        // appear in passing mentions; still above the 0.7 registry gate.
+        let head = String(sample.prefix(500)).lowercased()
+        for phrase in syllabusBodyPhrases {
+            if head.range(of: phrase) != nil {
+                return 0.75
             }
         }
         return 0.0
@@ -70,7 +95,8 @@ struct SyllabusPDFExtractor: IngestExtractor {
     func extract(
         text: String,
         filename: String,
-        docId: String
+        docId: String,
+        pageRanges: [PageRange]? = nil
     ) async throws -> SyllabusSchema {
         // 1. Build the prompt — filename intentionally absent (plan §3.7 A).
         let prompt = Self.buildPrompt(sourceText: text)
@@ -101,13 +127,15 @@ struct SyllabusPDFExtractor: IngestExtractor {
 
         // 4. Verify every quote against the source text (plan §3.6)
         //    + 5. apply filename-stem auto-demote (§3.7 Mitigation A
-        //    defense-in-depth).
+        //    defense-in-depth). pageRanges (when supplied by PDF
+        //    sources) flows through to populate `SourceSpan.pageNum`.
         let filenameStems = Self.filenameStems(from: filename)
         return Self.verifyAndHarden(
             schema: raw,
             sourceText: text,
             docId: docId,
-            filenameStems: filenameStems
+            filenameStems: filenameStems,
+            pageRanges: pageRanges
         )
     }
 
@@ -142,14 +170,17 @@ struct SyllabusPDFExtractor: IngestExtractor {
 
     /// Walk the decoded schema, running `verifySpans` on every
     /// `FieldResult` and applying the filename-stem auto-demote rule.
+    /// `pageRanges`, when supplied, flows into every `verifySpans` call
+    /// so `SourceSpan.pageNum` gets populated post-hoc for PDF sources.
     static func verifyAndHarden(
         schema: SyllabusSchema,
         sourceText: String,
         docId: String,
-        filenameStems: [String]
+        filenameStems: [String],
+        pageRanges: [PageRange]? = nil
     ) -> SyllabusSchema {
         func verify<T: Codable>(_ fr: FieldResult<T>) -> FieldResult<T> {
-            let verified = verifySpans(fr, sourceText: sourceText, docId: docId)
+            let verified = verifySpans(fr, sourceText: sourceText, docId: docId, pageRanges: pageRanges)
             return demoteIfFilenameQuote(verified, filenameStems: filenameStems)
         }
 
@@ -256,17 +287,21 @@ struct SyllabusPDFExtractor: IngestExtractor {
 
         // Filter: only keep tokens that are distinctive enough to
         // indicate a filename leak rather than generic English.
+        //
+        // Bug fix 2026-04-25: previously a length-≥8 fallback kept any
+        // long English word (e.g. "Assessment" from
+        // "INFS3822 Assessment Guide T1 2026.pdf"). Body of a syllabus
+        // legitimately contains "Assessment 1: …" — demoting it was a
+        // false positive of the §3.7 filename-leak mitigation, causing
+        // 10 honest fields to render as `verified:false` in the UI.
+        // We now rely solely on the mixed-letter-digit rule, which
+        // catches every observed red-team token (FINS3640, INFS3822,
+        // MATH1241, COMM3030) while excluding plain English words.
         return tokens.filter { token in
             guard token.count >= 4 else { return false }
-            // Strings like "2025" would demote every legitimate year
-            // quote — only keep tokens that mix letters and digits, or
-            // are long enough (>=8) that collision with natural English
-            // is unlikely.
             let hasLetter = token.rangeOfCharacter(from: .letters) != nil
             let hasDigit = token.rangeOfCharacter(from: .decimalDigits) != nil
-            if hasLetter && hasDigit { return true }
-            if token.count >= 8 { return true }
-            return false
+            return hasLetter && hasDigit
         }
     }
 

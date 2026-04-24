@@ -29,6 +29,13 @@ protocol IngestExtractor {
     /// a migration.
     static var extractorId: String { get }
 
+    /// Human-readable description of what this extractor will try to
+    /// pull out of a file. Surfaced in the Phase 5 opt-in gate so the
+    /// user sees the field list BEFORE the AI call runs. Default
+    /// implementation (see protocol extension below) keys off
+    /// `extractorId`; concrete extractors can override for specificity.
+    static var schemaDescription: SchemaDescription { get }
+
     /// Confidence in 0.0 — 1.0 that this extractor is the right choice
     /// for the given file. Dispatch picks the highest-scoring extractor.
     /// `GenericDocExtractor` returns a constant baseline so any typed
@@ -49,11 +56,143 @@ protocol IngestExtractor {
     /// is the caller-supplied identifier that will be embedded in every
     /// `SourceSpan` so downstream click-back-to-source works without a
     /// separate lookup.
+    ///
+    /// `pageRanges` is optional metadata emitted by `PDFExtraction` for
+    /// PDF sources — every `SourceSpan` emitted by this extractor that
+    /// successfully verifies will carry a derived `pageNum` when
+    /// ranges are supplied. Non-PDF extractors ignore it (see protocol
+    /// extension below for the default shim).
+    func extract(
+        text: String,
+        filename: String,
+        docId: String,
+        pageRanges: [PageRange]?
+    ) async throws -> Schema
+}
+
+// MARK: - SchemaDescription
+//
+// Phase 5 (plan §4 Phase 5): after text extraction the ingest UI shows
+// the user which extractor matched and which fields it plans to pull
+// BEFORE the AI call runs. `SchemaDescription` is the tiny view-model
+// that carries this metadata. Intentionally minimal — just a display
+// title (shown on a badge), a one-line blurb, and a list of field
+// labels. No field types, no schema JSON — this is a copy surface, not
+// a programmatic contract.
+
+/// Copy surface for the Phase 5 opt-in gate. `title` is the extractor's
+/// human-facing name ("Syllabus"), `blurb` is a 1-line pitch, `fields`
+/// is a human-readable list of field labels the extractor will try to
+/// find (shown as a compact inline list under the Extract button).
+struct SchemaDescription {
+    let title: String
+    let blurb: String
+    let fields: [String]
+    /// `true` when the extractor runs AI. `false` for deterministic
+    /// extractors (MarkdownNotes, Spreadsheet) so the gate can say
+    /// "Read as markdown" and auto-run without the Extract button.
+    let callsAI: Bool
+}
+
+extension IngestExtractor {
+    /// Default schema description keyed off `extractorId`. Every
+    /// concrete extractor gets a sensible gate-surface copy without
+    /// having to re-declare its schema twice (once in Codable, once in
+    /// SchemaDescription). Concrete extractors CAN override if they
+    /// want extractor-specific copy.
+    static var schemaDescription: SchemaDescription {
+        SchemaDescription.default(forExtractorId: extractorId)
+    }
+
+    /// Back-compat shim: callers that don't carry page ranges (legacy
+    /// test sites, non-PDF extractors building throwaway calls) can
+    /// invoke the 3-arg form and get a nil `pageRanges` automatically.
+    /// Concrete extractors implement the 4-arg form directly.
     func extract(
         text: String,
         filename: String,
         docId: String
-    ) async throws -> Schema
+    ) async throws -> Schema {
+        try await extract(text: text, filename: filename, docId: docId, pageRanges: nil)
+    }
+}
+
+extension SchemaDescription {
+    /// Canonical copy per extractorId. Keep in sync with the concrete
+    /// schemas under `Sources/Ingest/*Schema.swift`. Field labels are
+    /// user-facing — literal, no metaphor names (memory:
+    /// `feedback_no_metaphor_feature_names`).
+    static func `default`(forExtractorId id: String) -> SchemaDescription {
+        switch id {
+        case "syllabus-pdf":
+            return SchemaDescription(
+                title: "Syllabus",
+                blurb: "Read as a university course syllabus.",
+                fields: [
+                    "course code", "course name", "term", "institution",
+                    "teachers", "office hours", "textbook",
+                    "assessment items", "learning objectives", "week topics",
+                ],
+                callsAI: true
+            )
+        case "textbook-chapter":
+            return SchemaDescription(
+                title: "Textbook chapter",
+                blurb: "Read as a textbook chapter / long-form reference.",
+                fields: [
+                    "chapter title", "chapter number",
+                    "learning objectives", "key terms",
+                    "section headings", "summary",
+                ],
+                callsAI: true
+            )
+        case "slide-deck":
+            return SchemaDescription(
+                title: "Slide deck",
+                blurb: "Read as a slide deck.",
+                fields: ["deck title", "author", "sections", "topics"],
+                callsAI: true
+            )
+        case "transcript":
+            return SchemaDescription(
+                title: "Transcript",
+                blurb: "Read as a timestamped transcript.",
+                fields: ["title", "speakers", "segments", "key quotes"],
+                callsAI: true
+            )
+        case "markdown-notes":
+            return SchemaDescription(
+                title: "Markdown notes",
+                blurb: "Read your own notes. No AI — anchors only.",
+                fields: [
+                    "title", "headings", "word count",
+                    "contains code", "contains math", "preview",
+                ],
+                callsAI: false
+            )
+        case "spreadsheet":
+            return SchemaDescription(
+                title: "Spreadsheet",
+                blurb: "Read as tabular data. No AI — deterministic parse.",
+                fields: ["sheets", "row count", "column names", "preview"],
+                callsAI: false
+            )
+        case "generic-doc":
+            return SchemaDescription(
+                title: "Document",
+                blurb: "Summarise freely — no typed schema matched.",
+                fields: ["2-3 sentence summary", "3-5 key points"],
+                callsAI: true
+            )
+        default:
+            return SchemaDescription(
+                title: id,
+                blurb: "Run the \(id) extractor.",
+                fields: [],
+                callsAI: true
+            )
+        }
+    }
 }
 
 // MARK: - FieldResult + SourceSpan
@@ -212,10 +351,17 @@ struct SourceSpan: Codable {
 ///
 /// `.notFound` results pass through untouched — there's nothing to
 /// verify. An empty-span `.found` is left as-is on the same principle.
+///
+/// When `pageRanges` is provided (PDF sources), after locating the
+/// quote's real span, `pageForSpan` populates
+/// `SourceSpan.pageNum` so UI can render "p. N" next to every quote
+/// chip. Non-PDF sources pass nil and `pageNum` stays nil — fully
+/// backwards compatible with the Phase 1 contract.
 func verifySpans<T>(
     _ result: FieldResult<T>,
     sourceText: String,
-    docId: String
+    docId: String,
+    pageRanges: [PageRange]? = nil
 ) -> FieldResult<T> {
     guard case .found(let value, let confidence, let spans) = result else {
         return result
@@ -239,9 +385,18 @@ func verifySpans<T>(
                 verifyReason: "quote_appears_non_contiguous"
             ))
         } else if let range = locate(quote: span.quote, in: sourceText) {
+            // Derive pageNum from the located offset. Prefer the new
+            // lookup over any pageNum the AI might have echoed in its
+            // response — the AI is unreliable on offsets (plan §3.6).
+            let derivedPage: Int?
+            if let ranges = pageRanges, !ranges.isEmpty {
+                derivedPage = pageForSpan(range, in: ranges)
+            } else {
+                derivedPage = span.pageNum
+            }
             rebuilt.append(SourceSpan(
                 docId: docId,
-                pageNum: span.pageNum,
+                pageNum: derivedPage,
                 charStart: range.lowerBound,
                 charEnd: range.upperBound,
                 quote: span.quote,

@@ -48,7 +48,7 @@ struct ContentView: View {
         }
     }
 
-    @State private var firstRunSheetVisible = AIProviderKind.firstRunShouldPrompt
+    @State private var firstRunSheetVisible = false
     /// Presentation state for the "Hold a Question…" sheet (⌘⇧P or the
     /// matching Shuttle command). Observes `.loomShowHoldQuestionDialog`
     /// on the detail column so the sheet appears over the current main
@@ -109,6 +109,20 @@ struct ContentView: View {
             name: .loomSetWebSidebarMode,
             object: nil,
             userInfo: ["mode": "hidden"]
+        )
+    }
+
+    private func refreshFirstRunSheetVisibility() {
+        let shouldPrompt = AIProviderKind.firstRunShouldPrompt
+        if firstRunSheetVisible != shouldPrompt {
+            firstRunSheetVisible = shouldPrompt
+        }
+    }
+
+    private var firstRunSheetBinding: Binding<Bool> {
+        Binding(
+            get: { firstRunSheetVisible && AIProviderKind.firstRunShouldPrompt },
+            set: { firstRunSheetVisible = $0 }
         )
     }
 
@@ -351,8 +365,12 @@ struct ContentView: View {
         .background(WindowConfigurator(title: windowTitle, isNight: usesDarkChrome))
         .onAppear {
             showDebugHUD = false
+            refreshFirstRunSheetVisibility()
         }
-        .sheet(isPresented: $firstRunSheetVisible) {
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            refreshFirstRunSheetVisibility()
+        }
+        .sheet(isPresented: firstRunSheetBinding) {
             FirstRunProviderSheet(isPresented: $firstRunSheetVisible)
         }
         .sheet(isPresented: $holdQuestionSheetVisible) {
@@ -1155,6 +1173,17 @@ struct LoomWebView: NSViewRepresentable {
         userContentController.add(navBridge, name: NavigationBridgeHandler.name)
         context.coordinator.navBridge = navBridge
 
+        // Source-library shelf mutations. Browser/dev mode uses
+        // `/api/source-library/*`; static native mode has no API server,
+        // so `/sources` posts create/rename/delete/re-shelve actions here.
+        let sourceLibraryBridge = SourceLibraryBridgeHandler()
+        userContentController.addScriptMessageHandler(
+            sourceLibraryBridge,
+            contentWorld: .page,
+            name: SourceLibraryBridgeHandler.name
+        )
+        context.coordinator.sourceLibraryBridge = sourceLibraryBridge
+
         // Phase 5: native NLEmbedding replaces /api/embed's Ollama dep.
         // `window.webkit.messageHandlers.loomEmbed.postMessage({text})`
         // resolves with `{ vector, dims, model }`.
@@ -1453,6 +1482,7 @@ struct LoomWebView: NSViewRepresentable {
         var aiStreamBridge: AIStreamBridgeHandler?
         var migrationBridge: MigrationBridgeHandler?
         var navBridge: NavigationBridgeHandler?
+        var sourceLibraryBridge: SourceLibraryBridgeHandler?
         var embedBridge: EmbeddingBridgeHandler?
         var lastRequestedURL: URL?
         var fallbackURL: URL?

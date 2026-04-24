@@ -45,19 +45,14 @@ import PDFKit
 /// offset windows; `originalText` is the pre-clean concatenation,
 /// retained for debugging and for downstream diffing if the cleaning
 /// pass ever needs to be bypassed.
+///
+/// `PageRange` is defined in `PageRange.swift` — the same type flows
+/// through `verifySpans` so `SourceSpan.pageNum` can be populated
+/// post-hoc (2026-04-24 tech-debt fix; plan §10 open question 5).
 public struct ExtractedPDF {
     public let text: String
     public let pageRanges: [PageRange]
     public let originalText: String
-
-    public struct PageRange {
-        /// 1-indexed page number, matching the Node and Python sides.
-        public let page: Int
-        /// Inclusive UTF-16 char start in the cleaned `text`.
-        public let start: Int
-        /// Exclusive UTF-16 char end in the cleaned `text`.
-        public let end: Int
-    }
 }
 
 public enum PDFExtractionError: Error {
@@ -123,7 +118,7 @@ public enum PDFExtraction {
         // clip each page's projected end to the actual cleaned length.
         //
         // This is a best-effort map — see file-level docs.
-        var ranges: [ExtractedPDF.PageRange] = []
+        var ranges: [PageRange] = []
         ranges.reserveCapacity(pageTexts.count)
         var cursor = 0
         let cleanedUTF16Len = cleaned.utf16.count
@@ -137,7 +132,7 @@ public enum PDFExtraction {
             // unit to `cursor` per separator to keep pages from
             // overlapping in the output range.
             let end = min(start + length, cleanedUTF16Len)
-            ranges.append(ExtractedPDF.PageRange(page: i + 1, start: start, end: end))
+            ranges.append(PageRange(page: i + 1, charStart: start, charEnd: end))
             cursor = end + 1
         }
 

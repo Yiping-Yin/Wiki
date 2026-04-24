@@ -285,17 +285,46 @@ When list has 1 element, renders as single-span (common case). When >1, UI shows
 - New red-team fixtures: `slide-deck-filename-leak`, `textbook-filename-leak` — both demote via shared `demoteIfFilenameQuote`
 - Known stub points: PPTX unzip (Phase 4+), XLSX live fixture (not yet tested end-to-end), Transcript 30-segment AI cap (may need chunking for long recordings)
 
-### Phase 4 — UI surface (2 days)
-- Schema-aware renderer replaces freeform summary display
-- `.found` → labeled value with click-to-quote
-- `.notFound` → muted "not found · tried: …"
-- Unverified (verified:false) → warning badge
-- Click on field → scroll source pane to span + highlight
+### Phase 4 — UI surface (2 days) — ✅ SHIPPED 2026-04-24
+- 9 new files at `Sources/Views/Ingest/` (~2150 lines):
+  - `FieldResultRow.swift` — core primitive, 4-state rendering (verified / unverified rose badge / low-confidence demoted / notFound expandable `tried:` list)
+  - 6 per-schema views (Syllabus / Transcript / Textbook / SlideDeck / MarkdownNotes / Spreadsheet)
+  - `IngestExtractorResultView.swift` — root dispatcher via Schema enum
+  - `IngestViewSupport.swift` — shared layout / section header / hairline
+- Zero hardcoded hex — all `LoomTokens`. Serif smallCaps eyebrows, italic display titles, oldstyle numerals per Vellum rules
+- `onQuoteTap(SourceSpan)` callback contract — Phase 5 provides coordinator
 
-### Phase 5 — Opt-in AI gate (1 day)
-- After text extraction, show preview + extractor's planned field list
-- "Extract" button triggers AI call (not auto-run)
-- Respect existing `AIProviderKind.disabled`
+### Phase 5 — Opt-in AI gate (1 day) — ✅ SHIPPED 2026-04-24
+- 4-state machine: `idle / textExtracted / extracting / extracted / failed`
+- IngestionView: 616 → 1185 lines
+- Registry dispatch REAL (not just consulted): `bestMatchWithScore`, typed extractor wins if score ≥0.7, Generic fallback
+- **Extract button** gates AI call (opt-in default per `feedback_loom_never_do#2`)
+- `AIProviderKind.disabled` → button disabled with tooltip + inline caption
+- Deterministic extractors (markdown-notes, spreadsheet, `callsAI=false`) → button reads "Read" not "Extract", no provider check
+- `SchemaDescription` added to `IngestExtractor` protocol — carries `title`, `blurb`, declared `fields[]`, `callsAI` for pre-extract UI preview
+- Auto-run opt-out: `@AppStorage("loom.ingest.autoRunExtraction")` (default `false`) in AIProviderSettingsView
+- `SourcePaneScrollCoordinator` wires `onQuoteTap` → NSTextView scroll to range
+- Persistence: `kind = "ingestion-<extractorId>"`, schema JSON packed into `eventsJSON` (LoomDataModel unchanged)
+- History surface renders typed extractions with extractor badge alongside generic summaries
+
+### Final state (post-refactor)
+- Build: `xcodebuild clean build` + `build-for-testing` both ✅, zero warnings beyond pre-existing `AIStreamBridgeHandler.swift:92`
+- Gate: `phase1-gate.py --skip-ai` still PASS (96/96 found, 36/42 notFound, 5/5 red-team reject) — zero regression from Phase 4+5
+- 7 extractor lanes live: Syllabus / Transcript / Textbook / SlideDeck / Markdown / Spreadsheet / Generic
+- UI: schema-aware rendering with click-to-quote + verified/unverified/notFound semantics visible to user
+
+### Phase 6 — Tech-debt cleanup (0.5 day) — ✅ SHIPPED 2026-04-25
+Parallel agent pass on 2 highest-value debts:
+- **PPTX unzip** (SlideDeckExtractor 244→415 lines): `parsePPTXText` filled via ZIPFoundation archive read + `XMLParser` `<a:t>` collector. Numeric slide sort (`slide2.xml` before `slide10.xml`). Speaker notes as `=== NOTES ===` block. Silent skip on malformed slide. 3 PPTX fixtures (minimal / numeric-ordering / malformed) + Python stdlib-only generator.
+- **XLSX live test**: real `minimal.xlsx` fixture + 3 tests (sheet metadata, column names, preview rows).
+- **SourceSpan pageNum** (new `PageRange.swift` + `pageForCharOffset` binary-search helper): wired through PDFExtraction → IngestionView.ExtractedText → ExtractorRegistration.run → extractor protocol (optional `pageRanges`, default impl ignores) → verifyAndHarden → verifySpans → SourceSpan.pageNum populated post-hoc. FieldResultRow UI shows `p. N` chip next to quote opening glyph. Cross-page drift tolerance ±5 chars tested.
+- **Bonus**: fixed pre-existing `Decodable + CodingKeys` synthesis bug in `SourceLibraryBridgeHandler.swift` (unrelated but unblocked Xcode 16 build).
+- Gate regression: unchanged PASS.
+
+### Remaining (low priority)
+- Transcript 30-segment AI cap chunking (only matters for >30 segment transcripts; rare in current corpus)
+- Real-machine drag-drop test (GUI-only, requires human)
+- Git commit of the full Phase 0-6 body (~6000 LOC, uncommitted)
 
 **Total: ~10-12 engineering days across 5 phases.**
 

@@ -732,8 +732,9 @@ export function KnowledgeHomeStatic({
           position: relative;
           display: flex;
           align-items: center;
+          gap: 8px;
           justify-content: flex-end;
-          min-width: 92px;
+          min-width: 170px;
           padding: 0.7rem 0.7rem 0.7rem 0;
         }
 
@@ -777,25 +778,24 @@ export function KnowledgeHomeStatic({
         }
 
         .loom-source-sample__move {
-          position: absolute;
-          right: 0.62rem;
-          bottom: 0.35rem;
-          max-width: 9.5rem;
-          border: 0;
-          background: transparent;
+          position: static;
+          max-width: 10.5rem;
+          border: 0.5px solid color-mix(in srgb, var(--material-brass) 26%, transparent);
+          border-radius: 999px;
+          background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
           color: var(--muted);
           font-family: var(--serif);
           font-size: 0.72rem;
           font-style: italic;
-          opacity: 0;
-          pointer-events: none;
+          padding: 0.24rem 0.46rem;
+          opacity: 0.82;
+          pointer-events: auto;
           transition: opacity var(--dur-2) var(--ease);
         }
 
         .loom-source-sample-card:hover .loom-source-sample__move,
         .loom-source-sample-card:focus-within .loom-source-sample__move {
-          opacity: 0.92;
-          pointer-events: auto;
+          opacity: 1;
         }
 
         .loom-new-shelf,
@@ -946,6 +946,7 @@ function CollectionCard({
     <div
       className="loom-source-sample-card loom-atlas-card"
       draggable
+      title="Drag to another shelf, or use the Re-shelve menu."
       onDragStart={(e) => {
         e.dataTransfer.setData('application/x-loom-category-slug', item.slug);
         e.dataTransfer.setData('text/plain', item.label);
@@ -978,14 +979,14 @@ function CollectionCard({
       <div className="loom-source-sample__tools">
         {confirmingHide ? (
           <div className="loom-source-sample__confirm">
-            <span>Remove from Sources?</span>
+            <span>Hide from shelves?</span>
             <button
               type="button"
               onClick={() => onConfirmHideCategory(item.slug)}
               style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
               aria-busy={busy}
             >
-              Remove
+              Hide
             </button>
             <button type="button" onClick={onCancelHideCategory} style={groupActionStyle}>
               Cancel
@@ -996,8 +997,8 @@ function CollectionCard({
             type="button"
             className="loom-source-sample__remove"
             onClick={() => onRequestHideCategory(item.slug)}
-            aria-label={`Remove ${item.label} from Sources`}
-            title="Remove from Sources (original file stays)"
+            aria-label={`Hide ${item.label} from shelves`}
+            title="Hide from shelves (original files stay read-only)"
             aria-busy={busy}
           >
             x

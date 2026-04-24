@@ -207,6 +207,8 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
                 payload = LoomWebView.Coordinator.buildWeavesPayload()
             case .recents:
                 payload = LoomWebView.Coordinator.buildRecentRecordsPayload()
+            case .sourceLibraryGroups:
+                payload = try? SourceLibraryNativeStore.metadataPayload()
             }
 
             guard let payload else {
@@ -249,6 +251,7 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
         case soan
         case weaves
         case recents
+        case sourceLibraryGroups
     }
 
     private struct NativeTarget {
@@ -271,6 +274,8 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
                 return NativeTarget(kind: .weaves, id: "")
             case "recents.json":
                 return NativeTarget(kind: .recents, id: "")
+            case "source-library-groups.json":
+                return NativeTarget(kind: .sourceLibraryGroups, id: "")
             default:
                 return nil
             }

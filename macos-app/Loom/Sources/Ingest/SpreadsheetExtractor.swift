@@ -58,8 +58,12 @@ struct SpreadsheetExtractor: IngestExtractor {
     func extract(
         text: String,
         filename: String,
-        docId: String
+        docId: String,
+        pageRanges: [PageRange]? = nil
     ) async throws -> SpreadsheetSchema {
+        // Spreadsheets use sheet/row semantics, not page semantics —
+        // pageRanges is irrelevant here. Accepted for protocol conformance.
+        _ = pageRanges
         let ext = (filename as NSString).pathExtension.lowercased()
         let stem = (filename as NSString).deletingPathExtension
 
