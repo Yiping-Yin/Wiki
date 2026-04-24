@@ -71,15 +71,21 @@ test('package script skips the retired runtime archive when no runtime is staged
     fs.writeFileSync(path.join(appPath, 'Contents', 'Resources', 'web', 'index.html'), '<!doctype html>');
 
     const outputRoot = path.join(tempRoot, 'output');
+    const archiveCalls: Array<{ sourcePath: string; archivePath: string }> = [];
     const result = packageLoomApp({
       appPath,
       runtimeRoot: null,
       outputRoot,
       contentRoot: tempRoot,
+      archiveFile: (sourcePath, archivePath) => {
+        archiveCalls.push({ sourcePath, archivePath });
+        fs.writeFileSync(archivePath, `archive:${sourcePath}`);
+      },
     });
 
     assert.equal(result.appArchivePath, path.join(outputRoot, 'Loom-replacement.zip'));
     assert.equal(result.runtimeArchivePath, null);
+    assert.deepEqual(archiveCalls, [{ sourcePath: appPath, archivePath: result.appArchivePath }]);
     assert.equal(fs.existsSync(result.appArchivePath), true);
     assert.equal(fs.existsSync(path.join(outputRoot, 'Loom-runtime.zip')), false);
 

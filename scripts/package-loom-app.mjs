@@ -25,6 +25,7 @@ import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
  * @property {string | null} [runtimeRoot]
  * @property {string} [outputRoot]
  * @property {string} contentRoot
+ * @property {(sourcePath: string, archivePath: string) => void} [archiveFile]
  */
 
 const home = homedir();
@@ -39,6 +40,12 @@ const outputRoot = resolveOutputRoot();
 
 export function createDittoArchiveArgs(sourcePath, archivePath) {
   return ['-c', '-k', '--norsrc', '--noextattr', '--keepParent', sourcePath, archivePath];
+}
+
+function archiveWithDitto(sourcePath, archivePath) {
+  execFileSync('ditto', createDittoArchiveArgs(sourcePath, archivePath), {
+    stdio: 'inherit',
+  });
 }
 
 async function listDirSafe(dir) {
@@ -174,7 +181,13 @@ export async function stageRuntimeForPackaging({ repoRoot, homeOverride } = {}) 
 /**
  * @param {PackageLoomAppOptions} options
  */
-export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = outputRoot, contentRoot } = {}) {
+export function packageLoomApp({
+  appPath,
+  runtimeRoot,
+  outputRoot: outputDir = outputRoot,
+  contentRoot,
+  archiveFile = archiveWithDitto,
+} = {}) {
   const appArchivePath = path.join(outputDir, 'Loom-replacement.zip');
   const runtimeArchivePath = path.join(outputDir, 'Loom-runtime.zip');
 
@@ -182,17 +195,13 @@ export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = o
   rmSync(appArchivePath, { force: true });
   rmSync(runtimeArchivePath, { force: true });
 
-  execFileSync('ditto', createDittoArchiveArgs(appPath, appArchivePath), {
-    stdio: 'inherit',
-  });
+  archiveFile(appPath, appArchivePath);
 
   let packagedRuntimeArchivePath = null;
   if (runtimeRoot) {
     const { libraryRoot, tempRoot } = createRuntimePackagePayload({ runtimeRoot, contentRoot, outputDir });
     try {
-      execFileSync('ditto', createDittoArchiveArgs(libraryRoot, runtimeArchivePath), {
-        stdio: 'inherit',
-      });
+      archiveFile(libraryRoot, runtimeArchivePath);
       packagedRuntimeArchivePath = runtimeArchivePath;
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
