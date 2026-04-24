@@ -135,24 +135,28 @@ struct ContentView: View {
     }
 
     /// Whether the current active surface + page forces ink-wash night.
-    /// Only `/weaves` is on this list — it's the sole webview route with
-    /// a hardcoded `#13110D` bg in `.loom-weaves` CSS that ignores the
-    /// system color scheme. `/constellation`, `/branching`,
-    /// `/palimpsest`, and `/atelier` all use `var(--bg)` so they adapt
-    /// with system mode and don't need a forced night chrome — paper
-    /// chrome in light mode, dark chrome in dark mode via the
-    /// LoomTokens.paper dynamic NSColor, both already correct without
-    /// an override. `/evening` is a native window with `.hiddenTitleBar`
-    /// so it has no chrome to tint anyway.
+    /// Source/archive routes are visually night-forward even when the
+    /// global theme has not caught up yet; the native sidebar must follow
+    /// the content background instead of staying Aqua-light beside it.
     private var isNightChrome: Bool {
         guard activeSurface == .web else { return false }
         return Self.forcedNightChromePaths.contains { webState.currentURL.contains($0) }
     }
 
-    private static let forcedNightChromePaths = ["/weaves"]
+    private static let forcedNightChromePaths = [
+        "/weaves",
+        "/sources",
+        "/knowledge/",
+        "/llm-wiki",
+        "/wiki/",
+    ]
 
     private var usesDarkChrome: Bool {
         sidebarColorScheme == .dark || isNightChrome
+    }
+
+    private var chromeColorScheme: ColorScheme {
+        usesDarkChrome ? .dark : sidebarColorScheme
     }
 
     private var sidebarColorScheme: ColorScheme {
@@ -163,7 +167,7 @@ struct ContentView: View {
     }
 
     private var webThemeMode: String {
-        sidebarColorScheme == .dark ? "dark" : "light"
+        chromeColorScheme == .dark ? "dark" : "light"
     }
 
 
@@ -176,13 +180,13 @@ struct ContentView: View {
                 // reads as the window's center of gravity instead of
                 // sharing it with the nav column.
                 .navigationSplitViewColumnWidth(min: 180, ideal: 208, max: 300)
-                // Scoped colorScheme — flip sidebar to dark ONLY when
-                // on /weaves so `.primary`, `.secondary`, `.tertiary`,
-                // and our own ink tokens render in candle on night.
-                // Doesn't cascade to webview / detail / other scenes,
-                // so the sticky-dark regression from `.preferredColorScheme`
+                // Scoped colorScheme — flip sidebar to dark when the
+                // resolved chrome is night so `.primary`, `.secondary`,
+                // `.tertiary`, and our own ink tokens render in candle.
+                // Doesn't cascade to other SwiftUI scenes, so the
+                // sticky-dark regression from `.preferredColorScheme`
                 // (#139) can't happen.
-                .environment(\.colorScheme, sidebarColorScheme)
+                .environment(\.colorScheme, chromeColorScheme)
         } detail: {
             surfaceContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

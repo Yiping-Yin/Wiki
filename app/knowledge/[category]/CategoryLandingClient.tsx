@@ -134,11 +134,8 @@ function slugForPathPart(value: string) {
     .replace(/^-+|-+$/g, '');
 }
 
-function folderPathFromDoc(doc: CategoryDocCard, category: KnowledgeCategory) {
-  const explicit = (doc.subcategory ?? '').trim();
-  if (explicit) return explicit;
-
-  const dirs = (doc.sourcePath ?? '')
+function folderPathFromSourcePath(sourcePath: string, category: KnowledgeCategory) {
+  const dirs = (sourcePath ?? '')
     .replace(/\\/g, '/')
     .split('/')
     .map((part) => part.trim())
@@ -159,6 +156,18 @@ function folderPathFromDoc(doc: CategoryDocCard, category: KnowledgeCategory) {
   }
 
   return folderParts.join(' / ');
+}
+
+function folderPathFromDoc(doc: CategoryDocCard, category: KnowledgeCategory) {
+  // The user picked a local folder. Mirror that structure first; only fall
+  // back to ingest's subcategory when an old manifest has no sourcePath.
+  const localFolder = folderPathFromSourcePath(doc.sourcePath, category).trim();
+  if (localFolder) return localFolder;
+
+  const explicit = (doc.subcategory ?? '').trim();
+  if (explicit) return explicit;
+
+  return '';
 }
 
 type DndContext = {

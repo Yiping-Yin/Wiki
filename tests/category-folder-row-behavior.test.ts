@@ -33,7 +33,10 @@ test('category folder tree mirrors local folders without expanding every file by
   assert.match(source, /Build an N-level tree that mirrors the source-folder structure/);
   assert.match(source, /files only appear after the matching\s+\/\/ local folder is opened/);
   assert.match(source, /sourcePath: string;/);
+  assert.match(source, /function folderPathFromSourcePath\(sourcePath: string, category: KnowledgeCategory\)/);
   assert.match(source, /function folderPathFromDoc\(doc: CategoryDocCard, category: KnowledgeCategory\)/);
+  assert.match(source, /const localFolder = folderPathFromSourcePath\(doc\.sourcePath, category\)\.trim\(\);/);
+  assert.match(source, /if \(localFolder\) return localFolder;/);
   assert.match(source, /const raw = folderPathFromDoc\(doc, category\)\.trim\(\);/);
   assert.match(source, /const isExpanded = \(node: FolderNode\) => \{/);
   assert.match(source, /if \(node\.fullPath in expandOverrides\) return expandOverrides\[node\.fullPath\];/);

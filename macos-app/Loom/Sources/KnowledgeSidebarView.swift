@@ -766,18 +766,26 @@ struct KnowledgeSidebarView: View {
     }
 
     private func sourceFolderPath(for doc: Doc, in cat: UserCategory) -> String {
+        if let sourcePath = doc.sourcePath?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !sourcePath.isEmpty {
+            let localPath = sourceFolderPath(fromSourcePath: sourcePath, in: cat)
+            if !localPath.isEmpty { return localPath }
+        }
+
         if let subcategory = doc.subcategory?.trimmingCharacters(in: .whitespacesAndNewlines),
            !subcategory.isEmpty {
             return subcategory
         }
-        guard let sourcePath = doc.sourcePath?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !sourcePath.isEmpty else {
-            return ""
-        }
+
+        return ""
+    }
+
+    private func sourceFolderPath(fromSourcePath sourcePath: String, in cat: UserCategory) -> String {
         var parts = sourcePath
             .replacingOccurrences(of: "\\", with: "/")
             .split(separator: "/")
-            .map(String.init)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
         guard parts.count > 1 else { return "" }
         parts.removeLast()
         guard !parts.isEmpty else { return "" }

@@ -42,6 +42,8 @@ test('native source sidebar renders folder trees instead of a flat document dump
   assert.match(source, /let folders = sourceFolderTree\(for: cat, docs: docs\)/);
   assert.match(source, /ForEach\(folders\) \{ folder in/);
   assert.match(source, /private func sourceFolderPath\(for doc: Doc, in cat: UserCategory\) -> String/);
+  assert.match(source, /sourceFolderPath\(fromSourcePath: sourcePath, in: cat\)/);
+  assert.match(source, /private func sourceFolderPath\(fromSourcePath sourcePath: String, in cat: UserCategory\) -> String/);
   assert.match(source, /fields\["subcategory"\] as\? String/);
   assert.match(source, /fields\["sourcePath"\] as\? String/);
   assert.doesNotMatch(source, /ForEach\(docs\) \{ doc in[\s\S]*Text\(doc\.title\)[\s\S]*\.buttonStyle\(\.plain\)[\s\S]*\} label: \{/);

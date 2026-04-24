@@ -59,3 +59,17 @@ test('collection route reads manifests directly from loom://content and not mirr
   assert.doesNotMatch(collectionClient, /readLoomMirror|subscribeLoomMirror|loom\.knowledge\.nav\.v1|loom\.knowledge\.manifest\.v1/);
   assert.doesNotMatch(contentView, /knowledgeNavStorageKey|knowledgeManifestStorageKey|knowledgeMirrorEventName|mirrorKnowledgeToWebview|handleKnowledgeMirrorChanged/);
 });
+
+test('native collection route mirrors local folders instead of dumping every source flat', () => {
+  const collectionClient = read('app/CollectionClient.tsx');
+
+  assert.match(collectionClient, /sourcePath: string;/);
+  assert.match(collectionClient, /function sourceFolderPath\(doc: KnowledgeDoc, category: KnowledgeCategory\)/);
+  assert.match(collectionClient, /function buildFolderTree\(docs: KnowledgeDoc\[\], category: KnowledgeCategory\): FolderNode\[\]/);
+  assert.match(collectionClient, /const tree = useMemo\(/);
+  assert.match(collectionClient, /const \[expandedFolders, setExpandedFolders\]/);
+  assert.match(collectionClient, /function FolderRow\(/);
+  assert.match(collectionClient, /aria-expanded=\{open\}/);
+  assert.match(collectionClient, /<FileRow key=\{child\.doc\.id\} doc=\{child\.doc\} \/>/);
+  assert.doesNotMatch(collectionClient, /docs\.map\(\(doc\) => \(\s*<Link/);
+});

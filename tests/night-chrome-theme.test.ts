@@ -15,8 +15,12 @@ test('window chrome follows the resolved app theme, not only the /weaves route',
 
   assert.match(source, /private var isNightChrome: Bool \{/);
   assert.match(source, /private var usesDarkChrome: Bool \{/);
+  assert.match(source, /private var chromeColorScheme: ColorScheme \{/);
   assert.match(source, /sidebarColorScheme == \.dark/);
+  assert.match(source, /"\/sources"/);
+  assert.match(source, /"\/knowledge\/"/);
   assert.match(source, /chromeBackground[\s\S]*usesDarkChrome \? LoomTokens\.night : LoomTokens\.paper/);
+  assert.match(source, /\.environment\(\\\.colorScheme, chromeColorScheme\)/);
   assert.match(source, /WindowConfigurator\(title: windowTitle, isNight: usesDarkChrome\)/);
   assert.match(source, /\.toolbarColorScheme\(usesDarkChrome \? \.dark : \.light, for: \.windowToolbar\)/);
   assert.doesNotMatch(source, /webState\.currentURL\.contains\("\/weaves"\)/);
