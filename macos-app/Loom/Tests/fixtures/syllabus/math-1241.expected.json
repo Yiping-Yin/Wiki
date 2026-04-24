@@ -1,0 +1,20 @@
+{
+  "_notes": "Hand-verified 2026-04-24. MATH1241 Higher Mathematics 1B - 2025 Course Outline. Course code/name/term/institution all explicit. No lecturer block, office hours, textbook, or assessments in first 8000 chars of extraction (Assessment section is later in the 25-page PDF).",
+  "courseCode": { "status": "found", "value": "MATH1241" },
+  "courseName": { "status": "found", "value": "Higher Mathematics 1B" },
+  "term": { "status": "found", "value": "Term 2" },
+  "institution": { "status": "found", "value": "UNSW" },
+  "teachers": { "status": "not_found" },
+  "officeHours": { "status": "not_found" },
+  "textbook": { "status": "not_found" },
+  "assessmentItems": { "status": "not_found" },
+  "learningObjectives": [
+    "Apply definitions and theorems in Algebra and Calculus to justify mathematical statements and solve problems.",
+    "Apply concepts and techniques from Algebra and Calculus to solve problems.",
+    "Use technology as an aid to solve appropriate problems in Algebra and Calculus.",
+    "Communicate mathematical ideas in written and oral form using correct terminology and using technology.",
+    "Apply concepts in Algebra and Calculus to unexpected contexts.",
+    "Identify and construct valid mathematical arguments and proofs of theorems in the context of Algebra and Calculus."
+  ],
+  "weekTopics": { "status": "not_found" }
+}

@@ -1,0 +1,31 @@
+{
+  "_notes": "Red-team case 2. AI stuffs filename stem into both courseName and term quote fields when those values aren't in the body of the derivatives course overview PDF. Verifier MUST reject both — the quote is not a substring, AND (if the stem-check guard is on) contains 'FINS3635' / 'Derivatives' / 'T12025' which are filename fragments.",
+  "courseName": {
+    "status": "found",
+    "value": "Derivatives",
+    "confidence": 0.9,
+    "sourceSpans": [
+      {
+        "docId": "fins-3635",
+        "pageNum": null,
+        "charStart": 0,
+        "charEnd": 48,
+        "quote": "Course Overview_Derivatives_FINS3635_T12025.pdf"
+      }
+    ]
+  },
+  "term": {
+    "status": "found",
+    "value": "T1 2025",
+    "confidence": 0.85,
+    "sourceSpans": [
+      {
+        "docId": "fins-3635",
+        "pageNum": null,
+        "charStart": 0,
+        "charEnd": 48,
+        "quote": "FINS3635_T12025"
+      }
+    ]
+  }
+}

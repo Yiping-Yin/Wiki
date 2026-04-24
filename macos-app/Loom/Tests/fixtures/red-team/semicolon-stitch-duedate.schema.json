@@ -1,0 +1,21 @@
+{
+  "_notes": "Red-team case 4. AI joins two distinct due dates (Group 1 in October, Group 2 in November) with a semicolon to fit both into one string. The literal string '19 October; 20 November' is NOT a substring of source (source says '19th October' and '20th November' separately). Verifier must reject.",
+  "assessmentItems": [
+    {
+      "dueDate": {
+        "status": "found",
+        "value": "19 October and 20 November",
+        "confidence": 0.7,
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 0,
+            "charEnd": 30,
+            "quote": "19 October; 20 November"
+          }
+        ]
+      }
+    }
+  ]
+}

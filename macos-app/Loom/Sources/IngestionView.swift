@@ -548,15 +548,33 @@ final class IngestionRunner: ObservableObject {
     }
 
     private func summarise(text: String, filename: String) async throws -> String {
-        // Phase 0 of the ingest-extractor refactor: route through
-        // `GenericDocExtractor`, which wraps the prior prompt + provider
-        // dispatch verbatim and returns the raw provider output. That
-        // keeps today's free-form ingest summaries byte-for-byte
-        // compatible while typed extractors are introduced separately.
+        // Phase 1 of the ingest-extractor refactor: consult
+        // `ExtractorRegistry.bestMatch(...)` across registered typed
+        // extractors, then dispatch.
         //
-        // See `Sources/Ingest/IngestExtractor.swift` and
-        // `Sources/Ingest/GenericDocExtractor.swift`. Typed extractors
-        // (syllabus, textbook chapter, …) dispatch in Phase 1+.
+        // **Intentional caveat (plan §4, Phase 5):** auto-run of typed
+        // extractors at ingest time is deferred. Until the Phase 5 UI
+        // ("Extract" button) lands, this call path still dispatches to
+        // `GenericDocExtractor` for the free-form summary the current
+        // UI expects. Typed extractors like `SyllabusPDFExtractor` are
+        // callable from Phase 5+ surfaces via their concrete types —
+        // the registry is here so Phase 5 can flip the switch without
+        // refactoring.
+        //
+        // See `Sources/Ingest/IngestExtractor.swift`,
+        // `Sources/Ingest/ExtractorRegistry.swift`, and the per-file
+        // extractor implementations.
+        let sample = String(text.prefix(2048))
+        let parentPath = "" // Reserved for Phase 3 — filename is enough for syllabus match.
+        let chosen = ExtractorRegistry.bestMatch(
+            filename: filename,
+            parentPath: parentPath,
+            sample: sample
+        )
+        // Log-only: surface which extractor would claim this file so
+        // later debugging can spot mismatches.
+        _ = chosen.extractorId
+
         let extractor = GenericDocExtractor()
         let result = try await extractor.extract(
             text: text,

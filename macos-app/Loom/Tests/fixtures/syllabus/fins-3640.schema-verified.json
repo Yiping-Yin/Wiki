@@ -1,0 +1,823 @@
+{
+  "courseCode": {
+    "status": "found",
+    "value": "FINS3640",
+    "confidence": 0.4,
+    "quote": "Course Overview_FINS3640.pdf",
+    "charSpan": [
+      0,
+      0
+    ],
+    "sourceSpans": [
+      {
+        "docId": "fins-3640",
+        "pageNum": null,
+        "charStart": 0,
+        "charEnd": 0,
+        "quote": "Course Overview_FINS3640.pdf",
+        "verified": false,
+        "verifyReason": "quote_contains_filename_stem"
+      }
+    ]
+  },
+  "courseName": {
+    "status": "not_found",
+    "tried": [
+      "document title 'Course Overview'",
+      "first 500 chars",
+      "'About the course' section"
+    ]
+  },
+  "term": {
+    "status": "not_found",
+    "tried": [
+      "first 500 chars",
+      "'Basic information' section",
+      "assessment due dates (October/November suggest Term 3 2025 but not explicitly stated)"
+    ]
+  },
+  "institution": {
+    "status": "found",
+    "value": "UNSW",
+    "confidence": 0.9,
+    "quote": "m.Fournier@unsw.edu.au",
+    "charSpan": [
+      80,
+      102
+    ],
+    "sourceSpans": [
+      {
+        "docId": "fins-3640",
+        "pageNum": null,
+        "charStart": 87,
+        "charEnd": 109,
+        "quote": "m.Fournier@unsw.edu.au",
+        "verified": true,
+        "verifyReason": null
+      }
+    ]
+  },
+  "teachers": [
+    {
+      "role": {
+        "status": "found",
+        "value": "Lecturer in Charge",
+        "confidence": 1.0,
+        "quote": "Lecturer in Charge",
+        "charSpan": [
+          39,
+          57
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 37,
+            "charEnd": 55,
+            "quote": "Lecturer in Charge",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "name": {
+        "status": "found",
+        "value": "Mathieu Fournier",
+        "confidence": 1.0,
+        "quote": "Mathieu Fournier or (Math)",
+        "charSpan": [
+          60,
+          86
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 58,
+            "charEnd": 84,
+            "quote": "Mathieu Fournier or (Math)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "email": {
+        "status": "found",
+        "value": "m.Fournier@unsw.edu.au",
+        "confidence": 1.0,
+        "quote": "m.Fournier@unsw.edu.au",
+        "charSpan": [
+          89,
+          111
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 87,
+            "charEnd": 109,
+            "quote": "m.Fournier@unsw.edu.au",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "role": {
+        "status": "found",
+        "value": "Teaching Assistant",
+        "confidence": 1.0,
+        "quote": "Teaching Assistant",
+        "charSpan": [
+          115,
+          133
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 112,
+            "charEnd": 130,
+            "quote": "Teaching Assistant",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "name": {
+        "status": "found",
+        "value": "Mengshi Jia",
+        "confidence": 1.0,
+        "quote": "Mengshi Jia",
+        "charSpan": [
+          136,
+          147
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 133,
+            "charEnd": 144,
+            "quote": "Mengshi Jia",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "email": {
+        "status": "found",
+        "value": "m.jia@student.unsw.edu.au",
+        "confidence": 0.95,
+        "quote": "m. jia@student.unsw.edu.au",
+        "charSpan": [
+          150,
+          176
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 147,
+            "charEnd": 173,
+            "quote": "m. jia@student.unsw.edu.au",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    }
+  ],
+  "officeHours": {
+    "status": "found",
+    "value": "Every Friday from 3.00pm to 3.45pm via zoom (link in moodle)",
+    "confidence": 1.0,
+    "quote": "Every Friday from 3.00pm to 3.45pm via zoom (link in moodle)",
+    "charSpan": [
+      620,
+      680
+    ],
+    "sourceSpans": [
+      {
+        "docId": "fins-3640",
+        "pageNum": null,
+        "charStart": 817,
+        "charEnd": 877,
+        "quote": "Every Friday from 3.00pm to 3.45pm via zoom (link in moodle)",
+        "verified": true,
+        "verifyReason": null
+      }
+    ]
+  },
+  "textbook": {
+    "status": "found",
+    "value": "Bodie, Z., Kane, A., Marcus, A., 2018, Investments, 11th edition, McGraw-Hill Irwin. [BKM] (recommended reference only; no textbook requirement)",
+    "confidence": 0.9,
+    "quote": "Bodie, Z., Kane, A., Marcus, A., 2018, Investments, 11th edition, McGraw-Hill Irwin. [BKM]",
+    "charSpan": [
+      2320,
+      2410
+    ],
+    "sourceSpans": [
+      {
+        "docId": "fins-3640",
+        "pageNum": null,
+        "charStart": 2724,
+        "charEnd": 2814,
+        "quote": "Bodie, Z., Kane, A., Marcus, A., 2018, Investments, 11th edition, McGraw-Hill Irwin. [BKM]",
+        "verified": true,
+        "verifyReason": null
+      }
+    ]
+  },
+  "assessmentItems": [
+    {
+      "name": {
+        "status": "found",
+        "value": "Group Assignment 1",
+        "confidence": 1.0,
+        "quote": "Group Assignment 1 (15%)",
+        "charSpan": [
+          2470,
+          2494
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 2870,
+            "charEnd": 2894,
+            "quote": "Group Assignment 1 (15%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 15,
+        "confidence": 1.0,
+        "quote": "Group Assignment 1 (15%)",
+        "charSpan": [
+          2470,
+          2494
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 2870,
+            "charEnd": 2894,
+            "quote": "Group Assignment 1 (15%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Week 5, Sunday 19th October 11:59pm",
+        "confidence": 1.0,
+        "quote": "Due in Week 5 ( Sunday 11:59pm, 19th October )",
+        "charSpan": [
+          2680,
+          2726
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3095,
+            "charEnd": 3141,
+            "quote": "Due in Week 5 ( Sunday 11:59pm, 19th October )",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "format": {
+        "status": "found",
+        "value": "Python group assignment (1-4 students), topic: Bond index replication (Week 3 – Lecture 3)",
+        "confidence": 0.4,
+        "quote": "Python ... Topic: Bond index replication (from Week 3 – Lecture 3) ... 1-4 students",
+        "charSpan": [
+          2580,
+          2680
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 0,
+            "charEnd": 0,
+            "quote": "Python ... Topic: Bond index replication (from Week 3 – Lecture 3) ... 1-4 students",
+            "verified": false,
+            "verifyReason": "quote_appears_non_contiguous"
+          }
+        ]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Midterm quiz",
+        "confidence": 1.0,
+        "quote": "Midterm quiz (35%)",
+        "charSpan": [
+          2770,
+          2788
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 2897,
+            "charEnd": 2915,
+            "quote": "Midterm quiz (35%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 35,
+        "confidence": 1.0,
+        "quote": "Midterm quiz (35%)",
+        "charSpan": [
+          2770,
+          2788
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 2897,
+            "charEnd": 2915,
+            "quote": "Midterm quiz (35%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Week 5: Saturday 18th October, 9:00am–10:30am",
+        "confidence": 1.0,
+        "quote": "Week 5: Saturday 18th of October from 9.00am to 10.30am in Rex Vowels Theatre (K-F17-LG3)",
+        "charSpan": [
+          2830,
+          2920
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3253,
+            "charEnd": 3342,
+            "quote": "Week 5: Saturday 18th of October from 9.00am to 10.30am in Rex Vowels Theatre (K-F17-LG3)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "format": {
+        "status": "found",
+        "value": "In-person via Inspira, 1h30min, Rex Vowels Theatre (K-F17-LG3); covers weeks 1-5",
+        "confidence": 1.0,
+        "quote": "In-person via Inspira • 1h30 min",
+        "charSpan": [
+          2795,
+          2827
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3218,
+            "charEnd": 3250,
+            "quote": "In-person via Inspira • 1h30 min",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Group assignment 2",
+        "confidence": 1.0,
+        "quote": "Group assignment 2 (15%)",
+        "charSpan": [
+          3010,
+          3034
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 2918,
+            "charEnd": 2942,
+            "quote": "Group assignment 2 (15%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 15,
+        "confidence": 1.0,
+        "quote": "Group assignment 2 (15%)",
+        "charSpan": [
+          3010,
+          3034
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 2918,
+            "charEnd": 2942,
+            "quote": "Group assignment 2 (15%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Week 10, Thursday 20th November 11:59pm",
+        "confidence": 1.0,
+        "quote": "Due in Week 10 ( Thursday 11:59pm, 20th November )",
+        "charSpan": [
+          3200,
+          3250
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3717,
+            "charEnd": 3767,
+            "quote": "Due in Week 10 ( Thursday 11:59pm, 20th November )",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "format": {
+        "status": "found",
+        "value": "Python group assignment (1-4 students), topics: Portfolio construction (Week 7 – Lecture 6) and Portfolio performance analysis (Week 8 – Lecture 7); released Week 8",
+        "confidence": 0.95,
+        "quote": "Python • Topic: • Portfolio construction (from Week 7 – Lecture 6) • Portfolio performance analysis (from Week 8 – lecture 7) • 1-4 students",
+        "charSpan": [
+          3040,
+          3195
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3507,
+            "charEnd": 3647,
+            "quote": "Python • Topic: • Portfolio construction (from Week 7 – Lecture 6) • Portfolio performance analysis (from Week 8 – lecture 7) • 1-4 students",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Final exam",
+        "confidence": 1.0,
+        "quote": "Final exam (35%)",
+        "charSpan": [
+          3300,
+          3316
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 2945,
+            "charEnd": 2961,
+            "quote": "Final exam (35%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 35,
+        "confidence": 1.0,
+        "quote": "Final (35%)",
+        "charSpan": [
+          3300,
+          3316
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3818,
+            "charEnd": 3829,
+            "quote": "Final (35%)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "School exam time",
+        "confidence": 0.9,
+        "quote": "Time: School exam time.",
+        "charSpan": [
+          3340,
+          3363
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3832,
+            "charEnd": 3855,
+            "quote": "Time: School exam time.",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "format": {
+        "status": "found",
+        "value": "In-person, 1h30min, covers lectures 6-9 (weeks 7-10), similar to exercise questions provided",
+        "confidence": 1.0,
+        "quote": "In-person. • 1h30min (like midterm). • Similar to exercise questions provided. • Cover lectures 6-9 (weeks 7-10)",
+        "charSpan": [
+          3365,
+          3478
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 3858,
+            "charEnd": 3970,
+            "quote": "In-person. • 1h30min (like midterm). • Similar to exercise questions provided. • Cover lectures 6-9 (weeks 7-10)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    }
+  ],
+  "learningObjectives": [
+    {
+      "status": "found",
+      "value": "Deepen your understanding of investments techniques and models for most common financial securities.",
+      "confidence": 1.0,
+      "quote": "Deepen your understanding of investments technics and models for most common financial securities.",
+      "charSpan": [
+        1270,
+        1370
+      ],
+      "sourceSpans": [
+        {
+          "docId": "fins-3640",
+          "pageNum": null,
+          "charStart": 1348,
+          "charEnd": 1446,
+          "quote": "Deepen your understanding of investments technics and models for most common financial securities.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    },
+    {
+      "status": "found",
+      "value": "Understand the reality of investment and portfolio allocation.",
+      "confidence": 1.0,
+      "quote": "Understand the reality of investment and portfolio allocation.",
+      "charSpan": [
+        1373,
+        1435
+      ],
+      "sourceSpans": [
+        {
+          "docId": "fins-3640",
+          "pageNum": null,
+          "charStart": 1449,
+          "charEnd": 1511,
+          "quote": "Understand the reality of investment and portfolio allocation.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    },
+    {
+      "status": "found",
+      "value": "Introduce you to Python to perform basic financial data manipulations and modelling.",
+      "confidence": 1.0,
+      "quote": "Introduce you to Python to perform basic financial data manipulations and modelling.",
+      "charSpan": [
+        1438,
+        1522
+      ],
+      "sourceSpans": [
+        {
+          "docId": "fins-3640",
+          "pageNum": null,
+          "charStart": 1514,
+          "charEnd": 1598,
+          "quote": "Introduce you to Python to perform basic financial data manipulations and modelling.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    }
+  ],
+  "weekTopics": [
+    {
+      "weekRange": {
+        "status": "found",
+        "value": "Weeks 1-5",
+        "confidence": 1.0,
+        "quote": "(weeks 1-5)",
+        "charSpan": [
+          1610,
+          1621
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1683,
+            "charEnd": 1694,
+            "quote": "(weeks 1-5)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "topic": {
+        "status": "found",
+        "value": "Stock and bond pricing, factor models, and investment strategies",
+        "confidence": 1.0,
+        "quote": "Stock and bond pricing, factor models, and investment strategies (weeks 1-5)",
+        "charSpan": [
+          1545,
+          1621
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1618,
+            "charEnd": 1694,
+            "quote": "Stock and bond pricing, factor models, and investment strategies (weeks 1-5)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "weekRange": {
+        "status": "found",
+        "value": "Week 3",
+        "confidence": 1.0,
+        "quote": "(weeks 3)",
+        "charSpan": [
+          1650,
+          1659
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1722,
+            "charEnd": 1731,
+            "quote": "(weeks 3)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "topic": {
+        "status": "found",
+        "value": "Bond hedging and trading",
+        "confidence": 1.0,
+        "quote": "Bond hedging and trading (weeks 3)",
+        "charSpan": [
+          1625,
+          1659
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1697,
+            "charEnd": 1731,
+            "quote": "Bond hedging and trading (weeks 3)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "weekRange": {
+        "status": "found",
+        "value": "Weeks 7-8",
+        "confidence": 1.0,
+        "quote": "(weeks 7-8)",
+        "charSpan": [
+          1690,
+          1701
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1757,
+            "charEnd": 1768,
+            "quote": "(weeks 7-8)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "topic": {
+        "status": "found",
+        "value": "Portfolio construction",
+        "confidence": 1.0,
+        "quote": "Portfolio construction (weeks 7-8)",
+        "charSpan": [
+          1667,
+          1701
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1734,
+            "charEnd": 1768,
+            "quote": "Portfolio construction (weeks 7-8)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "weekRange": {
+        "status": "found",
+        "value": "Weeks 9-10",
+        "confidence": 1.0,
+        "quote": "(weeks 9-10)",
+        "charSpan": [
+          1735,
+          1747
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1800,
+            "charEnd": 1812,
+            "quote": "(weeks 9-10)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "topic": {
+        "status": "found",
+        "value": "Hedge funds and mutual funds",
+        "confidence": 1.0,
+        "quote": "Hedge funds and mutual funds (weeks 9-10)",
+        "charSpan": [
+          1706,
+          1747
+        ],
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 1771,
+            "charEnd": 1812,
+            "quote": "Hedge funds and mutual funds (weeks 9-10)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    }
+  ]
+}

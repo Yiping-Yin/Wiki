@@ -1,0 +1,206 @@
+{
+  "courseCode": {
+    "status": "found",
+    "value": "INFS3822",
+    "confidence": 0.99,
+    "quote": "INFS3822",
+    "charSpan": [17, 25]
+  },
+  "courseName": {
+    "status": "found",
+    "value": "Artificial Intelligence for Business Analytics",
+    "confidence": 0.99,
+    "quote": "Artificial Intelligence for Business Analytics",
+    "charSpan": [26, 72]
+  },
+  "term": {
+    "status": "found",
+    "value": "Term 1, 2026",
+    "confidence": 0.99,
+    "quote": "Term 1, 2026",
+    "charSpan": [73, 85]
+  },
+  "institution": {
+    "status": "found",
+    "value": "UNSW Business School",
+    "confidence": 0.95,
+    "quote": "UNSW Business School",
+    "charSpan": [907, 927]
+  },
+  "teachers": [],
+  "officeHours": {
+    "status": "not_found",
+    "tried": ["header block", "'Contact' section", "'Office Hours' keyword", "first 500 chars", "full provided source text"]
+  },
+  "textbook": {
+    "status": "not_found",
+    "tried": ["'Textbook' keyword", "'Readings' section", "'Required' section", "full provided source text (assessment guide excerpt only)"]
+  },
+  "assessmentItems": [
+    {
+      "name": {
+        "status": "found",
+        "value": "Individual Assignment 1",
+        "confidence": 0.98,
+        "quote": "Assessment 1: Individual Assignment 1",
+        "charSpan": [113, 150]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 20,
+        "confidence": 0.99,
+        "quote": "20%",
+        "charSpan": [151, 154]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Friday, 20 March, 2026, 5:00pm (Week 5)",
+        "confidence": 0.99,
+        "quote": "Friday, 20 March, 2026, 5:00pm (Week 5)",
+        "charSpan": [155, 194]
+      },
+      "format": {
+        "status": "found",
+        "value": "Hands-on AI analysis using Python or R (written analytical brief, ~1,000–1,200 words, single PDF or Word file via Moodle)",
+        "confidence": 0.9,
+        "quote": "Hands-on AI analysis using Python or R",
+        "charSpan": [202, 240]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Individual Assignment 2",
+        "confidence": 0.98,
+        "quote": "Assessment 2: Individual Assignment 2",
+        "charSpan": [241, 278]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 20,
+        "confidence": 0.99,
+        "quote": "20%",
+        "charSpan": [279, 282]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Friday, 3 April, 2026, 5:00pm (Week 7)",
+        "confidence": 0.99,
+        "quote": "Friday, 3 April, 2026, 5:00pm (Week 7)",
+        "charSpan": [283, 321]
+      },
+      "format": {
+        "status": "found",
+        "value": "Designing an AI solution for Gumtree Australia",
+        "confidence": 0.9,
+        "quote": "Designing an AI solution for Gumtree Australia",
+        "charSpan": [329, 375]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Team Project",
+        "confidence": 0.98,
+        "quote": "Assessment 3: Team Project",
+        "charSpan": [376, 402]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 40,
+        "confidence": 0.99,
+        "quote": "40%",
+        "charSpan": [403, 406]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Team Agreement: Friday, 20 March, 2026, 5:00pm (Week 5); Team report & pitch deck: Monday, 20 April, 2026, 5:00pm (Week 10); Pitch presentation: In-class, Week 10; Individual reflection: Monday, 27 April, 2026, 5:00pm (Week 11)",
+        "confidence": 0.95,
+        "quote": "Team Agreement: Friday, 20 March, 2026, 5:00pm",
+        "charSpan": [407, 453]
+      },
+      "format": {
+        "status": "found",
+        "value": "Implementing and evaluating an AI proof-of-concept for Gumtree Australia (team report & pitch deck + in-class pitch presentation + individual reflection)",
+        "confidence": 0.9,
+        "quote": "Implementing and evaluating an AI proof-of-concept for Gumtree Australia",
+        "charSpan": [489, 561]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Preparation & Participation",
+        "confidence": 0.98,
+        "quote": "Assessment 4: Preparation & Participation",
+        "charSpan": [719, 760]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 20,
+        "confidence": 0.99,
+        "quote": "20%",
+        "charSpan": [761, 764]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Weekly (excluding Weeks 1, 6, 10)",
+        "confidence": 0.98,
+        "quote": "Weekly (excluding Weeks 1, 6, 10)",
+        "charSpan": [765, 798]
+      },
+      "format": {
+        "status": "found",
+        "value": "Weekly in-class quiz",
+        "confidence": 0.98,
+        "quote": "Weekly in-class quiz",
+        "charSpan": [806, 826]
+      }
+    }
+  ],
+  "learningObjectives": [
+    {
+      "status": "found",
+      "value": "CLO1: Identify and apply AI-driven business analytics technologies, their underlying concepts and business applications.",
+      "confidence": 0.97,
+      "quote": "CLO1 Identify and apply AI-driven business analytics technologies, their underlying concepts and business",
+      "charSpan": [1000, 1105]
+    },
+    {
+      "status": "found",
+      "value": "CLO2: Consolidate analytical and critical thinking skills to solve real-world business problems using AI-driven solutions.",
+      "confidence": 0.97,
+      "quote": "CLO2 Consolidate analytical and critical thinking skills to solve real-world business problems using AI-driven solutions.",
+      "charSpan": [1125, 1246]
+    },
+    {
+      "status": "found",
+      "value": "CLO3: Explain the rationale behind the application of supervised and unsupervised predictive models to analyse structured and unstructured data, to solve real-world organisational problems.",
+      "confidence": 0.97,
+      "quote": "CLO3 Explain the rationale behind the application of supervised and unsupervised predictive models to analyse structured and unstructured data, to solve real-world organisational problems.",
+      "charSpan": [1251, 1439]
+    },
+    {
+      "status": "found",
+      "value": "CLO4: Communicate effectively the business problem at hand, explain the outcomes of the predictive models generated by machine learning algorithms, and unravel actionable insights.",
+      "confidence": 0.97,
+      "quote": "CLO4 Communicate effectively the business problem at hand, explain the outcomes of the predictive models generated by machine learning algorithms, and unravel actionable insights.",
+      "charSpan": [1446, 1626]
+    },
+    {
+      "status": "found",
+      "value": "CLO5: Discuss ethical implications aligned with SDGs (Sustainable Development Goals) principles/objectives when implementing AI-driven analytics and articulate their impacts on individuals, organisations and society at large.",
+      "confidence": 0.97,
+      "quote": "CLO5 Discuss ethical implications aligned with SDGs (Sustainable Development Goals) principles/objectives when implementing AI-driven analytics and articulate their impacts on individuals, organisations and society at large.",
+      "charSpan": [1631, 1855]
+    },
+    {
+      "status": "found",
+      "value": "CLO6: Develop collaborative teamwork skills for solving AI-driven business problems.",
+      "confidence": 0.97,
+      "quote": "CLO6 Develop collaborative teamwork skills for solving AI-driven business problems.",
+      "charSpan": [1860, 1943]
+    }
+  ],
+  "weekTopics": []
+}

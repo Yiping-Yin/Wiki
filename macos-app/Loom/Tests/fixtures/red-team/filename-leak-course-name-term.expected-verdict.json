@@ -1,0 +1,21 @@
+{
+  "_notes": "Multi-field verdict: both courseName and term must demote.",
+  "sourceFixture": "fins-3635",
+  "filename": "Course Overview_Derivatives_FINS3635_T12025.pdf",
+  "fields": [
+    {
+      "field": "courseName",
+      "expectedVerified": false,
+      "expectedConfidenceMax": 0.4,
+      "expectedReason": "quote_not_substring_of_source",
+      "alternateAcceptedReasons": ["quote_contains_filename_stem"]
+    },
+    {
+      "field": "term",
+      "expectedVerified": false,
+      "expectedConfidenceMax": 0.4,
+      "expectedReason": "quote_not_substring_of_source",
+      "alternateAcceptedReasons": ["quote_contains_filename_stem"]
+    }
+  ]
+}

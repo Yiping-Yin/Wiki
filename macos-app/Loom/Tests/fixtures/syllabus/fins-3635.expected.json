@@ -1,0 +1,26 @@
+{
+  "_notes": "Hand-verified 2026-04-24. FINS 3635 Course Overview (Derivatives). Course code/name/term NOT in body (they were in filename). Textbook explicit.",
+  "courseCode": { "status": "not_found" },
+  "courseName": { "status": "not_found" },
+  "term": { "status": "not_found" },
+  "institution": { "status": "found", "value": "UNSW" },
+  "teachers": [
+    { "role": "Lecturer in Charge", "name": "Yunshen Yang", "email": "yunshen.yang@unsw.edu.au" },
+    { "role": "TA", "name": "Yiru (Penny) WANG", "email": "yiru.wang2@student.unsw.edu.au" }
+  ],
+  "officeHours": { "status": "found", "value": "every Thursday from 3:30 pm to 4:30 pm" },
+  "textbook": { "status": "found", "value": "Hull, Options, Futures And Other Derivatives, 8th edition" },
+  "assessmentItems": [
+    { "name": "Group Assignment 1", "weightPercent": 10, "dueDate": "Week 5 (Friday 11:55pm)", "format": "Excel" },
+    { "name": "Midterm exam", "weightPercent": 35, "dueDate": "Week 7 (1-4 pm, Saturday)", "format": "Open book, on campus, 2 hours" },
+    { "name": "Group assignment 2", "weightPercent": 15, "dueDate": "Week 10 (Friday 11:55pm)", "format": "Excel" },
+    { "name": "Final exam", "weightPercent": 40, "dueDate": "School exam time", "format": "Open book but no electronic devices allowed, 2 hours" }
+  ],
+  "learningObjectives": [
+    "Introduction to pricing principle and hedging techniques in derivative markets",
+    "Pricing of derivatives",
+    "Hedging with derivatives",
+    "Trading strategies using derivatives"
+  ],
+  "weekTopics": { "status": "not_found" }
+}

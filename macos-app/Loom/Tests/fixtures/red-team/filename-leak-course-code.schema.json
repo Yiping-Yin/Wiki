@@ -1,0 +1,17 @@
+{
+  "_notes": "Red-team case 1. AI emits courseCode with quote copied from filename stem. Source text (fins-3640.input.txt) does not actually contain 'FINS3640' or 'Course Overview_FINS3640.pdf'. Verifier MUST reject on substring grounds and/or the stricter filename-stem-contains guard.",
+  "courseCode": {
+    "status": "found",
+    "value": "FINS3640",
+    "confidence": 0.95,
+    "sourceSpans": [
+      {
+        "docId": "fins-3640",
+        "pageNum": null,
+        "charStart": 0,
+        "charEnd": 28,
+        "quote": "Course Overview_FINS3640.pdf"
+      }
+    ]
+  }
+}

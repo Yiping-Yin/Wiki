@@ -27,3 +27,18 @@ test('native shell explicitly syncs the resolved theme into the webview', () => 
   assert.match(source, /themeSyncScript\(mode: forcedTheme\)/);
   assert.match(source, /context\.coordinator\.applyTheme\(forcedTheme, to: nsView\)/);
 });
+
+test('native shell reveals committed bundle content if didFinish does not clear the launch mask', () => {
+  const source = read('macos-app/Loom/Sources/ContentView.swift');
+
+  assert.match(source, /private func revealFirstPaintIfNeeded\(in webView: WKWebView, reason: String\)/);
+  assert.match(source, /debugState\.didFirstLoad = true/);
+  assert.match(source, /purgeLegacyMirrorStorageInWebview\(\)/);
+  assert.match(source, /private func scheduleFirstPaintFallback\(for webView: WKWebView\)/);
+  assert.match(source, /textLength: text\.length/);
+  assert.match(source, /readyState != "loading" \|\| textLength > 0/);
+  assert.match(source, /revealFirstPaintIfNeeded\(in: webView, reason: "didCommit fallback"\)/);
+  assert.match(source, /func webView\(_ webView: WKWebView, didCommit navigation: WKNavigation!\)/);
+  assert.match(source, /scheduleFirstPaintFallback\(for: webView\)/);
+  assert.match(source, /revealFirstPaintIfNeeded\(in: webView, reason: "didFinish"\)/);
+});

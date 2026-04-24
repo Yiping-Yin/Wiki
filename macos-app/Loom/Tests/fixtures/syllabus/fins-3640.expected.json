@@ -1,0 +1,30 @@
+{
+  "_notes": "Hand-verified 2026-04-24. Source input.txt covers front matter only; course code/name/term/institution are NOT in body (they were in the filename, which is a deliberately-dropped prompt input under the new hardening).",
+  "courseCode": { "status": "not_found" },
+  "courseName": { "status": "not_found" },
+  "term": { "status": "not_found" },
+  "institution": { "status": "found", "value": "UNSW" },
+  "teachers": [
+    { "role": "Lecturer in Charge", "name": "Mathieu Fournier", "email": "m.Fournier@unsw.edu.au" },
+    { "role": "Teaching Assistant", "name": "Mengshi Jia", "email": "m.jia@student.unsw.edu.au" }
+  ],
+  "officeHours": { "status": "found", "value": "Every Friday from 3.00pm to 3.45pm via zoom" },
+  "textbook": { "status": "found", "value": "Bodie, Z., Kane, A., Marcus, A., 2018, Investments, 11th edition, McGraw-Hill Irwin." },
+  "assessmentItems": [
+    { "name": "Group Assignment 1", "weightPercent": 15, "dueDate": "Week 5 (Sunday 11:59pm, 19th October)", "format": "Python" },
+    { "name": "Midterm quiz", "weightPercent": 35, "dueDate": "Week 5: Saturday 18th of October from 9.00am to 10.30am", "format": "In-person via Inspira" },
+    { "name": "Group assignment 2", "weightPercent": 15, "dueDate": "Week 10 (Thursday 11:59pm, 20th November)", "format": "Python" },
+    { "name": "Final exam", "weightPercent": 35, "dueDate": { "status": "not_found" }, "format": "In-person" }
+  ],
+  "learningObjectives": [
+    "Deepen your understanding of investments technics and models for most common financial securities.",
+    "Understand the reality of investment and portfolio allocation.",
+    "Introduce you to Python to perform basic financial data manipulations and modelling."
+  ],
+  "weekTopics": [
+    { "weekRange": "weeks 1-5", "topic": "Stock and bond pricing, factor models, and investment strategies" },
+    { "weekRange": "weeks 3", "topic": "Bond hedging and trading" },
+    { "weekRange": "weeks 7-8", "topic": "Portfolio construction" },
+    { "weekRange": "weeks 9-10", "topic": "Hedge funds and mutual funds" }
+  ]
+}

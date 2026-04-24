@@ -1,0 +1,19 @@
+{
+  "_notes": "Hand-verified 2026-04-24. FINS3666 Assessment 2 Group Project Student Guide - this is a single-assessment guide (not a full syllabus). Course code/name are NOT in body (they were only in filename). Only one 'assessment item' is genuinely present (the group project itself).",
+  "courseCode": { "status": "not_found" },
+  "courseName": { "status": "not_found" },
+  "term": { "status": "not_found" },
+  "institution": { "status": "not_found" },
+  "teachers": { "status": "not_found" },
+  "officeHours": { "status": "not_found" },
+  "textbook": { "status": "not_found" },
+  "assessmentItems": [
+    { "name": "Assessment 2, Group Project: Trading Strategy Development, Backtesting & Evaluation", "weightPercent": 30, "dueDate": "End of Week 10, Sunday 9:00pm 27-Apr-2025", "format": "Written Report, 2,500 Word maximum, Via Moodle / Turnitin" }
+  ],
+  "learningObjectives": [
+    "Demonstrate an in-depth understanding of the principles, practices, and complexities of financial technology and innovation within global financial systems",
+    "Critically analyse and evaluate real-world financial problems using technological solutions and data-driven decision-making frameworks",
+    "Collaborate effectively within diverse teams to deliver well-structured and professional group outputs that reflect critical thinking and strategic planning."
+  ],
+  "weekTopics": { "status": "not_found" }
+}

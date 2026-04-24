@@ -162,6 +162,39 @@ final class IngestExtractorLocateTests: XCTestCase {
         XCTAssertEqual(spans[0].quote, "teacher")
     }
 
+    func testSourceSpanDecodesAIQuoteOnlyShapeAndVerifiesOffsets() throws {
+        let json = """
+        {
+          "status": "found",
+          "value": "course",
+          "confidence": 0.79,
+          "sourceSpans": [
+            { "quote": "INFS3822 Assessment Guide" }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(FieldResult<String>.self, from: json)
+        let verified = verifySpans(
+            decoded,
+            sourceText: "Header\nINFS3822 Assessment Guide\nDetails",
+            docId: "doc-ai"
+        )
+
+        guard case .found(let value, let confidence, let spans) = verified else {
+            XCTFail("expected found result")
+            return
+        }
+
+        XCTAssertEqual(value, "course")
+        XCTAssertEqual(confidence, 0.79)
+        XCTAssertEqual(spans.count, 1)
+        XCTAssertEqual(spans[0].docId, "doc-ai")
+        XCTAssertEqual(spans[0].charStart, 7)
+        XCTAssertEqual(spans[0].charEnd, 32)
+        XCTAssertTrue(spans[0].verified)
+    }
+
     func testSyllabusSchemaRoundTripsNestedFieldResults() throws {
         let schema = SyllabusSchema(
             courseCode: .found(
@@ -226,5 +259,93 @@ final class IngestExtractorLocateTests: XCTestCase {
         XCTAssertEqual(decoded.assessmentItems.count, 1)
         XCTAssertEqual(decoded.learningObjectives.count, 1)
         XCTAssertEqual(decoded.weekTopics.count, 1)
+    }
+
+    func testSyllabusExtractorMatchesOnlySyllabusLikePDFs() {
+        XCTAssertEqual(
+            SyllabusPDFExtractor.match(
+                filename: "INFS3822 Assessment Guide T1 2026.pdf",
+                parentPath: "Guide",
+                sample: ""
+            ),
+            0.9
+        )
+        XCTAssertEqual(
+            SyllabusPDFExtractor.match(
+                filename: "INFS3822 Assessment Guide T1 2026.pptx",
+                parentPath: "Guide",
+                sample: ""
+            ),
+            0.0
+        )
+        XCTAssertEqual(
+            SyllabusPDFExtractor.match(
+                filename: "lecture-notes-week-1.pdf",
+                parentPath: "Week 1",
+                sample: ""
+            ),
+            0.0
+        )
+    }
+
+    func testExtractorRegistryPrefersSyllabusThenFallsBackToGeneric() {
+        let syllabus = ExtractorRegistry.bestMatch(
+            filename: "Course Overview_FINS3640.pdf",
+            parentPath: "Week 0",
+            sample: ""
+        )
+        XCTAssertEqual(syllabus.extractorId, SyllabusPDFExtractor.extractorId)
+
+        let generic = ExtractorRegistry.bestMatch(
+            filename: "personal-notes.md",
+            parentPath: "Desk",
+            sample: "# Notes"
+        )
+        XCTAssertEqual(generic.extractorId, GenericDocExtractor.extractorId)
+    }
+
+    func testSyllabusExtractorDemotesFilenameStemQuotes() {
+        let stems = SyllabusPDFExtractor.filenameStems(from: "Course Overview_FINS3640.pdf")
+        let result: FieldResult<String> = .found(
+            value: "FINS3640",
+            confidence: 0.93,
+            sourceSpans: [
+                SourceSpan(
+                    docId: "doc-1",
+                    charStart: 0,
+                    charEnd: 24,
+                    quote: "Course Overview_FINS3640",
+                    verified: true
+                ),
+            ]
+        )
+
+        let hardened = SyllabusPDFExtractor.demoteIfFilenameQuote(result, filenameStems: stems)
+
+        guard case .found(let value, let confidence, let spans) = hardened else {
+            XCTFail("expected found result")
+            return
+        }
+
+        XCTAssertEqual(value, "FINS3640")
+        XCTAssertEqual(confidence, 0.4)
+        XCTAssertEqual(spans.count, 1)
+        XCTAssertFalse(spans[0].verified)
+        XCTAssertEqual(spans[0].verifyReason, "quote_contains_filename_stem")
+    }
+
+    func testStructuredOutputSupportExtractsJSONFromFenceAndPreamble() throws {
+        let wrapped = """
+        Here is the JSON:
+        ```json
+        {"status":"found","value":"x","confidence":0.7,"sourceSpans":[{"quote":"x"}]}
+        ```
+        """
+
+        let bytes = try XCTUnwrap(StructuredOutputSupport.extractJSONBytes(from: wrapped))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
+
+        XCTAssertEqual(object["status"] as? String, "found")
+        XCTAssertEqual(object["value"] as? String, "x")
     }
 }

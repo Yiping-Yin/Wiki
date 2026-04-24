@@ -1,0 +1,33 @@
+{
+  "_notes": "Hand-verified 2026-04-24. FINS3616 Assessment T2 2025. Course code + name in header ('FINS3616 INTERNATIONAL BUSINESS FINANCE'). Term is not explicitly stated in body (only 'T2 2025' in filename, and 'Saturday, June 28th, 14:00-15:00' suggests T2 but not explicit). Shon's email is in the Contact section.",
+  "courseCode": { "status": "found", "value": "FINS3616" },
+  "courseName": { "status": "found", "value": "INTERNATIONAL BUSINESS FINANCE" },
+  "term": { "status": "not_found" },
+  "institution": { "status": "found", "value": "University of New South Wales" },
+  "teachers": [
+    { "role": { "status": "not_found" }, "name": "Janghoon Shon", "email": "j.shon@unsw.edu.au" },
+    { "role": "Tutor/TA", "name": "Yiru (Penny) Wang", "email": "yiru.wang2@student.unsw.edu.au" },
+    { "role": "Tutor/TA", "name": "Huaizhou (Will) Li", "email": "huaizhou.li@unsw.edu.au" }
+  ],
+  "officeHours": { "status": "not_found" },
+  "textbook": { "status": "found", "value": "International Financial Management, Bekaert & Hodrick (3rd Edition)" },
+  "assessmentItems": [
+    { "name": "Mid-term exam", "weightPercent": 20, "dueDate": "Saturday, June 28th, 14:00-15:00", "format": "Moodle online, covers Week 1 to Week 4" },
+    { "name": "iLab assignment", "weightPercent": 15, "dueDate": "Friday, July 18th, 17:00", "format": "At Week 7, a formal analysis on a currency exchange rate" },
+    { "name": "Individual project", "weightPercent": 25, "dueDate": "Friday, August 15th, 17:00", "format": "At Week 11, a formal analysis on a firm/stock" },
+    { "name": "Final exam", "weightPercent": 40, "dueDate": { "status": "not_found" }, "format": "Inspera Exam (Central Final Exam Period – In Person), covers Week 1 to Week 10" }
+  ],
+  "learningObjectives": { "status": "not_found" },
+  "weekTopics": [
+    { "weekRange": "W1", "topic": "Introduction to International finance & exchange rates" },
+    { "weekRange": "W2", "topic": "Description of FX markets & analysis of exchange rate risk" },
+    { "weekRange": "W3", "topic": "International parity conditions" },
+    { "weekRange": "W4", "topic": "Exchange rate systems and fundamentals" },
+    { "weekRange": "W5", "topic": "Exchange rate trading and forecasting" },
+    { "weekRange": "W6", "topic": "Flexi Week" },
+    { "weekRange": "W7", "topic": "Foreign currency derivatives" },
+    { "weekRange": "W8", "topic": "FX risk hedging and management within multinationals" },
+    { "weekRange": "W9", "topic": "International corporate issues" },
+    { "weekRange": "W10", "topic": "International financing: cross-listing and Eurobonds" }
+  ]
+}

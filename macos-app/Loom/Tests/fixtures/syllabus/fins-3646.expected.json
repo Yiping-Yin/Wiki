@@ -1,0 +1,23 @@
+{
+  "_notes": "Hand-verified 2026-04-24. FINS3646 Assessment Guide T1 2026. Course code/name/term explicit in first line. No lecturer/textbook/office hours in extracted body.",
+  "courseCode": { "status": "found", "value": "FINS3646" },
+  "courseName": { "status": "found", "value": "Toolkit for Finance" },
+  "term": { "status": "found", "value": "Term 1, 2026" },
+  "institution": { "status": "not_found" },
+  "teachers": { "status": "not_found" },
+  "officeHours": { "status": "not_found" },
+  "textbook": { "status": "not_found" },
+  "assessmentItems": [
+    { "name": "Assessment 1: Weekly Quizzes (Individual)", "weightPercent": 15, "dueDate": "Weeks 1-10", "format": "Online Weekly Quizzes, submitted on Sundays, 11:59pm" },
+    { "name": "Assessment 2: Project 1 (Individual)", "weightPercent": 20, "dueDate": "Week 5, Sunday 22 March, 11:59 pm", "format": "Ed platform" },
+    { "name": "Assessment 3: Project 2 (Group)", "weightPercent": 30, "dueDate": "Week 10", "format": { "status": "not_found" } },
+    { "name": "Final Exam (Individual)", "weightPercent": 35, "dueDate": "Exam Period", "format": { "status": "not_found" } }
+  ],
+  "learningObjectives": [
+    "Develop a toolkit of essential financial market tools applicable to various real-world scenarios.",
+    "Implement modern techniques to collect, manipulate and analyse financial data.",
+    "Design tools to test predictions derived from financial theory using real world data.",
+    "Collaborate in technical financial team projects, communicating processes and findings to diverse audiences."
+  ],
+  "weekTopics": { "status": "not_found" }
+}

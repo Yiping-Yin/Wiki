@@ -1,0 +1,21 @@
+{
+  "_notes": "Red-team case 3. AI stitches two non-contiguous fragments from the FINS 3640 Group Assignment 1 description using ellipsis. The exact string 'Python ... Topic: Bond index replication...' is NOT a substring of source — the contiguous-quote guard must reject. Under the new list-form sourceSpans, the correct representation would be two separate spans; a single concatenated quote is the failure mode.",
+  "assessmentItems": [
+    {
+      "format": {
+        "status": "found",
+        "value": "Python assignment on Bond index replication",
+        "confidence": 0.8,
+        "sourceSpans": [
+          {
+            "docId": "fins-3640",
+            "pageNum": null,
+            "charStart": 0,
+            "charEnd": 60,
+            "quote": "Python ... Topic: Bond index replication..."
+          }
+        ]
+      }
+    }
+  ]
+}

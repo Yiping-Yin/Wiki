@@ -1,0 +1,13 @@
+{
+  "_notes": "Hand-verified 2026-04-24. INFS3822 Detailed Rubrics (Term 1, 2026). Course code + term are in the first line header. This is a rubrics-only doc — no teacher block, no course name, no textbook, no office hours. Assessment rows exist but are pure rubrics tables (Criteria %/HD/D/C/P/F); the extractor would mostly return not_found for assessmentItems because there are no dueDates or formats in a rubrics document.",
+  "courseCode": { "status": "found", "value": "INFS3822" },
+  "courseName": { "status": "not_found" },
+  "term": { "status": "found", "value": "Term 1, 2026" },
+  "institution": { "status": "not_found" },
+  "teachers": { "status": "not_found" },
+  "officeHours": { "status": "not_found" },
+  "textbook": { "status": "not_found" },
+  "assessmentItems": { "status": "not_found" },
+  "learningObjectives": { "status": "not_found" },
+  "weekTopics": { "status": "not_found" }
+}

@@ -1,0 +1,459 @@
+{
+  "courseCode": {
+    "status": "found",
+    "value": "COMM3030",
+    "confidence": 0.4,
+    "quote": "COMM3030 Social Entrepreneurship Practicum",
+    "charSpan": [
+      62,
+      104
+    ],
+    "sourceSpans": [
+      {
+        "docId": "comm-3030",
+        "pageNum": null,
+        "charStart": 0,
+        "charEnd": 0,
+        "quote": "COMM3030 Social Entrepreneurship Practicum",
+        "verified": false,
+        "verifyReason": "quote_contains_filename_stem"
+      }
+    ]
+  },
+  "courseName": {
+    "status": "found",
+    "value": "Social Entrepreneurship Practicum",
+    "confidence": 0.4,
+    "quote": "COMM3030 Social Entrepreneurship Practicum",
+    "charSpan": [
+      62,
+      104
+    ],
+    "sourceSpans": [
+      {
+        "docId": "comm-3030",
+        "pageNum": null,
+        "charStart": 0,
+        "charEnd": 0,
+        "quote": "COMM3030 Social Entrepreneurship Practicum",
+        "verified": false,
+        "verifyReason": "quote_contains_filename_stem"
+      }
+    ]
+  },
+  "term": {
+    "status": "found",
+    "value": "Summer Term, 2026",
+    "confidence": 1.0,
+    "quote": "Summer Term, 2026",
+    "charSpan": [
+      142,
+      159
+    ],
+    "sourceSpans": [
+      {
+        "docId": "comm-3030",
+        "pageNum": null,
+        "charStart": 143,
+        "charEnd": 160,
+        "quote": "Summer Term, 2026",
+        "verified": true,
+        "verifyReason": null
+      }
+    ]
+  },
+  "institution": {
+    "status": "found",
+    "value": "UNSW Business School, Centre for Social Impact",
+    "confidence": 1.0,
+    "quote": "UNSW Business School Centre for Social Impact",
+    "charSpan": [
+      0,
+      45
+    ],
+    "sourceSpans": [
+      {
+        "docId": "comm-3030",
+        "pageNum": null,
+        "charStart": 0,
+        "charEnd": 45,
+        "quote": "UNSW Business School Centre for Social Impact",
+        "verified": true,
+        "verifyReason": null
+      }
+    ]
+  },
+  "teachers": [],
+  "officeHours": {
+    "status": "not_found",
+    "tried": [
+      "'Office Hours' heading",
+      "teacher contact section",
+      "first 1000 chars",
+      "full document scan"
+    ]
+  },
+  "textbook": {
+    "status": "not_found",
+    "tried": [
+      "'Textbook' heading",
+      "'Required Reading' heading",
+      "'Resources' section",
+      "full document scan"
+    ]
+  },
+  "assessmentItems": [
+    {
+      "name": {
+        "status": "found",
+        "value": "Assessment 1: Individual Research Video",
+        "confidence": 0.4,
+        "quote": "Assessment 1: Individual Research Video",
+        "charSpan": [
+          1933,
+          1972
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 0,
+            "charEnd": 0,
+            "quote": "Assessment 1: Individual Research Video",
+            "verified": false,
+            "verifyReason": "quote_contains_filename_stem"
+          }
+        ]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 40,
+        "confidence": 1.0,
+        "quote": "40%",
+        "charSpan": [
+          1973,
+          1976
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 2021,
+            "charEnd": 2024,
+            "quote": "40%",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Monday 19 January by 11am (Week 3)",
+        "confidence": 1.0,
+        "quote": "Monday 19 January by 11am (Week 3)",
+        "charSpan": [
+          1981,
+          2015
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 2025,
+            "charEnd": 2059,
+            "quote": "Monday 19 January by 11am (Week 3)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "format": {
+        "status": "found",
+        "value": "8-minute video & PPT Slides",
+        "confidence": 1.0,
+        "quote": "8-minute video & PPT Slides",
+        "charSpan": [
+          2034,
+          2061
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 2077,
+            "charEnd": 2104,
+            "quote": "8-minute video & PPT Slides",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Assessment 2: Project Deliverables",
+        "confidence": 0.4,
+        "quote": "Assessment 2: Project Deliverables",
+        "charSpan": [
+          2064,
+          2098
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 0,
+            "charEnd": 0,
+            "quote": "Assessment 2: Project Deliverables",
+            "verified": false,
+            "verifyReason": "quote_contains_filename_stem"
+          }
+        ]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 30,
+        "confidence": 1.0,
+        "quote": "30%",
+        "charSpan": [
+          2099,
+          2102
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 2143,
+            "charEnd": 2146,
+            "quote": "30%",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Wednesday 4 February by 11am (Week 5)",
+        "confidence": 1.0,
+        "quote": "Wednesday 4 February by 11am (Week 5)",
+        "charSpan": [
+          2107,
+          2144
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 2147,
+            "charEnd": 2184,
+            "quote": "Wednesday 4 February by 11am (Week 5)",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "format": {
+        "status": "found",
+        "value": "3,000-word group report",
+        "confidence": 1.0,
+        "quote": "3,000-word group report",
+        "charSpan": [
+          2169,
+          2192
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 2208,
+            "charEnd": 2231,
+            "quote": "3,000-word group report",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      }
+    },
+    {
+      "name": {
+        "status": "found",
+        "value": "Assessment 3: Participation & Peer Evaluation",
+        "confidence": 0.4,
+        "quote": "Assessment 3: Participation & Peer Evaluation",
+        "charSpan": [
+          2195,
+          2240
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 0,
+            "charEnd": 0,
+            "quote": "Assessment 3: Participation & Peer Evaluation",
+            "verified": false,
+            "verifyReason": "quote_contains_filename_stem"
+          }
+        ]
+      },
+      "weightPercent": {
+        "status": "found",
+        "value": 30,
+        "confidence": 1.0,
+        "quote": "30%",
+        "charSpan": [
+          2241,
+          2244
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 2143,
+            "charEnd": 2146,
+            "quote": "30%",
+            "verified": true,
+            "verifyReason": null
+          }
+        ]
+      },
+      "dueDate": {
+        "status": "found",
+        "value": "Participation – Ongoing; Peer Evaluation – Friday 6 February by 5pm (Week 11)",
+        "confidence": 0.4,
+        "quote": "Participation – Ongoing ... Peer Evaluation – Friday 6 February by 5pm (Week 11)",
+        "charSpan": [
+          2245,
+          2330
+        ],
+        "sourceSpans": [
+          {
+            "docId": "comm-3030",
+            "pageNum": null,
+            "charStart": 0,
+            "charEnd": 0,
+            "quote": "Participation – Ongoing ... Peer Evaluation – Friday 6 February by 5pm (Week 11)",
+            "verified": false,
+            "verifyReason": "quote_appears_non_contiguous"
+          }
+        ]
+      },
+      "format": {
+        "status": "not_found",
+        "tried": [
+          "assessment row format column",
+          "Assessment 3 description"
+        ]
+      }
+    }
+  ],
+  "learningObjectives": [
+    {
+      "status": "found",
+      "value": "Partner with an organisation to address a social challenge to develop professional capabilities.",
+      "confidence": 1.0,
+      "quote": "Partner with an organisation to address a social challenge to develop professional capabilities.",
+      "charSpan": [
+        2510,
+        2606
+      ],
+      "sourceSpans": [
+        {
+          "docId": "comm-3030",
+          "pageNum": null,
+          "charStart": 2659,
+          "charEnd": 2755,
+          "quote": "Partner with an organisation to address a social challenge to develop professional capabilities.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    },
+    {
+      "status": "found",
+      "value": "Identify, analyse and apply social entrepreneurship knowledge and skills to address a social challenge.",
+      "confidence": 1.0,
+      "quote": "Identify, analyse and apply social entrepreneurship knowledge and skills to address a social challenge.",
+      "charSpan": [
+        2610,
+        2713
+      ],
+      "sourceSpans": [
+        {
+          "docId": "comm-3030",
+          "pageNum": null,
+          "charStart": 2759,
+          "charEnd": 2862,
+          "quote": "Identify, analyse and apply social entrepreneurship knowledge and skills to address a social challenge.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    },
+    {
+      "status": "found",
+      "value": "Participate collaboratively and responsibly in a team.",
+      "confidence": 1.0,
+      "quote": "Participate collaboratively and responsibly in a team.",
+      "charSpan": [
+        2717,
+        2771
+      ],
+      "sourceSpans": [
+        {
+          "docId": "comm-3030",
+          "pageNum": null,
+          "charStart": 2866,
+          "charEnd": 2920,
+          "quote": "Participate collaboratively and responsibly in a team.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    },
+    {
+      "status": "found",
+      "value": "Reflect on your personal and professional development including an enhanced understanding of ethical, social and environmental issues.",
+      "confidence": 1.0,
+      "quote": "Reflect on your personal and professional development including an enhanced understanding of ethical, social and environmental issues.",
+      "charSpan": [
+        2775,
+        2909
+      ],
+      "sourceSpans": [
+        {
+          "docId": "comm-3030",
+          "pageNum": null,
+          "charStart": 2924,
+          "charEnd": 3058,
+          "quote": "Reflect on your personal and professional development including an enhanced understanding of ethical, social and environmental issues.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    },
+    {
+      "status": "found",
+      "value": "Communicate complex ideas in a logical, succinct and persuasive manner.",
+      "confidence": 1.0,
+      "quote": "Communicate complex ideas in a logical, succinct and persuasive manner.",
+      "charSpan": [
+        2436,
+        2507
+      ],
+      "sourceSpans": [
+        {
+          "docId": "comm-3030",
+          "pageNum": null,
+          "charStart": 2584,
+          "charEnd": 2655,
+          "quote": "Communicate complex ideas in a logical, succinct and persuasive manner.",
+          "verified": true,
+          "verifyReason": null
+        }
+      ]
+    }
+  ],
+  "weekTopics": []
+}

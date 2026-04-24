@@ -1,0 +1,9 @@
+{
+  "field": "assessmentItems[0].dueDate",
+  "sourceFixture": "fins-3640",
+  "filename": "Course Overview_FINS3640.pdf",
+  "expectedVerified": false,
+  "expectedConfidenceMax": 0.4,
+  "expectedReason": "quote_not_substring_of_source",
+  "alternateAcceptedReasons": ["quote_appears_non_contiguous", "quote_non_contiguous"]
+}
