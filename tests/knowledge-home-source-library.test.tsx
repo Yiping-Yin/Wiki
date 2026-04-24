@@ -121,7 +121,7 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.match(sourceText, /onCancelHideCategory = \(\) => \{\}/);
   assert.match(sourceText, /onConfirmHideCategory = \(\) => \{\}/);
   assert.match(sourceText, /onMoveCategory = \(\) => \{\}/);
-  assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source\s+files stay unchanged\./);
+  assert.match(sourceText, /Re-shelving changes Loom\s+provenance only; original source files stay unchanged\./);
   assert.doesNotMatch(sourceText, /buildSourceLibraryGroups/);
 
   const buttons = [] as ts.JsxElement[];
@@ -137,12 +137,12 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   });
 
   const buttonText = (element: ts.JsxElement) => normalizedJsxText(element, sourceFile);
-  const addGroupButton = buttons.find((element) => buttonText(element) === 'Add group');
-  const createGroupButton = buttons.find((element) => buttonText(element) === 'Create group');
-  const renameGroupButton = buttons.find((element) => buttonText(element) === 'Rename');
-  const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Delete');
+  const addGroupButton = buttons.find((element) => buttonText(element) === 'New shelf');
+  const createGroupButton = buttons.find((element) => buttonText(element) === 'Create shelf');
+  const renameGroupButton = buttons.find((element) => buttonText(element) === 'Relabel');
+  const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Remove');
   const saveButton = buttons.find((element) => buttonText(element) === 'Save');
-  const deleteNowButton = buttons.find((element) => buttonText(element) === 'Delete now');
+  const deleteNowButton = buttons.find((element) => buttonText(element) === 'Remove now');
   const cancelButtons = buttons.filter((element) => buttonText(element) === 'Cancel');
   const selectElement = visit(sourceFile, (node) =>
     ts.isJsxElement(node) &&
@@ -150,14 +150,14 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
     node.openingElement.tagName.text === 'select'
   ) as ts.JsxElement | undefined;
 
-  assert.ok(addGroupButton, 'Add group button not found');
-  assert.ok(createGroupButton, 'Create group button not found');
-  assert.ok(renameGroupButton, 'Rename group button not found');
-  assert.ok(deleteGroupButton, 'Delete group button not found');
+  assert.ok(addGroupButton, 'New shelf button not found');
+  assert.ok(createGroupButton, 'Create shelf button not found');
+  assert.ok(renameGroupButton, 'Relabel shelf button not found');
+  assert.ok(deleteGroupButton, 'Remove shelf button not found');
   assert.ok(saveButton, 'Save button not found');
-  assert.ok(deleteNowButton, 'Delete now button not found');
+  assert.ok(deleteNowButton, 'Remove now button not found');
   assert.ok(cancelButtons.length >= 2, 'Cancel buttons not found');
-  assert.ok(selectElement, 'Move-to-group select not found');
+  assert.ok(selectElement, 'Re-shelve select not found');
 
   assert.equal(jsxExpressionText(addGroupButton.openingElement, 'onClick', sourceFile), 'onStartAddGroup');
   assert.equal(
@@ -184,14 +184,18 @@ test('KnowledgeHomeStatic renders Atlas entry sections and collection tiles thro
 
   assert.match(sourceText, /<StageShell/);
   assert.match(sourceText, /<QuietScene tone="atlas"/);
+  assert.match(sourceText, /var\(--archive-stage-width\)/);
   assert.match(sourceText, /<PageFrame/);
-  assert.match(sourceText, /<span>\s*\{totalCollections\} collections · \{totalDocs\} docs\s*<\/span>/);
-  assert.match(sourceText, /Your sources, grouped\./);
-  assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source\s+files stay unchanged\./);
+  assert.match(sourceText, /<span>\s*\{formatCount\(totalCollections, 'shelf'\)\} \/ \{formatCount\(totalDocs, 'indexed source'\)\}\s*<\/span>/);
+  assert.match(sourceText, /archive shelves/);
+  assert.match(sourceText, /Re-shelving changes Loom\s+provenance only; original source files stay unchanged\./);
+  assert.match(sourceText, /loom-archive-shelf/);
+  assert.match(sourceText, /loom-source-sample/);
+  assert.match(sourceText, /materialForItem/);
   assert.match(sourceText, /href=\{`\/knowledge\/\$\{item\.slug\}`\}/);
-  assert.match(sourceText, /Open collection/);
+  assert.match(sourceText, /aria-label=\{`Open shelf \$\{item\.label\}`\}/);
   assert.match(sourceText, /formatCount\(group\.items\.length, 'collection'\)/);
-  assert.match(sourceText, /formatCount\(item\.count, 'doc'\)/);
+  assert.match(sourceText, /formatCount\(item\.count, 'source'\)/);
 });
 
 test('knowledge top-level route is a compatibility alias to Sources', () => {
@@ -220,7 +224,8 @@ test('source-library group management uses inline controls instead of browser pr
   assert.match(client, /editingGroupLabel/);
   assert.match(client, /newGroupLabel/);
 
-  assert.match(staticText, /Create group/);
+  assert.match(staticText, /Create shelf/);
+  assert.match(staticText, /New shelf/);
   assert.match(staticText, /Cancel/);
 
   const inputElement = visit(sourceFile, (node) =>
