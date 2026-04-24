@@ -60,7 +60,9 @@ Loom is built collaboratively with AI coding assistants. This is not a
 secret — it's tracked in the git history:
 
 - Commits prefixed `[codex] …` come from **OpenAI Codex** (via the
-  `codex` CLI or Codex Cloud).
+  `codex` CLI or Codex Cloud). New Codex-assisted commits also include
+  `Co-authored-by: Codex <267193182+codex@users.noreply.github.com>`
+  so GitHub can attribute the `@codex` account in contributor surfaces.
 - Commits whose body contains `Co-Authored-By: Claude …` come from
   **Anthropic Claude** (via Claude Code).
 - Unprefixed commits without a `Co-Authored-By` trailer are
