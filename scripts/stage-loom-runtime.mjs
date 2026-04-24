@@ -1,157 +1,43 @@
-import { promises as fs } from 'node:fs';
-import { homedir } from 'node:os';
-import path from 'node:path';
+/**
+ * Phase 5 cleanup — stub (2026-04-22).
+ *
+ * The architecture inversion retired the bundled Node runtime: the app
+ * now ships as a static export (`.next-export/`) staged into the .app
+ * bundle's `Resources/web/` by the Xcode preBuildScript. The Swift
+ * runtime reads `loom://bundle/*` directly, never launches Node, and
+ * never consults `~/Library/Application Support/Loom/runtime/`.
+ *
+ * `install-loom-app.mjs` and `package-loom-app.mjs` still call
+ * `stageRuntimeBundle` via their legacy flow — this stub keeps that
+ * contract (same export shape, same return-null semantics) so the
+ * install/package pipelines run without the multi-minute rsync cost
+ * they used to pay. Net effect: runtime staging is a no-op; rollback
+ * paths in callers see `stagedRuntimeRoot = null` and skip cleanup.
+ *
+ * Keeping the stub rather than deleting the file preserves the
+ * existing import graph (`import { stageRuntimeBundle } from …`), so
+ * no call-site edits are needed. Delete the whole file + unwind call
+ * sites once a post-sandbox-flip e2e install smoke test confirms the
+ * stub path stays clean across every mode (user / system / auto).
+ */
 
 /**
  * @typedef {object} StageRuntimeBundleOptions
  * @property {string} [repoRoot]
  * @property {string} [homeOverride]
+ * @property {string} [runtimeBaseOverride]
  */
-
-function runtimeBaseDir(homePath) {
-  return path.join(homePath, 'Library', 'Application Support', 'Loom', 'runtime');
-}
-
-async function writeActivationRecordAtomic(runtimeBase, activationRecord) {
-  const activationPath = path.join(runtimeBase, 'current.json');
-  const tempActivationPath = path.join(runtimeBase, 'current.json.tmp');
-  await fs.writeFile(
-    tempActivationPath,
-    JSON.stringify(activationRecord, null, 2),
-    'utf8',
-  );
-  await fs.rename(tempActivationPath, activationPath);
-}
-
-async function pathExists(filePath) {
-  try {
-    await fs.stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function directoryHasMatchingEntry(dirPath, pattern) {
-  try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    return entries.some((entry) => entry.isFile() && pattern.test(entry.name));
-  } catch {
-    return false;
-  }
-}
-
-async function validateStagedRuntime(targetRoot) {
-  const requiredPaths = [
-    path.join(targetRoot, 'standalone', 'server.js'),
-    path.join(targetRoot, 'standalone', '.next-build', 'static'),
-    path.join(targetRoot, 'standalone', 'public'),
-    path.join(targetRoot, 'standalone', 'public', 'pagefind', 'pagefind.js'),
-    path.join(targetRoot, 'standalone', 'public', 'pagefind', 'pagefind-entry.json'),
-  ];
-
-  for (const requiredPath of requiredPaths) {
-    if (!await pathExists(requiredPath)) {
-      throw new Error(`Incomplete staged runtime payload: missing ${requiredPath}`);
-    }
-  }
-
-  const pagefindRoot = path.join(targetRoot, 'standalone', 'public', 'pagefind');
-  const hasFragmentData = await directoryHasMatchingEntry(
-    path.join(pagefindRoot, 'fragment'),
-    /\.pf_fragment$/,
-  );
-  if (!hasFragmentData) {
-    throw new Error(`Incomplete staged runtime payload: missing pagefind fragment data in ${pagefindRoot}`);
-  }
-
-  const hasIndexData = await directoryHasMatchingEntry(
-    path.join(pagefindRoot, 'index'),
-    /\.pf_index$/,
-  );
-  if (!hasIndexData) {
-    throw new Error(`Incomplete staged runtime payload: missing pagefind index data in ${pagefindRoot}`);
-  }
-}
-
-async function acquireInstallLock(runtimeBase) {
-  const lockPath = path.join(runtimeBase, '.install-lock');
-  const ownerLine = `${process.pid}@${new Date().toISOString()}`;
-  try {
-    // wx = exclusive create. Fails with EEXIST if another process holds the lock.
-    await fs.writeFile(lockPath, ownerLine, { encoding: 'utf8', flag: 'wx' });
-    return lockPath;
-  } catch (error) {
-    if (error && error.code === 'EEXIST') {
-      // Check for stale lock (> 10 minutes old — well past any reasonable stage run).
-      try {
-        const stats = await fs.stat(lockPath);
-        const ageMs = Date.now() - stats.mtimeMs;
-        if (ageMs > 10 * 60 * 1000) {
-          const staleOwner = await fs.readFile(lockPath, 'utf8').catch(() => '<unreadable>');
-          await fs.rm(lockPath, { force: true });
-          process.stderr.write(
-            `stage-loom-runtime: removed stale install lock (age ${Math.round(ageMs / 1000)}s, prior owner: ${staleOwner})\n`,
-          );
-          return acquireInstallLock(runtimeBase);
-        }
-      } catch {}
-      const existingOwner = await fs.readFile(lockPath, 'utf8').catch(() => '<unreadable>');
-      throw new Error(
-        `Another stage/install is in progress (lock held by ${existingOwner}). ` +
-        `If you're sure no other install is running, remove ${lockPath} and retry.`,
-      );
-    }
-    throw error;
-  }
-}
-
-async function releaseInstallLock(lockPath) {
-  if (!lockPath) return;
-  await fs.rm(lockPath, { force: true }).catch(() => {});
-}
 
 /**
- * @param {StageRuntimeBundleOptions} [options]
+ * @param {StageRuntimeBundleOptions} [_options]
+ * @returns {Promise<null>}
  */
-export async function stageRuntimeBundle({ repoRoot = process.cwd(), homeOverride } = {}) {
-  const homePath = homeOverride ?? homedir();
-  const buildRoot = path.join(repoRoot, '.next-build');
-  const buildId = (await fs.readFile(path.join(buildRoot, 'BUILD_ID'), 'utf8')).trim();
-  const runtimeBase = runtimeBaseDir(homePath);
-  const targetRoot = path.join(runtimeBase, buildId);
-  const stagingRoot = path.join(runtimeBase, `${buildId}.staging-${process.pid}-${Date.now()}`);
-  const standaloneRoot = path.join(stagingRoot, 'standalone');
+export async function stageRuntimeBundle(_options) {
+  return null;
+}
 
-  await fs.mkdir(runtimeBase, { recursive: true });
-
-  const lockPath = await acquireInstallLock(runtimeBase);
-
-  try {
-    await fs.mkdir(standaloneRoot, { recursive: true });
-    await fs.cp(path.join(buildRoot, 'standalone'), standaloneRoot, { recursive: true });
-    await fs.cp(
-      path.join(buildRoot, 'static'),
-      path.join(standaloneRoot, '.next-build', 'static'),
-      { recursive: true },
-    );
-    await fs.cp(
-      path.join(repoRoot, 'public'),
-      path.join(standaloneRoot, 'public'),
-      { recursive: true },
-    );
-
-    await validateStagedRuntime(stagingRoot);
-
-    await fs.rm(targetRoot, { recursive: true, force: true });
-    await fs.rename(stagingRoot, targetRoot);
-    await writeActivationRecordAtomic(runtimeBase, { buildId, runtimeRoot: targetRoot });
-  } catch (error) {
-    await fs.rm(stagingRoot, { recursive: true, force: true });
-    throw error;
-  } finally {
-    await releaseInstallLock(lockPath);
-  }
-
-  return targetRoot;
+// Legacy helper kept for the test file that targets it directly; no
+// consumer calls it.
+export function runtimeBaseDir() {
+  return null;
 }

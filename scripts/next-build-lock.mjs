@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const DEFAULT_STALE_MS = 10 * 60 * 1000;
 const DEFAULT_POLL_MS = 250;
-const DUPLICATE_ARTIFACT_PATTERN = / \d+(?=\.)/;
+const DUPLICATE_ARTIFACT_PATTERN = / \d+(?=($|\.))/;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -48,7 +48,12 @@ async function acquireBuildLock(root, { staleMs = DEFAULT_STALE_MS, pollMs = DEF
         acquiredAt: Date.now(),
       }), { flag: 'wx' });
       return async () => {
-        await rm(lockDir, { recursive: true, force: true });
+        try {
+          await rm(lockDir, { recursive: true, force: true });
+        } catch (error) {
+          if (error?.code === 'ENOENT' || error?.code === 'ENOTEMPTY') return;
+          throw error;
+        }
       };
     } catch (error) {
       if (error?.code === 'ENOENT') {

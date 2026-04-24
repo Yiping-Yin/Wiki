@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loom · Privacy</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --fg: #1d1d1f;
+      --fg-secondary: #424245;
+      --muted: #86868b;
+      --accent: #0071e3;
+      --bg: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #f5f5f7;
+        --fg-secondary: #c7c7cc;
+        --muted: #8e8e93;
+        --accent: #0a84ff;
+        --bg: #000000;
+      }
+    }
+    body {
+      font-family: -apple-system, "SF Pro Text", ui-sans-serif, system-ui;
+      color: var(--fg);
+      background: var(--bg);
+      margin: 0;
+      padding: 56px 28px 72px;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-family: "New York", Georgia, serif;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-size: 2rem;
+      margin: 0 0 4px;
+    }
+    h2 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 2.4rem 0 0.5rem;
+    }
+    p { margin: 0.55rem 0; color: var(--fg-secondary); font-size: 0.95rem; }
+    ul { padding-left: 1.2rem; margin: 0.4rem 0; }
+    li { margin: 0.25rem 0; color: var(--fg-secondary); font-size: 0.95rem; }
+    .eyebrow {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    strong { color: var(--fg); font-weight: 600; }
+    .updated { font-size: 0.75rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Loom Privacy</div>
+  <h1>What Loom does with your data.</h1>
+  <p>Loom is a local Mac app for personal reading and thinking. The short version: <strong>everything stays on your Mac</strong>, except for the prompts you send to the AI you configured.</p>
+
+  <h2>What never leaves your device</h2>
+  <ul>
+    <li>Your source files (PDFs, notes, slides, anything in the folder you picked)</li>
+    <li>Your highlights, anchors, panels, weaves, quiz attempts, reading history</li>
+    <li>Your API keys (stored in macOS Keychain; Loom reads them only at AI-call time)</li>
+    <li>Any Loom usage analytics — there are none, Loom doesn't phone home</li>
+  </ul>
+
+  <h2>What leaves when you use AI features</h2>
+  <p>When you invoke an AI feature (ask AI about a selection, tighten/rewrite/expand a passage, generate a suggestion), Loom sends the prompt you generate to the AI provider you chose (Anthropic in the default build) using the API key you supplied. That provider's privacy policy governs what they do with the content of your request.</p>
+  <ul>
+    <li>Anthropic: <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">https://www.anthropic.com/legal/privacy</a></li>
+  </ul>
+  <p>Loom itself does not relay, mirror, or store copies of your AI traffic on any server. There is no Loom server.</p>
+
+  <h2>What Loom stores locally</h2>
+  <ul>
+    <li>IndexedDB + SwiftData stores for traces, panels, weaves, quiz results, chat history</li>
+    <li>UserDefaults entries prefixed <code>loom.</code> / <code>wiki:</code> for app preferences</li>
+    <li>macOS Keychain entries for API keys under service <code>com.loom.app</code></li>
+    <li>A security-scoped bookmark for the folder you picked as your content root</li>
+  </ul>
+  <p>Settings &gt; Data lets you wipe all of the above from inside Loom. For fully clearing the app's sandboxed container, delete <code>~/Library/Containers/com.loom.app</code> in Finder.</p>
+
+  <h2>Required-reason APIs</h2>
+  <p>Per Apple's Privacy Manifest rules, Loom declares these APIs and the reasons it uses them:</p>
+  <ul>
+    <li><strong>UserDefaults (CA92.1)</strong> — persists Loom's own preferences</li>
+    <li><strong>File timestamps (C617.1)</strong> — displays "touched X ago" sort order for uploads and cowork documents</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>Questions? Loom is maintained by a single person. Open an issue on the project's marketing site, or mail the address listed there.</p>
+
+  <p class="updated">Last updated 2026-04-21.</p>
+</main>
+</body>
+</html>

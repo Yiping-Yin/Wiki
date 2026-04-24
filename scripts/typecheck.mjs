@@ -68,6 +68,7 @@ const requiredArtifacts = [
 ];
 
 await withNextBuildLock(root, async () => {
+  await removeDuplicateArtifacts(path.join(root, '.next'));
   await removeDuplicateArtifacts(path.join(root, '.next-build'));
   await removeDuplicateArtifacts(path.join(root, '.next-app-dev'));
 
@@ -81,12 +82,15 @@ await withNextBuildLock(root, async () => {
   } catch (error) {
     const output = String(error.output ?? '');
     const missingTypegen =
-      output.includes('TS6053')
-      && output.includes('.next-build/types/');
+      (output.includes('TS6053') || output.includes('TS2307'))
+      && (output.includes('.next-build/types/') || output.includes('.next/types/'));
 
     if (!missingTypegen) throw error;
 
     console.log('typecheck: detected stale Next route types, rebuilding `npm run build` and retrying...');
+    await removeDuplicateArtifacts(path.join(root, '.next'));
+    await run('rm', ['-rf', path.join(root, '.next', 'types')]);
+    await run('rm', ['-rf', path.join(root, '.next-build', 'types')]);
     await runNpmScript('build', { LOOM_NEXT_BUILD_LOCK_HELD: '1' });
     await runCapture(process.execPath, [tscCli, '--noEmit']);
   }
