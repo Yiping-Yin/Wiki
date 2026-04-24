@@ -22,7 +22,7 @@ export async function removeDuplicateArtifacts(dir) {
     const fullPath = path.join(dir, entry.name);
     if (DUPLICATE_ARTIFACT_PATTERN.test(entry.name)) {
       try {
-        await rm(fullPath, { recursive: true, force: true });
+        await removePathWithRetry(fullPath);
       } catch {}
       return;
     }
@@ -30,6 +30,30 @@ export async function removeDuplicateArtifacts(dir) {
       await removeDuplicateArtifacts(fullPath);
     }
   }));
+}
+
+export async function removePathWithRetry(target, {
+  recursive = true,
+  force = true,
+  attempts = 5,
+  retryDelayMs = 100,
+} = {}) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      await rm(target, {
+        recursive,
+        force,
+        maxRetries: 2,
+        retryDelay: retryDelayMs,
+      });
+      return;
+    } catch (error) {
+      if (force && error?.code === 'ENOENT') return;
+      const canRetry = error?.code === 'ENOTEMPTY' || error?.code === 'EBUSY' || error?.code === 'EPERM';
+      if (!canRetry || attempt === attempts - 1) throw error;
+      await sleep(retryDelayMs * (attempt + 1));
+    }
+  }
 }
 
 async function acquireBuildLock(root, { staleMs = DEFAULT_STALE_MS, pollMs = DEFAULT_POLL_MS } = {}) {
@@ -49,7 +73,7 @@ async function acquireBuildLock(root, { staleMs = DEFAULT_STALE_MS, pollMs = DEF
       }), { flag: 'wx' });
       return async () => {
         try {
-          await rm(lockDir, { recursive: true, force: true });
+          await removePathWithRetry(lockDir);
         } catch (error) {
           if (error?.code === 'ENOENT' || error?.code === 'ENOTEMPTY') return;
           throw error;
@@ -57,7 +81,7 @@ async function acquireBuildLock(root, { staleMs = DEFAULT_STALE_MS, pollMs = DEF
       };
     } catch (error) {
       if (error?.code === 'ENOENT') {
-        await rm(lockDir, { recursive: true, force: true });
+        await removePathWithRetry(lockDir);
         continue;
       }
       if (error?.code !== 'EEXIST') throw error;
@@ -65,7 +89,7 @@ async function acquireBuildLock(root, { staleMs = DEFAULT_STALE_MS, pollMs = DEF
       try {
         const info = await stat(lockDir);
         if (Date.now() - info.mtimeMs > staleMs) {
-          await rm(lockDir, { recursive: true, force: true });
+          await removePathWithRetry(lockDir);
           continue;
         }
       } catch {

@@ -111,18 +111,29 @@ test('release app scripts build the static export before Xcode Release packaging
   const pkg = JSON.parse(
     fs.readFileSync(path.join(path.resolve(__dirname, '..'), 'package.json'), 'utf8'),
   ) as { scripts?: Record<string, string> };
+  const buildInstallSource = fs.readFileSync(
+    path.join(path.resolve(__dirname, '..'), 'scripts', 'build-install-loom-app.mjs'),
+    'utf8',
+  );
 
   assert.equal(pkg.scripts?.['app:package'], 'node scripts/package-loom-app.mjs');
+  assert.equal(pkg.scripts?.['app'], 'node scripts/build-install-loom-app.mjs auto');
+  assert.equal(pkg.scripts?.['app:user'], 'node scripts/build-install-loom-app.mjs user');
+  assert.equal(pkg.scripts?.['app:system'], 'node scripts/build-install-loom-app.mjs system');
 
-  for (const name of ['app', 'app:user', 'app:system']) {
-    const script: string = pkg.scripts?.[name] ?? '';
-    const exportIndex: number = script.indexOf('node scripts/build-static-export.mjs');
-    const xcodeIndex: number = script.indexOf('xcodebuild -project Loom.xcodeproj -scheme Loom -configuration Release build');
+  const exportIndex: number = buildInstallSource.indexOf('scripts/build-static-export.mjs');
+  const xcodeIndex: number = buildInstallSource.indexOf("run('xcodebuild'");
+  const installIndex: number = buildInstallSource.indexOf('scripts/install-loom-app.mjs');
+  const cleanIndex: number = buildInstallSource.indexOf('scripts/clean-loom-app-bundles.mjs');
 
-    assert.notEqual(exportIndex, -1, `${name} must run build-static-export.mjs`);
-    assert.notEqual(xcodeIndex, -1, `${name} must run the Release Xcode build`);
-    assert.equal(exportIndex < xcodeIndex, true, `${name} must export before xcodebuild`);
-  }
+  assert.notEqual(exportIndex, -1, 'build-install-loom-app.mjs must run build-static-export.mjs');
+  assert.notEqual(xcodeIndex, -1, 'build-install-loom-app.mjs must run the Release Xcode build');
+  assert.notEqual(installIndex, -1, 'build-install-loom-app.mjs must install the built app');
+  assert.notEqual(cleanIndex, -1, 'build-install-loom-app.mjs must clean DerivedData app bundles');
+  assert.equal(exportIndex < xcodeIndex, true, 'static export must run before xcodebuild');
+  assert.equal(xcodeIndex < installIndex, true, 'xcodebuild must run before install');
+  assert.equal(buildInstallSource.includes('finally'), true, 'cleanup must run after failures too');
+  assert.doesNotMatch(buildInstallSource, /cd\s+macos-app\/Loom|cd\s+\.\.\/\.\./);
 });
 
 test('installed app smoke is sandbox-compatible and does not call CLI AI', () => {

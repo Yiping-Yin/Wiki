@@ -55,76 +55,141 @@ final class AIStreamBridgeHandler: NSObject, WKScriptMessageHandler {
             }
         }
 
-        let task = Task.detached(priority: .userInitiated) { [weak self, weak webView] in
-            do {
-                switch provider {
-                case .openai:
-                    var opts = OpenAIClient.Options()
-                    if let m = modelOverride, !m.isEmpty { opts.model = m }
-                    if let t = maxTokensOverride, t > 0 { opts.maxTokens = t }
-                    opts.onChunk = onChunkClosure
-                    _ = try await OpenAIClient.send(prompt: prompt, options: opts)
-                case .customEndpoint:
-                    var opts = CustomEndpointClient.Options()
-                    if let t = maxTokensOverride, t > 0 { opts.maxTokens = t }
-                    opts.onChunk = onChunkClosure
-                    _ = try await CustomEndpointClient.send(prompt: prompt, options: opts)
-                case .ollama:
-                    var opts = OllamaClient.Options()
-                    opts.onChunk = onChunkClosure
-                    _ = try await OllamaClient.send(prompt: prompt, options: opts)
-                case .claudeCli:
-                    var opts = CLIRuntimeClient.Options()
-                    opts.flavor = .claude
-                    opts.onChunk = onChunkClosure
-                    _ = try await CLIRuntimeClient.send(prompt: prompt, options: opts)
-                case .codexCli:
-                    var opts = CLIRuntimeClient.Options()
-                    opts.flavor = .codex
-                    opts.onChunk = onChunkClosure
-                    _ = try await CLIRuntimeClient.send(prompt: prompt, options: opts)
-                case .disabled:
-                    throw NSError(
-                        domain: "LoomAI", code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "AI is disabled in Settings."]
-                    )
-                default:
-                    var opts = AnthropicClient.Options()
-                    if let m = modelOverride, !m.isEmpty { opts.model = m }
-                    if let t = maxTokensOverride, t > 0 { opts.maxTokens = t }
-                    opts.onChunk = onChunkClosure
-                    _ = try await AnthropicClient.send(prompt: prompt, options: opts)
-                }
-                let escapedId = escapeForJS(streamId)
-                await Self.evaluateJavaScript(
-                    "window.__loomAI && window.__loomAI.onDone('\(escapedId)')",
-                    in: webView
-                )
-            } catch is CancellationError {
-                let escapedId = escapeForJS(streamId)
-                await Self.evaluateJavaScript(
-                    "window.__loomAI && window.__loomAI.onError('\(escapedId)', 'cancelled')",
-                    in: webView
-                )
-            } catch {
-                let message = (error as? AnthropicClient.Failure)?.errorDescription
-                    ?? (error as? OpenAIClient.Failure)?.errorDescription
-                    ?? (error as? CustomEndpointClient.Failure)?.errorDescription
-                    ?? (error as? OllamaClient.Failure)?.errorDescription
-                    ?? (error as? CLIRuntimeClient.Failure)?.errorDescription
-                    ?? error.localizedDescription
-                let escapedId = escapeForJS(streamId)
-                let escapedMsg = escapeForJS(message)
-                await Self.evaluateJavaScript(
-                    "window.__loomAI && window.__loomAI.onError('\(escapedId)', '\(escapedMsg)')",
-                    in: webView
-                )
-            }
-            await MainActor.run { [weak self] in
-                _ = self?.tasks.removeValue(forKey: streamId)
+        let task = Self.makeStreamTask(
+            owner: self,
+            streamId: streamId,
+            prompt: prompt,
+            provider: provider,
+            modelOverride: modelOverride,
+            maxTokensOverride: maxTokensOverride,
+            onChunk: onChunkClosure,
+            webView: webView
+        )
+        tasks[streamId] = task
+    }
+
+    private nonisolated static func makeStreamTask(
+        owner: AIStreamBridgeHandler,
+        streamId: String,
+        prompt: String,
+        provider: AIProviderKind,
+        modelOverride: String?,
+        maxTokensOverride: Int?,
+        onChunk: @escaping (String) -> Void,
+        webView: WKWebView
+    ) -> Task<Void, Never> {
+        Task.detached(priority: .userInitiated) { [weak owner, weak webView] in
+            await Self.runStreamRequest(
+                streamId: streamId,
+                prompt: prompt,
+                provider: provider,
+                modelOverride: modelOverride,
+                maxTokensOverride: maxTokensOverride,
+                onChunk: onChunk,
+                webView: webView
+            )
+            await MainActor.run {
+                _ = owner?.tasks.removeValue(forKey: streamId)
             }
         }
-        tasks[streamId] = task
+    }
+
+    private nonisolated static func runStreamRequest(
+        streamId: String,
+        prompt: String,
+        provider: AIProviderKind,
+        modelOverride: String?,
+        maxTokensOverride: Int?,
+        onChunk: @escaping (String) -> Void,
+        webView: WKWebView?
+    ) async {
+        do {
+            try await sendPrompt(
+                prompt,
+                provider: provider,
+                modelOverride: modelOverride,
+                maxTokensOverride: maxTokensOverride,
+                onChunk: onChunk
+            )
+            await postDone(streamId: streamId, webView: webView)
+        } catch is CancellationError {
+            await postError(streamId: streamId, message: "cancelled", webView: webView)
+        } catch {
+            await postError(streamId: streamId, message: streamErrorMessage(error), webView: webView)
+        }
+    }
+
+    private nonisolated static func sendPrompt(
+        _ prompt: String,
+        provider: AIProviderKind,
+        modelOverride: String?,
+        maxTokensOverride: Int?,
+        onChunk: @escaping (String) -> Void
+    ) async throws {
+        switch provider {
+        case .openai:
+            var opts = OpenAIClient.Options()
+            if let m = modelOverride, !m.isEmpty { opts.model = m }
+            if let t = maxTokensOverride, t > 0 { opts.maxTokens = t }
+            opts.onChunk = onChunk
+            _ = try await OpenAIClient.send(prompt: prompt, options: opts)
+        case .customEndpoint:
+            var opts = CustomEndpointClient.Options()
+            if let t = maxTokensOverride, t > 0 { opts.maxTokens = t }
+            opts.onChunk = onChunk
+            _ = try await CustomEndpointClient.send(prompt: prompt, options: opts)
+        case .ollama:
+            var opts = OllamaClient.Options()
+            opts.onChunk = onChunk
+            _ = try await OllamaClient.send(prompt: prompt, options: opts)
+        case .claudeCli:
+            var opts = CLIRuntimeClient.Options()
+            opts.flavor = .claude
+            opts.onChunk = onChunk
+            _ = try await CLIRuntimeClient.send(prompt: prompt, options: opts)
+        case .codexCli:
+            var opts = CLIRuntimeClient.Options()
+            opts.flavor = .codex
+            opts.onChunk = onChunk
+            _ = try await CLIRuntimeClient.send(prompt: prompt, options: opts)
+        case .disabled:
+            throw NSError(
+                domain: "LoomAI", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "AI is disabled in Settings."]
+            )
+        default:
+            var opts = AnthropicClient.Options()
+            if let m = modelOverride, !m.isEmpty { opts.model = m }
+            if let t = maxTokensOverride, t > 0 { opts.maxTokens = t }
+            opts.onChunk = onChunk
+            _ = try await AnthropicClient.send(prompt: prompt, options: opts)
+        }
+    }
+
+    private nonisolated static func postDone(streamId: String, webView: WKWebView?) async {
+        let escapedId = escapeForJS(streamId)
+        await Self.evaluateJavaScript(
+            "window.__loomAI && window.__loomAI.onDone('\(escapedId)')",
+            in: webView
+        )
+    }
+
+    private nonisolated static func postError(streamId: String, message: String, webView: WKWebView?) async {
+        let escapedId = escapeForJS(streamId)
+        let escapedMsg = escapeForJS(message)
+        await Self.evaluateJavaScript(
+            "window.__loomAI && window.__loomAI.onError('\(escapedId)', '\(escapedMsg)')",
+            in: webView
+        )
+    }
+
+    private nonisolated static func streamErrorMessage(_ error: Error) -> String {
+        (error as? AnthropicClient.Failure)?.errorDescription
+            ?? (error as? OpenAIClient.Failure)?.errorDescription
+            ?? (error as? CustomEndpointClient.Failure)?.errorDescription
+            ?? (error as? OllamaClient.Failure)?.errorDescription
+            ?? (error as? CLIRuntimeClient.Failure)?.errorDescription
+            ?? error.localizedDescription
     }
 
     private static func evaluateJavaScript(_ script: String, in webView: WKWebView?) async {

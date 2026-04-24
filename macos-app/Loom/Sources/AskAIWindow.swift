@@ -680,78 +680,134 @@ final class AskAIRunner: ObservableObject {
             }
         }
 
-        task = Task.detached(priority: .userInitiated) { [weak self] in
-            do {
-                switch provider {
-                case .openai:
-                    var opts = OpenAIClient.Options()
-                    opts.onChunk = onChunk
-                    _ = try await OpenAIClient.send(prompt: upstreamPrompt, options: opts)
-                case .customEndpoint:
-                    var opts = CustomEndpointClient.Options()
-                    opts.onChunk = onChunk
-                    _ = try await CustomEndpointClient.send(prompt: upstreamPrompt, options: opts)
-                case .ollama:
-                    var opts = OllamaClient.Options()
-                    opts.onChunk = onChunk
-                    _ = try await OllamaClient.send(prompt: upstreamPrompt, options: opts)
-                case .claudeCli:
-                    var opts = CLIRuntimeClient.Options()
-                    opts.flavor = .claude
-                    opts.onChunk = onChunk
-                    _ = try await CLIRuntimeClient.send(prompt: upstreamPrompt, options: opts)
-                case .codexCli:
-                    var opts = CLIRuntimeClient.Options()
-                    opts.flavor = .codex
-                    opts.onChunk = onChunk
-                    _ = try await CLIRuntimeClient.send(prompt: upstreamPrompt, options: opts)
-                case .disabled:
-                    throw NSError(
-                        domain: "LoomAI", code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "AI is disabled in Settings."]
-                    )
-                default:
-                    var opts = AnthropicClient.Options()
-                    opts.onChunk = onChunk
-                    _ = try await AnthropicClient.send(prompt: upstreamPrompt, options: opts)
-                }
-                await MainActor.run { [weak self] in
-                    guard let self else { return }
-                    self.state = .done
-                    let elapsed = Date().timeIntervalSince(startedAt)
-                    if let idx = self.messages.firstIndex(where: { $0.id == assistantID }) {
-                        self.messages[idx].elapsedSeconds = elapsed
-                    }
-                    let entry = AskAIHistoryEntry(
-                        id: UUID().uuidString,
-                        prompt: self.activePrompt,
-                        response: self.lastAssistant,
-                        at: Date().timeIntervalSince1970
-                    )
-                    self.history.insert(entry, at: 0)
-                    if self.history.count > Self.historyMax {
-                        self.history = Array(self.history.prefix(Self.historyMax))
-                    }
-                    self.persistHistory()
-                    self.persistCurrentThread()
-                }
-            } catch is CancellationError {
-                await MainActor.run { [weak self] in
-                    self?.state = .idle
-                }
-            } catch {
-                let msg = (error as? AnthropicClient.Failure)?.errorDescription
-                    ?? (error as? OpenAIClient.Failure)?.errorDescription
-                    ?? (error as? CustomEndpointClient.Failure)?.errorDescription
-                    ?? (error as? OllamaClient.Failure)?.errorDescription
-                    ?? (error as? CLIRuntimeClient.Failure)?.errorDescription
-                    ?? error.localizedDescription
-                await MainActor.run { [weak self] in
-                    self?.errorMessage = msg
-                    self?.state = .failed
-                }
-            }
+        task = Self.makeStreamingTask(
+            runner: self,
+            provider: provider,
+            upstreamPrompt: upstreamPrompt,
+            assistantID: assistantID,
+            startedAt: startedAt,
+            onChunk: onChunk
+        )
+    }
+
+    private nonisolated static func makeStreamingTask(
+        runner: AskAIRunner,
+        provider: AIProviderKind,
+        upstreamPrompt: String,
+        assistantID: String,
+        startedAt: Date,
+        onChunk: @escaping (String) -> Void
+    ) -> Task<Void, Never> {
+        Task.detached(priority: .userInitiated) { [weak runner] in
+            await Self.runStreamingTask(
+                runner: runner,
+                provider: provider,
+                upstreamPrompt: upstreamPrompt,
+                assistantID: assistantID,
+                startedAt: startedAt,
+                onChunk: onChunk
+            )
         }
+    }
+
+    private nonisolated static func runStreamingTask(
+        runner: AskAIRunner?,
+        provider: AIProviderKind,
+        upstreamPrompt: String,
+        assistantID: String,
+        startedAt: Date,
+        onChunk: @escaping (String) -> Void
+    ) async {
+        do {
+            try await sendProviderRequest(
+                provider: provider,
+                upstreamPrompt: upstreamPrompt,
+                onChunk: onChunk
+            )
+            await runner?.finishStreaming(startedAt: startedAt, assistantID: assistantID)
+        } catch is CancellationError {
+            await runner?.markIdleAfterCancellation()
+        } catch {
+            await runner?.failStreaming(message: providerErrorMessage(error))
+        }
+    }
+
+    private nonisolated static func sendProviderRequest(
+        provider: AIProviderKind,
+        upstreamPrompt: String,
+        onChunk: @escaping (String) -> Void
+    ) async throws {
+        switch provider {
+        case .openai:
+            var opts = OpenAIClient.Options()
+            opts.onChunk = onChunk
+            _ = try await OpenAIClient.send(prompt: upstreamPrompt, options: opts)
+        case .customEndpoint:
+            var opts = CustomEndpointClient.Options()
+            opts.onChunk = onChunk
+            _ = try await CustomEndpointClient.send(prompt: upstreamPrompt, options: opts)
+        case .ollama:
+            var opts = OllamaClient.Options()
+            opts.onChunk = onChunk
+            _ = try await OllamaClient.send(prompt: upstreamPrompt, options: opts)
+        case .claudeCli:
+            var opts = CLIRuntimeClient.Options()
+            opts.flavor = .claude
+            opts.onChunk = onChunk
+            _ = try await CLIRuntimeClient.send(prompt: upstreamPrompt, options: opts)
+        case .codexCli:
+            var opts = CLIRuntimeClient.Options()
+            opts.flavor = .codex
+            opts.onChunk = onChunk
+            _ = try await CLIRuntimeClient.send(prompt: upstreamPrompt, options: opts)
+        case .disabled:
+            throw NSError(
+                domain: "LoomAI", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "AI is disabled in Settings."]
+            )
+        default:
+            var opts = AnthropicClient.Options()
+            opts.onChunk = onChunk
+            _ = try await AnthropicClient.send(prompt: upstreamPrompt, options: opts)
+        }
+    }
+
+    private nonisolated static func providerErrorMessage(_ error: Error) -> String {
+        (error as? AnthropicClient.Failure)?.errorDescription
+            ?? (error as? OpenAIClient.Failure)?.errorDescription
+            ?? (error as? CustomEndpointClient.Failure)?.errorDescription
+            ?? (error as? OllamaClient.Failure)?.errorDescription
+            ?? (error as? CLIRuntimeClient.Failure)?.errorDescription
+            ?? error.localizedDescription
+    }
+
+    private func finishStreaming(startedAt: Date, assistantID: String) {
+        state = .done
+        let elapsed = Date().timeIntervalSince(startedAt)
+        if let idx = messages.firstIndex(where: { $0.id == assistantID }) {
+            messages[idx].elapsedSeconds = elapsed
+        }
+        let entry = AskAIHistoryEntry(
+            id: UUID().uuidString,
+            prompt: activePrompt,
+            response: lastAssistant,
+            at: Date().timeIntervalSince1970
+        )
+        history.insert(entry, at: 0)
+        if history.count > Self.historyMax {
+            history = Array(history.prefix(Self.historyMax))
+        }
+        persistHistory()
+        persistCurrentThread()
+    }
+
+    private func markIdleAfterCancellation() {
+        state = .idle
+    }
+
+    private func failStreaming(message: String) {
+        errorMessage = message
+        state = .failed
     }
 
     func cancel() {

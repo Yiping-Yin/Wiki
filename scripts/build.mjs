@@ -1,8 +1,7 @@
-import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { removeDuplicateArtifacts, withNextBuildLock } from './next-build-lock.mjs';
+import { removeDuplicateArtifacts, removePathWithRetry, withNextBuildLock } from './next-build-lock.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const nextBin = path.join(root, 'node_modules', 'next', 'dist', 'bin', 'next');
@@ -24,10 +23,10 @@ function run(cmd, args, extraEnv = {}) {
 }
 
 await withNextBuildLock(root, async () => {
-  rmSync(path.join(root, 'tsconfig.tsbuildinfo'), { force: true });
-  rmSync(path.join(root, '.next-build', 'types'), { recursive: true, force: true });
-  rmSync(path.join(root, '.next-app-dev', 'types'), { recursive: true, force: true });
-  rmSync(path.join(root, 'public', 'pagefind'), { recursive: true, force: true });
+  await removePathWithRetry(path.join(root, 'tsconfig.tsbuildinfo'), { recursive: false });
+  await removePathWithRetry(path.join(root, '.next-build', 'types'));
+  await removePathWithRetry(path.join(root, '.next-app-dev', 'types'));
+  await removePathWithRetry(path.join(root, 'public', 'pagefind'));
   await removeDuplicateArtifacts(path.join(root, '.next'));
   await removeDuplicateArtifacts(path.join(root, '.next-build'));
 
