@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
+import { isNativeMode } from '../../lib/is-native-mode';
 
 /**
  * Minimal intake trigger — a "+" that opens the native file picker.
@@ -15,6 +16,12 @@ export function UploadButton({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+
+  // `/api/upload` is stripped under static export. Native users drag a
+  // file onto the window (SwiftUI `.onDrop` on ContentView opens the
+  // native IngestionView) or use File → Open. Hide the web button so
+  // its click doesn't dead-end in a 404.
+  if (typeof window !== 'undefined' && isNativeMode()) return null;
 
   const upload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -84,7 +91,7 @@ export function UploadButton({
       >
         {variant === 'button' ? (
           <>
-            <span className="t-caption2" style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+            <span className="loom-smallcaps" style={{ color: 'var(--muted)', fontFamily: 'var(--serif)', fontWeight: 500, fontSize: '0.82rem' }}>
               Intake
             </span>
             <span>{label}</span>

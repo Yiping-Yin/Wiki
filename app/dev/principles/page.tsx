@@ -10,7 +10,6 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { PrinciplesView } from './view';
 
-export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Principles · Loom' };
 

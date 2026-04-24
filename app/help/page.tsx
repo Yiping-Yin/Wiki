@@ -12,26 +12,23 @@
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { PageFrame } from '../../components/PageFrame';
 
 export const metadata = { title: 'Help · Loom' };
 
 export default function HelpPage() {
   return (
-    <article className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '4rem' }}>
-      <h1 style={{ marginBottom: '0.2rem', textAlign: 'left' }}>Usage Guide</h1>
-      <p
-        style={{
-          color: 'var(--fg-secondary)',
-          marginTop: 0,
-          fontSize: '1.05rem',
-        }}
+    <article className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: 'var(--space-9)' }}>
+      <PageFrame
+        eyebrow="Help"
+        title="Usage Guide."
+        description={
+          <>
+            Loom is a reading-and-thinking environment where source-bound understanding is woven into memory.{' '}
+            <Link href="/about" style={{ color: 'var(--accent)' }}>/about</Link>
+          </>
+        }
       >
-        Loom is a reading-and-thinking environment where source-bound understanding is woven into memory.{' '}
-        <Link href="/about" style={{ color: 'var(--accent)' }}>
-          /about
-        </Link>
-      </p>
-
       <p>
         <strong>织者即智者。</strong> The loom holds the tension; the weaver
         makes the judgment. The system can organize and reflect, but the
@@ -51,7 +48,7 @@ export default function HelpPage() {
       <ul>
         <li>
           <strong>Sidebar</strong> is the primary navigation layer. Use it to move
-          between <em>Today</em>, <em>Atlas</em>, <em>Patterns</em>, and document collections.
+          between <em>Desk</em>, <em>Sources</em>, <em>Patterns</em>, and the current book.
         </li>
         <li>
           <strong>Shuttle</strong> is the fast path. Press <Kbd>⌘K</Kbd> to jump anywhere quickly.
@@ -78,7 +75,7 @@ export default function HelpPage() {
       <h2>3-minute quick start</h2>
       <ol>
         <li>
-          <strong>Start from Home or Today</strong> if you want the next recommended thread,
+          <strong>Start from Home or Desk</strong> if you want the next recommended thread,
           or open a doc directly from the sidebar if you already know where you want to go.
         </li>
         <li>
@@ -134,7 +131,7 @@ export default function HelpPage() {
         </li>
         <li>
           The <strong>×</strong> button in each card's top-right → one click
-          removes the source from Atlas. Original file untouched. Soft delete
+          removes the source from Sources. Original file untouched. Soft delete
           (preserved in the trace, just no longer rendered).
         </li>
       </ul>
@@ -161,7 +158,7 @@ export default function HelpPage() {
       <h3>Tools and global shortcuts</h3>
       <Kbds>
         <KbdRow k="⌘K" label="Shuttle through everything" />
-        <KbdRow k="Relations" label="Open the active pattern’s relation layer from the Atlas" />
+        <KbdRow k="Weaves" label="Open the active pattern’s constellation from Desk" />
         <KbdRow k="?" label="This help" />
         <KbdRow k="Esc" label="Close any panel" />
       </Kbds>
@@ -184,12 +181,11 @@ export default function HelpPage() {
         <Kbd>Esc</Kbd> to close. Clicking outside also closes it.
       </p>
 
-      <h2>Atlas Filtering · ⌘F</h2>
+      <h2>Sidebar Filtering · ⌘F</h2>
       <p>
-        The filter box in the Atlas filters your entire personal
-        Layer of thoughts in real time. Cross-doc, cross-state. Multi-token AND
-        semantics — searching "<code>dpo math</code>" returns only thoughts
-        containing both words.
+        The filter box in the sidebar filters your visible sources and reference
+        sections in real time. Searching "<code>dpo math</code>" narrows the tree
+        to items that match the words you are actively looking for.
       </p>
 
       <h2>Data export</h2>
@@ -208,16 +204,16 @@ export default function HelpPage() {
           that can be re-imported or migrated
         </li>
         <li>
-          <strong>Export current doc's patterns as Markdown</strong> — export only
+          <strong>Export current doc’s patterns as Markdown</strong> — export only
           the patterns for the current focal doc, useful for sharing a single
-          topic's work
+          topic’s work
         </li>
       </ul>
 
       <h2>Where your data lives</h2>
       <ul>
         <li>
-          <strong>All thoughts are stored in the browser's IndexedDB</strong> —
+          <strong>All thoughts are stored in the browser’s IndexedDB</strong> —
           local, never uploaded
         </li>
         <li>
@@ -293,6 +289,7 @@ export default function HelpPage() {
         Your only job is to <strong>read, shuttle, and produce</strong>. Leave the
         rest to Loom.
       </p>
+      </PageFrame>
     </article>
   );
 }
@@ -321,11 +318,13 @@ function Callout({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        padding: '14px 18px',
-        borderLeft: '3px solid var(--accent)',
-        background: 'color-mix(in srgb, var(--accent) 6%, var(--bg))',
-        borderRadius: '0 8px 8px 0',
+        padding: '0.6rem 0 0.6rem 1rem',
+        borderLeft: '1px solid color-mix(in srgb, var(--accent) 55%, transparent)',
+        background: 'transparent',
+        borderRadius: 0,
         margin: '1.2rem 0',
+        fontStyle: 'italic',
+        color: 'var(--fg)',
         fontSize: '0.92rem',
         lineHeight: 1.6,
       }}
@@ -432,12 +431,12 @@ function Trouble({ symptom, fix }: { symptom: string; fix: string }) {
       }}
     >
       <div
+        className="loom-smallcaps"
         style={{
-          fontSize: '0.74rem',
+          fontFamily: 'var(--serif)',
+          fontSize: '0.86rem',
           color: 'var(--muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          fontWeight: 700,
+          fontWeight: 500,
           marginBottom: 3,
         }}
       >

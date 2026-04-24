@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { PageFrame } from '../../components/PageFrame';
 import { summarizeLearningSurface, type LearningSurfaceSummary } from '../../lib/learning-status';
 import { useAllTraces, type Trace } from '../../lib/trace';
 import { latestVisitAt } from '../../lib/trace/source-bound';
@@ -113,24 +114,26 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
   }, [items, traces, normalizedQuery]);
 
   return (
-    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <UploadButton variant="button" />
-      </div>
-
+    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: 'var(--space-7)' }}>
+      <PageFrame
+        eyebrow="Uploads"
+        title="Intake."
+        description="Sources you've added. Opened ones rise above new ones."
+        actions={<UploadButton variant="button" />}
+      >
       <div
+        className="loom-inline-search"
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 'var(--space-3)',
           padding: '0.25rem 0 0.65rem',
-          marginBottom: 22,
-          borderBottom: '0.5px solid var(--mat-border)',
+          marginBottom: 'var(--space-6)',
         }}
       >
         <span
           aria-hidden
-          style={{ color: 'var(--muted)', fontSize: '0.8rem', lineHeight: 1 }}
+          style={{ color: 'var(--muted)', fontSize: 'var(--fs-small)', lineHeight: 1 }}
         >
           ⌕
         </span>
@@ -147,7 +150,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
             background: 'transparent',
             color: 'var(--fg)',
             fontFamily: 'var(--display)',
-            fontSize: '0.92rem',
+            fontSize: 'var(--fs-body)',
             letterSpacing: '-0.01em',
           }}
         />
@@ -263,6 +266,7 @@ export function UploadsClient({ items }: { items: UploadListItem[] }) {
           ))}
         </div>
       )}
+      </PageFrame>
     </div>
   );
 }

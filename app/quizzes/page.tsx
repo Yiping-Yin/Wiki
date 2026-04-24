@@ -1,21 +1,12 @@
 'use client';
 /**
  * /quizzes — every quiz attempt, by source.
- *
- * §1, §11 — the previous version had: PageHero with stats (taken / average /
- * perfect / weak), a 3-button segmented filter (All/Weak/Perfect), conic
- * score donuts on every row, "needs review" red labels, and a colored
- * "Retake →" CTA. Pure surveillance scoreboard.
- *
- * The new version is the same shape as /notes and /highlights: a single
- * list, accent doc-title links, score as plain text, click → source. No
- * filter (you can read 5 lines), no donut, no CTA, no copy.
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { QuietGuideCard } from '../../components/QuietGuideCard';
+import { PageFrame } from '../../components/PageFrame';
 import { isWeak, useQuizResults } from '../../lib/use-quiz';
+import { fetchSearchIndex } from '../../lib/search-index-client';
 
 type IndexDoc = { id: string; title: string; href: string; category: string };
 
@@ -23,7 +14,7 @@ let _idxCache: IndexDoc[] | null = null;
 async function loadDocs(): Promise<IndexDoc[]> {
   if (_idxCache) return _idxCache;
   try {
-    const r = await fetch('/api/search-index');
+    const r = await fetchSearchIndex();
     if (!r.ok) return [];
     const payload = await r.json();
     const stored = payload.index?.storedFields ?? {};
@@ -48,7 +39,6 @@ function prettifyId(id: string): string {
 }
 
 export default function QuizzesPage() {
-  const router = useRouter();
   const [results] = useQuizResults();
   const [docs, setDocs] = useState<IndexDoc[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -81,69 +71,57 @@ export default function QuizzesPage() {
       });
   }, [results, docsById]);
 
-  if (!mounted) return null;
-  if (items.length === 0) return null;
-
-  const focus = items.find((item) => item.weak) ?? items[0];
   return (
-    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      {focus && (
-        <QuietGuideCard
-          eyebrow="Return to this check"
-          title={focus.title}
-          meta={
-            <>
-              <span>{focus.score}/{focus.total}</span>
-              <span aria-hidden>·</span>
-              <span>{formatWhen(focus.attemptedAt)}</span>
-            </>
-          }
-          mode="inline"
-          actions={[
-            { label: 'Return to source', onClick: () => router.push(focus.href), primary: true },
-          ]}
-        />
-      )}
-
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {items.map((it) => (
-          <li key={it.key}>
-            <Link
-              href={it.href}
-              style={{
-                display: 'flex', alignItems: 'baseline', gap: 14,
-                padding: '0.7rem 0',
-                color: 'var(--fg)', textDecoration: 'none',
-                borderBottom: '0.5px solid var(--mat-border)',
-              }}
-            >
-              <span style={{
-                flex: 1, minWidth: 0,
-                fontFamily: 'var(--display)',
-                fontSize: '1rem',
-                fontWeight: 500,
-                letterSpacing: '-0.012em',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{it.title}</span>
-              <span className="t-caption" style={{
-                color: 'var(--muted)', flexShrink: 0,
-                fontVariantNumeric: 'tabular-nums',
-                fontFamily: 'var(--mono)',
-              }}>{it.score}/{it.total}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: 'var(--space-7)' }}>
+      <PageFrame
+        eyebrow="Quizzes"
+        title="Past attempts."
+        description="Every check you've taken, newest first."
+      >
+        {!mounted ? null : items.length === 0 ? (
+          <div
+            style={{
+              padding: 'var(--space-4) 0',
+              color: 'var(--muted)',
+              fontStyle: 'italic',
+              borderBottom: '0.5px solid var(--mat-border)',
+            }}
+          >
+            No attempts yet. Take a check at the end of any chapter.
+          </div>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {items.map((it) => (
+              <li key={it.key}>
+                <Link
+                  href={it.href}
+                  style={{
+                    display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)',
+                    padding: '0.7rem 0',
+                    color: 'var(--fg)', textDecoration: 'none',
+                    borderBottom: '0.5px solid var(--mat-border)',
+                  }}
+                >
+                  <span style={{
+                    flex: 1, minWidth: 0,
+                    fontFamily: 'var(--display)',
+                    fontSize: '1rem',
+                    fontWeight: 500,
+                    letterSpacing: '-0.012em',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{it.title}</span>
+                  <span className="t-caption" style={{
+                    color: it.weak ? 'var(--tint-red)' : 'var(--muted)',
+                    flexShrink: 0,
+                    fontVariantNumeric: 'tabular-nums',
+                    fontFamily: 'var(--mono)',
+                  }}>{it.score}/{it.total}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PageFrame>
     </div>
   );
-}
-
-function formatWhen(ts: number) {
-  const diff = Date.now() - ts;
-  const day = 86_400_000;
-  if (diff < day) return 'today';
-  if (diff < day * 2) return 'yesterday';
-  if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
-  if (diff < day * 30) return `${Math.floor(diff / (day * 7))}w ago`;
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }

@@ -8,7 +8,6 @@ import { DocBodyProvider } from '../../../components/DocBodyProvider';
 import { LiveArtifact } from '../../../components/LiveArtifact';
 import { resolveContentRoot } from '../../../lib/runtime-roots';
 
-export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;

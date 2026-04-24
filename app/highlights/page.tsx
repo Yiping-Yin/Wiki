@@ -1,19 +1,12 @@
 'use client';
 /**
  * /highlights — every line you have flagged across Loom, grouped by source.
- *
- * §1, §11 — the previous version had PageHero with eyebrow + title + stats
- * + descriptive copy, gradient card headers per group, filter pill row,
- * and a remove "×" button on every row. All chrome. The new version is
- * pure typography: doc title as a small accent label, highlights as a
- * left-bordered list, hairline dividers. Removal is no longer a per-row
- * affordance — that decision belongs at the source page where the highlight
- * was made (selection menu), not in a clipping inventory.
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { QuietGuideCard } from '../../components/QuietGuideCard';
+import { PageFrame } from '../../components/PageFrame';
 import { useAllTraces } from '../../lib/trace';
+import { fetchSearchIndex } from '../../lib/search-index-client';
 
 type Hl = { text: string; tint: string; at: number };
 type DocHls = {
@@ -29,7 +22,7 @@ let _idxCache: IndexDoc[] | null = null;
 async function loadDocs(): Promise<IndexDoc[]> {
   if (_idxCache) return _idxCache;
   try {
-    const r = await fetch('/api/search-index');
+    const r = await fetchSearchIndex();
     if (!r.ok) return [];
     const payload = await r.json();
     const stored = payload.index?.storedFields ?? {};
@@ -63,10 +56,7 @@ export default function HighlightsPage() {
   const { traces } = useAllTraces();
 
   useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    loadDocs().then(setIndexDocs);
-  }, []);
+  useEffect(() => { loadDocs().then(setIndexDocs); }, []);
 
   const filtered = useMemo(() => {
     const byId = new Map<string, IndexDoc>();
@@ -112,73 +102,87 @@ export default function HighlightsPage() {
     return out;
   }, [indexDocs, traces]);
 
-  if (!mounted) return null;
-  if (filtered.length === 0) return null;
-
-  const focus = filtered[0] ?? null;
-
   return (
-    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: '2rem' }}>
-      {focus && (
-        <QuietGuideCard
-          eyebrow="Return to this passage"
-          title={focus.title}
-          meta={<span>{formatWhen(focus.highlights[0]?.at ?? 0)}</span>}
-          mode="inline"
-          actions={[
-            { label: 'Return to source', href: focus.href, primary: true },
-          ]}
-        />
-      )}
-
-      {filtered.map((d) => (
-        <section key={d.docId} style={{ marginBottom: '2rem' }}>
-          <Link href={d.href} style={{
-            display: 'block',
-            color: 'var(--accent)',
-            textDecoration: 'none',
-            fontFamily: 'var(--display)',
-            fontSize: '0.92rem',
-            fontWeight: 600,
-            letterSpacing: '-0.005em',
-            marginBottom: 8,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>{d.title}</Link>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {d.highlights.map((h, i) => (
-              <li key={i} style={{
-                display: 'flex', gap: 12,
-                padding: '0.55rem 0',
-                borderBottom: i < d.highlights.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
-              }}>
-                <span aria-hidden style={{
-                  width: 2, alignSelf: 'stretch',
-                  background: h.tint,
-                  borderRadius: 999,
-                  flexShrink: 0,
-                }} />
-                <Link href={d.href} style={{
-                  margin: 0, flex: 1,
-                  color: 'var(--fg)',
-                  textDecoration: 'none',
-                  fontSize: '0.94rem',
-                  lineHeight: 1.6,
-                }}>{h.text}</Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+    <div className="prose-notion" style={{ paddingTop: '4.5rem', paddingBottom: 'var(--space-7)' }}>
+      <PageFrame
+        eyebrow="Highlights"
+        title="Flagged passages."
+        description="Every line you've highlighted, grouped by source."
+      >
+        {!mounted ? null : filtered.length === 0 ? (
+          <div
+            style={{
+              padding: 'clamp(2rem, 6vh, 4rem) 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.9rem',
+              alignItems: 'flex-start',
+              borderBottom: '0.5px solid var(--mat-border)',
+            }}
+          >
+            <p style={{
+              margin: 0,
+              fontFamily: 'var(--display)',
+              fontStyle: 'italic',
+              fontSize: 'clamp(1.1rem, 1.1vw + 0.6rem, 1.4rem)',
+              lineHeight: 1.4,
+              color: 'var(--fg)',
+            }}>
+              No lines flagged yet.
+            </p>
+            <p style={{
+              margin: 0,
+              fontFamily: 'var(--serif)',
+              fontSize: '0.92rem',
+              lineHeight: 1.5,
+              color: 'var(--fg-secondary)',
+              maxWidth: '32em',
+            }}>
+              Select any passage inside a source and Loom keeps it here — grouped by book, in the order you read.
+            </p>
+          </div>
+        ) : (
+          filtered.map((d) => (
+            <section key={d.docId} style={{ marginBottom: 'var(--space-7)' }}>
+              <Link href={d.href} style={{
+                display: 'block',
+                color: 'var(--accent)',
+                textDecoration: 'none',
+                fontFamily: 'var(--display)',
+                fontSize: 'var(--fs-body)',
+                fontStyle: 'italic',
+                fontWeight: 500,
+                letterSpacing: '-0.012em',
+                marginBottom: 'var(--space-2)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{d.title}</Link>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {d.highlights.map((h, i) => (
+                  <li key={i} style={{
+                    display: 'flex', gap: 'var(--space-3)',
+                    padding: '0.55rem 0',
+                    borderBottom: i < d.highlights.length - 1 ? '0.5px solid var(--mat-border)' : 'none',
+                  }}>
+                    <span aria-hidden style={{
+                      width: 2, alignSelf: 'stretch',
+                      background: h.tint,
+                      borderRadius: 999,
+                      flexShrink: 0,
+                    }} />
+                    <Link href={d.href} style={{
+                      margin: 0, flex: 1,
+                      color: 'var(--fg)',
+                      textDecoration: 'none',
+                      fontSize: 'var(--fs-body-lg)',
+                      lineHeight: 'var(--lh-relaxed)',
+                    }}>{h.text}</Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+      </PageFrame>
     </div>
   );
-}
-
-function formatWhen(ts: number) {
-  const diff = Date.now() - ts;
-  const day = 86_400_000;
-  if (diff < day) return 'today';
-  if (diff < day * 2) return 'yesterday';
-  if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
-  if (diff < day * 30) return `${Math.floor(diff / (day * 7))}w ago`;
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }

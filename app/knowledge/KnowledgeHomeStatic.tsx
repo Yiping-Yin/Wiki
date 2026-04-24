@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { QuietScene, QuietSceneColumn } from '../../components/QuietScene';
-import { QuietSceneIntro } from '../../components/QuietSceneIntro';
+import { QuietScene } from '../../components/QuietScene';
+import { PageFrame } from '../../components/PageFrame';
 import { StageShell } from '../../components/StageShell';
-import { WorkEyebrow, textActionStyle, WorkSurface } from '../../components/WorkSurface';
+import { WorkEyebrow, WorkSurface } from '../../components/WorkSurface';
 
 export function KnowledgeHomeStatic({
   sourceLibraryGroups,
@@ -100,19 +100,17 @@ export function KnowledgeHomeStatic({
       innerStyle={{ minHeight: '100vh', paddingTop: '4.75rem', paddingBottom: '2.5rem' }}
     >
       <QuietScene tone="atlas">
-        <QuietSceneColumn>
-          <QuietSceneIntro
-            eyebrow="Atlas"
-            title="Sources"
-            meta={
-              <span>
-                {totalCollections} collections · {totalDocs} docs
-              </span>
-            }
-            summary="Your source library, grouped. Grouping changes only affect Loom metadata — original files are untouched."
-          />
-        </QuietSceneColumn>
-
+        <PageFrame
+          eyebrow="Sources"
+          title="Sources"
+          description={
+            <>
+              <span>{totalCollections} collections · {totalDocs} docs</span>
+              <br />
+              Your sources, grouped. Grouping changes affect Loom metadata only. Original source files stay unchanged.
+            </>
+          }
+        >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
           {errorMessage && (
             <div className="t-caption2" style={{ color: 'var(--tint-red)' }}>
@@ -147,13 +145,14 @@ export function KnowledgeHomeStatic({
             >
             {empty ? (
               <div
+                data-atlas-empty-group
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  padding: '0.55rem 1rem',
-                  borderRadius: 'var(--r-2)',
-                  border: '0.5px dashed var(--mat-border)',
+                  padding: '0.35rem 0.2rem',
+                  borderRadius: 'var(--r-1)',
+                  border: 0,
                   background: 'transparent',
                   color: 'var(--muted)',
                   flexWrap: 'wrap',
@@ -215,7 +214,7 @@ export function KnowledgeHomeStatic({
                 )}
               </div>
             ) : (
-            <WorkSurface tone="quiet" density="regular">
+            <WorkSurface tone="flat" density="regular" style={{ paddingLeft: 0, paddingRight: 0 }}>
               <header
                 style={{
                   display: 'flex',
@@ -316,10 +315,8 @@ export function KnowledgeHomeStatic({
 
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                  gap: 10,
-                  alignItems: 'start',
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
                 {group.items.map((item) => (
@@ -372,7 +369,7 @@ export function KnowledgeHomeStatic({
                 autoFocus
               />
               <button type="submit" style={groupActionStyle} aria-busy={busyKey === 'group:add' || isPending}>
-                Create
+                Create group
               </button>
               <button type="button" onClick={onCancelAddGroup} style={groupActionStyle}>
                 Cancel
@@ -408,10 +405,11 @@ export function KnowledgeHomeStatic({
               }}
               aria-busy={busyKey === 'group:add' || isPending}
             >
-              + Add group
+              Add group
             </button>
           )}
         </div>
+        </PageFrame>
       </QuietScene>
       <style>{`
         .loom-atlas-group .loom-atlas-group-actions {
@@ -509,16 +507,11 @@ function CollectionCard({
       }}
       style={{
         position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: '0.8rem 0.9rem',
+        display: 'block',
         color: 'var(--fg)',
-        borderRadius: 'var(--r-3)',
-        border: '0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent)',
-        background: 'color-mix(in srgb, var(--mat-thick-bg) 78%, transparent)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28)',
-        transition: 'transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease), opacity 0.15s var(--ease)',
+        borderBottom: '0.5px solid var(--hair, rgba(26,23,18,0.06))',
+        background: 'transparent',
+        transition: 'color 200ms ease-out, padding-left 200ms ease-out',
         cursor: 'grab',
       }}
     >
@@ -526,12 +519,12 @@ function CollectionCard({
         type="button"
         className="loom-atlas-card-remove"
         onClick={() => onConfirmHideCategory(item.slug)}
-        aria-label={`Remove ${item.label} from Atlas`}
-        title="Remove from Atlas (original file stays)"
+        aria-label={`Remove ${item.label} from Sources`}
+        title="Remove from Sources (original file stays)"
         style={{
           position: 'absolute',
-          top: 6,
-          right: 6,
+          top: '0.9rem',
+          right: 0,
           appearance: 'none',
           border: 0,
           background: 'transparent',
@@ -544,9 +537,8 @@ function CollectionCard({
           justifyContent: 'center',
           fontSize: '0.9rem',
           lineHeight: 1,
-          borderRadius: 4,
           opacity: 0.32,
-          transition: 'opacity 0.15s var(--ease), color 0.15s var(--ease), background 0.15s var(--ease)',
+          transition: 'opacity 0.15s var(--ease), color 0.15s var(--ease)',
           zIndex: 2,
         }}
       >
@@ -555,37 +547,38 @@ function CollectionCard({
 
       <Link
         href={`/knowledge/${item.slug}`}
-        style={{ display: 'flex', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit' }}
+        style={{
+          display: 'block',
+          textDecoration: 'none',
+          color: 'inherit',
+          padding: '0.875rem 2rem 0.875rem 0',
+        }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div
-            style={{
-              color: 'var(--fg)',
-              fontFamily: 'var(--display)',
-              fontSize: '0.96rem',
-              fontWeight: 600,
-              letterSpacing: '-0.015em',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              paddingRight: 18,
-            }}
-          >
-            {item.label}
-          </div>
-          <div
-            className="t-caption2"
-            style={{
-              color: 'var(--muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 10,
-            }}
-          >
-            <span>{formatCount(item.count, 'doc')}</span>
-            <span style={textActionStyle(true)}>Open →</span>
-          </div>
+        <div
+          style={{
+            fontFamily: 'var(--display)',
+            fontStyle: 'italic',
+            fontWeight: 400,
+            fontSize: '1.25rem',
+            lineHeight: 1.18,
+            color: 'var(--fg)',
+            letterSpacing: '-0.015em',
+          }}
+        >
+          {item.label}
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--serif)',
+            fontStyle: 'italic',
+            fontSize: '0.82rem',
+            color: 'var(--muted)',
+            marginTop: '0.35rem',
+          }}
+        >
+          {formatCount(item.count, 'doc')}
+          <span style={{ margin: '0 0.4em' }}>·</span>
+          <span>Open collection</span>
         </div>
       </Link>
 
@@ -598,19 +591,19 @@ function CollectionCard({
           aria-label="Move to group"
           style={{
             position: 'absolute',
-            bottom: 6,
-            left: 8,
-            right: 8,
+            bottom: '0.6rem',
+            right: 0,
             border: 0,
-            background: 'color-mix(in srgb, var(--bg-elevated) 92%, transparent)',
+            background: 'transparent',
             color: 'var(--muted)',
-            fontSize: '0.68rem',
+            fontFamily: 'var(--serif)',
+            fontStyle: 'italic',
+            fontSize: '0.72rem',
             padding: '2px 4px',
             cursor: 'pointer',
             opacity: 0,
             pointerEvents: 'none',
             transition: 'opacity 0.15s var(--ease)',
-            borderRadius: 4,
             zIndex: 2,
           }}
         >

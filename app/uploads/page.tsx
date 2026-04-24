@@ -3,7 +3,6 @@ import path from 'node:path';
 import { resolveContentRoot } from '../../lib/runtime-roots';
 import { UploadsClient, type UploadListItem } from './UploadsClient';
 
-export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Intake · Loom' };
 
 const TEXT_PREVIEW_EXTS = new Set(['.txt', '.md', '.json', '.csv', '.tsv']);
@@ -13,6 +12,13 @@ function normalizePreview(raw: string) {
 }
 
 export default async function UploadsPage() {
+  // Under static export we ship one bundle to every user — the builder's
+  // `knowledge/uploads/` must not leak in. Dev mode still reads the real
+  // directory so the web UI keeps working during development.
+  if (process.env.LOOM_NEXT_OUTPUT === 'export') {
+    return <UploadsClient items={[]} />;
+  }
+
   const dir = path.join(resolveContentRoot(), 'knowledge', 'uploads');
   let items: UploadListItem[] = [];
   try {
