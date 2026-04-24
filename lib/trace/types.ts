@@ -145,8 +145,22 @@ export type TraceEvent =
       quote?: string;
       /** Epistemic type — what kind of thought is this? */
       thoughtType?: ThoughtType;
-      /** Who produced this content? */
-      attribution?: 'user' | 'ai' | 'mixed';
+      /**
+       * Who produced this content?
+       *
+       * Phase 7.1 adds `"extractor"` for anchors / fields that came out
+       * of the ingestion extractor lanes (SyllabusSchema et al) rather
+       * than a user capture (`"user"`) or a conversational AI
+       * (`"ai"`). Distinct from `"ai"` on purpose: extractor output
+       * carries a verified SourceSpan and is tied to a source
+       * document, whereas `"ai"` is freeform generation. Downstream
+       * surfaces (VersionedAnchorCard, thought map) should render
+       * extractor-origin content in a provisional gray outline per
+       * Phase 7.3's plan. Phase 7.1 does NOT emit any anchors with
+       * this attribution yet — the enum is widened here so Phase 7.3
+       * doesn't need a type migration.
+       */
+      attribution?: 'user' | 'ai' | 'extractor' | 'mixed';
       at: number;
     };
 

@@ -63,8 +63,12 @@ export type ThoughtAnchorView = {
   quote?: string;
   /** Epistemic type of the LATEST version */
   thoughtType?: import('../lib/trace/types').ThoughtType;
-  /** Who produced the latest version's content */
-  attribution?: 'user' | 'ai' | 'mixed';
+  /**
+   * Who produced the latest version's content.
+   * Phase 7.1 widens to include `"extractor"` (extraction-lane origin);
+   * see `lib/trace/types.ts:149` for the canonical rationale.
+   */
+  attribution?: 'user' | 'ai' | 'extractor' | 'mixed';
   top: number;
   /** Timestamp of the LATEST version (alias: versions[versions.length - 1].at) */
   at: number;

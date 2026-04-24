@@ -1195,6 +1195,18 @@ struct LoomWebView: NSViewRepresentable {
         )
         context.coordinator.embedBridge = embedBridge
 
+        // Phase 7.1: schema-corrections writes. Mirrors the source-library
+        // bridge pattern — the static native shell has no Next.js API
+        // server so the Course Context strip posts corrections through
+        // this reply bridge instead of `POST /api/schema-corrections`.
+        let schemaCorrectionsBridge = LoomSchemaCorrectionsBridgeHandler()
+        userContentController.addScriptMessageHandler(
+            schemaCorrectionsBridge,
+            contentWorld: .page,
+            name: LoomSchemaCorrectionsBridgeHandler.name
+        )
+        context.coordinator.schemaCorrectionsBridge = schemaCorrectionsBridge
+
         #if DEBUG
         let debugScript = """
         (() => {
@@ -1484,6 +1496,7 @@ struct LoomWebView: NSViewRepresentable {
         var navBridge: NavigationBridgeHandler?
         var sourceLibraryBridge: SourceLibraryBridgeHandler?
         var embedBridge: EmbeddingBridgeHandler?
+        var schemaCorrectionsBridge: LoomSchemaCorrectionsBridgeHandler?
         var lastRequestedURL: URL?
         var fallbackURL: URL?
         let debugState: WebDebugState

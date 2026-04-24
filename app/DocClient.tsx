@@ -12,6 +12,7 @@ import { LiveArtifact } from '../components/LiveArtifact';
 import { AnchorLayer } from '../components/AnchorLayer';
 import { TrackView } from '../components/TrackView';
 import { EmptyDocCaptureSurface } from '../components/knowledge/EmptyDocCaptureSurface';
+import { CourseContextStrip } from '../components/CourseContextStrip';
 import { categoryTheme } from '../lib/category-theme';
 import { isEligibleCaptureDoc } from '../lib/knowledge-doc-state';
 import { isNativeMode } from '../lib/is-native-mode';
@@ -297,6 +298,13 @@ export default function DocClient() {
       <div className="doc-stage">
         <div style={{ minWidth: 0, position: 'relative' }} className="prose-notion loom-source-prose">
           <TrackView id={doc.trackId} title={doc.title} href={doc.href} />
+
+          {/* Phase 7.1: Course Context strip — renders only when a
+              sibling syllabus schema exists for this doc's category.
+              Uses `trackId` (`know/<cat>__<file>`) so the Swift resolver
+              can extract the category slug — `doc.docId` alone is the
+              bare manifest id and doesn't carry the namespace. */}
+          <CourseContextStrip docId={doc.trackId} />
 
           <nav
             aria-label="Breadcrumb"

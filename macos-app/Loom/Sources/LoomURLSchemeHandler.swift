@@ -209,6 +209,10 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
                 payload = LoomWebView.Coordinator.buildRecentRecordsPayload()
             case .sourceLibraryGroups:
                 payload = try? SourceLibraryNativeStore.metadataPayload()
+            case .schema:
+                payload = LoomSchemaBridge.buildPayload(traceId: target.id)
+            case .schemaForDoc:
+                payload = LoomSchemaBridge.buildPayload(forReadingDocId: target.id)
             }
 
             guard let payload else {
@@ -252,6 +256,8 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
         case weaves
         case recents
         case sourceLibraryGroups
+        case schema
+        case schemaForDoc = "schema-for-doc"
     }
 
     private struct NativeTarget {
@@ -280,10 +286,19 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
                 return nil
             }
         }
-        guard parts.count == 2 else { return nil }
+        guard parts.count >= 2 else { return nil }
         guard let kind = NativeTargetKind(rawValue: parts[0]) else { return nil }
-        guard parts[1].hasSuffix(".json") else { return nil }
-        let rawId = String(parts[1].dropLast(5))
+        // Phase 7.1 · `schema-for-doc/<readingDocId>.json` can carry
+        // a docId that contains `/` once URL-decoded (e.g.
+        // `know/unsw-fins-3640__lecture-notes-w3`). URL.path decodes
+        // percent-encoding so we have to reconstruct the id from the
+        // tail of `parts` rather than assuming exactly two segments.
+        let tail = parts.dropFirst()
+        guard let lastComponent = tail.last, lastComponent.hasSuffix(".json") else {
+            return nil
+        }
+        let idParts = Array(tail.dropLast()) + [String(lastComponent.dropLast(5))]
+        let rawId = idParts.joined(separator: "/")
         let id = rawId.removingPercentEncoding ?? rawId
         guard !id.isEmpty else { return nil }
         return NativeTarget(kind: kind, id: id)
