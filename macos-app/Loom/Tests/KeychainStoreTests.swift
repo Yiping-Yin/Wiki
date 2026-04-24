@@ -93,14 +93,14 @@ final class KeychainStoreTests: XCTestCase {
 
     func testDifferentServicesAreIsolated() throws {
         let fake = FakeKeychainBackend()
-        try KeychainStore.writeString("app", service: "com.loom.app", account: "k", backend: fake)
-        try KeychainStore.writeString("dev", service: "com.loom.dev", account: "k", backend: fake)
+        try KeychainStore.writeString("app", service: "com.yinyiping.loom", account: "k", backend: fake)
+        try KeychainStore.writeString("dev", service: "com.yinyiping.loom.dev", account: "k", backend: fake)
         XCTAssertEqual(
-            KeychainStore.readString(service: "com.loom.app", account: "k", backend: fake),
+            KeychainStore.readString(service: "com.yinyiping.loom", account: "k", backend: fake),
             "app"
         )
         XCTAssertEqual(
-            KeychainStore.readString(service: "com.loom.dev", account: "k", backend: fake),
+            KeychainStore.readString(service: "com.yinyiping.loom.dev", account: "k", backend: fake),
             "dev"
         )
     }

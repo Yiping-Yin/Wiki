@@ -53,6 +53,7 @@ function gitStatus(paths) {
 
 const project = read('macos-app/Loom/Loom.xcodeproj/project.pbxproj');
 const spec = read('macos-app/Loom/project.yml');
+const entitlements = read('macos-app/Loom/Loom.entitlements');
 const sourceFiles = listSwiftFiles('macos-app/Loom/Sources');
 const testFiles = listSwiftFiles('macos-app/Loom/Tests');
 const projectSwiftNames = extractProjectSwiftNames(project);
@@ -106,6 +107,30 @@ for (const deployment of pbxDeployments) {
   }
 }
 
+const bundleIds = [
+  ...new Set(
+    [...spec.matchAll(/PRODUCT_BUNDLE_IDENTIFIER:\s*([^\s]+)/g)].map((match) => match[1].trim()),
+  ),
+];
+
+for (const bundleId of bundleIds) {
+  if (!project.includes(`PRODUCT_BUNDLE_IDENTIFIER = ${bundleId};`)) {
+    fail(`Loom.xcodeproj bundle identifier does not match project.yml: ${bundleId}`);
+  }
+}
+
+if (project.includes('PRODUCT_BUNDLE_IDENTIFIER = com.loom.app')) {
+  fail('Loom.xcodeproj still contains the placeholder com.loom.app bundle identifier');
+}
+
+if (!/com\.apple\.security\.app-sandbox:\s*true/.test(spec)) {
+  fail('project.yml must keep com.apple.security.app-sandbox enabled for App Store builds');
+}
+
+if (!/<key>com\.apple\.security\.app-sandbox<\/key>\s*<true\/>/.test(entitlements)) {
+  fail('Loom.entitlements must keep com.apple.security.app-sandbox enabled');
+}
+
 const statusLines = gitStatus([
   'macos-app/Loom/Sources',
   'macos-app/Loom/Tests',
@@ -135,5 +160,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `OK: Loom.xcodeproj references ${sourceFiles.length} source Swift files, ${testFiles.length} test Swift files, and macOS ${yamlDeployment}.`,
+  `OK: Loom.xcodeproj references ${sourceFiles.length} source Swift files, ${testFiles.length} test Swift files, macOS ${yamlDeployment}, and bundle IDs ${bundleIds.join(', ')}.`,
 );

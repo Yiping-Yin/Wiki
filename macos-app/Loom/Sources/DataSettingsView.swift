@@ -119,7 +119,7 @@ struct DataSettingsView: View {
             Button("Wipe all Loom data…", role: .destructive) {
                 confirmReset = true
             }
-            Text("Removes every Loom UserDefault and every `wiki:*` localStorage entry. Traces, panels, and weaves in SwiftData are kept — delete `~/Library/Containers/com.loom.app` manually to also remove those.")
+            Text("Removes every Loom UserDefault and every `wiki:*` localStorage entry. Traces, panels, and weaves in SwiftData are kept — delete `~/Library/Containers/com.yinyiping.loom` manually to also remove those.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

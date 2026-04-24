@@ -355,7 +355,6 @@
 /* Begin PBXShellScriptBuildPhase section */
 		EAA24BAD64D422687FA9EDE8 /* Stage Next.js static export into bundle Resources */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -477,7 +476,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.loom.appTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yinyiping.loomTests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Loom.app/Contents/MacOS/Loom";
 			};
@@ -501,7 +500,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.loom.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yinyiping.loom;
 				PRODUCT_NAME = Loom;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
@@ -526,7 +525,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.loom.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yinyiping.loom;
 				PRODUCT_NAME = Loom;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
@@ -663,7 +662,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.loom.appTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yinyiping.loomTests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Loom.app/Contents/MacOS/Loom";
 			};

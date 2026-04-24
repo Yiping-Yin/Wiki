@@ -1,6 +1,6 @@
 name: Loom
 options:
-  bundleIdPrefix: com.loom
+  bundleIdPrefix: com.yinyiping
   deploymentTarget:
     macOS: "14.0"
   xcodeVersion: "16.0"
@@ -17,14 +17,10 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Loom
-        # BUNDLE ID — BEFORE APP STORE SUBMISSION:
-        # Change to your personal reverse-DNS prefix (e.g. com.yinyiping.loom).
-        # The `com.loom.*` prefix is a placeholder and won't pass review —
-        # Apple requires the prefix to match a domain you control, or to
-        # simply reverse-DNS your personal handle. See the trademark memo
-        # (2026-04-21) — multiple Looms coexist on the App Store; your
-        # unique bundle ID + subtitle is what prevents confusion.
-        PRODUCT_BUNDLE_IDENTIFIER: com.loom.app
+        # BUNDLE ID — personal reverse-DNS per 2026-04-21 trademark memo.
+        # Multiple Looms coexist on the App Store; uniqueness comes from
+        # this ID + the App Store subtitle.
+        PRODUCT_BUNDLE_IDENTIFIER: com.yinyiping.loom
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
@@ -85,11 +81,10 @@ targets:
     entitlements:
       path: Loom.entitlements
       properties:
-        # Sandbox stays OFF until Phase 6 ships. Enabling prematurely
-        # breaks file access against the user's knowledge folder and
-        # any external drives. Flip to `true` only during the App Store
-        # submission pass.
-        com.apple.security.app-sandbox: false
+        # Sandbox enabled 2026-04-24 for App Store submission (Phase 6).
+        # Keychain + security-scoped bookmarks + network.client already
+        # wired to operate under sandbox.
+        com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
         # Needed for outbound HTTPS (Anthropic / OpenAI / custom endpoints
         # / localhost Ollama). network.server was retained for an earlier
@@ -107,5 +102,5 @@ targets:
       - target: Loom
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.loom.appTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.yinyiping.loomTests
         GENERATE_INFOPLIST_FILE: YES

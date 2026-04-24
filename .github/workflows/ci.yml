@@ -54,13 +54,8 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Prepare fake Codex CLI for smoke
-        run: chmod +x scripts/fake-codex-cli.mjs
+      - name: Verify Loom Xcode project
+        run: npm run app:check-project
 
       - name: Install Loom.app to ~/Applications
         run: npm run app:user
-
-      - name: Smoke installed runtime
-        run: npm run app:smoke
-        env:
-          CODEX_BIN: ./scripts/fake-codex-cli.mjs

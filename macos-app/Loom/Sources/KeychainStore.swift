@@ -9,7 +9,7 @@ import Security
 /// an in-memory fake. Production code uses the default `SystemKeychainBackend`
 /// which wraps Apple's `SecItem*` APIs.
 enum KeychainStore {
-    static let defaultService = "com.loom.app"
+    static let defaultService = "com.yinyiping.loom"
 
     static func read(
         service: String = defaultService,
