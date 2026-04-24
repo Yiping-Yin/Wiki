@@ -1471,6 +1471,39 @@ struct LoomWebView: NSViewRepresentable {
             webView.evaluateJavaScript(LoomWebView.themeSyncScript(mode: mode), completionHandler: nil)
         }
 
+        private func revealFirstPaintIfNeeded(in webView: WKWebView, reason: String) {
+            guard !debugState.didFirstLoad else { return }
+            debugState.didFirstLoad = true
+            NSLog("[Loom] first paint revealed: %@", reason)
+            purgeLegacyMirrorStorageInWebview()
+        }
+
+        private func scheduleFirstPaintFallback(for webView: WKWebView) {
+            let generation = fallbackCheckGeneration
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { [weak self, weak webView] in
+                guard let self = self, let webView = webView else { return }
+                guard self.fallbackCheckGeneration == generation else { return }
+                guard !self.debugState.didFirstLoad else { return }
+
+                webView.evaluateJavaScript("""
+                    (() => {
+                      const root = document.querySelector('main') || document.body;
+                      const text = (root?.innerText || '').replace(/\\s+/g, ' ').trim();
+                      return { readyState: document.readyState, textLength: text.length };
+                    })()
+                """) { result, _ in
+                    guard self.fallbackCheckGeneration == generation else { return }
+                    guard !self.debugState.didFirstLoad else { return }
+                    guard let info = result as? [String: Any] else { return }
+                    let readyState = info["readyState"] as? String ?? ""
+                    let textLength = info["textLength"] as? Int ?? 0
+                    if readyState != "loading" || textLength > 0 {
+                        self.revealFirstPaintIfNeeded(in: webView, reason: "didCommit fallback")
+                    }
+                }
+            }
+        }
+
         /// Reduce a webview URL to the canonical search-index `href` shape
         /// (e.g. `loom://bundle/wiki/foo.html` → `/wiki/foo`). Returns nil
         /// for non-doc URLs (home, settings, /_next, API, etc.) so the
@@ -2297,11 +2330,7 @@ struct LoomWebView: NSViewRepresentable {
             }
             updateDebugState(from: webView, errorMessage: "")
             if !debugState.didFirstLoad {
-                debugState.didFirstLoad = true
-                // Clear legacy `localStorage` mirror keys so stale
-                // browser/dev leftovers never flash on first paint. Data is
-                // now fetched through `loom://native/...` projections.
-                purgeLegacyMirrorStorageInWebview()
+                revealFirstPaintIfNeeded(in: webView, reason: "didFinish")
             }
             if debugState.consoleMessage != "" {
                 debugState.consoleMessage = ""
@@ -2335,6 +2364,7 @@ struct LoomWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             syncState(from: webView)
+            scheduleFirstPaintFallback(for: webView)
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
