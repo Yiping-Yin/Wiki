@@ -40,6 +40,7 @@ macos-app/Loom/.build/
 .next-export/
 .next-export-shelf/
 .next-export-out/
+.next-acceptance/
 .playwright-cli/
 .superpowers/
 tsconfig*.tsbuildinfo
