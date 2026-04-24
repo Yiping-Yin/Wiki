@@ -63,11 +63,11 @@ function BinaryEmbed({
         borderBottom: '0.5px solid var(--mat-border)',
       }}>
         <div style={{ minWidth: 0 }}>
-          <div className="t-caption2" style={{
+          <div className="loom-smallcaps" style={{
             color: meta.tint,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 700,
+            fontFamily: 'var(--serif)',
+            fontWeight: 500,
+            fontSize: '0.82rem',
             marginBottom: 6,
           }}>{meta.label} · {ext.slice(1).toUpperCase()}</div>
           <div style={{
@@ -93,11 +93,11 @@ function BinaryEmbed({
       </div>
       {hasExtracted && (
         <div style={{ marginTop: '1rem' }}>
-          <div className="t-caption2" style={{
+          <div className="loom-smallcaps" style={{
             color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.10em',
-            fontWeight: 700,
+            fontFamily: 'var(--serif)',
+            fontWeight: 500,
+            fontSize: '0.82rem',
             marginBottom: 12,
           }}>Source</div>
           <ProseTextSurface body={body} />
@@ -129,9 +129,9 @@ function PdfWithText({ src, title, body }: { src: string; title: string; body: s
             marginBottom: 14,
           }}>
             <span aria-hidden style={{ width: 18, height: 1, background: 'var(--accent)', opacity: 0.55 }} />
-            <span className="t-caption2" style={{
-              color: 'var(--muted)', textTransform: 'uppercase',
-              letterSpacing: '0.10em', fontWeight: 700,
+            <span className="loom-smallcaps" style={{
+              color: 'var(--muted)', fontFamily: 'var(--serif)',
+              fontWeight: 500, fontSize: '0.82rem',
             }}>Source</span>
             <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
           </div>
@@ -194,7 +194,7 @@ function PdfFrame({ src, title }: { src: string; title: string }) {
   if (fullscreen) {
     return (
       <div style={{
-        position: 'fixed', inset: 0, zIndex: 200,
+        position: 'fixed', inset: 0, zIndex: 'var(--z-overlay)',
         background: 'rgba(0,0,0,0.92)',
         display: 'flex', flexDirection: 'column',
       }}>
@@ -750,15 +750,17 @@ function NotebookView({ url }: { url: string }) {
                 background: 'var(--code-bg)',
                 overflow: 'hidden',
               }}>
-                <div className="t-caption2" style={{
+                <div style={{
                   padding: '4px 12px',
                   background: 'var(--surface-2)',
                   borderBottom: '0.5px solid var(--mat-border)',
                   color: 'var(--muted)',
                   fontFamily: 'var(--mono)',
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                  fontWeight: 700,
-                }}>In [{i + 1}]</div>
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.02em',
+                  fontWeight: 500,
+                  fontVariantNumeric: 'lining-nums tabular-nums',
+                }}>in [{i + 1}]</div>
                 <pre style={{
                   margin: 0, padding: '0.85rem 1.1rem',
                   fontSize: '0.82rem', fontFamily: 'var(--mono)',

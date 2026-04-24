@@ -28,7 +28,7 @@ export function QuietGuideCard({
   detail?: ReactNode;
   actions?: QuietGuideAction[];
   mode?: 'block' | 'inline';
-  tone?: 'default' | 'primary' | 'quiet';
+  tone?: 'default' | 'primary' | 'quiet' | 'flat';
   density?: 'compact' | 'regular' | 'roomy';
 }) {
   if (mode === 'inline') {
@@ -112,7 +112,8 @@ export function QuietGuideCard({
             style={{
               fontFamily: 'var(--display)',
               fontSize: '1.16rem',
-              fontWeight: 600,
+              fontStyle: 'italic',
+              fontWeight: 500,
               letterSpacing: '-0.02em',
               lineHeight: 1.25,
               marginBottom: meta || summary ? 6 : 0,

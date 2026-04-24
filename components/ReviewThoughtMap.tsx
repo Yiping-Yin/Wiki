@@ -27,6 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LearningTargetStateControls } from './LearningTargetStateControls';
 import { WorkSessionHandoff } from './WorkSessionHandoff';
+import { SelectionEditToolbar } from './SelectionEditToolbar';
 import { openLoomOverlay, openLoomReview } from '../lib/ai/surface-actions';
 import { matchesThoughtContainerCrystallizeEvent } from '../lib/thought-containers';
 import { contextFromPathname } from '../lib/doc-context';
@@ -465,21 +466,20 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
 
       {(active || smallScreen) && (
         <div
-          className="t-caption2"
+          className="loom-smallcaps"
           style={{
             marginBottom: '0.75rem',
             color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            fontWeight: 700,
+            fontFamily: 'var(--serif)',
+            fontWeight: 500,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
           }}
         >
-          <span style={{ fontSize: '0.62rem', opacity: 0.8 }}>Thought Map</span>
+          <span style={{ fontSize: '0.84rem', opacity: 0.9 }}>Thought Map</span>
           <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--mat-border)' }} />
-          <span style={{ color: 'var(--muted)', fontSize: '0.62rem', opacity: 0.7 }}>{thoughtItems.length}</span>
+          <span style={{ color: 'var(--muted)', fontSize: '0.8rem', opacity: 0.7 }}>{thoughtItems.length}</span>
           {smallScreen && (
             <button
               type="button"
@@ -514,7 +514,7 @@ export function ReviewThoughtMap({ active }: { active: boolean }) {
           panelCrystallized={panelCrystallized}
           panelRelations={panelRelations}
           onOpenPatterns={() => router.push(ctx.docId ? `/patterns?focus=${encodeURIComponent(ctx.docId)}` : '/patterns')}
-          onOpenRelations={() => router.push(ctx.docId ? `/graph?focus=${encodeURIComponent(ctx.docId)}` : '/graph')}
+          onOpenRelations={() => router.push(ctx.docId ? `/weaves?focus=${encodeURIComponent(ctx.docId)}` : '/weaves')}
           onUncrystallize={uncrystallizePanel}
           currentSessionTarget={currentSessionTarget}
           nextSessionTarget={nextSessionTarget}
@@ -635,12 +635,12 @@ function NarrowSectionTOC({
             }}
           >
             <div
-              className="t-caption2"
+              className="loom-smallcaps"
               style={{
                 color: item.status === 'woven' ? 'var(--accent)' : 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: item.status === 'woven' ? 700 : 600,
+                fontFamily: 'var(--serif)',
+                fontWeight: item.status === 'woven' ? 500 : 400,
+                fontSize: '0.84rem',
                 marginBottom: item.status === 'woven' && item.summary ? 3 : 0,
                 display: 'flex',
                 alignItems: 'center',
@@ -838,7 +838,7 @@ function WideThoughtList({
           panel={panel}
           panelCrystallized={panelCrystallized}
           panelRelations={panelRelations}
-          onOpenRelatedDoc={(docId) => window.location.assign(`/graph?focus=${encodeURIComponent(docId)}`)}
+          onOpenRelatedDoc={(docId) => window.location.assign(`/weaves?focus=${encodeURIComponent(docId)}`)}
           currentSessionTarget={currentSessionTarget}
           nextSessionTarget={nextSessionTarget}
           highlightPanelRevision={highlightPanelRevision}
@@ -855,12 +855,12 @@ function WideThoughtList({
             }}
           >
             <span
-              className="t-caption2"
+              className="loom-smallcaps"
               style={{
                 color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 700,
+                fontFamily: 'var(--serif)',
+                fontWeight: 500,
+                fontSize: '0.84rem',
                 whiteSpace: 'nowrap',
               }}
             >
@@ -956,12 +956,12 @@ function WideThoughtHeader({
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span
-          className="t-caption2"
+          className="loom-smallcaps"
           style={{
             color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 700,
+            fontFamily: 'var(--serif)',
+            fontWeight: 500,
+            fontSize: '0.84rem',
             whiteSpace: 'nowrap',
           }}
         >
@@ -1303,12 +1303,12 @@ function WideThoughtCard({
         }}
       >
         <span
-          className="t-caption2"
+          className="loom-smallcaps"
           style={{
             color: emphasized ? 'var(--accent)' : thoughtTypeColor(thought.thoughtType),
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 700,
+            fontFamily: 'var(--serif)',
+            fontWeight: 500,
+            fontSize: '0.84rem',
           }}
         >
           ◆ {thoughtTypeLabel(thought.thoughtType, hasContent)}
@@ -1388,34 +1388,64 @@ function WideThoughtCard({
 
       {/* Content — latest version, click to edit */}
       {hasContent && editing ? (
-        <textarea
-          ref={editRef}
-          value={editBuf}
-          onChange={(e) => setEditBuf(e.target.value)}
-          onBlur={() => void saveEdit()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void saveEdit(); }
-            if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); }
-          }}
-          style={{
-            width: '100%',
-            minHeight: 60,
-            maxHeight: 400,
-            padding: '6px 0',
-            fontFamily: 'var(--display)',
-            fontSize: '0.86rem',
-            lineHeight: 1.55,
-            color: 'var(--fg)',
-            background: 'transparent',
-            border: 0,
-            borderBottom: '0.5px solid var(--accent)',
-            borderRadius: 0,
-            outline: 'none',
-            resize: 'none',
-            // @ts-ignore
-            fieldSizing: 'content',
-          }}
-        />
+        <>
+          <textarea
+            ref={editRef}
+            value={editBuf}
+            onChange={(e) => setEditBuf(e.target.value)}
+            onBlur={(e) => {
+              // If focus moved to the selection-edit toolbar, don't save-and-close.
+              const next = e.relatedTarget as HTMLElement | null;
+              if (next && next.closest('[data-loom-selection-toolbar]')) return;
+              void saveEdit();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void saveEdit(); }
+              if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); }
+            }}
+            style={{
+              width: '100%',
+              minHeight: 60,
+              maxHeight: 400,
+              padding: '6px 0',
+              fontFamily: 'var(--display)',
+              fontSize: '0.86rem',
+              lineHeight: 1.55,
+              color: 'var(--fg)',
+              background: 'transparent',
+              border: 0,
+              borderBottom: '0.5px solid var(--accent)',
+              borderRadius: 0,
+              outline: 'none',
+              resize: 'none',
+              // @ts-ignore
+              fieldSizing: 'content',
+            }}
+          />
+          <SelectionEditToolbar
+            targetRef={editRef}
+            verbs={['tighten', 'expand', 'rewrite']}
+            getContext={() => {
+              // Expand context for a panel thought: the source quote the
+              // anchor is tied to, plus the thought's own summary. These are
+              // the grounded strings the AI may cite when expanding.
+              const parts: string[] = [];
+              if (thought.quote) parts.push(thought.quote);
+              if (thought.summary) parts.push(thought.summary);
+              return parts.join('\n\n');
+            }}
+            onReplace={(start, end, newText) => {
+              setEditBuf((prev) => prev.slice(0, start) + newText + prev.slice(end));
+              requestAnimationFrame(() => {
+                const ta = editRef.current;
+                if (!ta) return;
+                ta.focus();
+                const caret = start + newText.length;
+                ta.setSelectionRange(caret, caret);
+              });
+            }}
+          />
+        </>
       ) : hasContent ? (
         <div
           onClick={expanded ? startEditing : undefined}
@@ -1458,12 +1488,12 @@ function WideThoughtCard({
           }}
         >
           <div
-            className="t-caption2"
+            className="loom-smallcaps"
             style={{
               color: 'var(--accent)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
+              fontFamily: 'var(--serif)',
+              fontWeight: 500,
+              fontSize: '0.84rem',
               marginBottom: 6,
             }}
           >
@@ -1484,7 +1514,7 @@ function WideThoughtCard({
               Patterns
             </button>
             <button type="button" onClick={onOpenRelations} style={settledActionStyle(false)}>
-              Relations
+              Weaves
             </button>
             <button type="button" onClick={() => void onUncrystallize()} style={settledActionStyle(false)}>
               Uncrystallize
@@ -1500,12 +1530,12 @@ function WideThoughtCard({
           }}
         >
           <div
-            className="t-caption2"
+            className="loom-smallcaps"
             style={{
               color: 'var(--tint-indigo)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
+              fontFamily: 'var(--serif)',
+              fontWeight: 500,
+              fontSize: '0.84rem',
               marginBottom: 6,
             }}
           >

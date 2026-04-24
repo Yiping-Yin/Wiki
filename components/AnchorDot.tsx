@@ -283,11 +283,16 @@ export function AnchorDot({ anchorId, anchorBlockId, anchorBlockText, anchorOffs
         <span
           aria-hidden
           style={{
-            width: pinned ? 7 : previewOpen ? 6 : studyMode ? 5 : 4,
-            height: pinned ? 7 : previewOpen ? 6 : studyMode ? 5 : 4,
-            borderRadius: '50%',
+            // Diamond shape (45° rotated square) per the mockup's
+            // InkAnchor primitive (loom-tokens.jsx:192). Slightly
+            // larger than the old circle since rotating a square
+            // shrinks its visible footprint by √2; keep perceived
+            // mass constant.
+            width: pinned ? 8 : previewOpen ? 7 : studyMode ? 6 : 5,
+            height: pinned ? 8 : previewOpen ? 7 : studyMode ? 6 : 5,
             background: dotColor(thoughtType),
-            opacity: pinned ? 1 : previewOpen ? 0.92 : studyMode ? 0.7 : scrollPulse ? 0.75 : 0.4,
+            transform: 'rotate(45deg)',
+            opacity: pinned ? 0.92 : previewOpen ? 0.84 : studyMode ? 0.7 : scrollPulse ? 0.75 : 0.4,
             transition: 'width 0.18s var(--ease), height 0.18s var(--ease), opacity 0.18s var(--ease)',
             boxShadow: pinned ? `0 0 0 4px color-mix(in srgb, ${dotColor(thoughtType)} 12%, transparent)` : 'none',
           }}

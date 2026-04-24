@@ -111,12 +111,12 @@ export const AnchorCard = forwardRef<HTMLDivElement, Props>(function AnchorCard(
         {pinned && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span
-              className="t-caption2"
+              className="loom-smallcaps"
               style={{
                 color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                fontWeight: 700,
+                fontFamily: 'var(--serif)',
+                fontWeight: 500,
+                fontSize: '0.84rem',
               }}
             >
               Anchored note

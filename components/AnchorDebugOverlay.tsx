@@ -55,7 +55,7 @@ export function AnchorDebugOverlay() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {rows.map((row) => (
           <div key={row.id} style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 8 }}>
-            <div style={{ color: '#9fd0ff' }}>{row.label}</div>
+            <div style={{ color: 'var(--tint-blue)' }}>{row.label}</div>
             <div>block: {row.block}</div>
             <div>chars: {row.chars}</div>
             <div style={{ color: 'rgba(255,255,255,0.74)' }}>{row.summary.slice(0, 72)}</div>

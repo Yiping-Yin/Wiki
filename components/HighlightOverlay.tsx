@@ -89,7 +89,7 @@ function wrapKatexBlock(block: HTMLElement, hl: Hl): boolean {
   block.style.background = `color-mix(in srgb, ${hl.tint} 22%, transparent)`;
   block.style.borderRadius = '4px';
   block.style.cursor = 'pointer';
-  block.title = 'Click to remove highlight';
+  block.title = 'Tap to let go';
   return true;
 }
 
@@ -135,7 +135,7 @@ function wrapFirst(root: HTMLElement, hl: Hl): boolean {
   mark.style.cursor = 'pointer';
   mark.style.boxDecorationBreak = 'clone';
   mark.style.transition = 'background 0.18s ease';
-  mark.title = 'Click to remove highlight';
+  mark.title = 'Tap to let go';
 
   const frag = document.createDocumentFragment();
   if (before) frag.appendChild(document.createTextNode(before));
@@ -210,7 +210,7 @@ function wrapByAnchor(root: HTMLElement, hl: Hl): boolean {
   mark.style.cursor = 'pointer';
   mark.style.boxDecorationBreak = 'clone';
   mark.style.transition = 'background 0.18s ease';
-  mark.title = 'Click to remove highlight';
+  mark.title = 'Tap to let go';
 
   const frag = range.extractContents();
   mark.appendChild(frag);

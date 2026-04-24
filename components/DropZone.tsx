@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useKnowledgeNav } from '../lib/use-knowledge-nav';
 import { useSmallScreen } from '../lib/use-small-screen';
+import { isNativeMode } from '../lib/is-native-mode';
 
 /** Detect knowledge category from current URL path. Returns the
  *  category directory name for the Knowledge system, or null. */
@@ -32,6 +33,13 @@ export function DropZone() {
   const dragCounter = useRef(0);
 
   useEffect(() => {
+    // Under the native shell, drops are owned by SwiftUI's
+    // `.onDrop(of: [.fileURL])` on ContentView, which opens the native
+    // IngestionView. If we register these DOM listeners, `preventDefault`
+    // on `drop` swallows the event before AppKit sees it, so the native
+    // ingestion surface never appears. Bail out entirely.
+    if (isNativeMode()) return;
+
     const onDragEnter = (e: DragEvent) => {
       if (!e.dataTransfer?.types.includes('Files')) return;
       e.preventDefault();
@@ -103,7 +111,7 @@ export function DropZone() {
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 200,
+        position: 'fixed', inset: 0, zIndex: 'var(--z-overlay)',
         background: dragging ? 'rgba(0,113,227,0.15)' : 'rgba(0,0,0,0.6)',
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -127,12 +135,11 @@ export function DropZone() {
         maxWidth: smallScreen ? 380 : 480,
         boxShadow: 'var(--shadow-3)',
       }}>
-        <div style={{
-          fontSize: '0.68rem',
+        <div className="loom-smallcaps" style={{
+          fontSize: '0.84rem',
+          fontFamily: 'var(--serif)',
           marginBottom: '0.75rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          fontWeight: 700,
+          fontWeight: 500,
           color: error ? 'var(--tint-red)' : busy ? 'var(--accent)' : 'var(--muted)',
         }}>
           {error ? 'Upload error' : busy ? 'Uploading' : 'Drop files'}

@@ -16,6 +16,8 @@ import { useSmallScreen } from '../lib/use-small-screen';
 import { traceStore } from '../lib/trace';
 import { findSimilarNotes, type SimilarNote } from '../lib/note/similarity';
 import { openPanelReview } from '../lib/panel-resume';
+import { embed, isEmbedAvailable } from '../lib/embed-client';
+import { fetchSearchIndex } from '../lib/search-index-client';
 
 type Match = {
   paragraphEl: HTMLElement;
@@ -33,7 +35,7 @@ let _idxCache: IndexDoc[] | null = null;
 async function loadDocs(): Promise<IndexDoc[]> {
   if (_idxCache) return _idxCache;
   try {
-    const r = await fetch('/api/search-index');
+    const r = await fetchSearchIndex();
     if (!r.ok) return [];
     const payload = await r.json();
     const stored = payload.index?.storedFields ?? {};
@@ -134,17 +136,8 @@ export function ActiveRetrieval() {
     if (cached && cached.expiry > Date.now()) return cached.results;
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const r = await fetch('/api/embed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      if (!r.ok) return null;
-      const { vector } = await r.json();
+      if (!isEmbedAvailable()) return null;
+      const { vector } = await embed(text);
       if (!vector) return null;
 
       const results = await findSimilarNotes(
@@ -300,7 +293,7 @@ function RetrievalDot({
           width: 6,
           height: 6,
           borderRadius: '50%',
-          background: 'var(--tint-blue, #0a84ff)',
+          background: 'var(--tint-blue, #3A477A)',
           opacity: hovered || smallScreen ? 0.9 : 0.45,
           cursor: 'pointer',
           transition: 'opacity 0.15s ease, transform 0.15s ease',
@@ -330,7 +323,7 @@ function RetrievalDot({
           }}
           onMouseLeave={smallScreen ? undefined : () => setHovered(false)}
         >
-          <div style={{ fontSize: '0.62rem', color: 'var(--tint-blue, #0a84ff)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 6 }}>
+          <div className="loom-smallcaps" style={{ fontFamily: 'var(--serif)', fontSize: '0.82rem', color: 'var(--accent)', fontWeight: 500, marginBottom: 6 }}>
             Nearby panel{match.results.length > 1 ? 's' : ''}
           </div>
           {match.results.map((r, i) => (
@@ -346,13 +339,13 @@ function RetrievalDot({
                 <span style={{ marginLeft: 6, opacity: 0.5 }}>{Math.round(r.score * 100)}%</span>
               </div>
               <div
-                className="t-caption2"
+                className="loom-smallcaps"
                 style={{
                   marginTop: 2,
-                  color: 'var(--tint-blue, #0a84ff)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  fontWeight: 700,
+                  color: 'var(--tint-blue, #3A477A)',
+                  fontFamily: 'var(--serif)',
+                  fontSize: '0.82rem',
+                  fontWeight: 500,
                 }}
               >
                 {relationStrength(r.score)}
@@ -368,7 +361,7 @@ function RetrievalDot({
                     appearance: 'none',
                     border: 0,
                     background: 'transparent',
-                    color: 'var(--tint-blue, #0a84ff)',
+                    color: 'var(--tint-blue, #3A477A)',
                     fontSize: '0.68rem',
                     fontWeight: 700,
                     letterSpacing: '0.04em',

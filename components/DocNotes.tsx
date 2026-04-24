@@ -2,7 +2,37 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useNote } from '../lib/use-notes';
-import { readAiCliPreference } from '../lib/ai-cli';
+import { askAI } from '../lib/ai-bridge';
+import { TextArea } from './TextInput';
+
+function buildCompletionPrompt(context: string, doc?: { title?: string; body?: string }): string {
+  const docCtx = doc?.body
+    ? `\n\nThe user is taking notes on this document:\nTitle: ${doc.title ?? '(unknown)'}\n${doc.body.slice(0, 1500)}`
+    : doc?.title
+      ? `\n\nThe user is taking notes on "${doc.title}".`
+      : '';
+  return `You are an inline writing assistant inside a personal knowledge wiki.
+The user is in the middle of writing a note. Suggest ONE short continuation
+(at most 30 words, one sentence) that would naturally continue what they wrote.
+Output ONLY the continuation text, no quotes, no preamble, no labels.
+If no good continuation exists, output an empty string.${docCtx}
+
+Note so far:
+"""
+${context.slice(-1500)}
+"""
+
+Continuation:`;
+}
+
+function sanitizeSuggestion(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(/^Continuation:\s*/i, '')
+    .split('\n')[0]
+    .slice(0, 200);
+}
 
 // Lazy-load NoteRenderer (pulls marked + KaTeX, ~100KB) — only when preview opens.
 const NoteRenderer = dynamic(() => import('./NoteRenderer').then((m) => m.NoteRenderer), { ssr: false });
@@ -35,20 +65,10 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
       setSuggesting(true);
       abortRef.current = new AbortController();
       try {
-        const r = await fetch('/api/complete', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            context: value,
-            doc: docTitle ? { title: docTitle } : undefined,
-            cli: readAiCliPreference(),
-          }),
-          signal: abortRef.current.signal,
-        });
-        if (!r.ok) return;
-        const j = await r.json();
-        const s = (j.suggestion ?? '').trim();
-        if (s.length > 1) setSuggestion(s);
+        const prompt = buildCompletionPrompt(value, docTitle ? { title: docTitle } : undefined);
+        const raw = await askAI(prompt, { maxTokens: 128 });
+        const suggestion = sanitizeSuggestion(raw);
+        if (suggestion.length > 1) setSuggestion(suggestion);
       } catch {} finally { setSuggesting(false); }
     }, 1500);
     return () => {
@@ -73,7 +93,7 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
       borderBottom: '0.5px solid var(--mat-border)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', fontWeight: 700 }}>
+        <span className="loom-smallcaps" style={{ fontSize: '0.84rem', fontFamily: 'var(--serif)', color: 'var(--muted)', fontWeight: 500 }}>
           My note
         </span>
         <span style={{ fontSize: '0.7rem', color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -99,8 +119,9 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
       </div>
       {open && mode === 'edit' && (
         <div style={{ position: 'relative' }}>
-          <textarea
+          <TextArea
             ref={taRef}
+            size="md"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             aria-label="Doc note (markdown)"
@@ -110,12 +131,6 @@ export function DocNotes({ id, docTitle }: { id: string; docTitle?: string }) {
             }}
             rows={Math.max(4, Math.min(20, value.split('\n').length + 1))}
             placeholder="Markdown welcome. Use [[Doc title]] to link. Pause typing to get an AI suggestion."
-            style={{
-              width: '100%', border: 'var(--hairline)', borderRadius: 'var(--r-1)',
-              background: 'var(--bg)', color: 'var(--fg)', padding: '0.7rem 0.9rem',
-              fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: 1.55, resize: 'vertical',
-              outline: 'none',
-            }}
           />
           {suggestion && (
             <div style={{

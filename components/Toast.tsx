@@ -97,20 +97,20 @@ export function ToastHost() {
               cursor: 'pointer',
               color: 'var(--fg)',
               fontFamily: 'var(--display)',
-              fontWeight: 600,
-              fontSize: '0.84rem',
-              letterSpacing: '-0.005em',
+              fontStyle: 'italic',
+              fontWeight: 500,
+              fontSize: '0.9rem',
+              letterSpacing: '-0.012em',
               animation: 'toastIn 0.36s var(--ease-spring) both',
               maxWidth: 'min(440px, 88vw)',
             }}
           >
-            <span style={{
+            <span className="loom-smallcaps" style={{
               color: meta.color,
-              fontSize: '0.66rem',
+              fontFamily: 'var(--serif)',
+              fontSize: '0.82rem',
               flexShrink: 0,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
+              fontWeight: 500,
             }}>{meta.label}</span>
             <span style={{
               overflow: 'hidden',

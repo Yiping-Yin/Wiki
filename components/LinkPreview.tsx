@@ -4,11 +4,14 @@
  *
  * On hover of any <a href="/wiki/..."> or <a href="/knowledge/..."> for ≥350ms,
  * show a floating card near the cursor with the linked doc's title + preview +
- * category. Card hides on mouseleave or scroll. Metadata pulled lazily from
- * /api/search-index, cached in module memory.
+ * category. Card hides on mouseleave or scroll. Metadata pulled lazily via
+ * `fetchSearchIndex()` (loom://bundle/search-index.json in native mode,
+ * /api/search-index in dev), cached in module memory.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useSmallScreen } from '../lib/use-small-screen';
+import { isNativeMode } from '../lib/is-native-mode';
+import { fetchSearchIndex } from '../lib/search-index-client';
 
 type DocMeta = { title: string; href: string; category: string; preview?: string };
 
@@ -20,7 +23,7 @@ async function loadHrefIndex(): Promise<void> {
   if (_loadPromise) return _loadPromise;
   _loadPromise = (async () => {
     try {
-      const r = await fetch('/api/search-index');
+      const r = await fetchSearchIndex();
       if (!r.ok) return;
       const payload = await r.json();
       const stored = payload.index?.storedFields ?? {};
@@ -45,9 +48,16 @@ async function loadPreview(href: string): Promise<string | undefined> {
   // For knowledge docs, fetch the body file (cheap, cached, ~tens of KB)
   const know = href.match(/^\/knowledge\/([^/]+)\/([^/]+)/);
   if (know) {
+    // Slug is sanitized the same way the server `/api/doc-body` route
+    // does before reading the cache file, so URL → filename mapping
+    // stays 1:1 under native mode.
+    const safeCat = know[1].replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '');
+    const safeSlug = know[2].replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '');
+    const url = isNativeMode()
+      ? `loom://content/knowledge/.cache/docs/${safeCat}__${safeSlug}.json`
+      : `/api/doc-body?id=${encodeURIComponent(`know/${safeCat}__${safeSlug}`)}`;
     try {
-      const id = `know/${know[1]}__${know[2]}`;
-      const r = await fetch(`/api/doc-body?id=${encodeURIComponent(id)}`);
+      const r = await fetch(url);
       if (r.ok) {
         const j = await r.json();
         const snippet = (j.body ?? '').slice(0, 220).trim();
@@ -190,27 +200,66 @@ export function LinkPreview() {
         boxShadow: smallScreen ? 'var(--shadow-1)' : 'none',
       }}
     >
-      <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)', fontWeight: 700, marginBottom: 4 }}>
+      <div
+        style={{
+          fontFamily: 'var(--serif)',
+          fontStyle: 'italic',
+          fontVariant: 'small-caps',
+          textTransform: 'lowercase',
+          fontSize: '0.72rem',
+          letterSpacing: '0.08em',
+          color: 'var(--muted)',
+          fontWeight: 500,
+          marginBottom: 4,
+        }}
+      >
         {hovered.meta.category}
       </div>
-      <div style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.35, marginBottom: 6 }}>
+      <div
+        style={{
+          fontFamily: 'var(--display)',
+          fontStyle: 'italic',
+          fontWeight: 500,
+          fontSize: '1.08rem',
+          lineHeight: 1.22,
+          letterSpacing: '-0.012em',
+          marginBottom: 6,
+        }}
+      >
         {hovered.meta.title}
       </div>
       {hovered.preview && (
-        <div style={{ fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+        <div
+          style={{
+            fontFamily: 'var(--serif)',
+            fontStyle: 'italic',
+            fontSize: '0.82rem',
+            color: 'var(--fg-secondary)',
+            lineHeight: 1.55,
+          }}
+        >
           {hovered.preview}{hovered.preview.length >= 220 ? '…' : ''}
         </div>
       )}
-      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
         <a
           href={hovered.meta.href}
           style={{
-            background: 'transparent', color: 'var(--accent)', border: 0,
-            borderBottom: '0.5px solid var(--accent)', padding: '3px 0', fontSize: '0.75rem',
-            textDecoration: 'none', fontWeight: 600,
+            background: 'transparent',
+            color: 'var(--accent)',
+            border: 0,
+            borderBottom: '0.5px solid var(--accent)',
+            padding: '3px 0',
+            fontFamily: 'var(--serif)',
+            fontStyle: 'italic',
+            fontVariant: 'small-caps',
+            letterSpacing: '0.06em',
+            fontSize: '0.74rem',
+            textDecoration: 'none',
+            fontWeight: 500,
           }}
           onClick={() => setHovered(null)}
-        >Open</a>
+        >open →</a>
       </div>
     </div>
   );

@@ -407,7 +407,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                 >
                   <button
                     type="button"
-                    onClick={() => router.push(`/graph?focus=${encodeURIComponent(docId)}`)}
+                    onClick={() => router.push(`/weaves?focus=${encodeURIComponent(docId)}`)}
                     style={{
                       appearance: 'none',
                       border: 0,
@@ -420,7 +420,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Relations
+                    Weaves
                   </button>
                 </div>
                 {relationPreview.incoming.length > 0 && (
@@ -440,7 +440,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                       <button
                         key={item.docId}
                         type="button"
-                        onClick={() => router.push(`/graph?focus=${encodeURIComponent(item.docId)}`)}
+                        onClick={() => router.push(`/weaves?focus=${encodeURIComponent(item.docId)}`)}
                         style={settledRelationLinkStyle}
                       >
                         {item.title}
@@ -468,7 +468,7 @@ export function LiveArtifact({ docId }: { docId: string }) {
                       <button
                         key={item.docId}
                         type="button"
-                        onClick={() => router.push(`/graph?focus=${encodeURIComponent(item.docId)}`)}
+                        onClick={() => router.push(`/weaves?focus=${encodeURIComponent(item.docId)}`)}
                         style={settledRelationLinkStyle}
                       >
                         {item.title}

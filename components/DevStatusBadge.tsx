@@ -61,7 +61,7 @@ export function DevStatusBadge() {
       <div>dev: localhost</div>
       <div>hydrated: {hydrated ? 'yes' : 'no'}</div>
       <div>path: {pathname}</div>
-      {lastError ? <div style={{ color: '#ffb4b4' }}>error: {lastError}</div> : null}
+      {lastError ? <div style={{ color: 'var(--tint-red)' }}>error: {lastError}</div> : null}
     </div>
   );
 }

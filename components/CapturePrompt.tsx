@@ -124,12 +124,12 @@ export function CapturePrompt() {
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div
-            className="t-caption2"
+            className="loom-smallcaps"
             style={{
               color: 'var(--accent)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
+              fontFamily: 'var(--serif)',
+              fontWeight: 500,
+              fontSize: '0.84rem',
               marginBottom: 3,
             }}
           >

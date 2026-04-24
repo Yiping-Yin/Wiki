@@ -24,6 +24,7 @@ import {
   ensureBlockAnchorId,
   normalizeBlockText,
   rangeTextOffsets,
+  resolveBlockElement,
   stableFragmentAnchorId,
 } from '../lib/passage-locator';
 import { useSmallScreen } from '../lib/use-small-screen';
@@ -56,6 +57,8 @@ type Intent = 'ask' | 'capture' | 'highlight';
 const MIN_LEN = 2;
 
 function intentFromInput({
+  metaKey,
+  ctrlKey,
   altKey,
   button,
 }: {
@@ -64,7 +67,12 @@ function intentFromInput({
   altKey?: boolean;
   button?: number;
 }): Intent {
+  // Priority: alt/right-click → highlight; meta/ctrl → direct capture;
+  // plain click → ask. Matches KeyboardHelpView's documented modifiers
+  // (⌥ click · ⌘ click · plain). `capture` was previously a dead type
+  // branch — the handler always fell through to `ask` on ⌘-click.
   if (altKey || button === 2) return 'highlight';
+  if (metaKey || ctrlKey) return 'capture';
   return 'ask';
 }
 
@@ -193,8 +201,16 @@ export function SelectionWarp() {
     const onWindowBlur = () => setIntent('ask');
 
     const onGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Enter') return;
-      if (!(e.metaKey || e.ctrlKey)) return;
+      // Two bindings fold here: ⌘↩ (the original) and ⌘⇧A (documented
+      // in KeyboardHelpView but never wired — user report 2026-04-23).
+      // Both trigger the same capture-current-selection flow.
+      const isCmdEnter =
+        e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.shiftKey;
+      const isCmdShiftA =
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === 'a';
+      if (!isCmdEnter && !isCmdShiftA) return;
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
       const text = sel.toString().trim();
@@ -251,6 +267,52 @@ export function SelectionWarp() {
       window.removeEventListener('pageshow', onPageShow);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('blur', onWindowBlur);
+    };
+  }, []);
+
+  // ReviewThoughtMap dispatches `loom:review:scroll-to-anchor` when the user
+  // clicks a woven thought (or Go-to-source on the focused thought): the
+  // source-doc pane should scroll that passage into view. SelectionWarp is
+  // the component that lives on every source-doc page (see PageScopedChrome),
+  // so we listen here and pass the anchorId through the passage-locator
+  // resolver, which tolerates DOM re-indexing across reloads. Falls back to
+  // a plain getElementById lookup when the richer payload isn't present.
+  useEffect(() => {
+    const onScrollToAnchor = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as
+        | {
+            anchorId?: string;
+            anchorBlockId?: string;
+            anchorBlockText?: string;
+          }
+        | undefined;
+      const anchorId = detail?.anchorId;
+      if (!anchorId) return;
+      const el =
+        resolveBlockElement({
+          anchorId,
+          anchorBlockId: detail?.anchorBlockId,
+          anchorBlockText: detail?.anchorBlockText,
+        }) ??
+        (typeof document !== 'undefined'
+          ? document.getElementById(anchorId)
+          : null);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Reuse the existing highlight animation so the macro→micro landing
+      // reads as a passage flash rather than a silent scroll jump.
+      try {
+        el.classList.remove('loom-highlight-passage');
+        // Force reflow so the animation re-triggers if the same anchor is
+        // clicked twice in a row.
+        void (el as HTMLElement).offsetWidth;
+        el.classList.add('loom-highlight-passage');
+        window.setTimeout(() => el.classList.remove('loom-highlight-passage'), 1600);
+      } catch {}
+    };
+    window.addEventListener('loom:review:scroll-to-anchor', onScrollToAnchor);
+    return () => {
+      window.removeEventListener('loom:review:scroll-to-anchor', onScrollToAnchor);
     };
   }, []);
 
@@ -334,6 +396,29 @@ export function SelectionWarp() {
       setHovered(false);
       setTouchActionsOpen(false);
       setIntent('ask');
+    } else if (nextIntent === 'capture') {
+      // ⌘-click on the warp thread → capture-as-anchor directly, no
+      // AI summon. Same flow as ⌘⇧A / ⌘↩. Clears selection + spot
+      // so the warp disappears after the capture lands.
+      void captureCurrentSelection().then((captured) => {
+        if (!captured) return;
+        window.dispatchEvent(new CustomEvent('wiki:highlights:changed'));
+        window.dispatchEvent(new CustomEvent('loom:capture:done', {
+          detail: {
+            anchorId: captured.anchorId,
+            quote: captured.quote,
+            reviewHint: '⌘/ Thought Map',
+          },
+        }));
+        window.dispatchEvent(new CustomEvent('loom:capture-success', {
+          detail: { label: 'Captured' },
+        }));
+      });
+      window.getSelection()?.removeAllRanges();
+      setSpot(null);
+      setHovered(false);
+      setTouchActionsOpen(false);
+      setIntent('ask');
     } else {
       ask(e as unknown as React.MouseEvent);
       setIntent('ask');
@@ -401,7 +486,7 @@ export function SelectionWarp() {
         top: spot.top,
         left: spot.left - 20,
         height: spot.height,
-        zIndex: 9999,
+        zIndex: 'var(--z-popover)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -477,7 +562,7 @@ export function SelectionWarp() {
             border: '0.5px solid var(--mat-border)',
             borderRadius: 'var(--r-4)',
             boxShadow: 'var(--shadow-3)',
-            zIndex: 10000,
+            zIndex: 'var(--z-toast)',
             animation: 'toastIn 0.3s var(--ease-spring) both',
           }}
         >

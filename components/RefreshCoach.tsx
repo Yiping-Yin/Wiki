@@ -128,12 +128,12 @@ export function RefreshCoach() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span
-          className="t-caption2"
+          className="loom-smallcaps"
           style={{
             color: 'var(--accent)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 700,
+            fontFamily: 'var(--serif)',
+            fontWeight: 500,
+            fontSize: '0.84rem',
           }}
         >
           {completion === 'settled'

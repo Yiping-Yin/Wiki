@@ -46,6 +46,7 @@ import { resolveClarificationViewMode, type ClarificationViewMode } from '../lib
 import { computeChatFocusPosition } from '../lib/chat-focus-layout';
 import { openSettingsPanel } from '../lib/settings-panel';
 import { useAiHealth } from '../lib/use-ai-health';
+import { useFocusLock } from '../lib/focus-layer';
 import {
   useTracesForDoc,
   useAppendEvent,
@@ -154,6 +155,9 @@ export function ChatFocus() {
   const { availability } = useAiHealth();
   const effectiveCli = availability.effectiveCli;
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  // Focus Discipline: while ChatFocus is open, suppress page-level system
+  // notices so they don't stack on the user's thinking surface.
+  useFocusLock('chat-focus', anchor !== null);
   const [focusedEl, setFocusedEl] = useState<HTMLElement | null>(null);
   const [draft, setDraft] = useState('');
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -920,25 +924,30 @@ export function ChatFocus() {
         className="loom-chat-focus-shell"
         style={{
           position: 'relative',
+          // Focus Discipline: ChatFocus must not leak the body text behind it.
+          // Previously desktop-editorial mode used transparent shell, which
+          // stacked ghostly body + ChatFocus + health notice in the same
+          // visual region. Give it a subtle but opaque body-colored backdrop
+          // so only ChatFocus speaks. smallScreen retains its frosted pane.
           background: hasEditorialBody
             ? (smallScreen
                 ? 'color-mix(in srgb, var(--bg) 88%, var(--bg-elevated) 12%)'
-                : 'transparent')
-            : 'transparent',
+                : 'color-mix(in srgb, var(--bg) 94%, transparent)')
+            : 'color-mix(in srgb, var(--bg) 94%, transparent)',
           border: hasEditorialBody
             ? (smallScreen
                 ? '0.5px solid color-mix(in srgb, var(--mat-border) 84%, transparent)'
                 : 'none')
             : 'none',
-          borderRadius: hasEditorialBody ? (smallScreen ? 16 : 0) : 0,
+          borderRadius: hasEditorialBody ? (smallScreen ? 16 : 6) : 0,
           boxShadow: hasEditorialBody
             ? (smallScreen ? 'var(--shadow-2)' : 'none')
             : 'none',
           backdropFilter: hasEditorialBody
-            ? (smallScreen ? 'saturate(138%) blur(20px)' : 'none')
+            ? (smallScreen ? 'saturate(138%) blur(20px)' : 'saturate(120%) blur(4px)')
             : 'none',
           WebkitBackdropFilter: hasEditorialBody
-            ? (smallScreen ? 'saturate(138%) blur(20px)' : 'none')
+            ? (smallScreen ? 'saturate(138%) blur(20px)' : 'saturate(120%) blur(4px)')
             : 'none',
           overflow: desktopEditorial ? 'visible' : 'hidden',
         }}
@@ -1021,10 +1030,15 @@ export function ChatFocus() {
                   paddingRight: 16,
                 }}
               >
-                <div style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem', marginBottom: 8 }}>
+                <div className="loom-smallcaps" style={{ color: 'var(--muted)', fontFamily: 'var(--serif)', fontSize: '0.82rem', marginBottom: 8 }}>
                   Current source
                 </div>
-                <div style={{ fontStyle: 'normal' }}>{sourceStub.full}</div>
+                <div style={{ fontStyle: 'normal' }}>
+                  {/* Render through NoteRenderer so LaTeX ($…$ / $$…$$) that
+                     we captured from KaTeX annotations displays as math
+                     rather than a raw string. */}
+                  <NoteRenderer source={sourceStub.full} />
+                </div>
               </div>
               <div
                 className="prose-notion"
@@ -1052,7 +1066,7 @@ export function ChatFocus() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                <span style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.66rem' }}>
+                <span className="loom-smallcaps" style={{ color: 'var(--muted)', fontFamily: 'var(--serif)', fontSize: '0.82rem' }}>
                   {showSourceSummary ? 'Current source' : (viewMode === 'source' ? 'Current source' : 'Current synthesis')}
                 </span>
                 {!showSourceSummary ? (
@@ -1065,9 +1079,12 @@ export function ChatFocus() {
                         padding: 0,
                         cursor: 'pointer',
                         color: viewMode === 'synthesis' ? 'var(--fg)' : 'var(--muted)',
-                        fontSize: '0.66rem',
+                        fontFamily: 'var(--serif)',
+                        fontStyle: 'italic',
+                        fontVariant: 'small-caps',
+                        textTransform: 'lowercase',
+                        fontSize: '0.78rem',
                         letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
                         opacity: viewMode === 'synthesis' ? 0.96 : 0.62,
                       }}
                     >
@@ -1081,9 +1098,12 @@ export function ChatFocus() {
                         padding: 0,
                         cursor: 'pointer',
                         color: viewMode === 'source' ? 'var(--fg)' : 'var(--muted)',
-                        fontSize: '0.66rem',
+                        fontFamily: 'var(--serif)',
+                        fontStyle: 'italic',
+                        fontVariant: 'small-caps',
+                        textTransform: 'lowercase',
+                        fontSize: '0.78rem',
                         letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
                         opacity: viewMode === 'source' ? 0.96 : 0.62,
                       }}
                     >
@@ -1093,9 +1113,12 @@ export function ChatFocus() {
                 ) : null}
               </div>
               <div style={{ fontStyle: showSourceSummary || viewMode === 'source' ? 'normal' : 'italic' }}>
-                {showSourceSummary
+                {/* Render through NoteRenderer — LaTeX wrapped in $…$/$$…$$
+                   (emitted when user selected a KaTeX formula) should
+                   display as math, not as a literal string. */}
+                <NoteRenderer source={showSourceSummary
                   ? sourceStub.preview
-                  : (viewMode === 'source' ? sourceStub.full : sourceStub.preview)}
+                  : (viewMode === 'source' ? sourceStub.full : sourceStub.preview)} />
               </div>
             </div>
           )
@@ -1165,9 +1188,12 @@ export function ChatFocus() {
                 padding: 0,
                 cursor: 'pointer',
                 color: 'inherit',
+                fontFamily: 'var(--serif)',
+                fontStyle: 'italic',
+                fontVariant: 'small-caps',
+                textTransform: 'lowercase',
                 fontSize: 'inherit',
                 letterSpacing: '0.08em',
-                textTransform: 'uppercase',
                 opacity: 0.7,
               }}
             >
@@ -1331,15 +1357,6 @@ export function ChatFocus() {
                   {activeNotice.message}
                 </AiInlineHint>
               )}
-              {!aiError && (runtimeNotice ?? availability.notice) ? (
-                <AiInlineHint
-                  tone={activeNoticeTone}
-                  actionLabel={activeNotice.action?.label}
-                  onAction={handleNoticeAction}
-                >
-                  {activeNotice.message}
-                </AiInlineHint>
-              ) : null}
             </div>
           )}
           {turns.length > 0 && !streaming && !committing && (

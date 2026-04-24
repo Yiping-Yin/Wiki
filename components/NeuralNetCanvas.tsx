@@ -29,7 +29,7 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
       const maxN = Math.max(...sizes);
       const layerW = W / (sizes.length + 1);
 
-      ctx.fillStyle = '#0a0a0f';
+      ctx.fillStyle = '#1A1815';
       ctx.fillRect(0, 0, W, H);
 
       const positions: { x: number; y: number }[][] = [];
@@ -54,7 +54,7 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
             ctx.beginPath();
             ctx.moveTo(positions[l][i].x, positions[l][i].y);
             ctx.lineTo(positions[l + 1][j].x, positions[l + 1][j].y);
-            ctx.strokeStyle = w > 0 ? `rgba(139,92,246,${alpha})` : `rgba(239,68,68,${alpha})`;
+            ctx.strokeStyle = w > 0 ? `rgba(94,61,92,${alpha})` : `rgba(143,70,70,${alpha})`;
             ctx.lineWidth = Math.abs(w) * 1.5 + 0.3;
             ctx.stroke();
           }
@@ -67,8 +67,8 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
           const a = Math.tanh(Math.sin(phase * 0.03 + l * 1.5 + i * 0.8));
           const brightness = (a + 1) / 2;
           const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 16);
-          grd.addColorStop(0, `rgba(139,92,246,${brightness * 0.6})`);
-          grd.addColorStop(1, 'rgba(139,92,246,0)');
+          grd.addColorStop(0, `rgba(94,61,92,${brightness * 0.6})`);
+          grd.addColorStop(1, 'rgba(94,61,92,0)');
           ctx.beginPath();
           ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
           ctx.fillStyle = grd;
@@ -76,11 +76,11 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
 
           ctx.beginPath();
           ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
-          const r = Math.floor(100 + brightness * 139);
-          const g = Math.floor(50 + brightness * 42);
-          const b = Math.floor(200 + brightness * 56);
+          const r = Math.floor(60 + brightness * 94);
+          const g = Math.floor(40 + brightness * 61);
+          const b = Math.floor(60 + brightness * 92);
           ctx.fillStyle = `rgb(${r},${g},${b})`;
-          ctx.strokeStyle = '#a78bfa';
+          ctx.strokeStyle = '#5E3D5C';
           ctx.lineWidth = 1.5;
           ctx.fill();
           ctx.stroke();
@@ -89,7 +89,7 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
 
       // labels
       const labels = ['Input', ...Array(sizes.length - 2).fill('').map((_, i) => `L${i + 1}`), 'Output'];
-      ctx.fillStyle = '#6b7280';
+      ctx.fillStyle = '#8A8373';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'center';
       positions.forEach((layer, l) => ctx.fillText(labels[l], layer[0].x, H - 8));
@@ -109,9 +109,9 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
       const py = fromN.y + (toN.y - fromN.y) * pulseFrac;
       ctx.beginPath();
       ctx.arc(px, py, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#FAF7EC';
       ctx.shadowBlur = 10;
-      ctx.shadowColor = '#a78bfa';
+      ctx.shadowColor = '#5E3D5C';
       ctx.fill();
       ctx.shadowBlur = 0;
     };
@@ -128,16 +128,16 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
   }, [layers, running]);
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '1.2rem 0', background: '#0a0a0f' }}>
-      <div style={{ padding: '0.5rem 0.9rem', background: 'rgba(15,17,21,0.85)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.78rem', color: '#a78bfa', fontWeight: 700 }}>🧬 Live Neural Network</span>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '1.2rem 0', background: '#1A1815' }}>
+      <div style={{ padding: '0.5rem 0.9rem', background: 'rgba(36,32,24,0.85)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: '0.88rem', color: '#D9CFA8', fontWeight: 400 }}>Live Neural Network</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+          <label style={{ fontSize: '0.7rem', color: '#8A8373' }}>
             layers
             <select
               value={layers}
               onChange={(e) => setLayers(parseInt(e.target.value))}
-              style={{ marginLeft: 4, background: '#1f2937', color: '#fff', border: '1px solid #374151', borderRadius: 3, fontSize: '0.7rem', padding: '1px 4px' }}
+              style={{ marginLeft: 4, background: '#242018', color: '#FAF7EC', border: '1px solid #3A3428', borderRadius: 3, fontSize: '0.7rem', padding: '1px 4px' }}
             >
               {[3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -145,10 +145,10 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
           <button
             onClick={() => setRunning((r) => !r)}
             style={{
-              fontSize: '0.7rem', background: '#7c3aed', color: '#fff',
+              fontSize: '0.7rem', background: '#9E7C3E', color: '#FAF7EC',
               border: 0, padding: '3px 10px', borderRadius: 3, cursor: 'pointer',
             }}
-          >{running ? '⏸ Pause' : '▶ Play'}</button>
+          >{running ? 'Pause' : 'Play'}</button>
         </div>
       </div>
       <canvas ref={ref} width={800} height={300} style={{ width: '100%', display: 'block' }} />

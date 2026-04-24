@@ -18,8 +18,8 @@
  */
 import { useEffect } from 'react';
 
-const SVG_LIGHT = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="22" viewBox="0 0 16 22"><g fill="none" stroke-linecap="square"><line x1="5.5" y1="3" x2="10.5" y2="3" stroke="#1d1d1f" stroke-width="1"/><line x1="8" y1="3" x2="8" y2="19" stroke="#1d1d1f" stroke-width="1"/><line x1="5" y1="19" x2="11" y2="19" stroke="#0a84ff" stroke-width="1.6"/></g></svg>`;
-const SVG_DARK = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="22" viewBox="0 0 16 22"><g fill="none" stroke-linecap="square"><line x1="5.5" y1="3" x2="10.5" y2="3" stroke="#f5f5f7" stroke-width="1"/><line x1="8" y1="3" x2="8" y2="19" stroke="#f5f5f7" stroke-width="1"/><line x1="5" y1="19" x2="11" y2="19" stroke="#0a84ff" stroke-width="1.6"/></g></svg>`;
+const SVG_LIGHT = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="22" viewBox="0 0 16 22"><g fill="none" stroke-linecap="square"><line x1="5.5" y1="3" x2="10.5" y2="3" stroke="#1d1d1f" stroke-width="1"/><line x1="8" y1="3" x2="8" y2="19" stroke="#1d1d1f" stroke-width="1"/><line x1="5" y1="19" x2="11" y2="19" stroke="#9E7C3E" stroke-width="1.6"/></g></svg>`;
+const SVG_DARK = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="22" viewBox="0 0 16 22"><g fill="none" stroke-linecap="square"><line x1="5.5" y1="3" x2="10.5" y2="3" stroke="#f5f5f7" stroke-width="1"/><line x1="8" y1="3" x2="8" y2="19" stroke="#f5f5f7" stroke-width="1"/><line x1="5" y1="19" x2="11" y2="19" stroke="#9E7C3E" stroke-width="1.6"/></g></svg>`;
 
 function build() {
   if (typeof document === 'undefined') return '';

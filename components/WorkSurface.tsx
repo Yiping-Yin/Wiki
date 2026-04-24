@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 
-type WorkSurfaceTone = 'default' | 'primary' | 'quiet';
+type WorkSurfaceTone = 'default' | 'primary' | 'quiet' | 'flat';
 type WorkSurfaceDensity = 'compact' | 'regular' | 'roomy';
 type WorkActionTone = 'primary' | 'secondary';
 
@@ -45,12 +45,12 @@ export function WorkEyebrow({
 }) {
   return (
     <div
-      className="t-caption2"
+      className="loom-smallcaps"
       style={{
         color: subtle ? 'var(--muted)' : 'var(--accent)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        fontWeight: 700,
+        fontFamily: 'var(--serif)',
+        fontWeight: 500,
+        fontSize: '0.84rem',
         ...style,
       }}
     >
@@ -116,6 +116,15 @@ export function WorkTextAction({
 }
 
 export function surfaceStyle(tone: WorkSurfaceTone, density: WorkSurfaceDensity): CSSProperties {
+  if (tone === 'flat') {
+    return {
+      padding: SURFACE_PADDING[density],
+      border: 0,
+      background: 'transparent',
+      boxShadow: 'none',
+    };
+  }
+
   const base: CSSProperties = {
     padding: SURFACE_PADDING[density],
     borderRadius: tone === 'primary' ? 'calc(var(--r-4) + 2px)' : 'var(--r-4)',

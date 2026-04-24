@@ -5,6 +5,9 @@ import { HighlightOverlay } from './HighlightOverlay';
 import { ChatFocus } from './ChatFocus';
 import { ReviewMode } from './CoworkSplit';
 import { SelectionWarp } from './SelectionWarp';
+import { SelectionLegend } from './SelectionLegend';
+import { SourceCorrectTrigger } from './SourceCorrectTrigger';
+import { SourceCorrectionsBadge } from './SourceCorrectionsBadge';
 import { ReadingMode } from './ReadingMode';
 import { LoomCursor } from './LoomCursor';
 import { CapturePrompt } from './CapturePrompt';
@@ -31,6 +34,9 @@ export function PageScopedChrome() {
       <ChatFocus />
       <ReviewMode />
       <SelectionWarp />
+      <SelectionLegend />
+      <SourceCorrectTrigger />
+      <SourceCorrectionsBadge />
       <ReadingMode />
       <LoomCursor />
       <CapturePrompt />

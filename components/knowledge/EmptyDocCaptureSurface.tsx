@@ -9,6 +9,7 @@ import { canCaptureInline } from '../../lib/knowledge-doc-state';
 import { openSettingsPanel } from '../../lib/settings-panel';
 import { useAiHealth } from '../../lib/use-ai-health';
 import { AiInlineHint } from '../unified/AiStagePrimitives';
+import { TextArea } from '../TextInput';
 
 type AttachedSource = {
   name: string;
@@ -129,26 +130,15 @@ export function EmptyDocCaptureSurface({
         This topic is still empty. Start writing, paste rough notes, or attach one source, then let Loom organize the first source page.
       </div>
 
-      <textarea
+      <TextArea
+        size="lg"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Start writing, paste rough notes, or drop one source…"
         aria-label="Start writing, paste notes, or drop a source"
         rows={12}
         disabled={busy}
-        style={{
-          width: '100%',
-          minHeight: 280,
-          borderRadius: 18,
-          border: '0.5px solid var(--mat-border)',
-          background: 'color-mix(in srgb, var(--bg-elevated) 72%, transparent)',
-          color: 'var(--fg)',
-          padding: '1rem 1.1rem',
-          font: 'inherit',
-          lineHeight: 1.6,
-          resize: 'vertical',
-          outline: 'none',
-        }}
+        style={{ minHeight: 280, padding: '1rem 1.1rem' }}
       />
 
       <div
@@ -211,7 +201,18 @@ export function EmptyDocCaptureSurface({
 
       {sources.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', fontWeight: 700 }}>
+          <div
+            style={{
+              fontFamily: 'var(--serif)',
+              fontStyle: 'italic',
+              fontVariant: 'small-caps',
+              textTransform: 'lowercase',
+              fontSize: '0.78rem',
+              letterSpacing: '0.08em',
+              color: 'var(--muted)',
+              fontWeight: 500,
+            }}
+          >
             Attached sources
           </div>
           {sources.map((source, index) => (
