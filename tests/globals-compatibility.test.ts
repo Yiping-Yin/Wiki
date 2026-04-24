@@ -18,9 +18,15 @@ test('global CSS preserves shared compatibility contracts outside the home route
     ['note-rendered KaTeX contract', /\.note-rendered\s+\.katex-display\s*\{/],
     ['note-rendered markdown contract', /\.note-rendered\s+h1\s*\{/],
     ['manual dark theme contract', /\.dark\s*\{[\s\S]*--bg:/],
-    ['auto dark media query gated behind explicit light\/dark classes', /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{[\s\S]*html:not\(\.light\):not\(\.dark\)\s*\{/],
+    [
+      'auto dark media query gated behind explicit light\/dark classes',
+      /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{[\s\S]*html:not\(\.light\):not\(\.dark\)\s*\{/,
+    ],
     ['layout shell main contract', /\.layout-shell__main\s*\{[\s\S]*min-height:\s*100vh/],
-    ['pinned sidebar layout offset', /body\.sidebar-pinned\s+\.layout-shell__main\s*\{[\s\S]*margin-left:\s*var\(--sidebar-shell-width\)/],
+    [
+      'pinned sidebar layout offset',
+      /body\.sidebar-pinned\s+\.layout-shell__main\s*\{[\s\S]*margin-left:\s*var\(--sidebar-shell-width\)/,
+    ],
     ['sidebar shell contract', /\.sidebar-shell__inner\s*\{/],
     ['sidebar section contract', /\.sidebar-section__body\s*\{/],
     ['toc contract', /\.toc\s*\{/],
@@ -28,12 +34,15 @@ test('global CSS preserves shared compatibility contracts outside the home route
     ['study mode toc hiding contract', /body\.loom-study-mode\s+\.toc\b/],
     ['reading mode doc chrome hiding contract', /body\.reading-mode\s+\.doc-outline\b/],
     ['glass utility', /\.glass\s*\{/],
-    ['material thick utility contract', /\.material-thick\s*\{[\s\S]*background:\s*var\(--mat-thick-bg\)[\s\S]*backdrop-filter:\s*var\(--mat-blur-thick\)[\s\S]*border:\s*0\.5px solid var\(--mat-border\)/],
+    [
+      'material thick utility contract',
+      /\.material-thick\s*\{[\s\S]*background:\s*var\(--mat-thick-bg\)[\s\S]*backdrop-filter:\s*var\(--mat-blur-thick\)[\s\S]*border:\s*0\.5px solid var\(--mat-border\)/,
+    ],
     ['caption2 utility', /\.t-caption2\s*\{[\s\S]*font-size:\s*var\(--t-caption2\)/],
     ['adjacent typography utilities', /\.t-footnote\s*\{[\s\S]*font-size:\s*var\(--t-footnote\)/],
     ['toastIn animation', /@keyframes\s+toastIn\s*\{/],
     ['lpFade animation', /@keyframes\s+lpFade\s*\{/],
-    ['grain drift animation', /@keyframes\s+grain-drift\s*\{/],
+    ['static grain overlay', /\.loom-grain\s*\{[\s\S]*background-image:\s*url\(/],
   ];
 
   for (const [label, pattern] of requiredContracts) {

@@ -50,20 +50,27 @@ test('quiet-scene CSS stays page-neutral and keeps a viewport-height floor', () 
   assert.doesNotMatch(css, /--quiet-scene-tint/);
 });
 
-test('today and patterns mount the shared quiet-scene shell', () => {
+test('today and patterns keep their current route-level shells', () => {
   const todaySource = fs.readFileSync(path.join(repoRoot, 'app/today/TodayClient.tsx'), 'utf8');
-  const patternsSource = fs.readFileSync(path.join(repoRoot, 'components/PatternsView.tsx'), 'utf8');
+  const patternsSource = fs.readFileSync(path.join(repoRoot, 'app/PatternsClient.tsx'), 'utf8');
 
-  assert.match(todaySource, /QuietScene/);
-  assert.match(patternsSource, /QuietScene/);
+  assert.match(
+    todaySource,
+    /className\s*=\s*embedded \? 'loom-today loom-today--embedded' : 'loom-today'/,
+  );
+  assert.match(patternsSource, /className="loom-patterns"/);
 });
 
-test('today, atlas, and patterns share the quiet intro block instead of page-level guide cards', () => {
+test('atlas uses the shared quiet column and route clients avoid page-level guide cards', () => {
   const todaySource = fs.readFileSync(path.join(repoRoot, 'app/today/TodayClient.tsx'), 'utf8');
-  const atlasSource = fs.readFileSync(path.join(repoRoot, 'app/knowledge/KnowledgeHomeStatic.tsx'), 'utf8');
-  const patternsSource = fs.readFileSync(path.join(repoRoot, 'components/PatternsView.tsx'), 'utf8');
+  const atlasSource = fs.readFileSync(
+    path.join(repoRoot, 'app/knowledge/KnowledgeHomeStatic.tsx'),
+    'utf8',
+  );
+  const patternsSource = fs.readFileSync(path.join(repoRoot, 'app/PatternsClient.tsx'), 'utf8');
 
-  assert.match(todaySource, /QuietSceneIntro/);
-  assert.match(atlasSource, /QuietSceneIntro/);
-  assert.match(patternsSource, /QuietSceneIntro/);
+  assert.match(atlasSource, /QuietSceneColumn/);
+  for (const source of [todaySource, atlasSource, patternsSource]) {
+    assert.doesNotMatch(source, /guide-card|GuideCard/);
+  }
 });

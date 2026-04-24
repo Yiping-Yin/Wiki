@@ -107,9 +107,10 @@ a[class*="loom-"] {
   --map-stage-width: min(93.75rem, calc(100vw - 6rem));
   --quiet-scene-width: min(45rem, calc(100vw - 11.25rem));
   --home-workbench-width: min(45rem, calc(100vw - 11.25rem));
-  /* Prose column — book-scale but responsive. Floors at ~680px (clear
-     ~55ch at 17px), ceilings at ~820px. Fluidly sized between. */
-  --prose-width: clamp(42.5rem, 27rem + 16vw, 51.25rem);
+  /* Reading page — the paper follows the viewport, while paragraphs keep
+     a readable measure. Technical blocks can use the wider paper. */
+  --prose-width: clamp(48rem, 68vw, 76rem);
+  --prose-measure: clamp(39rem, 48vw, 52rem);
   --focus-rail-collapsed-width: clamp(16.5rem, 20vw, 18.75rem);
   --focus-rail-width: clamp(18.75rem, 24vw, 22.5rem);
   --map-focus-width: minmax(320px, 1.15fr);
@@ -820,6 +821,7 @@ html.user-tabbing .skip-link:focus-visible {
   padding-left: clamp(18px, 3vw, 40px);
   padding-right: clamp(18px, 3vw, 40px);
   box-sizing: border-box;
+  overflow-x: clip;
 }
 
 .loom-stage-shell__inner {
@@ -849,7 +851,15 @@ html.user-tabbing .skip-link:focus-visible {
   min-height: calc(100vh - 8rem);
   padding-top: clamp(10px, 1vw, 16px);
   padding-bottom: clamp(28px, 3vw, 42px);
+  overflow-x: clip;
   isolation: isolate;
+}
+
+@supports not (overflow: clip) {
+  .loom-stage-shell,
+  .loom-quiet-scene {
+    overflow-x: hidden;
+  }
 }
 
 .loom-quiet-scene::before,
@@ -969,7 +979,7 @@ html.user-tabbing .skip-link:focus-visible {
   margin: 0 auto;
   /* Asymmetric padding — slightly more left gutter than right, as
      print spreads do. All rem so zoom scales proportionally. */
-  padding: 5rem 5.625rem 4.375rem 7.5rem;
+  padding: 5rem clamp(2.75rem, 5vw, 5.625rem) 4.375rem clamp(3rem, 6vw, 7.5rem);
   box-sizing: border-box;
   font-family: var(--serif);
   color: var(--fg);
@@ -982,6 +992,10 @@ html.user-tabbing .skip-link:focus-visible {
      lining-nums. Code blocks override this back to tnum+lnum. */
   font-variant-numeric: oldstyle-nums proportional-nums;
   font-feature-settings: "onum", "pnum", "kern", "liga";
+}
+
+.prose-notion > :where(.loom-running-head, h1, h2, h3, h4, p, ul, ol, blockquote, hr) {
+  max-width: min(100%, var(--prose-measure));
 }
 /* Technical content inside code/pre stays lining + tabular for
    alignment — bullet lists of numbers, equations, scripts. */
@@ -1272,6 +1286,8 @@ html.user-tabbing .skip-link:focus-visible {
 
 .prose-notion code:not(pre code) {
   border: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Global <kbd> — keyboard hint chip used across /help and future
@@ -1299,6 +1315,8 @@ kbd:not(pre kbd):not(code kbd) {
 .prose-notion pre {
   margin: 1.4rem 0;
   padding: 0.9rem 1rem 0.9rem 1.1rem;
+  max-width: 100%;
+  box-sizing: border-box;
   overflow-x: auto;
   border-radius: 0;
   border: 0;
@@ -1310,10 +1328,34 @@ kbd:not(pre kbd):not(code kbd) {
 }
 
 .prose-notion pre code {
+  display: block;
+  min-width: 100%;
+  width: max-content;
   border: 0;
   padding: 0;
   background: transparent;
   font-size: 0.9em;
+}
+
+.prose-notion .katex-display {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15rem 0 0.35rem;
+  box-sizing: border-box;
+}
+
+.prose-notion .katex-display > .katex {
+  display: inline-block;
+  width: max-content;
+  min-width: 0;
+  max-width: none;
+}
+
+.prose-notion > p:has(> .katex-display) {
+  max-width: min(100%, var(--prose-width));
 }
 
 /* Blockquote — book pull quote, not a digital card. The filled,
@@ -1529,7 +1571,8 @@ body.loom-idle .loom-margin-whisper {
 
 @media (max-width: 1024px) {
   :root {
-    --prose-width: clamp(680px, calc(28rem + 18vw), 800px);
+    --prose-width: min(100%, calc(100vw - 3rem));
+    --prose-measure: min(100%, 44rem);
     --focus-rail-collapsed-width: 280px;
     --focus-rail-width: 320px;
     --quiet-scene-width: min(100%, calc(100vw - 72px));
@@ -1548,7 +1591,8 @@ body.loom-idle .loom-margin-whisper {
 
 @media (max-width: 900px) {
   :root {
-    --prose-width: min(100%, 740px);
+    --prose-width: 100%;
+    --prose-measure: 100%;
     --quiet-scene-width: calc(100vw - 36px);
   }
 
