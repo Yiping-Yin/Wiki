@@ -2,7 +2,10 @@ Loom
 Copyright 2026 Yiping Yin
 
 This product includes software developed by Yiping Yin
-(https://github.com/Yiping-Yin/Wiki).
+(https://github.com/Yiping-Yin/Wiki) with substantial coding
+assistance from OpenAI Codex and Anthropic Claude. See AUTHORS.md
+for attribution conventions and how each collaborator's commits
+are tagged in the git history.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this software except in compliance with the License.

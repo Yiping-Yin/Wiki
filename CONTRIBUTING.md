@@ -54,6 +54,26 @@ git commit -s -m "fix(reading): correct drop cap alignment in Vellum mode"
 
 "Loom," the Loom word-mark, and the Loom kesi-weave icon are trademarks of Yiping Yin. The Apache 2.0 license covers the source code. It does not grant a license to use these marks in a manner that suggests sponsorship or endorsement, or in a derivative product that identifies itself primarily as "Loom." Fork freely; rename the fork.
 
+## AI collaborators
+
+Loom is built collaboratively with AI coding assistants. This is not a
+secret — it's tracked in the git history:
+
+- Commits prefixed `[codex] …` come from **OpenAI Codex** (via the
+  `codex` CLI or Codex Cloud).
+- Commits whose body contains `Co-Authored-By: Claude …` come from
+  **Anthropic Claude** (via Claude Code).
+- Unprefixed commits without a `Co-Authored-By` trailer are
+  hand-written by the maintainer.
+
+If you send a PR, you don't need to disclose whether an AI helped you
+draft it — we care that the code is correct, tested, and fits the
+project's shape. But if an AI co-authored a substantial part of your
+change, we ask you to add a `Co-Authored-By:` trailer crediting the
+tool, matching the convention above.
+
+See [AUTHORS.md](./AUTHORS.md) for the full attribution model.
+
 ## Security
 
 Do not file public issues for security problems. Email the address in
