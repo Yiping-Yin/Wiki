@@ -122,10 +122,33 @@ function runNextBuild() {
   return result.status;
 }
 
+function runBuildSearchIndex() {
+  const result = spawnSync('npx', ['tsx', 'scripts/build-search-index.ts'], {
+    cwd: repoRoot,
+    env: process.env,
+    stdio: 'inherit',
+  });
+  return result.status;
+}
+
+async function copySearchIndexIntoExport() {
+  const source = path.join(repoRoot, 'knowledge', '.cache', 'indexes', 'search-index.json');
+  const target = path.join(repoRoot, '.next-export', 'search-index.json');
+  if (!(await pathExists(source))) {
+    throw new Error(`search index was not generated: ${source}`);
+  }
+  await fs.copyFile(source, target);
+}
+
 async function runStaticExport() {
   await removeDuplicateArtifacts(path.join(repoRoot, '.next'));
   await removeDuplicateArtifacts(path.join(repoRoot, '.next-export'));
   await restoreStaleShelvedPaths();
+  const searchIndexStatus = runBuildSearchIndex() ?? 1;
+  if (searchIndexStatus !== 0) {
+    process.exit(searchIndexStatus);
+  }
+
   const restoreOps = await shelve();
   let exitStatus = 1;
   try {
@@ -138,6 +161,7 @@ async function runStaticExport() {
     process.exit(exitStatus);
   }
 
+  await copySearchIndexIntoExport();
   await removeDuplicateArtifacts(path.join(repoRoot, '.next'));
   await removeDuplicateArtifacts(path.join(repoRoot, '.next-export'));
   console.log('\n[build-static-export] success. Output in ./.next-export');

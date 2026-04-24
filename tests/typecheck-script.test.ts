@@ -40,6 +40,10 @@ test('typecheck script resolves repo root from the script path and serializes bu
   assert.match(exportSource, /async function restoreStaleShelvedPaths\(\) \{/);
   assert.match(exportSource, /await restoreStaleShelvedPaths\(\);[\s\S]*const restoreOps = await shelve\(\);/);
   assert.match(exportSource, /await fs\.mkdir\(path\.dirname\(op\.to\), \{ recursive: true \}\);[\s\S]*await fs\.rename\(op\.from, op\.to\);/);
+  assert.match(exportSource, /function runBuildSearchIndex\(\) \{/);
+  assert.match(exportSource, /'tsx', 'scripts\/build-search-index\.ts'/);
+  assert.match(exportSource, /async function copySearchIndexIntoExport\(\) \{/);
+  assert.match(exportSource, /await copySearchIndexIntoExport\(\);/);
   assert.match(exportSource, /LOOM_NEXT_BUILD_LOCK_HELD: '1'/);
   assert.match(exportSource, /await withNextBuildLock\(repoRoot, runStaticExport\);/);
 });
