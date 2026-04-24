@@ -17,9 +17,10 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { removeDuplicateArtifacts } from './next-build-lock.mjs';
+import { removeDuplicateArtifacts, withNextBuildLock } from './next-build-lock.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const shelfRoot = path.join(repoRoot, '.next-export-shelf');
 
 /**
  * Relative paths that can't live in the tree during a static export.
@@ -45,6 +46,34 @@ const SHELVED = [
   'app/pursuits/[id]',
 ];
 
+function shelvedPathFor(rel) {
+  return path.join(shelfRoot, rel.replace(/[\/]/g, '__'));
+}
+
+async function pathExists(target) {
+  try {
+    await fs.access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function restoreStaleShelvedPaths() {
+  for (const rel of SHELVED) {
+    const original = path.join(repoRoot, rel);
+    const shelved = shelvedPathFor(rel);
+    const hasOriginal = await pathExists(original);
+    const hasShelved = await pathExists(shelved);
+
+    if (!hasShelved || hasOriginal) continue;
+
+    await fs.mkdir(path.dirname(original), { recursive: true });
+    await fs.rename(shelved, original);
+    console.warn(`[build-static-export] restored stale shelf entry: ${rel}`);
+  }
+}
+
 async function moveIfExists(from, to) {
   try {
     await fs.access(from);
@@ -57,11 +86,10 @@ async function moveIfExists(from, to) {
 
 async function shelve() {
   const restoreOps = [];
-  const shelfRoot = path.join(repoRoot, '.next-export-shelf');
   await fs.mkdir(shelfRoot, { recursive: true });
   for (const rel of SHELVED) {
     const from = path.join(repoRoot, rel);
-    const to = path.join(shelfRoot, rel.replace(/[\/]/g, '__'));
+    const to = shelvedPathFor(rel);
     if (await moveIfExists(from, to)) {
       restoreOps.push({ from: to, to: from });
     }
@@ -72,6 +100,7 @@ async function shelve() {
 async function restore(restoreOps) {
   for (const op of restoreOps) {
     try {
+      await fs.mkdir(path.dirname(op.to), { recursive: true });
       await fs.rename(op.from, op.to);
     } catch (err) {
       console.error(`[build-static-export] WARNING: failed to restore ${op.to}: ${err.message}`);
@@ -86,15 +115,17 @@ function runNextBuild() {
       ...process.env,
       LOOM_NEXT_OUTPUT: 'export',
       LOOM_DIST_DIR: '.next-export',
+      LOOM_NEXT_BUILD_LOCK_HELD: '1',
     },
     stdio: 'inherit',
   });
   return result.status;
 }
 
-async function main() {
+async function runStaticExport() {
   await removeDuplicateArtifacts(path.join(repoRoot, '.next'));
   await removeDuplicateArtifacts(path.join(repoRoot, '.next-export'));
+  await restoreStaleShelvedPaths();
   const restoreOps = await shelve();
   let exitStatus = 1;
   try {
@@ -110,6 +141,10 @@ async function main() {
   await removeDuplicateArtifacts(path.join(repoRoot, '.next'));
   await removeDuplicateArtifacts(path.join(repoRoot, '.next-export'));
   console.log('\n[build-static-export] success. Output in ./.next-export');
+}
+
+async function main() {
+  await withNextBuildLock(repoRoot, runStaticExport);
 }
 
 main().catch((err) => {

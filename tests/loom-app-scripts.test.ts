@@ -10,6 +10,7 @@ import {
   isPermissionFallbackError,
 } from '../scripts/install-loom-app.mjs';
 import {
+  createDittoArchiveArgs,
   findPackageSourceApp,
   packageLoomApp,
   resolveOutputRoot,
@@ -89,6 +90,21 @@ test('package script skips the retired runtime archive when no runtime is staged
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
+});
+
+test('package script creates clean archives without AppleDouble metadata', () => {
+  const args = createDittoArchiveArgs('/tmp/Loom.app', '/tmp/Loom-replacement.zip');
+
+  assert.deepEqual(args, [
+    '-c',
+    '-k',
+    '--norsrc',
+    '--noextattr',
+    '--keepParent',
+    '/tmp/Loom.app',
+    '/tmp/Loom-replacement.zip',
+  ]);
+  assert.equal(args.includes('--sequesterRsrc'), false);
 });
 
 test('release app scripts build the static export before Xcode Release packaging', () => {

@@ -33,9 +33,14 @@ test('typecheck script resolves repo root from the script path and serializes bu
   assert.match(buildSource, /await removeDuplicateArtifacts\(path\.join\(root, '\.next'\)\);/);
   assert.match(buildSource, /await run\(process\.execPath, \[pagefindScript, '\.next-build\/server\/app', 'public\/pagefind'\],[\s\S]*\);\s*await removeDuplicateArtifacts\(path\.join\(root, '\.next'\)\);\s*await removeDuplicateArtifacts\(path\.join\(root, '\.next-build'\)\);/);
   assert.match(buildSource, /rmSync\(path\.join\(root, '\.next-build', 'types'\), \{ recursive: true, force: true \}\);/);
-  assert.match(exportSource, /import \{ removeDuplicateArtifacts \} from '\.\/next-build-lock\.mjs';/);
+  assert.match(exportSource, /import \{ removeDuplicateArtifacts, withNextBuildLock \} from '\.\/next-build-lock\.mjs';/);
   assert.match(exportSource, /await removeDuplicateArtifacts\(path\.join\(repoRoot, '\.next'\)\);/);
   assert.match(exportSource, /await removeDuplicateArtifacts\(path\.join\(repoRoot, '\.next-export'\)\);/);
+  assert.match(exportSource, /async function restoreStaleShelvedPaths\(\) \{/);
+  assert.match(exportSource, /await restoreStaleShelvedPaths\(\);[\s\S]*const restoreOps = await shelve\(\);/);
+  assert.match(exportSource, /await fs\.mkdir\(path\.dirname\(op\.to\), \{ recursive: true \}\);[\s\S]*await fs\.rename\(op\.from, op\.to\);/);
+  assert.match(exportSource, /LOOM_NEXT_BUILD_LOCK_HELD: '1'/);
+  assert.match(exportSource, /await withNextBuildLock\(repoRoot, runStaticExport\);/);
 });
 
 test('next build lock creates the lock directory recursively and retries missing owner writes', () => {

@@ -37,6 +37,10 @@ export function resolveOutputRoot(scriptUrl = import.meta.url) {
 
 const outputRoot = resolveOutputRoot();
 
+export function createDittoArchiveArgs(sourcePath, archivePath) {
+  return ['-c', '-k', '--norsrc', '--noextattr', '--keepParent', sourcePath, archivePath];
+}
+
 async function listDirSafe(dir) {
   try {
     return await fs.readdir(dir, { withFileTypes: true });
@@ -178,7 +182,7 @@ export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = o
   rmSync(appArchivePath, { force: true });
   rmSync(runtimeArchivePath, { force: true });
 
-  execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', appPath, appArchivePath], {
+  execFileSync('ditto', createDittoArchiveArgs(appPath, appArchivePath), {
     stdio: 'inherit',
   });
 
@@ -186,7 +190,7 @@ export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = o
   if (runtimeRoot) {
     const { libraryRoot, tempRoot } = createRuntimePackagePayload({ runtimeRoot, contentRoot, outputDir });
     try {
-      execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', libraryRoot, runtimeArchivePath], {
+      execFileSync('ditto', createDittoArchiveArgs(libraryRoot, runtimeArchivePath), {
         stdio: 'inherit',
       });
       packagedRuntimeArchivePath = runtimeArchivePath;
