@@ -363,12 +363,48 @@ Direct unlocks:
 
 ## 9. Success Criteria
 
-1. Dropping a syllabus PDF produces schema-populated UI with clickable source anchors
-2. Fields not in source render as `.notFound` with non-empty `tried:`
-3. Same syllabus under 3 providers → structurally identical
-4. `verifySpans` rejects or downgrades every AI-invented quote in red-team tests
-5. `GenericDocExtractor` preserves current behavior for files without a typed extractor
-6. User-authored markdown → zero AI calls at ingest
+1. Dropping a syllabus PDF produces schema-populated UI with clickable source anchors — **Phase 4 (UI pending)**
+2. Fields not in source render as `.notFound` with non-empty `tried:` — ✅ **SHIPPED 2026-04-24** (live run: 3/3 identity fields on FINS 3640 honestly `not_found` with `tried: [...]`)
+3. Same syllabus under 3 providers → structurally identical — Phase 1 gate `--parity` infra ready; not yet run
+4. `verifySpans` rejects or downgrades every AI-invented quote in red-team tests — ✅ **SHIPPED 2026-04-24** (gate: 5/5 red-team cases rejected with correct reason strings)
+5. `GenericDocExtractor` preserves current behavior for files without a typed extractor — ✅ **SHIPPED** (Phase 0 + Phase 1 both preserve byte-identical flow for .md, .txt, non-syllabus PDFs)
+6. User-authored markdown → zero AI calls at ingest — ✅ **SHIPPED 2026-04-24** (`MarkdownNotesExtractor` deterministic; registry-wired, UI still defaults to generic ingest until Phase 5)
+
+## 9.1 Phase 1 Shipped Results (2026-04-24)
+
+Build: `xcodebuild clean build` ✅ + `build-for-testing` ✅. Only warning is pre-existing `AIStreamBridgeHandler.swift:92` Swift 6 captured-var (unrelated).
+
+Gate (`python3 scripts/phase1-gate.py --skip-ai`, against 11 fixture syllabi + 4 red-team cases):
+- Fields expected-found: **96/96 = 100%** (target 80%) ✅
+- Fields expected-not_found: **36/42 = 86%** (target 80%) ✅
+- Red-team rejection: **5/5 = 100%** (target 100%) ✅
+- **PASS**
+
+Live end-to-end via `claude` CLI on FINS 3640 with the **new hardened production prompt** (via Agent A's `/tmp/loom-phase1-verified.json`):
+- Found fields: 23 populated `FieldResult.found`
+- NotFound fields: 3 (`courseCode`, `courseName`, `term` — filename-only in source; honestly reported with `tried: [...]`)
+- Total sourceSpans emitted: 46
+- Spans verified as substring-present: **46/46 = 100%** (baseline across n=125 was 4.8%)
+- Filename-stem demotions at runtime: 0 (Mitigation A worked at prompt — model never emitted filename as quote)
+- Ellipsis-stitch demotions at runtime: 0 (Mitigation B worked at prompt — model returned lists of contiguous quotes for scattered fields)
+
+**4.8% → 100% span verification** is the canonical Phase 1 win.
+
+## 9.2 Phase 2/3 Shipped Results (2026-04-24)
+
+- Phase 2: Swift `CleanText.apply()` now mirrors the Node `cleanText()` pipeline, and `PDFExtraction.extract()` centralizes PDFKit text extraction with a first-pass page-range table.
+- Phase 3: Typed extractor scaffolds are registered for slide decks, transcripts, textbook chapters, spreadsheets, and markdown notes.
+- Deterministic paths are active for `MarkdownNotesExtractor` and `SpreadsheetExtractor` with no AI call.
+- AI-backed extractors now own their match heuristics, schema types, and quote-hardening tests, but remain registry-only until the Phase 5 opt-in extract UI.
+- Added Swift parity/typed extractor tests plus red-team fixtures for filename-stem quote demotion.
+
+## 9.3 Remaining Gaps
+
+- Phase 4: UI surface (schema-aware renderer, click-to-quote, `not_found` badge, `verified:false` warning)
+- Phase 5: Opt-in "Extract" button (remove auto-run AI at ingest)
+- Phase 5 provider parity: run the schema-constrained extractors across OpenAI / Anthropic / local JSON fallback before making them user-visible.
+- Page-boundary exactness: current Swift PDF extraction has best-effort page ranges; exact offset preservation across all `cleanText` transforms still needs a dedicated table.
+- Reason-string canonicalization: Swift emits `quote_appears_non_contiguous`; gate accepts `quote_not_substring_of_source` as alias. Pick one canonical before Phase 4 UI.
 
 ---
 

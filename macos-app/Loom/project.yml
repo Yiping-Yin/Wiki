@@ -6,6 +6,24 @@ options:
   xcodeVersion: "16.0"
   minimumXcodeGenVersion: "2.30"
 
+packages:
+  # Phase 3 ingest-extractor-refactor dependencies (2026-04-24).
+  # Both are pure-Swift SPM packages with no native / network / IPC
+  # surface so the sandbox entitlements in this file cover them.
+  # CoreXLSX — OOXML (.xlsx) parser for SpreadsheetExtractor.
+  CoreXLSX:
+    url: https://github.com/CoreOffice/CoreXLSX
+    from: 0.14.0
+  # ZipFoundation — zip archive reader used by SlideDeckExtractor to
+  # pull text runs out of .pptx files. Unused for the PDF/text-dump
+  # path; kept wired so Phase 4+ can opt in without a second rebuild.
+  # Upstream exposes the library as `ZIPFoundation` (all-caps IP). We
+  # name the package entry to match so the `dependencies:` entry below
+  # resolves to the correct product identifier.
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: 0.9.18
+
 targets:
   Loom:
     type: application
@@ -14,6 +32,9 @@ targets:
       - Sources
       - Assets.xcassets
       - Resources
+    dependencies:
+      - package: CoreXLSX
+      - package: ZIPFoundation
     settings:
       base:
         PRODUCT_NAME: Loom
@@ -58,6 +79,10 @@ targets:
         basedOnDependencyAnalysis: false
         script: |
           set -eu
+          if [ "${LOOM_SKIP_WEB_STAGE:-}" = "1" ]; then
+            echo "Loom: LOOM_SKIP_WEB_STAGE=1 — skipping web bundle stage."
+            exit 0
+          fi
           REPO="${PROJECT_DIR}/../.."
           EXPORT="${REPO}/.next-export"
           DEST="${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Contents/Resources/web"
@@ -103,7 +128,9 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - Tests
+      - path: Tests
+        excludes:
+          - fixtures/**/README.md
     dependencies:
       - target: Loom
     settings:

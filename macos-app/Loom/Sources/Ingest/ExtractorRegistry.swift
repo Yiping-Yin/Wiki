@@ -28,15 +28,45 @@ struct ExtractorRegistration {
 enum ExtractorRegistry {
     /// Registered extractors, highest-priority typed ones first, then
     /// `GenericDocExtractor` as the always-available fallback. Phase 1
-    /// ships `SyllabusPDFExtractor` only; Phase 3 adds the rest per
-    /// plan §3.3.
+    /// shipped `SyllabusPDFExtractor`; Phase 3 (2026-04-24) adds the
+    /// remaining typed extractors per plan §3.3.
+    ///
+    /// Order matters for ties: `bestMatch` keeps the first-seen entry
+    /// when scores are equal, so put the more-specific extractors ahead
+    /// of broader ones. The current ranking:
+    ///
+    ///   • Syllabus      — PDFs with syllabus keyword (0.9)
+    ///   • SlideDeck     — .pptx/.key (0.9) or slide-density PDFs (0.7)
+    ///   • Transcript    — .vtt/.srt (0.95) or timestamp-heavy .txt (0.85)
+    ///   • Textbook      — chapter-named files (0.85) or long ISBN PDFs (0.7)
+    ///   • Spreadsheet   — .csv/.tsv/.xlsx/.xls (0.9)
+    ///   • MarkdownNotes — .md/.mdx/.txt without transcript signal (0.9)
+    ///   • Generic       — fallback (0.1)
     static let all: [ExtractorRegistration] = [
         ExtractorRegistration(
             extractorId: SyllabusPDFExtractor.extractorId,
             match: SyllabusPDFExtractor.match(filename:parentPath:sample:)
         ),
-        // Future typed extractors slot in here — textbook chapter,
-        // slide deck, transcript, markdown notes, spreadsheet, …
+        ExtractorRegistration(
+            extractorId: SlideDeckExtractor.extractorId,
+            match: SlideDeckExtractor.match(filename:parentPath:sample:)
+        ),
+        ExtractorRegistration(
+            extractorId: TranscriptExtractor.extractorId,
+            match: TranscriptExtractor.match(filename:parentPath:sample:)
+        ),
+        ExtractorRegistration(
+            extractorId: TextbookChapterExtractor.extractorId,
+            match: TextbookChapterExtractor.match(filename:parentPath:sample:)
+        ),
+        ExtractorRegistration(
+            extractorId: SpreadsheetExtractor.extractorId,
+            match: SpreadsheetExtractor.match(filename:parentPath:sample:)
+        ),
+        ExtractorRegistration(
+            extractorId: MarkdownNotesExtractor.extractorId,
+            match: MarkdownNotesExtractor.match(filename:parentPath:sample:)
+        ),
         ExtractorRegistration(
             extractorId: GenericDocExtractor.extractorId,
             match: GenericDocExtractor.match(filename:parentPath:sample:)

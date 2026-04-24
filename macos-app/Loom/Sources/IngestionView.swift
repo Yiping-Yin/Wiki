@@ -515,36 +515,38 @@ final class IngestionRunner: ObservableObject {
         return trimmed
     }
 
-    /// Extract text from a PDF using first-party PDFKit. Caps at the first
-    /// 200 KB of extracted text (same size limit as plaintext) so the AI
-    /// summary call stays bounded; most scholarly PDFs fit the head. Scans
-    /// all pages — no OCR (if the PDF is image-only, `string` returns
-    /// empty and we throw `empty`).
+    /// Extract cleaned plaintext from a PDF. Delegates to
+    /// `PDFExtraction.extract()` which runs PDFKit + the Phase 2
+    /// Node-parity `CleanText.apply()` pipeline so the Swift drop path
+    /// produces the same cleaned output as the Node folder-scan path
+    /// (plan §4 Phase 2).
+    ///
+    /// Page-range metadata is produced by `PDFExtraction` but not
+    /// threaded through today — Phase 4 UI work is the consumer. Until
+    /// then we just return `text`; the `ExtractedPDF` value is dropped
+    /// on the floor.
     private func extractPDFText(url: URL) throws -> String {
-        guard let document = PDFDocument(url: url) else {
+        do {
+            // Honor the existing 200 KB byte cap by asking `CleanText`
+            // for an equivalent char cap. UTF-8 bytes ≥ chars, so a
+            // char cap at `maxBytes` is a safe upper bound; the final
+            // utf8 clip below enforces the exact byte limit.
+            let extracted = try PDFExtraction.extract(url: url, maxChars: Self.maxBytes)
+            let trimmed = extracted.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { throw IngestError.empty }
+            if trimmed.utf8.count > Self.maxBytes {
+                let data = trimmed.data(using: .utf8) ?? Data()
+                let clipped = data.prefix(Self.maxBytes)
+                if let clippedText = String(data: clipped, encoding: .utf8) {
+                    return clippedText
+                }
+            }
+            return trimmed
+        } catch PDFExtractionError.unreadable {
             throw IngestError.unreadable
+        } catch PDFExtractionError.empty {
+            throw IngestError.empty
         }
-        var collected = ""
-        for index in 0..<document.pageCount {
-            guard let page = document.page(at: index),
-                  let pageText = page.string else { continue }
-            collected.append(pageText)
-            collected.append("\n\n")
-            if collected.utf8.count >= Self.maxBytes {
-                break
-            }
-        }
-        let trimmed = collected.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw IngestError.empty }
-        // Guard against extremely verbose PDFs — clip to maxBytes utf8.
-        if trimmed.utf8.count > Self.maxBytes {
-            let data = trimmed.data(using: .utf8) ?? Data()
-            let clipped = data.prefix(Self.maxBytes)
-            if let clippedText = String(data: clipped, encoding: .utf8) {
-                return clippedText
-            }
-        }
-        return trimmed
     }
 
     private func summarise(text: String, filename: String) async throws -> String {

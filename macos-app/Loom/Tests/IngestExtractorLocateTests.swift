@@ -261,6 +261,68 @@ final class IngestExtractorLocateTests: XCTestCase {
         XCTAssertEqual(decoded.weekTopics.count, 1)
     }
 
+    func testMarkdownNotesSchemaRoundTripsDeterministicAnchors() throws {
+        let schema = MarkdownNotesSchema(
+            title: "Threading Notes",
+            headings: [
+                HeadingEntry(level: 1, text: "Threading Notes", charOffset: 0),
+                HeadingEntry(level: 2, text: "Open Questions", charOffset: 42),
+            ],
+            wordCount: 128,
+            hasCode: true,
+            hasMath: false,
+            preview: "A short preview of the user's own note."
+        )
+
+        let encoded = try JSONEncoder().encode(schema)
+        let decoded = try JSONDecoder().decode(MarkdownNotesSchema.self, from: encoded)
+
+        XCTAssertEqual(decoded.title, "Threading Notes")
+        XCTAssertEqual(decoded.headings.count, 2)
+        XCTAssertEqual(decoded.headings[1].level, 2)
+        XCTAssertEqual(decoded.wordCount, 128)
+        XCTAssertTrue(decoded.hasCode)
+        XCTAssertFalse(decoded.hasMath)
+        XCTAssertEqual(decoded.preview, "A short preview of the user's own note.")
+    }
+
+    func testMarkdownNotesExtractorScansUserAuthoredStructureWithoutAI() async throws {
+        let source = """
+        ---
+        tags: [loom]
+        ---
+        # C#
+
+        First paragraph with $x+y$ and useful context.
+
+        ```swift
+        # not a heading
+        let answer = 42
+        ```
+
+        ## Open Questions ###
+        Follow-up paragraph.
+        """
+
+        let schema = try await MarkdownNotesExtractor().extract(
+            text: source,
+            filename: "threading-notes.md",
+            docId: "doc-note"
+        )
+
+        XCTAssertEqual(schema.title, "C#")
+        XCTAssertEqual(schema.headings.map(\.text), ["C#", "Open Questions"])
+        XCTAssertEqual(schema.headings.map(\.level), [1, 2])
+        XCTAssertGreaterThanOrEqual(schema.headings[0].charOffset, 0)
+        XCTAssertGreaterThan(schema.headings[1].charOffset, schema.headings[0].charOffset)
+        XCTAssertTrue(schema.hasCode)
+        XCTAssertTrue(schema.hasMath)
+        XCTAssertGreaterThan(schema.wordCount, 10)
+        XCTAssertTrue(schema.preview.hasPrefix("First paragraph"))
+        XCTAssertFalse(schema.preview.contains("tags:"))
+        XCTAssertFalse(schema.preview.contains("# C#"))
+    }
+
     func testSyllabusExtractorMatchesOnlySyllabusLikePDFs() {
         XCTAssertEqual(
             SyllabusPDFExtractor.match(
@@ -301,7 +363,25 @@ final class IngestExtractorLocateTests: XCTestCase {
             parentPath: "Desk",
             sample: "# Notes"
         )
-        XCTAssertEqual(generic.extractorId, GenericDocExtractor.extractorId)
+        XCTAssertEqual(generic.extractorId, MarkdownNotesExtractor.extractorId)
+
+        // Phase 3: timestamp-shaped .txt now routes to TranscriptExtractor
+        // (≥10 timestamp occurrences in sample) rather than Generic.
+        let heavyTimestamps = (0..<12).map { "0\($0):1\($0) Speaker text here" }.joined(separator: "\n")
+        let transcriptShapedTextFile = ExtractorRegistry.bestMatch(
+            filename: "seminar-transcript.txt",
+            parentPath: "Desk",
+            sample: heavyTimestamps
+        )
+        XCTAssertEqual(transcriptShapedTextFile.extractorId, TranscriptExtractor.extractorId)
+
+        // Unknown extension → GenericDocExtractor still catches as fallback.
+        let unknownExt = ExtractorRegistry.bestMatch(
+            filename: "mystery.bin",
+            parentPath: "Desk",
+            sample: ""
+        )
+        XCTAssertEqual(unknownExt.extractorId, GenericDocExtractor.extractorId)
     }
 
     func testSyllabusExtractorDemotesFilenameStemQuotes() {

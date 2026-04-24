@@ -1,0 +1,16 @@
+{
+  "deckTitle": {
+    "status": "found",
+    "value": "LectureDeck_FINS3640_Week1",
+    "confidence": 0.92,
+    "sourceSpans": [
+      { "quote": "LectureDeck_FINS3640_Week1" }
+    ]
+  },
+  "author": {
+    "status": "not_found",
+    "tried": ["title slide", "footer"]
+  },
+  "sections": [],
+  "topics": []
+}

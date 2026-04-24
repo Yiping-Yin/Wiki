@@ -1,0 +1,21 @@
+{
+  "chapterTitle": {
+    "status": "found",
+    "value": "Chapter3_BrealeyMyers_FINS3640",
+    "confidence": 0.85,
+    "sourceSpans": [
+      { "quote": "Chapter3_BrealeyMyers_FINS3640" }
+    ]
+  },
+  "chapterNumber": {
+    "status": "not_found",
+    "tried": ["front matter"]
+  },
+  "learningObjectives": [],
+  "keyTerms": [],
+  "sectionHeadings": [],
+  "summary": {
+    "status": "not_found",
+    "tried": ["end-of-chapter summary paragraph"]
+  }
+}

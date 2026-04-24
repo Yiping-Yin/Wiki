@@ -1,0 +1,117 @@
+import XCTest
+@testable import Loom
+
+/// Phase 3 unit tests for `SpreadsheetExtractor`. Exercises match scoring
+/// across the four tabular extensions, the quoted-CSV state machine, the
+/// first-row-header heuristic, and Codable round-trip.
+final class SpreadsheetExtractorTests: XCTestCase {
+    // MARK: - Match scoring (5+ samples)
+
+    func testMatchScoresAllTabularExtensions() {
+        XCTAssertEqual(
+            SpreadsheetExtractor.match(filename: "grades.csv", parentPath: "Term1", sample: ""),
+            0.9
+        )
+        XCTAssertEqual(
+            SpreadsheetExtractor.match(filename: "export.tsv", parentPath: "Term1", sample: ""),
+            0.9
+        )
+        XCTAssertEqual(
+            SpreadsheetExtractor.match(filename: "timetable.xlsx", parentPath: "UNSW", sample: ""),
+            0.9
+        )
+        XCTAssertEqual(
+            SpreadsheetExtractor.match(filename: "legacy.xls", parentPath: "UNSW", sample: ""),
+            0.9
+        )
+        XCTAssertEqual(
+            SpreadsheetExtractor.match(filename: "notes.md", parentPath: "Desk", sample: ""),
+            0.0
+        )
+    }
+
+    // MARK: - CSV / TSV parse
+
+    func testParseRowsHandlesQuotedCommasAndEscapedQuotes() {
+        let csv = #"""
+        name,role,email
+        "Smith, Alice",Lecturer,alice@example.com
+        "Jones, ""Bob""",Tutor,bob@example.com
+        """#
+        let rows = SpreadsheetExtractor.parseRows(text: csv, separator: ",")
+        XCTAssertEqual(rows.count, 3)
+        XCTAssertEqual(rows[0], ["name", "role", "email"])
+        XCTAssertEqual(rows[1], ["Smith, Alice", "Lecturer", "alice@example.com"])
+        XCTAssertEqual(rows[2], [#"Jones, "Bob""#, "Tutor", "bob@example.com"])
+    }
+
+    func testParseDelimitedDetectsHeaderRowWhenFirstRowIsLabels() {
+        let csv = """
+        Name,Score
+        Alice,85
+        Bob,92
+        """
+        let schema = SpreadsheetExtractor.parseDelimited(
+            text: csv, separator: ",", sheetName: "grades"
+        )
+        XCTAssertEqual(schema.totalRows, 3)
+        XCTAssertEqual(schema.sheets.count, 1)
+        XCTAssertEqual(schema.sheets[0].columnCount, 2)
+        XCTAssertEqual(schema.sheets[0].columnNames, ["Name", "Score"])
+        XCTAssertEqual(schema.preview.count, 3)
+        XCTAssertEqual(schema.preview[0], ["Name", "Score"])
+    }
+
+    func testParseDelimitedReportsNoHeaderWhenFirstRowIsNumeric() {
+        let csv = """
+        1,2,3
+        4,5,6
+        """
+        let schema = SpreadsheetExtractor.parseDelimited(
+            text: csv, separator: ",", sheetName: "matrix"
+        )
+        XCTAssertNil(schema.sheets[0].columnNames)
+        XCTAssertEqual(schema.totalRows, 2)
+    }
+
+    // MARK: - Extract dispatch
+
+    func testExtractDispatchesCSVByExtension() async throws {
+        let csv = "Name,Score\nAlice,85"
+        let schema = try await SpreadsheetExtractor().extract(
+            text: csv, filename: "grades.csv", docId: "/tmp/grades.csv"
+        )
+        XCTAssertEqual(schema.sheets.count, 1)
+        XCTAssertEqual(schema.sheets[0].name, "grades")
+        XCTAssertEqual(schema.sheets[0].columnNames, ["Name", "Score"])
+    }
+
+    func testExtractFallsBackToDegradedSchemaForXLS() async throws {
+        let schema = try await SpreadsheetExtractor().extract(
+            text: "", filename: "legacy.xls", docId: "/tmp/legacy.xls"
+        )
+        XCTAssertEqual(schema.sheets.count, 1)
+        XCTAssertEqual(schema.sheets[0].rowCount, 0)
+        XCTAssertNil(schema.sheets[0].columnNames)
+    }
+
+    // MARK: - Codable round-trip
+
+    func testCodableRoundTripPreservesAllFields() throws {
+        let schema = SpreadsheetSchema(
+            sheets: [
+                SheetEntry(name: "Sheet1", rowCount: 5, columnCount: 3, columnNames: ["A", "B", "C"]),
+                SheetEntry(name: "Sheet2", rowCount: 0, columnCount: 0, columnNames: nil),
+            ],
+            totalRows: 5,
+            preview: [["A", "B", "C"], ["1", "2", "3"]]
+        )
+        let encoded = try JSONEncoder().encode(schema)
+        let decoded = try JSONDecoder().decode(SpreadsheetSchema.self, from: encoded)
+        XCTAssertEqual(decoded.sheets.count, 2)
+        XCTAssertEqual(decoded.sheets[0].columnNames, ["A", "B", "C"])
+        XCTAssertNil(decoded.sheets[1].columnNames)
+        XCTAssertEqual(decoded.totalRows, 5)
+        XCTAssertEqual(decoded.preview.count, 2)
+    }
+}

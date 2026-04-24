@@ -1,0 +1,8 @@
+{
+  "field": "chapterTitle",
+  "expectedVerified": false,
+  "expectedConfidenceMax": 0.4,
+  "expectedReason": "quote_contains_filename_stem",
+  "alternateAcceptedReasons": ["quote_not_substring_of_source"],
+  "note": "TextbookChapterExtractor must reject AI quoting the filename stem as chapterTitle. Same shared hardening helper (SyllabusPDFExtractor.demoteIfFilenameQuote) used across typed extractors."
+}
