@@ -142,6 +142,12 @@ enum FieldResult<T: Codable>: Codable {
 /// extracted plaintext (NOT the raw PDF). `verified` is false when the
 /// quote wasn't a substring of the source; callers should display a
 /// warning badge in that case (plan §3.6).
+///
+/// Decoding is lenient for the AI-facing shape: when the model returns
+/// `{"quote": "..."}` (the only field we ask for — plan §3.6 says we
+/// never ask the AI for offsets), every other field falls back to a
+/// safe default and `verifySpans` fills in the real offsets post-hoc.
+/// Callers persisting `SourceSpan` to disk encode the full shape.
 struct SourceSpan: Codable {
     let docId: String
     let pageNum: Int?
@@ -167,6 +173,24 @@ struct SourceSpan: Codable {
         self.quote = quote
         self.verified = verified
         self.verifyReason = verifyReason
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case docId, pageNum, charStart, charEnd, quote, verified, verifyReason
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // `quote` is the only load-bearing field from the AI — required.
+        self.quote = try container.decode(String.self, forKey: .quote)
+        // Everything else is a post-hoc fill; tolerate missing keys so
+        // the AI-side schema can require only `{"quote": "..."}`.
+        self.docId = (try? container.decode(String.self, forKey: .docId)) ?? ""
+        self.pageNum = try container.decodeIfPresent(Int.self, forKey: .pageNum)
+        self.charStart = (try? container.decode(Int.self, forKey: .charStart)) ?? 0
+        self.charEnd = (try? container.decode(Int.self, forKey: .charEnd)) ?? 0
+        self.verified = (try? container.decode(Bool.self, forKey: .verified)) ?? false
+        self.verifyReason = try container.decodeIfPresent(String.self, forKey: .verifyReason)
     }
 }
 
@@ -203,7 +227,18 @@ func verifySpans<T>(
     var anyMissed = false
 
     for span in spans {
-        if let range = locate(quote: span.quote, in: sourceText) {
+        if isLikelyStitchedQuote(span.quote), sourceText.range(of: span.quote) == nil {
+            anyMissed = true
+            rebuilt.append(SourceSpan(
+                docId: docId,
+                pageNum: span.pageNum,
+                charStart: 0,
+                charEnd: 0,
+                quote: span.quote,
+                verified: false,
+                verifyReason: "quote_appears_non_contiguous"
+            ))
+        } else if let range = locate(quote: span.quote, in: sourceText) {
             rebuilt.append(SourceSpan(
                 docId: docId,
                 pageNum: span.pageNum,
@@ -229,6 +264,10 @@ func verifySpans<T>(
 
     let effectiveConfidence = anyMissed ? min(confidence, 0.4) : confidence
     return .found(value: value, confidence: effectiveConfidence, sourceSpans: rebuilt)
+}
+
+private func isLikelyStitchedQuote(_ quote: String) -> Bool {
+    quote.contains("...") || quote.contains("…")
 }
 
 // MARK: - locate

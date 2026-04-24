@@ -100,6 +100,36 @@ final class IngestExtractorLocateTests: XCTestCase {
         XCTAssertEqual(spans[1].verifyReason, "quote_not_substring_of_source")
     }
 
+    func testVerifySpansRejectsEllipsisStitchedQuoteBeforePrefixFallback() {
+        let source = "Format: Python exercises due weekly. Topic: Bond index replication."
+        let stitchedQuote = "Format: Python exercises due weekly ... Topic: Bond index replication."
+        let result: FieldResult<String> = .found(
+            value: "format",
+            confidence: 0.88,
+            sourceSpans: [
+                SourceSpan(
+                    docId: "model-doc",
+                    charStart: 0,
+                    charEnd: 0,
+                    quote: stitchedQuote,
+                    verified: true
+                ),
+            ]
+        )
+
+        let verified = verifySpans(result, sourceText: source, docId: "doc-ellipsis")
+
+        guard case .found(_, let confidence, let spans) = verified else {
+            XCTFail("expected found result")
+            return
+        }
+
+        XCTAssertEqual(confidence, 0.4)
+        XCTAssertEqual(spans.count, 1)
+        XCTAssertFalse(spans[0].verified)
+        XCTAssertEqual(spans[0].verifyReason, "quote_appears_non_contiguous")
+    }
+
     func testFieldResultDecodesLegacySingletonSourceSpanAsList() throws {
         let json = """
         {
@@ -130,5 +160,71 @@ final class IngestExtractorLocateTests: XCTestCase {
         XCTAssertEqual(spans.count, 1)
         XCTAssertEqual(spans[0].docId, "doc-legacy")
         XCTAssertEqual(spans[0].quote, "teacher")
+    }
+
+    func testSyllabusSchemaRoundTripsNestedFieldResults() throws {
+        let schema = SyllabusSchema(
+            courseCode: .found(
+                value: "INFS3822",
+                confidence: 0.94,
+                sourceSpans: [SourceSpan(docId: "doc-1", charStart: 0, charEnd: 8, quote: "INFS3822", verified: true)]
+            ),
+            courseName: .notFound(tried: ["title", "first page"]),
+            term: .found(
+                value: "Term 1 2026",
+                confidence: 0.82,
+                sourceSpans: [SourceSpan(docId: "doc-1", charStart: 10, charEnd: 21, quote: "Term 1 2026", verified: true)]
+            ),
+            institution: .found(
+                value: "UNSW",
+                confidence: 0.9,
+                sourceSpans: [SourceSpan(docId: "doc-1", charStart: 23, charEnd: 27, quote: "UNSW", verified: true)]
+            ),
+            teachers: [
+                TeacherSchema(
+                    role: .found(value: "Lecturer", confidence: 0.8, sourceSpans: []),
+                    name: .found(value: "Jane Example", confidence: 0.8, sourceSpans: []),
+                    email: .notFound(tried: ["staff section"])
+                ),
+            ],
+            officeHours: .notFound(tried: ["staff section"]),
+            textbook: .notFound(tried: ["resources section"]),
+            assessmentItems: [
+                AssessmentSchema(
+                    name: .found(value: "Project", confidence: 0.86, sourceSpans: []),
+                    weightPercent: .found(value: 35.0, confidence: 0.86, sourceSpans: []),
+                    dueDate: .notFound(tried: ["assessment table"]),
+                    format: .found(value: "Group report", confidence: 0.77, sourceSpans: [])
+                ),
+            ],
+            learningObjectives: [.found(value: "Explain systems design", confidence: 0.72, sourceSpans: [])],
+            weekTopics: [
+                WeekTopicSchema(
+                    weekRange: .found(value: "Week 1", confidence: 0.7, sourceSpans: []),
+                    topic: .found(value: "Introduction", confidence: 0.7, sourceSpans: [])
+                ),
+            ]
+        )
+
+        let encoded = try JSONEncoder().encode(schema)
+        let decoded = try JSONDecoder().decode(SyllabusSchema.self, from: encoded)
+
+        guard case .found(let code, _, let spans) = decoded.courseCode else {
+            XCTFail("expected courseCode found")
+            return
+        }
+        XCTAssertEqual(code, "INFS3822")
+        XCTAssertEqual(spans.count, 1)
+        XCTAssertEqual(spans[0].quote, "INFS3822")
+
+        guard case .notFound(let tried) = decoded.courseName else {
+            XCTFail("expected courseName not found")
+            return
+        }
+        XCTAssertEqual(tried, ["title", "first page"])
+        XCTAssertEqual(decoded.teachers.count, 1)
+        XCTAssertEqual(decoded.assessmentItems.count, 1)
+        XCTAssertEqual(decoded.learningObjectives.count, 1)
+        XCTAssertEqual(decoded.weekTopics.count, 1)
     }
 }
