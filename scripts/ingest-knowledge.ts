@@ -1,6 +1,7 @@
 /**
  * Ingest the user's READ-ONLY personal knowledge base from the configured
- * knowledge root (`LOOM_KNOWLEDGE_ROOT`, or a sensible local default)
+ * content root (`LOOM_KNOWLEDGE_ROOT` for legacy overrides, otherwise the
+ * persisted Loom content-root selection)
  * into a SCALABLE manifest + per-doc JSON files served by dynamic routes.
  *
  * Source files are NEVER modified. We only READ them.
@@ -21,7 +22,8 @@
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { KNOWLEDGE_ROOT } from '../lib/server-config';
+import { CONTENT_ROOT, KNOWLEDGE_ROOT } from '../lib/server-config';
+import { resolveContentRoot } from '../lib/runtime-roots';
 import { knowledgeDocRuntimeDir, knowledgeDocRuntimePath } from '../lib/knowledge-doc-cache';
 import {
   collectionMetadataPath,
@@ -34,11 +36,18 @@ import { extractPdfText as extractPdfTextImpl } from '../lib/pdf-extract';
 
 // These used to be module-level constants; now resolved per-invocation so
 // the API route can call runIngest() after the user picks a new content
-// root without needing to restart the server. CLI usage still works because
-// the default falls through to KNOWLEDGE_ROOT from the environment.
+// root without needing to restart the server. CLI usage follows the same
+// persisted content-root config instead of the old machine-wide default.
 function resolveSrc(): string {
   const override = process.env.LOOM_KNOWLEDGE_ROOT?.trim();
-  return override && override.length > 0 ? override : KNOWLEDGE_ROOT;
+  if (override && override.length > 0) return override;
+
+  const contentRoot = resolveContentRoot({ fallbackContentRoot: CONTENT_ROOT });
+  if (path.resolve(contentRoot) !== path.resolve(process.cwd())) {
+    return contentRoot;
+  }
+
+  return KNOWLEDGE_ROOT;
 }
 function resolveDocsDir(): string {
   return knowledgeDocRuntimeDir();
@@ -58,7 +67,7 @@ type DocMeta = {
   /** Numeric sort key derived from subcategory (week number, lecture #, …) */
   subOrder: number;
   fileSlug: string;
-  sourcePath: string;    // relative to KNOWLEDGE_ROOT, READ-ONLY
+  sourcePath: string;    // relative to the selected source root, READ-ONLY
   ext: string;
   size: number;
   hasText: boolean;

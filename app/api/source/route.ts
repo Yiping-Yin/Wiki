@@ -1,13 +1,14 @@
 /**
  * Read-only proxy for the user's source knowledge directory.
- * Allows the browser to load PDFs/text from the configured knowledge root
+ * Allows the browser to load PDFs/text from the configured content root
  * without ever modifying the originals.
  *
  * Path traversal is prevented: requests must resolve to a path under SRC.
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { KNOWLEDGE_ROOT, resolveKnowledgePath } from '../../../lib/server-config';
+import { CONTENT_ROOT } from '../../../lib/server-config';
+import { resolveContentRoot } from '../../../lib/runtime-roots';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -68,13 +69,22 @@ const MIME: Record<string, string> = {
   '.mov':  'video/quicktime',
 };
 
+function sourceRoot() {
+  return resolveContentRoot({ fallbackContentRoot: CONTENT_ROOT });
+}
+
+function resolveSourcePath(root: string, sourcePath: string) {
+  return path.resolve(root, sourcePath);
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const p = searchParams.get('p');
   if (!p) return new Response('missing p', { status: 400 });
 
-  const abs = resolveKnowledgePath(p);
-  if (!isWithinDir(KNOWLEDGE_ROOT, abs)) return new Response('forbidden', { status: 403 });
+  const root = sourceRoot();
+  const abs = resolveSourcePath(root, p);
+  if (!isWithinDir(root, abs)) return new Response('forbidden', { status: 403 });
 
   try {
     const data = await fs.readFile(abs);

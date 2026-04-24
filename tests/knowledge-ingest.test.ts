@@ -94,7 +94,7 @@ test('ingest writes a picked folder as one source collection with its folders un
   const previousKnowledgeRoot = process.env.LOOM_KNOWLEDGE_ROOT;
   const previousContentRoot = process.env.LOOM_CONTENT_ROOT;
   const previousUserDataRoot = process.env.LOOM_USER_DATA_ROOT;
-  process.env.LOOM_KNOWLEDGE_ROOT = picked;
+  delete process.env.LOOM_KNOWLEDGE_ROOT;
   process.env.LOOM_CONTENT_ROOT = picked;
   process.env.LOOM_USER_DATA_ROOT = path.join(tempRoot, 'user-data');
   t.after(() => {

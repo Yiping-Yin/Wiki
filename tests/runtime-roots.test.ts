@@ -30,6 +30,7 @@ const serverConfigUrl = pathToFileURL(path.join(repoRoot, 'lib', 'server-config.
 const uploadRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'upload', 'route.ts')).href;
 const knowledgeCreateRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'knowledge', 'create', 'route.ts')).href;
 const contentRootRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'content-root', 'route.ts')).href;
+const sourceRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'source', 'route.ts')).href;
 
 function runIsolatedTsEval(script: string, options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
   const childEnv: NodeJS.ProcessEnv = { ...process.env };
@@ -309,6 +310,33 @@ test('content-root route resets stale scan scope when a new folder is picked', a
 
   assert.equal(parsed.status, 200);
   assert.deepEqual(parsed.scope, { included: [] });
+});
+
+test('source route reads originals from the selected content root', async () => {
+  const contentRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-source-content-'));
+  await mkdir(path.join(contentRoot, 'Assessment'), { recursive: true });
+  await writeFile(path.join(contentRoot, 'Assessment', 'rubric.md'), '# Rubric', 'utf8');
+
+  const output = runIsolatedTsEval(
+    `
+      const mod = await import(${JSON.stringify(sourceRouteUrl)});
+      const GET = (mod.default ?? mod).GET;
+      const ok = await GET(new Request('http://localhost/api/source?p=' + encodeURIComponent('Assessment/rubric.md')));
+      const traversal = await GET(new Request('http://localhost/api/source?p=' + encodeURIComponent('../outside.md')));
+      console.log(JSON.stringify({ status: ok.status, body: await ok.text(), traversal: traversal.status }));
+    `,
+    {
+      env: {
+        LOOM_CONTENT_ROOT: contentRoot,
+        LOOM_KNOWLEDGE_ROOT: undefined,
+      },
+    },
+  );
+
+  const parsed = JSON.parse(output) as { status: number; body: string; traversal: number };
+  assert.equal(parsed.status, 200);
+  assert.equal(parsed.body, '# Rubric');
+  assert.equal(parsed.traversal, 403);
 });
 
 test('upload route triggers ingest from the execution root instead of the content root', async () => {

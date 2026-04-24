@@ -45,7 +45,7 @@ test('install script preserves an existing user-selected content root', async ()
       'utf8',
     );
 
-    await installRuntimeMetadata({ repoRoot: '/repo/Wiki', homeOverride: homeRoot, env: {} });
+    await installRuntimeMetadata({ repoRoot: '/repo/Wiki', homeOverride: homeRoot, env: { NODE_ENV: 'test' } });
 
     const persisted = JSON.parse(
       fs.readFileSync(path.join(appSupport, 'content-root.json'), 'utf8'),
@@ -61,7 +61,7 @@ test('install script initializes content root only when no user selection exists
   const appSupport = path.join(homeRoot, 'Library', 'Application Support', 'Loom');
 
   try {
-    await installRuntimeMetadata({ repoRoot: '/repo/Wiki', homeOverride: homeRoot, env: {} });
+    await installRuntimeMetadata({ repoRoot: '/repo/Wiki', homeOverride: homeRoot, env: { NODE_ENV: 'test' } });
 
     const persisted = JSON.parse(
       fs.readFileSync(path.join(appSupport, 'content-root.json'), 'utf8'),
