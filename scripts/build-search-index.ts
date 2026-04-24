@@ -18,7 +18,15 @@ import { getAllDocs } from '../lib/knowledge-store';
 
 const ROOT = process.cwd();
 
-type Item = { id: string; title: string; href: string; category: string; body: string };
+type Item = {
+  id: string;
+  title: string;
+  href: string;
+  category: string;
+  subcategory: string;
+  sourcePath: string;
+  body: string;
+};
 
 function stripMDX(s: string): string {
   return s
@@ -47,6 +55,8 @@ async function loadCorpus(): Promise<Item[]> {
         title: c.title,
         href: `/wiki/${c.slug}`,
         category: `LLM · ${c.section}`,
+        subcategory: '',
+        sourcePath: '',
         body,
       });
     } catch {}
@@ -63,6 +73,8 @@ async function loadCorpus(): Promise<Item[]> {
           title: m.title,
           href: `/knowledge/${m.categorySlug}/${m.fileSlug}`,
           category: m.category,
+          subcategory: m.subcategory ?? '',
+          sourcePath: m.sourcePath,
           body,
         });
       } catch {}
@@ -80,7 +92,7 @@ async function main() {
   const ms = new MiniSearch({
     idField: 'id',
     fields: ['title', 'category', 'body'],
-    storeFields: ['title', 'href', 'category'],
+    storeFields: ['title', 'href', 'category', 'subcategory', 'sourcePath'],
     searchOptions: {
       boost: { title: 4, category: 2 },
       fuzzy: 0.15,

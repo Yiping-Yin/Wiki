@@ -14,6 +14,7 @@
  *   node scripts/build-static-export.mjs
  */
 import { promises as fs } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -57,6 +58,23 @@ async function pathExists(target) {
   } catch {
     return false;
   }
+}
+
+async function resolveContentRootForStaticExport() {
+  const override = process.env.LOOM_CONTENT_ROOT?.trim();
+  if (override) return override;
+
+  const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || homedir();
+  const configPath = path.join(home, 'Library', 'Application Support', 'Loom', 'content-root.json');
+  try {
+    const parsed = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    const contentRoot = parsed?.contentRoot?.trim();
+    if (contentRoot) return contentRoot;
+  } catch {
+    // Missing or malformed content-root config falls back to repo-local data,
+    // matching server-config.ts behavior during static export.
+  }
+  return repoRoot;
 }
 
 async function restoreStaleShelvedPaths() {
@@ -132,10 +150,18 @@ function runBuildSearchIndex() {
 }
 
 async function copySearchIndexIntoExport() {
-  const source = path.join(repoRoot, 'knowledge', '.cache', 'indexes', 'search-index.json');
+  const contentRoot = await resolveContentRootForStaticExport();
+  const candidates = [
+    path.join(contentRoot, 'knowledge', '.cache', 'indexes', 'search-index.json'),
+    path.join(repoRoot, 'knowledge', '.cache', 'indexes', 'search-index.json'),
+  ];
+  const source = (await Promise.all(candidates.map(async (candidate) => ({
+    candidate,
+    exists: await pathExists(candidate),
+  })))).find((entry) => entry.exists)?.candidate;
   const target = path.join(repoRoot, '.next-export', 'search-index.json');
-  if (!(await pathExists(source))) {
-    throw new Error(`search index was not generated: ${source}`);
+  if (!source) {
+    throw new Error(`search index was not generated: ${candidates.join(' or ')}`);
   }
   await fs.copyFile(source, target);
 }

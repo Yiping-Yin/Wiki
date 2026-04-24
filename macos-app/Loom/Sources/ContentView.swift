@@ -126,20 +126,15 @@ struct ContentView: View {
         }
     }
 
-    /// Chrome background color that tracks the active surface + page.
-    /// Paper for the default reading / home / atlas / patterns /
-    /// Rehearsal / Examiner / Ingestion / Reconstructions surfaces;
-    /// night only when the active surface is `.web` AND the URL is
-    /// one of the five ink-wash routes. This two-stage check matters
-    /// because ⌘⇧R from Weaves flips activeSurface → .rehearsal (a
-    /// paper surface) while webState.currentURL is still `/weaves` —
-    /// without the surface check the chrome would stay night over
-    /// paper content.
+    /// Chrome background color that tracks the resolved app theme, with a
+    /// route-level night override for ink-wash pages. The resolved theme has
+    /// to drive the NSWindow appearance too; otherwise the sidebar text can
+    /// flip dark while the native sidebar material stays Aqua-light.
     private var chromeBackground: Color {
-        isNightChrome ? LoomTokens.night : LoomTokens.paper
+        usesDarkChrome ? LoomTokens.night : LoomTokens.paper
     }
 
-    /// Whether the current active surface + page uses ink-wash night.
+    /// Whether the current active surface + page forces ink-wash night.
     /// Only `/weaves` is on this list — it's the sole webview route with
     /// a hardcoded `#13110D` bg in `.loom-weaves` CSS that ignores the
     /// system color scheme. `/constellation`, `/branching`,
@@ -151,7 +146,13 @@ struct ContentView: View {
     /// so it has no chrome to tint anyway.
     private var isNightChrome: Bool {
         guard activeSurface == .web else { return false }
-        return webState.currentURL.contains("/weaves")
+        return Self.forcedNightChromePaths.contains { webState.currentURL.contains($0) }
+    }
+
+    private static let forcedNightChromePaths = ["/weaves"]
+
+    private var usesDarkChrome: Bool {
+        sidebarColorScheme == .dark || isNightChrome
     }
 
     private var sidebarColorScheme: ColorScheme {
@@ -259,7 +260,7 @@ struct ContentView: View {
         // `.preferredColorScheme(.dark/nil)` experiment was sticky
         // across transitions on macOS 26 — user observed "everything
         // went dark" after visiting Weaves once).
-        .toolbarColorScheme(isNightChrome ? .dark : .light, for: .windowToolbar)
+        .toolbarColorScheme(usesDarkChrome ? .dark : .light, for: .windowToolbar)
     }
 
     /// Switch over the active surface. Webview stays mounted (hidden
@@ -343,7 +344,7 @@ struct ContentView: View {
             #endif
         }
         .animation(.easeInOut(duration: 0.3), value: server.status)
-        .background(WindowConfigurator(title: windowTitle, isNight: isNightChrome))
+        .background(WindowConfigurator(title: windowTitle, isNight: usesDarkChrome))
         .onAppear {
             showDebugHUD = false
         }

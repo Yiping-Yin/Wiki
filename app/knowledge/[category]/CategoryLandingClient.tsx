@@ -27,6 +27,7 @@ export type CategoryDocCard = {
   ext: string;
   preview: string;
   subcategory: string;
+  sourcePath: string;
   subOrder: number;
   hasText: boolean;
   size: number;
@@ -123,6 +124,41 @@ function defaultSurfaceFromDoc(doc: CategoryDocCard): CategorySurface {
     latestSummary: '',
     learning: summarizeLearningSurface([], 0),
   };
+}
+
+function slugForPathPart(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function folderPathFromDoc(doc: CategoryDocCard, category: KnowledgeCategory) {
+  const explicit = (doc.subcategory ?? '').trim();
+  if (explicit) return explicit;
+
+  const dirs = (doc.sourcePath ?? '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, -1);
+  if (dirs.length === 0) return '';
+
+  let folderParts = [...dirs];
+  const categorySlug = category.slug;
+  const firstSlug = slugForPathPart(folderParts[0] ?? '');
+  const secondSlug = slugForPathPart(folderParts[1] ?? '');
+  const categoryTail = categorySlug.replace(/^unsw-/, '');
+
+  if (firstSlug === 'unsw' && secondSlug && (`unsw-${secondSlug}` === categorySlug || secondSlug === categoryTail)) {
+    folderParts = folderParts.slice(2);
+  } else if (firstSlug === categorySlug || firstSlug === categoryTail || `unsw-${firstSlug}` === categorySlug) {
+    folderParts = folderParts.slice(1);
+  }
+
+  return folderParts.join(' / ');
 }
 
 type DndContext = {
@@ -701,10 +737,9 @@ export function CategoryLandingClient({
     [surfaces],
   );
 
-  // Build an N-level tree that mirrors the source-folder structure. Top-level
-  // sections (e.g. "Assessment", "Week") render as h2 headers. Level-1 folders
-  // (e.g. "Week 3") render as cards. Deeper folders render as expandable rows
-  // with a disclosure triangle. Files at any depth render as file rows.
+  // Build an N-level tree that mirrors the source-folder structure. Folders at
+  // every level render as disclosure rows; files only appear after the matching
+  // local folder is opened.
   const tree = useMemo(() => {
     const numFrom = (s: string) => {
       const m = s.match(/(\d+)/);
@@ -759,7 +794,7 @@ export function CategoryLandingClient({
     };
 
     for (const doc of docs) {
-      const raw = (doc.subcategory ?? '').trim();
+      const raw = folderPathFromDoc(doc, category).trim();
       const parts = raw
         ? raw.split(/\s*\/\s*/).map((p) => p.trim()).filter(Boolean)
         : [];
@@ -863,12 +898,10 @@ export function CategoryLandingClient({
   const [expandOverrides, setExpandOverrides] = useState<Record<string, boolean>>({});
   const isExpanded = (node: FolderNode) => {
     if (node.fullPath in expandOverrides) return expandOverrides[node.fullPath];
-    // Guide section (synthetic _root for course-wide reference docs) starts
-    // collapsed — it's not the primary study flow. Real top sections
-    // (Assessment, Week) start expanded so the skeleton is visible.
-    // Everything deeper starts collapsed — "don't expand everything at once".
-    if (node.fullPath === '_root') return false;
-    return node.depth === 0;
+    // Mirror Finder's starting point: show the local folder skeleton first,
+    // but do not spill every file in a 100+ doc course until the learner opens
+    // a specific folder. Hash/sidebar navigation still expands ancestors below.
+    return false;
   };
   const toggle = (path: string, open: boolean) =>
     setExpandOverrides((prev) => ({ ...prev, [path]: open }));

@@ -40,11 +40,12 @@ struct KnowledgeSidebarView: View {
     @State private var query: String = ""
     @State private var recentRecords: [RecentDocRecord] = []
     @State private var reloadFeedback: LibraryReloadFeedback = .idle
-    /// Persisted set of category IDs the user has manually collapsed.
-    /// Auto-expands (current doc / active query) override this and
-    /// stay computed. Survives launches via @AppStorage JSON blob.
-    @AppStorage("loom.sidebar.collapsedCategories") private var collapsedCategoriesJSON: String = "[]"
-    @State private var collapsedIDs: Set<String> = []
+    /// Persisted set of category IDs the user has manually expanded.
+    /// Current-doc and active-query auto-expands are still computed, but a
+    /// source collection should not reveal 100+ files just because it appears
+    /// in the sidebar for the first time.
+    @AppStorage("loom.sidebar.expandedCategories.v2") private var expandedCategoriesJSON: String = "[]"
+    @State private var expandedIDs: Set<String> = []
 
     enum CategoryKind: Sendable {
         /// `/wiki/*` — Loom's bundled curriculum (LLM101n, etc.).
@@ -112,6 +113,154 @@ struct KnowledgeSidebarView: View {
         let id: String
         let title: String
         let href: String
+        let subcategory: String?
+        let sourcePath: String?
+
+        init(
+            id: String,
+            title: String,
+            href: String,
+            subcategory: String? = nil,
+            sourcePath: String? = nil
+        ) {
+            self.id = id
+            self.title = title
+            self.href = href
+            self.subcategory = subcategory
+            self.sourcePath = sourcePath
+        }
+    }
+
+    struct SourceFolderNode: Identifiable, Hashable {
+        let id: String
+        let label: String
+        let path: String
+        let children: [SourceFolderNode]
+        let docs: [Doc]
+
+        var totalCount: Int {
+            docs.count + children.reduce(0) { $0 + $1.totalCount }
+        }
+
+        func contains(href: String?) -> Bool {
+            guard let href else { return false }
+            if docs.contains(where: { $0.href == href }) { return true }
+            return children.contains { $0.contains(href: href) }
+        }
+    }
+
+    struct SourceFolderTreeRow: View {
+        let node: SourceFolderNode
+        let currentHref: String?
+        let queryActive: Bool
+        let primaryText: Color
+        let secondaryText: Color
+        let tertiaryText: Color
+        let navigate: (String) -> Void
+        let setExpanded: (String, Bool) -> Void
+        @Binding var expandedIDs: Set<String>
+
+        private var forceOpen: Bool {
+            queryActive || node.contains(href: currentHref)
+        }
+
+        private var isOpen: Bool {
+            forceOpen || expandedIDs.contains(node.id)
+        }
+
+        var body: some View {
+            DisclosureGroup(isExpanded: Binding(
+                get: { isOpen },
+                set: { newValue in
+                    guard !forceOpen else { return }
+                    setExpanded(node.id, newValue)
+                }
+            )) {
+                ForEach(node.children) { child in
+                    SourceFolderTreeRow(
+                        node: child,
+                        currentHref: currentHref,
+                        queryActive: queryActive,
+                        primaryText: primaryText,
+                        secondaryText: secondaryText,
+                        tertiaryText: tertiaryText,
+                        navigate: navigate,
+                        setExpanded: setExpanded,
+                        expandedIDs: $expandedIDs
+                    )
+                    .padding(.leading, 8)
+                }
+                ForEach(node.docs) { doc in
+                    let isCurrent = doc.href == currentHref
+                    Button {
+                        navigate(doc.href)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.text")
+                                .font(.system(size: 9))
+                                .foregroundStyle(isCurrent ? LoomTokens.thread : tertiaryText)
+                                .frame(width: 12, alignment: .center)
+                            Text(doc.title)
+                                .font(.system(size: 11, weight: isCurrent ? .semibold : .regular))
+                                .foregroundStyle(isCurrent ? LoomTokens.thread : primaryText)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 8)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isOpen ? "folder.fill" : "folder")
+                        .font(.system(size: 10))
+                        .foregroundStyle(node.contains(href: currentHref) ? LoomTokens.thread : secondaryText)
+                        .frame(width: 13, alignment: .center)
+                    Text(node.label)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(node.contains(href: currentHref) ? LoomTokens.thread : primaryText)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer(minLength: 0)
+                    Text("\(node.totalCount)")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(tertiaryText)
+                }
+            }
+            .tint(secondaryText)
+        }
+    }
+
+    final class SourceFolderBuilder {
+        let label: String
+        let path: String
+        var children: [String: SourceFolderBuilder] = [:]
+        var docs: [Doc] = []
+
+        init(label: String, path: String) {
+            self.label = label
+            self.path = path
+        }
+
+        func node(idPrefix: String) -> SourceFolderNode {
+            let childNodes = children.values
+                .map { $0.node(idPrefix: idPrefix) }
+                .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+            let sortedDocs = docs.sorted {
+                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+            return SourceFolderNode(
+                id: "\(idPrefix):\(path.isEmpty ? "_root" : path)",
+                label: label,
+                path: path,
+                children: childNodes,
+                docs: sortedDocs
+            )
+        }
     }
 
     private var wikiCategories: [Category] { bundleCategories.filter { $0.kind == .wiki } }
@@ -155,6 +304,10 @@ struct KnowledgeSidebarView: View {
 
     private var sidebarSearchFill: Color {
         usesNightSidebarPalette ? Color.white.opacity(0.08) : Color.primary.opacity(0.05)
+    }
+
+    private var sidebarBackground: Color {
+        usesNightSidebarPalette ? LoomTokens.night : LoomTokens.paper
     }
 
     /// Normalize the webview's current URL to the search-index `href` shape.
@@ -285,13 +438,14 @@ struct KnowledgeSidebarView: View {
                 .padding(.vertical, 8)
             }
         }
+        .background(sidebarBackground.ignoresSafeArea())
         .task(priority: .userInitiated) {
             await loadBundleIndex()
             await loadUserNav()
         }
         .onAppear {
             loadRecents()
-            loadCollapsedCategories()
+            loadExpandedCategories()
         }
         .onReceive(NotificationCenter.default.publisher(for: .loomRecentsChanged)) { _ in
             loadRecents()
@@ -476,9 +630,11 @@ struct KnowledgeSidebarView: View {
     @ViewBuilder
     private func userCategoryRow(_ cat: UserCategory) -> some View {
         let docs = docsForUserCategory(cat)
+        let folders = sourceFolderTree(for: cat, docs: docs)
         let containsCurrent = docs.contains { $0.href == currentHref }
         let forceOpen = containsCurrent || !query.isEmpty
-        let userCollapsed = collapsedIDs.contains("user:\(cat.slug)")
+        let key = "user:\(cat.slug)"
+        let userExpanded = expandedIDs.contains(key)
         if docs.isEmpty {
             // Fall back to original link-out behaviour only when we
             // can't enumerate — at least the user can try to navigate.
@@ -504,38 +660,38 @@ struct KnowledgeSidebarView: View {
             .buttonStyle(.plain)
         } else {
             DisclosureGroup(isExpanded: Binding(
-                get: { forceOpen || !userCollapsed },
+                get: { forceOpen || userExpanded },
                 set: { newValue in
                     guard !forceOpen else { return }
-                    var next = collapsedIDs
-                    let key = "user:\(cat.slug)"
-                    if newValue { next.remove(key) } else { next.insert(key) }
-                    collapsedIDs = next
-                    persistCollapsedCategories()
+                    var next = expandedIDs
+                    if newValue { next.insert(key) } else { next.remove(key) }
+                    expandedIDs = next
+                    persistExpandedCategories()
                 }
             )) {
-                ForEach(docs) { doc in
-                    let isCurrent = doc.href == currentHref
-                    Button {
-                        navigate(to: doc.href)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(doc.title)
-                                .font(.system(size: 12, weight: isCurrent ? .semibold : .regular))
-                                .foregroundStyle(isCurrent ? LoomTokens.thread : sidebarPrimaryText)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                            Spacer(minLength: 0)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
+                ForEach(folders) { folder in
+                    SourceFolderTreeRow(
+                        node: folder,
+                        currentHref: currentHref,
+                        queryActive: !query.isEmpty,
+                        primaryText: sidebarPrimaryText,
+                        secondaryText: sidebarSecondaryText,
+                        tertiaryText: sidebarTertiaryText,
+                        navigate: { href in navigate(to: href) },
+                        setExpanded: { id, isExpanded in setExpanded(id, isExpanded) },
+                        expandedIDs: $expandedIDs
+                    )
+                    .padding(.leading, 8)
                 }
             } label: {
                 HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 10))
+                        .foregroundStyle(containsCurrent ? LoomTokens.thread : sidebarTertiaryText)
                     Text(cat.label)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(sidebarPrimaryText)
+                        .foregroundStyle(containsCurrent ? LoomTokens.thread : sidebarPrimaryText)
+                        .lineLimit(1)
                     Spacer(minLength: 0)
                     Text("\(docs.count)")
                         .font(.system(size: 10, design: .monospaced))
@@ -544,6 +700,115 @@ struct KnowledgeSidebarView: View {
             }
             .tint(sidebarSecondaryText)
         }
+    }
+
+    private func setExpanded(_ id: String, _ isExpanded: Bool) {
+        var next = expandedIDs
+        if isExpanded { next.insert(id) } else { next.remove(id) }
+        expandedIDs = next
+        persistExpandedCategories()
+    }
+
+    private func sourceFolderTree(for cat: UserCategory, docs: [Doc]) -> [SourceFolderNode] {
+        let idPrefix = "source-folder:\(cat.slug)"
+        var roots: [String: SourceFolderBuilder] = [:]
+        var looseDocs: [Doc] = []
+
+        for doc in docs {
+            let path = sourceFolderPath(for: doc, in: cat)
+            let parts = path
+                .split(separator: "/")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            guard !parts.isEmpty else {
+                looseDocs.append(doc)
+                continue
+            }
+
+            var currentPath = ""
+            var current: SourceFolderBuilder?
+            for part in parts {
+                currentPath = currentPath.isEmpty ? part : "\(currentPath) / \(part)"
+                if let parent = current {
+                    if parent.children[part] == nil {
+                        parent.children[part] = SourceFolderBuilder(label: part, path: currentPath)
+                    }
+                    current = parent.children[part]
+                } else {
+                    if roots[part] == nil {
+                        roots[part] = SourceFolderBuilder(label: part, path: currentPath)
+                    }
+                    current = roots[part]
+                }
+            }
+            current?.docs.append(doc)
+        }
+
+        var nodes = roots.values
+            .map { $0.node(idPrefix: idPrefix) }
+            .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+
+        if !looseDocs.isEmpty {
+            nodes.insert(
+                SourceFolderNode(
+                    id: "\(idPrefix):_root",
+                    label: "Guide",
+                    path: "",
+                    children: [],
+                    docs: looseDocs.sorted {
+                        $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                    }
+                ),
+                at: 0
+            )
+        }
+        return nodes
+    }
+
+    private func sourceFolderPath(for doc: Doc, in cat: UserCategory) -> String {
+        if let subcategory = doc.subcategory?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !subcategory.isEmpty {
+            return subcategory
+        }
+        guard let sourcePath = doc.sourcePath?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !sourcePath.isEmpty else {
+            return ""
+        }
+        var parts = sourcePath
+            .replacingOccurrences(of: "\\", with: "/")
+            .split(separator: "/")
+            .map(String.init)
+        guard parts.count > 1 else { return "" }
+        parts.removeLast()
+        guard !parts.isEmpty else { return "" }
+
+        let categorySlug = cat.slug
+        let categoryTail = categorySlug.hasPrefix("unsw-")
+            ? String(categorySlug.dropFirst(5))
+            : categorySlug
+        let first = Self.slugify(parts[0])
+        let second = parts.count > 1 ? Self.slugify(parts[1]) : ""
+        if first == "unsw", !second.isEmpty, "unsw-\(second)" == categorySlug || second == categoryTail {
+            parts.removeFirst(2)
+        } else if first == categorySlug || first == categoryTail || "unsw-\(first)" == categorySlug {
+            parts.removeFirst()
+        }
+        return parts.joined(separator: " / ")
+    }
+
+    private static func slugify(_ value: String) -> String {
+        var result = ""
+        var lastWasDash = false
+        for scalar in value.lowercased().unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                result.unicodeScalars.append(scalar)
+                lastWasDash = false
+            } else if !lastWasDash {
+                result.append("-")
+                lastWasDash = true
+            }
+        }
+        return result.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
     }
 
     /// Pull docs belonging to this user category out of the bundle
@@ -726,16 +991,16 @@ struct KnowledgeSidebarView: View {
         // here or a query is active; otherwise respect the user's
         // last explicit toggle.
         let forceOpen = containsCurrent || !query.isEmpty
-        let userCollapsed = collapsedIDs.contains(category.id)
+        let userExpanded = expandedIDs.contains(category.id)
         DisclosureGroup(isExpanded: Binding(
-            get: { forceOpen || !userCollapsed },
+            get: { forceOpen || userExpanded },
             set: { newValue in
                 // Only record user intent when there's no forced expand.
                 guard !forceOpen else { return }
-                var next = collapsedIDs
-                if newValue { next.remove(category.id) } else { next.insert(category.id) }
-                collapsedIDs = next
-                persistCollapsedCategories()
+                var next = expandedIDs
+                if newValue { next.insert(category.id) } else { next.remove(category.id) }
+                expandedIDs = next
+                persistExpandedCategories()
             }
         )) {
             ForEach(category.docs) { doc in
@@ -780,19 +1045,19 @@ struct KnowledgeSidebarView: View {
         }
     }
 
-    private func loadCollapsedCategories() {
-        guard let data = collapsedCategoriesJSON.data(using: .utf8),
+    private func loadExpandedCategories() {
+        guard let data = expandedCategoriesJSON.data(using: .utf8),
               let arr = try? JSONDecoder().decode([String].self, from: data) else {
-            collapsedIDs = []
+            expandedIDs = []
             return
         }
-        collapsedIDs = Set(arr)
+        expandedIDs = Set(arr)
     }
 
-    private func persistCollapsedCategories() {
-        guard let data = try? JSONEncoder().encode(Array(collapsedIDs)),
+    private func persistExpandedCategories() {
+        guard let data = try? JSONEncoder().encode(Array(expandedIDs)),
               let str = String(data: data, encoding: .utf8) else { return }
-        collapsedCategoriesJSON = str
+        expandedCategoriesJSON = str
     }
 
     private func navigate(to href: String) {
@@ -937,8 +1202,16 @@ struct KnowledgeSidebarView: View {
             else { continue }
             let rawCategory = (fields["category"] as? String) ?? ""
             let categoryKey = rawCategory.isEmpty ? "Uncategorized" : rawCategory
+            let subcategory = fields["subcategory"] as? String
+            let sourcePath = fields["sourcePath"] as? String
             byCategory[categoryKey, default: []].append(
-                Doc(id: internalID, title: title, href: href)
+                Doc(
+                    id: internalID,
+                    title: title,
+                    href: href,
+                    subcategory: subcategory,
+                    sourcePath: sourcePath
+                )
             )
         }
 

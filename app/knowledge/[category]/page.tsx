@@ -37,6 +37,7 @@ function toDocCard(doc: Awaited<ReturnType<typeof docsByCategory>>[number]): Cat
     ext: doc.ext,
     preview: doc.preview,
     subcategory: doc.subcategory ?? '',
+    sourcePath: doc.sourcePath,
     subOrder: doc.subOrder ?? 9999,
     hasText: doc.hasText,
     size: doc.size,
