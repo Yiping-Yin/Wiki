@@ -13,6 +13,7 @@ test('CI includes a dedicated macOS app build job', () => {
 
   assert.match(source, /macos-app-smoke:/);
   assert.match(source, /runs-on:\s*macos-latest/);
+  assert.match(source, /npm run test:contracts/);
   assert.match(source, /brew install xcodegen/);
   assert.match(source, /npm run app:check-project/);
   assert.match(source, /npm run app:user/);

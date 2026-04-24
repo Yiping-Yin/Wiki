@@ -9,6 +9,7 @@
     "start": "node scripts/start.mjs -p 3000 -H 0.0.0.0",
     "lint": "next lint",
     "typecheck": "node scripts/typecheck.mjs",
+    "test:contracts": "tsx --test tests/app-store-assets.test.ts tests/ci-workflow.test.ts tests/globals-compatibility.test.ts tests/quiet-horizon-layout.test.tsx tests/loom-app-scripts.test.ts tests/typecheck-script.test.ts",
     "smoke": "node scripts/smoke.mjs",
     "verify": "npm run typecheck && npm run build && LOOM_SMOKE_CHAT=1 npm run smoke",
     "status:buckets": "node scripts/status-buckets.mjs",
