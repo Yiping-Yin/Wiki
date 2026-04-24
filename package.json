@@ -27,6 +27,7 @@
     "app:user": "npm run build && node scripts/build-static-export.mjs && cd macos-app/Loom && find . -maxdepth 1 -type d -name 'Loom *.xcodeproj' -exec rm -rf {} + && xcodegen generate && xcodebuild -project Loom.xcodeproj -scheme Loom -configuration Release build && cd ../.. && node scripts/install-loom-app.mjs user; code=$?; node scripts/clean-loom-app-bundles.mjs; if [ $code -eq 0 ]; then echo '✓ Loom.app installed to ~/Applications'; fi; exit $code",
     "app:system": "npm run build && node scripts/build-static-export.mjs && cd macos-app/Loom && find . -maxdepth 1 -type d -name 'Loom *.xcodeproj' -exec rm -rf {} + && xcodegen generate && xcodebuild -project Loom.xcodeproj -scheme Loom -configuration Release build && cd ../.. && node scripts/install-loom-app.mjs system; code=$?; node scripts/clean-loom-app-bundles.mjs; if [ $code -eq 0 ]; then echo '✓ Loom.app installed to /Applications'; fi; exit $code",
     "app:clean": "node scripts/clean-loom-app-bundles.mjs",
+    "app:package": "node scripts/package-loom-app.mjs",
     "app:check-project": "node scripts/check-loom-macos-project-files.mjs",
     "app:smoke": "node scripts/installed-app-smoke.mjs",
     "app:screenshots": "node scripts/app-store-screenshots.mjs",

@@ -127,6 +127,14 @@ if (!/com\.apple\.security\.app-sandbox:\s*true/.test(spec)) {
   fail('project.yml must keep com.apple.security.app-sandbox enabled for App Store builds');
 }
 
+if (!/ENABLE_HARDENED_RUNTIME:\s*YES/.test(spec)) {
+  fail('project.yml must keep ENABLE_HARDENED_RUNTIME enabled for distribution builds');
+}
+
+if (!project.includes('ENABLE_HARDENED_RUNTIME = YES;')) {
+  fail('Loom.xcodeproj hardened runtime setting does not match project.yml');
+}
+
 if (!/<key>com\.apple\.security\.app-sandbox<\/key>\s*<true\/>/.test(entitlements)) {
   fail('Loom.entitlements must keep com.apple.security.app-sandbox enabled');
 }

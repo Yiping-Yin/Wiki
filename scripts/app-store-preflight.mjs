@@ -86,6 +86,9 @@ function checkPackageScripts() {
   if (pkg.scripts?.['app:preflight'] !== 'node scripts/app-store-preflight.mjs') {
     fail('package.json app:preflight must run scripts/app-store-preflight.mjs');
   }
+  if (pkg.scripts?.['app:package'] !== 'node scripts/package-loom-app.mjs') {
+    fail('package.json app:package must run scripts/package-loom-app.mjs');
+  }
 }
 
 function checkScreenshots() {
@@ -123,6 +126,7 @@ function checkScreenshots() {
 
 function checkMacStoreConfig() {
   const project = read('macos-app/Loom/project.yml');
+  const infoPlist = read('macos-app/Loom/Info.plist');
   const xcodeProject = read('macos-app/Loom/Loom.xcodeproj/project.pbxproj');
   const entitlements = read('macos-app/Loom/Loom.entitlements');
   const privacyManifest = read('macos-app/Loom/Resources/PrivacyInfo.xcprivacy');
@@ -130,9 +134,15 @@ function checkMacStoreConfig() {
   const supportPage = read('public/support.html');
 
   expectIncludes(project, 'PRODUCT_BUNDLE_IDENTIFIER: com.yinyiping.loom', 'project.yml');
+  expectIncludes(project, 'MARKETING_VERSION: "1.0.0"', 'project.yml');
+  expectIncludes(project, 'CURRENT_PROJECT_VERSION: "1"', 'project.yml');
+  expectIncludes(project, 'ENABLE_HARDENED_RUNTIME: YES', 'project.yml');
   expectIncludes(project, 'INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.education"', 'project.yml');
   expectIncludes(project, 'INFOPLIST_KEY_LSApplicationSecondaryCategoryType: "public.app-category.reference"', 'project.yml');
   expectIncludes(xcodeProject, 'CODE_SIGN_ENTITLEMENTS = Loom.entitlements;', 'generated Xcode project');
+  expectIncludes(xcodeProject, 'ENABLE_HARDENED_RUNTIME = YES;', 'generated Xcode project');
+  expectMatch(infoPlist, /<key>CFBundleShortVersionString<\/key>\s*<string>\$\(MARKETING_VERSION\)<\/string>/, 'Info.plist');
+  expectMatch(infoPlist, /<key>CFBundleVersion<\/key>\s*<string>\$\(CURRENT_PROJECT_VERSION\)<\/string>/, 'Info.plist');
   expectMatch(project, /com\.apple\.security\.app-sandbox:\s*true/, 'project.yml entitlements');
   expectMatch(project, /com\.apple\.security\.network\.client:\s*true/, 'project.yml entitlements');
   expectNoMatch(project, /com\.apple\.security\.network\.server:\s*true/, 'project.yml entitlements');
@@ -141,6 +151,7 @@ function checkMacStoreConfig() {
   expectMatch(entitlements, /<key>com\.apple\.security\.network\.client<\/key>\s*<true\/>/, 'Loom.entitlements');
   expectMatch(entitlements, /<key>com\.apple\.security\.files\.user-selected\.read-write<\/key>\s*<true\/>/, 'Loom.entitlements');
   expectNoMatch(entitlements, /com\.apple\.security\.network\.server/, 'Loom.entitlements');
+  expectNoMatch(entitlements, /com\.apple\.security\.get-task-allow/, 'Loom.entitlements');
 
   expectMatch(privacyManifest, /<key>NSPrivacyTracking<\/key>\s*<false\/>/, 'PrivacyInfo.xcprivacy');
   expectIncludes(privacyManifest, 'NSPrivacyAccessedAPICategoryUserDefaults', 'PrivacyInfo.xcprivacy');

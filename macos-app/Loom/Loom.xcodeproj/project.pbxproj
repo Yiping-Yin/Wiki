@@ -490,6 +490,7 @@
 				CODE_SIGN_ENTITLEMENTS = Loom.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleGetInfoString = "Loom — a screen that replaces paper";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
@@ -515,6 +516,7 @@
 				CODE_SIGN_ENTITLEMENTS = Loom.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleGetInfoString = "Loom — a screen that replaces paper";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";

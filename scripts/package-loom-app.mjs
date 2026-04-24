@@ -10,6 +10,7 @@ import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
  * @typedef {object} FindBuiltAppOptions
  * @property {string} [derivedDataRoot]
  * @property {string} [preferredConfiguration]
+ * @property {string[]} [applicationRoots]
  */
 
 /**
@@ -21,7 +22,7 @@ import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
 /**
  * @typedef {object} PackageLoomAppOptions
  * @property {string} appPath
- * @property {string} runtimeRoot
+ * @property {string | null} [runtimeRoot]
  * @property {string} [outputRoot]
  * @property {string} contentRoot
  */
@@ -82,6 +83,45 @@ export async function findBuiltApp({ derivedDataRoot: searchRoot = derivedDataRo
   throw new Error(`Could not find built Loom.app in DerivedData for configurations: ${configurations.join(', ')}.`);
 }
 
+/**
+ * @param {FindBuiltAppOptions} [options]
+ */
+export async function findInstalledApp({ applicationRoots = [path.join(home, 'Applications'), '/Applications'] } = {}) {
+  const candidates = [];
+
+  for (const root of applicationRoots) {
+    const target = path.join(root, 'Loom.app');
+    if (await exists(target)) {
+      const stat = await fs.stat(target);
+      candidates.push({ target, mtimeMs: stat.mtimeMs });
+    }
+  }
+
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    return candidates[0].target;
+  }
+
+  throw new Error(`Could not find installed Loom.app in: ${applicationRoots.join(', ')}.`);
+}
+
+/**
+ * @param {FindBuiltAppOptions} [options]
+ */
+export async function findPackageSourceApp(options = {}) {
+  try {
+    return await findBuiltApp(options);
+  } catch (buildError) {
+    try {
+      return await findInstalledApp(options);
+    } catch (installError) {
+      const buildMessage = buildError instanceof Error ? buildError.message : String(buildError);
+      const installMessage = installError instanceof Error ? installError.message : String(installError);
+      throw new Error(`${buildMessage} ${installMessage}`);
+    }
+  }
+}
+
 function createRuntimePackagePayload({ runtimeRoot, contentRoot, outputDir }) {
   const buildId = path.basename(runtimeRoot);
   const tempRoot = mkdtempSync(path.join(tmpdir(), 'loom-runtime-package-'));
@@ -133,7 +173,6 @@ export async function stageRuntimeForPackaging({ repoRoot, homeOverride } = {}) 
 export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = outputRoot, contentRoot } = {}) {
   const appArchivePath = path.join(outputDir, 'Loom-replacement.zip');
   const runtimeArchivePath = path.join(outputDir, 'Loom-runtime.zip');
-  const { libraryRoot, tempRoot } = createRuntimePackagePayload({ runtimeRoot, contentRoot, outputDir });
 
   mkdirSync(outputDir, { recursive: true });
   rmSync(appArchivePath, { force: true });
@@ -142,15 +181,21 @@ export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = o
   execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', appPath, appArchivePath], {
     stdio: 'inherit',
   });
-  try {
-    execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', libraryRoot, runtimeArchivePath], {
-      stdio: 'inherit',
-    });
-  } finally {
-    rmSync(tempRoot, { recursive: true, force: true });
+
+  let packagedRuntimeArchivePath = null;
+  if (runtimeRoot) {
+    const { libraryRoot, tempRoot } = createRuntimePackagePayload({ runtimeRoot, contentRoot, outputDir });
+    try {
+      execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', libraryRoot, runtimeArchivePath], {
+        stdio: 'inherit',
+      });
+      packagedRuntimeArchivePath = runtimeArchivePath;
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
   }
 
-  const readme = [
+  const readme = runtimeRoot ? [
     'Loom replacement package',
     '',
     `Bundle source: ${appPath}`,
@@ -165,15 +210,29 @@ export function packageLoomApp({ appPath, runtimeRoot, outputRoot: outputDir = o
     '4. Move Loom.app into /Applications',
     '5. Unzip Loom-runtime.zip into your home directory so it recreates Library/Application Support/Loom',
     '6. Confirm Library/Application Support/Loom/runtime/current.json and content-root.json are present',
+  ] : [
+    'Loom app package',
+    '',
+    `Bundle source: ${appPath}`,
+    'Runtime source: not produced; Loom ships static web resources inside Loom.app/Contents/Resources/web',
+    `Archive: ${appArchivePath}`,
+    'Runtime archive: not produced',
+    '',
+    'To replace the installed app:',
+    '1. Quit Loom.app',
+    '2. Delete the existing Loom.app from /Applications or ~/Applications',
+    '3. Unzip Loom-replacement.zip',
+    '4. Move Loom.app into the chosen Applications folder',
+    '5. Launch Loom.app and run npm run app:smoke if validating this package locally',
   ].join('\n');
 
   writeFileSync(path.join(outputDir, 'INSTALL-LOOM.txt'), readme, 'utf8');
-  return { appArchivePath, runtimeArchivePath };
+  return { appArchivePath, runtimeArchivePath: packagedRuntimeArchivePath };
 }
 
 async function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const appPath = await findBuiltApp();
+  const appPath = await findPackageSourceApp();
   const stagedRuntime = await stageRuntimeForPackaging({ repoRoot: root });
 
   try {

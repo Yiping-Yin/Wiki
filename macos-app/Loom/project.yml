@@ -25,6 +25,7 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
+        ENABLE_HARDENED_RUNTIME: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Education/Reference per the trademark-check memo (2026-04-21) —
         # helps App Store disambiguation from other "Loom"-named apps in
@@ -43,6 +44,8 @@ targets:
           NSAllowsLocalNetworking: true
         CFBundleName: Loom
         CFBundleDisplayName: Loom
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
     preBuildScripts:
       - name: Stage Next.js static export into bundle Resources
         # Stages `.next-export/` output into the .app bundle's Resources/web
