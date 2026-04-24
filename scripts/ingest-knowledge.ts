@@ -121,6 +121,32 @@ async function walk(
 
 /** UNSW course code pattern, e.g. "FINS 3646", "INFS2822", "MATH 1141". */
 const COURSE_CODE_RE = /^[A-Z]{2,4}\s*\d{3,4}$/i;
+const COLLECTION_BUCKET_RE = /^(assessment|assessments|course\s*materials?|course\s*info|lectures?|seminars?|slides?|tutorials?|tuts?|weeks?|readings?|resources?|notes?|labs?|workshops?|textbooks?)\b/i;
+
+function scopedCategoryLabel(parts: string[]) {
+  const leaf = parts[parts.length - 1] ?? '';
+  const parent = parts[parts.length - 2] ?? '';
+  if (parent.toUpperCase() === 'UNSW' && COURSE_CODE_RE.test(leaf.trim())) {
+    return `UNSW · ${leaf}`;
+  }
+  return leaf;
+}
+
+function rootCategoryLabel(SRC: string, dirParts: string[]) {
+  const rootName = path.basename(SRC).trim();
+  if (!rootName) return null;
+
+  const firstDir = dirParts[0]?.trim() ?? '';
+  const rootLooksLikeCourse = COURSE_CODE_RE.test(rootName);
+  const firstDirLooksLikeCollectionBucket = firstDir ? COLLECTION_BUCKET_RE.test(firstDir) : true;
+  if (!rootLooksLikeCourse && !firstDirLooksLikeCollectionBucket) return null;
+
+  const parent = path.basename(path.dirname(SRC)).trim();
+  if (parent.toUpperCase() === 'UNSW' && rootLooksLikeCourse) {
+    return `UNSW · ${rootName}`;
+  }
+  return rootName;
+}
 
 function categorizePath(
   absPath: string,
@@ -150,7 +176,7 @@ function categorizePath(
     const match = matches[0];
     if (match) {
       const matchParts = match.split('/');
-      const categoryLabel = matchParts[matchParts.length - 1];
+      const categoryLabel = scopedCategoryLabel(matchParts);
       const remaining = dirParts.slice(matchParts.length);
       return {
         category: categoryLabel,
@@ -158,6 +184,15 @@ function categorizePath(
         subcategory: remaining.join(' / '),
       };
     }
+  }
+
+  const rootLabel = rootCategoryLabel(SRC, dirParts);
+  if (rootLabel) {
+    return {
+      category: rootLabel,
+      categorySlug: slugify(rootLabel),
+      subcategory: dirParts.join(' / '),
+    };
   }
 
   if (dirParts.length === 0) return { category: 'Misc', categorySlug: 'misc', subcategory: '' };
@@ -696,7 +731,7 @@ async function main() {
   );
 }
 
-export { main as runIngest };
+export { categorizePath, main as runIngest };
 
 // CLI entry. Under `tsx scripts/ingest-knowledge.ts` import.meta.url matches
 // the invoked argv[1]; when imported as a module, it won't, so the main()
