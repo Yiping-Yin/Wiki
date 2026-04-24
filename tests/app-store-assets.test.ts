@@ -53,6 +53,9 @@ test('screenshot script defaults to Mac App Store dimensions and configurable in
 
   assert.equal(pkg.scripts?.['app:screenshots'], 'node scripts/app-store-screenshots.mjs');
   assert.equal(pkg.scripts?.['app:preflight'], 'node scripts/app-store-preflight.mjs');
+  assert.equal(pkg.scripts?.['app:archive'], 'npm run build && node scripts/build-static-export.mjs && node scripts/archive-loom-app.mjs');
+  assert.equal(pkg.scripts?.['app:archive:store'], 'npm run build && node scripts/build-static-export.mjs && node scripts/archive-loom-app.mjs --store');
+  assert.equal(pkg.scripts?.['app:export:store'], 'node scripts/export-loom-app-store.mjs');
   assert.match(source, /LOOM_SCREENSHOT_WIDTH \?\? 2880/);
   assert.match(source, /LOOM_SCREENSHOT_HEIGHT \?\? 1800/);
   assert.match(source, /LOOM_SCREENSHOT_SCALE \?\? 2/);
@@ -82,9 +85,49 @@ test('app store preflight covers submission artifacts', () => {
     'public/privacy.html',
     'public/support.html',
     'com\\.apple\\.security\\.app-sandbox',
+    'ExportOptions-AppStore.plist',
+    'app-store-connect',
+    'LOOM_APPLE_TEAM_ID',
+    'AppIcon.appiconset',
+    'Finder duplicate artifact',
     'NSPrivacyTracking',
     'NSPrivacyCollectedDataTypeOtherUserContent',
   ]) {
     assert.match(source, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+});
+
+test('app store archive export flow separates local validation from distribution signing', () => {
+  const copy = fs.readFileSync(path.join(repoRoot, 'docs', 'app-store-copy.md'), 'utf8');
+  const archiveScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'archive-loom-app.mjs'), 'utf8');
+  const exportScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'export-loom-app-store.mjs'), 'utf8');
+  const exportOptions = fs.readFileSync(
+    path.join(repoRoot, 'macos-app', 'Loom', 'ExportOptions-AppStore.plist'),
+    'utf8',
+  );
+
+  assert.match(copy, /npm run app:archive/);
+  assert.match(copy, /npm run app:archive:store/);
+  assert.match(copy, /npm run app:export:store/);
+  assert.match(copy, /app-store-connect/);
+  assert.match(archiveScript, /CODE_SIGN_IDENTITY=-/);
+  assert.match(archiveScript, /LOOM_APPLE_TEAM_ID/);
+  assert.match(archiveScript, /Apple Distribution/);
+  assert.match(archiveScript, /-archivePath/);
+  assert.match(archiveScript, /-quiet/);
+  assert.match(exportScript, /-exportArchive/);
+  assert.match(exportScript, /LOOM_APPLE_TEAM_ID/);
+  assert.match(exportScript, /ExportOptions-AppStore\.plist/);
+  assert.match(exportOptions, /<key>method<\/key>\s*<string>app-store-connect<\/string>/);
+  assert.match(exportOptions, /<key>destination<\/key>\s*<string>export<\/string>/);
+  assert.match(exportOptions, /<key>signingStyle<\/key>\s*<string>automatic<\/string>/);
+  assert.match(exportOptions, /<key>manageAppVersionAndBuildNumber<\/key>\s*<false\/>/);
+});
+
+test('mac app Info.plist carries the category that archive validation expects', () => {
+  const infoPlist = fs.readFileSync(path.join(repoRoot, 'macos-app', 'Loom', 'Info.plist'), 'utf8');
+  const project = fs.readFileSync(path.join(repoRoot, 'macos-app', 'Loom', 'project.yml'), 'utf8');
+
+  assert.match(project, /LSApplicationCategoryType: "public\.app-category\.education"/);
+  assert.match(infoPlist, /<key>LSApplicationCategoryType<\/key>\s*<string>public\.app-category\.education<\/string>/);
 });

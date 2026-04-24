@@ -46,6 +46,7 @@ targets:
         CFBundleDisplayName: Loom
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSApplicationCategoryType: "public.app-category.education"
     preBuildScripts:
       - name: Stage Next.js static export into bundle Resources
         # Stages `.next-export/` output into the .app bundle's Resources/web

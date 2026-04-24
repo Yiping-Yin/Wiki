@@ -89,6 +89,35 @@ function checkPackageScripts() {
   if (pkg.scripts?.['app:package'] !== 'node scripts/package-loom-app.mjs') {
     fail('package.json app:package must run scripts/package-loom-app.mjs');
   }
+  if (pkg.scripts?.['app:archive'] !== 'npm run build && node scripts/build-static-export.mjs && node scripts/archive-loom-app.mjs') {
+    fail('package.json app:archive must build, static-export, and run scripts/archive-loom-app.mjs');
+  }
+  if (pkg.scripts?.['app:archive:store'] !== 'npm run build && node scripts/build-static-export.mjs && node scripts/archive-loom-app.mjs --store') {
+    fail('package.json app:archive:store must build, static-export, and run scripts/archive-loom-app.mjs --store');
+  }
+  if (pkg.scripts?.['app:export:store'] !== 'node scripts/export-loom-app-store.mjs') {
+    fail('package.json app:export:store must run scripts/export-loom-app-store.mjs');
+  }
+}
+
+function checkArchiveExportFlow() {
+  const archiveScript = read('scripts/archive-loom-app.mjs');
+  const exportScript = read('scripts/export-loom-app-store.mjs');
+  const exportOptions = read('macos-app/Loom/ExportOptions-AppStore.plist');
+
+  expectIncludes(archiveScript, '-archivePath', 'archive script');
+  expectIncludes(archiveScript, 'LOOM_APPLE_TEAM_ID', 'archive script');
+  expectIncludes(archiveScript, 'CODE_SIGN_IDENTITY=-', 'archive script');
+  expectIncludes(archiveScript, 'Apple Distribution', 'archive script');
+  expectIncludes(archiveScript, 'LOOM_ALLOW_PROVISIONING_UPDATES', 'archive script');
+  expectIncludes(exportScript, '-exportArchive', 'export script');
+  expectIncludes(exportScript, 'LOOM_APPLE_TEAM_ID', 'export script');
+  expectIncludes(exportScript, 'ExportOptions-AppStore.plist', 'export script');
+  expectIncludes(exportOptions, '<string>app-store-connect</string>', 'ExportOptions-AppStore.plist');
+  expectIncludes(exportOptions, '<string>export</string>', 'ExportOptions-AppStore.plist');
+  expectIncludes(exportOptions, '<string>automatic</string>', 'ExportOptions-AppStore.plist');
+  expectMatch(exportOptions, /<key>manageAppVersionAndBuildNumber<\/key>\s*<false\/>/, 'ExportOptions-AppStore.plist');
+  expectMatch(exportOptions, /<key>stripSwiftSymbols<\/key>\s*<true\/>/, 'ExportOptions-AppStore.plist');
 }
 
 function checkScreenshots() {
@@ -124,6 +153,17 @@ function checkScreenshots() {
   }
 }
 
+function checkNoFinderDuplicateFiles(relativeDir) {
+  const dir = path.join(repoRoot, relativeDir);
+  if (!fs.existsSync(dir)) return;
+  const duplicates = fs.readdirSync(dir)
+    .filter((name) => /\s[0-9]+\.[^.]+$/.test(name))
+    .sort();
+  for (const duplicate of duplicates) {
+    fail(`${relativeDir} contains Finder duplicate artifact: ${duplicate}`);
+  }
+}
+
 function checkMacStoreConfig() {
   const project = read('macos-app/Loom/project.yml');
   const infoPlist = read('macos-app/Loom/Info.plist');
@@ -143,6 +183,7 @@ function checkMacStoreConfig() {
   expectIncludes(xcodeProject, 'ENABLE_HARDENED_RUNTIME = YES;', 'generated Xcode project');
   expectMatch(infoPlist, /<key>CFBundleShortVersionString<\/key>\s*<string>\$\(MARKETING_VERSION\)<\/string>/, 'Info.plist');
   expectMatch(infoPlist, /<key>CFBundleVersion<\/key>\s*<string>\$\(CURRENT_PROJECT_VERSION\)<\/string>/, 'Info.plist');
+  expectMatch(infoPlist, /<key>LSApplicationCategoryType<\/key>\s*<string>public\.app-category\.education<\/string>/, 'Info.plist');
   expectMatch(project, /com\.apple\.security\.app-sandbox:\s*true/, 'project.yml entitlements');
   expectMatch(project, /com\.apple\.security\.network\.client:\s*true/, 'project.yml entitlements');
   expectNoMatch(project, /com\.apple\.security\.network\.server:\s*true/, 'project.yml entitlements');
@@ -168,9 +209,12 @@ function checkMacStoreConfig() {
   expectIncludes(supportPage, 'https://github.com/Yiping-Yin/Wiki/issues', 'public support page');
   expectIncludes(supportPage, '/privacy.html', 'public support page');
   expectIncludes(supportPage, 'Last updated 2026-04-24', 'public support page');
+
+  checkNoFinderDuplicateFiles('macos-app/Loom/Assets.xcassets/AppIcon.appiconset');
 }
 
 checkPackageScripts();
+checkArchiveExportFlow();
 checkAppStoreCopy();
 checkScreenshots();
 checkMacStoreConfig();

@@ -64,6 +64,19 @@ Preflight check before upload:
 npm run app:preflight
 ```
 
+Archive and export path:
+
+```bash
+npm run app:archive
+LOOM_APPLE_TEAM_ID=<team id> LOOM_ALLOW_PROVISIONING_UPDATES=1 npm run app:archive:store
+LOOM_APPLE_TEAM_ID=<team id> LOOM_ALLOW_PROVISIONING_UPDATES=1 npm run app:export:store
+```
+
+`app:archive` creates a local ad hoc archive for bundle validation. The `:store`
+commands require an Apple Developer team and use
+`macos-app/Loom/ExportOptions-AppStore.plist` with the `app-store-connect`
+export method.
+
 ## Review Notes
 
 - Loom stores user materials locally.
