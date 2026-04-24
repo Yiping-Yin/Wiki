@@ -15,6 +15,9 @@ test('app store copy stays aligned with Phase 6 bundle and subtitle constraints'
   assert.match(source, /28 characters/);
   assert.match(source, /Privacy Policy URL: `https:\/\/loom\.app\/privacy\.html`/);
   assert.match(source, /Support URL: `https:\/\/loom\.app\/support\.html`/);
+  assert.match(source, /Promotional text \(170-character cap\)/);
+  assert.match(source, /reading, study, pdf, notes, research, syllabus, textbook, rehearsal, learning, patterns, pursuit/);
+  assert.doesNotMatch(source, /reading, study, pdf, notes, research, syllabus, textbook, rehearsal, annotation, learning, patterns, pursuit/);
   assert.match(source, /2880 x 1800/);
   assert.match(source, /Default screenshot format: JPEG/);
   for (const label of ['Library', 'Home', 'S\u014dan', 'Patterns', 'Frontispiece']) {
@@ -30,8 +33,11 @@ test('public privacy page names the sandboxed app identifiers', () => {
   assert.match(source, /com\.yinyiping\.loom/);
   assert.match(source, /Last updated 2026-04-24/);
   assert.match(source, /There is no Loom analytics service/);
+  assert.match(source, /Settings &gt; Data clears Loom preferences and web storage/);
+  assert.match(source, /Remove API keys from Settings &gt; AI Provider/);
   assert.match(source, /\/support\.html/);
   assert.doesNotMatch(source, /com\.loom\.app/);
+  assert.doesNotMatch(source, /lets you wipe all of the above/);
 });
 
 test('public support page gives App Store reviewers a concrete support URL', () => {
@@ -40,8 +46,13 @@ test('public support page gives App Store reviewers a concrete support URL', () 
   assert.match(source, /Loom Support/);
   assert.match(source, /com\.yinyiping\.loom/);
   assert.match(source, /github\.com\/Yiping-Yin\/Wiki\/issues/);
+  assert.match(source, /mailto:yiping_yin0521@outlook\.com/);
+  assert.match(source, /Settings → Data → Wipe all Loom data/);
+  assert.match(source, /Settings → AI Provider/);
   assert.match(source, /\/privacy\.html/);
   assert.match(source, /Last updated 2026-04-24/);
+  assert.doesNotMatch(source, /Keychain items are removed when the app is uninstalled/);
+  assert.doesNotMatch(source, /GitHub release page/);
 });
 
 test('screenshot script defaults to Mac App Store dimensions and configurable inputs', () => {
@@ -85,6 +96,10 @@ test('app store preflight covers submission artifacts', () => {
     '03-draft.jpg',
     '05-frontispiece.jpg',
     'jpegSize',
+    'maxKeywordsChars',
+    'maxPromotionalTextChars',
+    'App Store keywords are too long',
+    'App Store promotional text is too long',
     'PrivacyInfo.xcprivacy',
     'public/privacy.html',
     'public/support.html',

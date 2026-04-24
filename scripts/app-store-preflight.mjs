@@ -8,6 +8,11 @@ const screenshotDir = path.join(repoRoot, '.app-store', 'screenshots');
 const maxScreenshotBytes = 1_500_000;
 const expectedWidth = 2880;
 const expectedHeight = 1800;
+const maxAppNameChars = 30;
+const maxSubtitleChars = 30;
+const maxKeywordsChars = 100;
+const maxPromotionalTextChars = 170;
+const maxDescriptionChars = 4000;
 const expectedScreenshots = [
   '01-library.jpg',
   '02-home.jpg',
@@ -76,6 +81,28 @@ function checkAppStoreCopy() {
     expectIncludes(copy, `- ${label}:`, 'App Store screenshot plan');
   }
   expectNoMatch(copy, /Knowledge docs:/, 'App Store screenshot plan');
+
+  const appName = copy.match(/^- Name: (.+)$/m)?.[1]?.trim() ?? '';
+  const subtitle = copy.match(/^- Subtitle: (.+)$/m)?.[1]?.trim() ?? '';
+  const keywords = copy.match(/## Keywords\s+([\s\S]*?)(?=\n## |$)/)?.[1]?.trim().split('\n')[0]?.trim() ?? '';
+  const promotionalText = copy.match(/## Promotional Text[\s\S]*?```\n([\s\S]*?)\n```/)?.[1]?.trim() ?? '';
+  const description = copy.match(/## Description\s+([\s\S]*?)(?=\n## |$)/)?.[1]?.trim() ?? '';
+
+  if (appName.length > maxAppNameChars) {
+    fail(`App Store name is too long: ${appName.length} characters > ${maxAppNameChars}`);
+  }
+  if (subtitle.length > maxSubtitleChars) {
+    fail(`App Store subtitle is too long: ${subtitle.length} characters > ${maxSubtitleChars}`);
+  }
+  if (keywords.length > maxKeywordsChars) {
+    fail(`App Store keywords are too long: ${keywords.length} characters > ${maxKeywordsChars}`);
+  }
+  if (promotionalText.length > maxPromotionalTextChars) {
+    fail(`App Store promotional text is too long: ${promotionalText.length} characters > ${maxPromotionalTextChars}`);
+  }
+  if (description.length > maxDescriptionChars) {
+    fail(`App Store description is too long: ${description.length} characters > ${maxDescriptionChars}`);
+  }
 }
 
 function checkPackageScripts() {
