@@ -8,6 +8,7 @@ import {
   readSourceLibraryMetadata,
 } from './source-library-metadata';
 import type {
+  CollectionMetadata,
   KnowledgeCategory,
   KnowledgeCategoryKind,
   KnowledgeDoc,
@@ -37,6 +38,9 @@ export function invalidateKnowledgeStoreCache() {
   navCacheKey = null;
   docsCacheSignature = null;
   navCacheSignature = null;
+  collectionMetaPromise = null;
+  collectionMetaCacheKey = null;
+  collectionMetaCacheSignature = null;
 }
 
 function normalizeDoc(doc: KnowledgeDoc): KnowledgeDoc {
@@ -73,6 +77,32 @@ export function knowledgeManifestPath() {
 
 export function knowledgeNavPath() {
   return path.join(knowledgeManifestRoot(), 'knowledge-nav.json');
+}
+
+export function collectionMetadataPath() {
+  return path.join(knowledgeManifestRoot(), 'collection-metadata.json');
+}
+
+let collectionMetaPromise: Promise<Map<string, CollectionMetadata>> | null = null;
+let collectionMetaCacheKey: string | null = null;
+let collectionMetaCacheSignature: string | null = null;
+
+export async function getCollectionMetadata(slug: string): Promise<CollectionMetadata | null> {
+  const file = collectionMetadataPath();
+  const signature = await fileSignature(file);
+  if (collectionMetaCacheKey !== file || collectionMetaCacheSignature !== signature) {
+    collectionMetaPromise = null;
+    collectionMetaCacheKey = file;
+    collectionMetaCacheSignature = signature;
+  }
+  if (!collectionMetaPromise) {
+    collectionMetaPromise = (async () => {
+      const rows = (await loadJsonFile<CollectionMetadata[]>(file)) ?? [];
+      return new Map(rows.map((r) => [r.categorySlug, r]));
+    })();
+  }
+  const map = await collectionMetaPromise;
+  return map.get(slug) ?? null;
 }
 
 export async function getAllDocs(): Promise<KnowledgeDoc[]> {

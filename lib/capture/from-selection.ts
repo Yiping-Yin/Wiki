@@ -28,6 +28,35 @@ import type { TraceEvent } from '../trace/types';
 const MIN_LEN = 2;
 
 /**
+ * Pull the original LaTeX when the selection sits inside a KaTeX-rendered
+ * formula. The default `sel.toString()` returns the space-mangled readable
+ * form ("∂x i ∂L = Nσ 1 ..."), which is useless for downstream AI.
+ *
+ * Strategy:
+ *  - If the ancestor container is inside a `.katex` element, pull the
+ *    `annotation[encoding="application/x-tex"]` textContent and wrap in `$…$`
+ *    for display/math contract.
+ *  - Otherwise, return the plain selection text.
+ */
+function extractSelectionText(sel: Selection, range: Range): string {
+  const ancestor = range.commonAncestorContainer;
+  const el = ancestor.nodeType === Node.ELEMENT_NODE
+    ? (ancestor as Element)
+    : ancestor.parentElement;
+  const katex = el?.closest?.('.katex');
+  if (katex) {
+    const annotation = katex.querySelector('annotation[encoding="application/x-tex"]');
+    const latex = annotation?.textContent?.trim();
+    if (latex) {
+      const isBlock = katex.classList.contains('katex-display')
+        || katex.closest('.katex-display') !== null;
+      return isBlock ? `$$${latex}$$` : `$${latex}$`;
+    }
+  }
+  return sel.toString().trim();
+}
+
+/**
  * Read the current window selection and build a thought-anchor event.
  * Returns null if there is no valid selection inside reading prose.
  * Does NOT append — the caller decides whether to fire it or skip.
@@ -43,7 +72,7 @@ export function buildAnchorFromCurrentSelection():
   const main = document.querySelector('main');
   if (!main || !main.contains(range.commonAncestorContainer)) return null;
 
-  const text = sel.toString().trim();
+  const text = extractSelectionText(sel, range);
   if (text.length < MIN_LEN) return null;
 
   const rect = range.getBoundingClientRect();

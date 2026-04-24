@@ -55,18 +55,10 @@ export const KNOWLEDGE_ROOT =
   || fromHome('Desktop', 'Knowledge system')
   || path.resolve(EXECUTION_ROOT, '..', 'Knowledge system');
 
-export const CLAUDE_BIN =
-  process.env.CLAUDE_BIN?.trim()
-  || fromHome('.local', 'bin', 'claude')
-  || 'claude';
-
-export const CODEX_BIN =
-  process.env.CODEX_BIN?.trim()
-  || (process.env.HOMEBREW_PREFIX ? path.join(process.env.HOMEBREW_PREFIX, 'bin', 'codex') : null)
-  || 'codex';
-
-export const DEFAULT_CLI: CliKind =
-  process.env.LOOM_AI_CLI_DEFAULT === 'claude' ? 'claude' : 'codex';
+// CLAUDE_BIN / CODEX_BIN / DEFAULT_CLI exports removed 2026-04-21: CLI
+// transport was retired in favor of the Swift `CLIRuntimeClient` which
+// spawns binaries directly on the native side. `CliKind` stays in case
+// other code imports it as a type for AI-preference UI.
 
 const KNOWLEDGE_ROOT_BASENAME = path.basename(KNOWLEDGE_ROOT);
 

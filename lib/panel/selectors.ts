@@ -65,7 +65,7 @@ export function panelSourceMeta(
     return {
       sourceType: 'wiki' as const,
       collectionLabel: 'LLM Wiki',
-      collectionHref: '/browse',
+      collectionHref: '/llm-wiki',
     };
   }
 
@@ -74,7 +74,7 @@ export function panelSourceMeta(
     const category = knowledgeCategories.find((item) => item.slug === match[1]);
     return {
       sourceType: 'knowledge' as const,
-      collectionLabel: category?.label ?? 'Source Library',
+      collectionLabel: category?.label ?? 'Sources',
       collectionHref: `/knowledge/${match[1]}`,
     };
   }

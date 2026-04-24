@@ -1,6 +1,8 @@
 /**
  * Client-side wikilink resolver. Loads the search index lazily and matches titles.
  */
+import { fetchSearchIndex } from './search-index-client';
+
 let _idx: Map<string, { href: string; title: string }> | null = null;
 let _loadPromise: Promise<void> | null = null;
 
@@ -9,7 +11,7 @@ async function ensureLoaded() {
   if (_loadPromise) return _loadPromise;
   _loadPromise = (async () => {
     try {
-      const r = await fetch('/api/search-index');
+      const r = await fetchSearchIndex();
       if (!r.ok) return;
       const payload = await r.json();
       const stored = payload.index?.storedFields ?? {};

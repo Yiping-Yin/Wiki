@@ -2,16 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import type { KnowledgeCategory, SourceLibraryGroup } from './knowledge-types';
+import {
+  fetchKnowledgeNav as fetchKnowledgeNavBoth,
+  type KnowledgeNavPayload,
+} from './knowledge-nav-client';
 
 export type SourceLibraryGroupView = SourceLibraryGroup;
+export type { KnowledgeNavPayload } from './knowledge-nav-client';
 
 const KNOWLEDGE_NAV_REFRESH_EVENT = 'knowledge-nav:refresh';
-
-type KnowledgeNavPayload = {
-  knowledgeCategories: KnowledgeCategory[];
-  knowledgeTotal: number;
-  sourceLibraryGroups: SourceLibraryGroupView[];
-};
 
 let cache: KnowledgeNavPayload | null = null;
 let inflight: Promise<KnowledgeNavPayload> | null = null;
@@ -26,12 +25,9 @@ function normalizeKnowledgeNav(payload?: Partial<KnowledgeNavPayload> | null): K
 }
 
 async function fetchKnowledgeNav(): Promise<KnowledgeNavPayload> {
-  const r = await fetch('/api/knowledge-nav', { cache: 'no-store' });
-  if (!r.ok) {
-    throw new Error('Failed to load knowledge nav');
-  }
-  const payload = await r.json() as Partial<KnowledgeNavPayload>;
-  return normalizeKnowledgeNav(payload);
+  // Native mode: reads content-root manifests directly. Dev mode: hits the
+  // Next.js route. Shared shape either way, normalized below.
+  return normalizeKnowledgeNav(await fetchKnowledgeNavBoth());
 }
 
 async function loadKnowledgeNav(force = false): Promise<KnowledgeNavPayload> {

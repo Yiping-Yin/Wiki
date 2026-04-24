@@ -9,7 +9,12 @@ export type AiStageId =
   | 'examiner-grade'
   | 'blind-recall-grade'
   | 'ingestion-summary'
-  | 'capture-organize';
+  | 'capture-organize'
+  | 'cowork-tidy'
+  | 'cowork-suggest'
+  | 'selection-tighten'
+  | 'selection-expand'
+  | 'selection-rewrite';
 
 export type AiSurfaceId = 'selection' | 'free' | 'rehearsal' | 'examiner' | 'ingestion' | 'capture';
 
@@ -139,6 +144,41 @@ const STAGES: Record<AiStageId, AiStageSpec> = {
     title: SURFACES.capture.title,
     role: 'organizer',
     output: 'one structured source note rewrite',
+  },
+  'cowork-tidy': {
+    id: 'cowork-tidy',
+    family: 'capture',
+    title: 'Tidy cowork scratch',
+    role: 'formatter',
+    output: 'one tidied draft that reformats user scratch without adding content',
+  },
+  'cowork-suggest': {
+    id: 'cowork-suggest',
+    family: 'capture',
+    title: 'Suggest related library material',
+    role: 'recommender',
+    output: 'one ranked list of related library docs',
+  },
+  'selection-tighten': {
+    id: 'selection-tighten',
+    family: 'capture',
+    title: 'Tighten a selection',
+    role: 'tightener',
+    output: 'one shorter rewrite preserving all claims',
+  },
+  'selection-expand': {
+    id: 'selection-expand',
+    family: 'capture',
+    title: 'Expand a selection',
+    role: 'expander',
+    output: 'one longer rewrite with citations from provided context',
+  },
+  'selection-rewrite': {
+    id: 'selection-rewrite',
+    family: 'capture',
+    title: 'Rewrite a selection',
+    role: 'rewriter',
+    output: 'one rewrite per user instruction, with citations for any new claims',
   },
 };
 

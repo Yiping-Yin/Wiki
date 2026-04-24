@@ -1,8 +1,12 @@
 'use client';
+/**
+ * AI call entry point — Swift-bridge only. Phase 3 / 5 of architecture
+ * inversion. `/api/chat` is deleted; the Mac app's Swift layer (via
+ * `askAIStream`) is the single AI transport.
+ */
 
 import type { AiCliKind } from '../ai-cli';
-import { readAiCliPreference } from '../ai-cli';
-import { readSseToString } from './sse-reader';
+import { askAIStream } from '../ai-stream-bridge';
 import type { AiStageId } from './stage-model';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
@@ -22,35 +26,39 @@ function dispatchIsland(type: 'ai-start' | 'ai-end', stage: AiStageId) {
   window.dispatchEvent(new CustomEvent('loom:island', { detail: { type, stage } }));
 }
 
+/**
+ * Fold a messages array into a single prompt string. Swift's
+ * `AnthropicClient.Options` takes a single-string prompt today; a later
+ * pass can pipe a proper messages array through the bridge.
+ */
+function foldMessagesToPrompt(messages: ChatMessage[], context?: string): string {
+  const parts: string[] = [];
+  if (context) parts.push(context);
+  for (const m of messages) {
+    if (m.role === 'user') {
+      parts.push(m.content);
+    } else {
+      parts.push(`Assistant: ${m.content}`);
+    }
+  }
+  return parts.join('\n\n');
+}
+
 export async function runAiText({
   stage,
   messages,
   context,
-  cli,
   signal,
   onDelta,
   onNotice,
 }: RunAiOptions): Promise<string> {
   dispatchIsland('ai-start', stage);
   try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages,
-        cli: cli ?? readAiCliPreference(),
-        context,
-        stage,
-      }),
-      signal,
-    });
-    if (!response.ok || !response.body) {
-      throw new Error(`AI call failed: ${response.status}`);
-    }
-
-    return readSseToString(response.body, signal, {
-      onDelta,
+    const prompt = foldMessagesToPrompt(messages, context);
+    return await askAIStream(prompt, {
+      onDelta: onDelta ?? (() => {}),
       onNotice,
+      signal,
     });
   } finally {
     dispatchIsland('ai-end', stage);

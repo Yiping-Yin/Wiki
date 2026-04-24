@@ -1,8 +1,11 @@
 'use client';
 /**
  * Auto-embed notes after save. Fire-and-forget — embedding failure
- * doesn't affect the save itself.
+ * doesn't affect the save itself. Phase 5: routed through the Swift
+ * `loomEmbed` bridge (NLEmbedding) rather than the retired Ollama-backed
+ * `/api/embed` route.
  */
+import { embed, isEmbedAvailable } from '../embed-client';
 import { putEmbedding } from './embeddings';
 
 export async function embedNoteAfterSave(
@@ -15,17 +18,10 @@ export async function embedNoteAfterSave(
 ): Promise<void> {
   const text = [quote, content].filter(Boolean).join('\n\n').trim();
   if (text.length < 10) return; // Too short to be meaningful
-
+  if (!isEmbedAvailable()) return; // Not running inside Loom — skip silently.
   try {
-    const r = await fetch('/api/embed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text.slice(0, 2000) }),
-    });
-    if (!r.ok) return;
-    const { vector } = await r.json();
-    if (!vector || !Array.isArray(vector)) return;
-    await putEmbedding(noteId, docId, docHref, anchorId, new Float32Array(vector), text);
+    const result = await embed(text.slice(0, 2000));
+    await putEmbedding(noteId, docId, docHref, anchorId, new Float32Array(result.vector), text);
   } catch {
     // Fire-and-forget
   }

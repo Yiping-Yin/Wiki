@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CONTENT_ROOT } from './server-config';
+import { applyCorrections, readCorrections } from './source-corrections';
 
 const ROOT = CONTENT_ROOT;
 const RUNTIME_DOCS_DIR = path.join(ROOT, 'knowledge', '.cache', 'docs');
@@ -26,10 +27,22 @@ export function knowledgeDocLegacyPath(id: string) {
 
 export async function readKnowledgeDocBody(id: string): Promise<KnowledgeDocBody | null> {
   const paths = [knowledgeDocRuntimePath(id), knowledgeDocLegacyPath(id)];
+  let doc: KnowledgeDocBody | null = null;
   for (const candidate of paths) {
     try {
-      return JSON.parse(await fs.readFile(candidate, 'utf-8')) as KnowledgeDocBody;
+      doc = JSON.parse(await fs.readFile(candidate, 'utf-8')) as KnowledgeDocBody;
+      break;
     } catch {}
   }
-  return null;
+  if (!doc) return null;
+  // Apply user-authored Source Correct sidecar fixes (typos / mis-extraction)
+  // on top of the raw extracted body. Corrections survive across reads but
+  // stay isolated so rescan doesn't erase them.
+  try {
+    const corrections = await readCorrections(doc.id ?? id);
+    if (corrections.length > 0 && doc.body) {
+      doc = { ...doc, body: applyCorrections(doc.body, corrections) };
+    }
+  } catch {}
+  return doc;
 }
