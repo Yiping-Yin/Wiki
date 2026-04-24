@@ -50,6 +50,7 @@ const SHOTS = [
 // Size cap so we know early if a shot ballooned. 2880x1800 JPEG captures
 // of Loom's textured paper should stay comfortably under this.
 const MAX_BYTES = Number(process.env.LOOM_SCREENSHOT_MAX_BYTES ?? 1_500_000);
+const MIN_BYTES = Number(process.env.LOOM_SCREENSHOT_MIN_BYTES ?? 120_000);
 
 const SCREENSHOT_CSS = `
   nextjs-portal,
@@ -61,11 +62,14 @@ const SCREENSHOT_CSS = `
     pointer-events: none !important;
   }
 
+  html[data-loom-screenshot] .layout main {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
   *,
   *::before,
   *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
     transition-duration: 0s !important;
     transition-delay: 0s !important;
   }
@@ -152,8 +156,13 @@ async function main() {
     await page.screenshot(options);
     const st = await stat(file);
     const kb = Math.round(st.size / 1024);
-    const flag = st.size > MAX_BYTES ? '  oversized' : '';
-    console.log(`ok ${slug.padEnd(14)} ${String(kb).padStart(4)} KB  ${caption}${flag}`);
+    if (st.size < MIN_BYTES) {
+      throw new Error(`${slug} appears blank or under-rendered: ${st.size} bytes < ${MIN_BYTES}`);
+    }
+    if (st.size > MAX_BYTES) {
+      throw new Error(`${slug} is oversized: ${st.size} bytes > ${MAX_BYTES}`);
+    }
+    console.log(`ok ${slug.padEnd(14)} ${String(kb).padStart(4)} KB  ${caption}`);
   }
 
   await ctx.close();
