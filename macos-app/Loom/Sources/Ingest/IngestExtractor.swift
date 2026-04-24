@@ -64,22 +64,31 @@ protocol IngestExtractor {
 // plus character offsets; `verified` flips to false when `verifySpans`
 // can't locate the quote in the source (plan §3.6).
 
-/// Per-field extraction outcome. Phase 0 doesn't emit these yet —
-/// `GenericDocExtractor` returns a plain struct — but typed extractors
-/// in Phase 1+ will populate `.found` / `.notFound` per field.
+/// Per-field extraction outcome. Typed extractors in Phase 1+ populate
+/// `.found` / `.notFound` per field; `GenericDocExtractor` continues to
+/// return a plain struct and doesn't touch this type.
+///
+/// **Plan §3.7 breaking change (Phase 1):** `sourceSpan` is now a LIST
+/// (`sourceSpans`). The mitigation for AI quote-stitching is to require
+/// the model to return multiple contiguous quotes rather than joining
+/// fragments with ellipses. For the common case (one quote per field)
+/// the list has one element; for `format`-style scattered fields the
+/// list carries each fragment independently, and every element runs
+/// through `verifySpans` individually.
 enum FieldResult<T: Codable>: Codable {
-    case found(value: T, confidence: Double, sourceSpan: SourceSpan)
+    case found(value: T, confidence: Double, sourceSpans: [SourceSpan])
     case notFound(tried: [String])
 
     // Manual Codable — enum with associated values needs custom
     // encode/decode. Shape is JSON-friendly:
-    //   {"status":"found","value":T,"confidence":D,"sourceSpan":S}
+    //   {"status":"found","value":T,"confidence":D,"sourceSpans":[S,...]}
     //   {"status":"not_found","tried":[...]}
     private enum CodingKeys: String, CodingKey {
         case status
         case value
         case confidence
-        case sourceSpan
+        case sourceSpans
+        case sourceSpan   // legacy singleton key (input-only, for AI that still emits it)
         case tried
     }
 
@@ -91,11 +100,11 @@ enum FieldResult<T: Codable>: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .found(let value, let confidence, let sourceSpan):
+        case .found(let value, let confidence, let sourceSpans):
             try container.encode(Status.found, forKey: .status)
             try container.encode(value, forKey: .value)
             try container.encode(confidence, forKey: .confidence)
-            try container.encode(sourceSpan, forKey: .sourceSpan)
+            try container.encode(sourceSpans, forKey: .sourceSpans)
         case .notFound(let tried):
             try container.encode(Status.notFound, forKey: .status)
             try container.encode(tried, forKey: .tried)
@@ -109,8 +118,18 @@ enum FieldResult<T: Codable>: Codable {
         case .found:
             let value = try container.decode(T.self, forKey: .value)
             let confidence = try container.decode(Double.self, forKey: .confidence)
-            let sourceSpan = try container.decode(SourceSpan.self, forKey: .sourceSpan)
-            self = .found(value: value, confidence: confidence, sourceSpan: sourceSpan)
+            // Prefer the list form; fall back to legacy singleton if an
+            // older AI call still returns `sourceSpan`. Empty list is
+            // allowed — `verifySpans` will leave it untouched.
+            let spans: [SourceSpan]
+            if let list = try container.decodeIfPresent([SourceSpan].self, forKey: .sourceSpans) {
+                spans = list
+            } else if let single = try container.decodeIfPresent(SourceSpan.self, forKey: .sourceSpan) {
+                spans = [single]
+            } else {
+                spans = []
+            }
+            self = .found(value: value, confidence: confidence, sourceSpans: spans)
         case .notFound:
             let tried = try container.decodeIfPresent([String].self, forKey: .tried) ?? []
             self = .notFound(tried: tried)
@@ -160,47 +179,56 @@ struct SourceSpan: Codable {
 // substring search here. On miss we cap confidence at 0.4 and flip
 // `verified` to false so the UI can flag it.
 
-/// Verify a `FieldResult` against the source text. If the quote is
-/// locatable (exact / whitespace-normalized / prefix fallback), the
-/// span is rebuilt with the correct offsets and `verified: true`. If
-/// not, confidence is capped at 0.4 and `verified: false` with a
-/// machine-readable `verifyReason`.
+/// Verify a `FieldResult` against the source text. Every span in the
+/// list is independently located; located spans get `verified: true`
+/// with real offsets, un-located spans get `verified: false` with a
+/// machine-readable `verifyReason`. Confidence is capped at 0.4 if ANY
+/// span fails to verify (the field as a whole becomes suspect the
+/// moment one of its quotes is fabricated).
 ///
 /// `.notFound` results pass through untouched — there's nothing to
-/// verify.
+/// verify. An empty-span `.found` is left as-is on the same principle.
 func verifySpans<T>(
     _ result: FieldResult<T>,
     sourceText: String,
     docId: String
 ) -> FieldResult<T> {
-    guard case .found(let value, let confidence, let span) = result else {
+    guard case .found(let value, let confidence, let spans) = result else {
         return result
     }
+    guard !spans.isEmpty else { return result }
 
-    if let range = locate(quote: span.quote, in: sourceText) {
-        let verifiedSpan = SourceSpan(
-            docId: docId,
-            pageNum: span.pageNum,
-            charStart: range.lowerBound,
-            charEnd: range.upperBound,
-            quote: span.quote,
-            verified: true,
-            verifyReason: nil
-        )
-        return .found(value: value, confidence: confidence, sourceSpan: verifiedSpan)
-    } else {
-        let cappedConfidence = min(confidence, 0.4)
-        let unverifiedSpan = SourceSpan(
-            docId: docId,
-            pageNum: span.pageNum,
-            charStart: 0,
-            charEnd: 0,
-            quote: span.quote,
-            verified: false,
-            verifyReason: "quote_not_substring_of_source"
-        )
-        return .found(value: value, confidence: cappedConfidence, sourceSpan: unverifiedSpan)
+    var rebuilt: [SourceSpan] = []
+    rebuilt.reserveCapacity(spans.count)
+    var anyMissed = false
+
+    for span in spans {
+        if let range = locate(quote: span.quote, in: sourceText) {
+            rebuilt.append(SourceSpan(
+                docId: docId,
+                pageNum: span.pageNum,
+                charStart: range.lowerBound,
+                charEnd: range.upperBound,
+                quote: span.quote,
+                verified: true,
+                verifyReason: nil
+            ))
+        } else {
+            anyMissed = true
+            rebuilt.append(SourceSpan(
+                docId: docId,
+                pageNum: span.pageNum,
+                charStart: 0,
+                charEnd: 0,
+                quote: span.quote,
+                verified: false,
+                verifyReason: "quote_not_substring_of_source"
+            ))
+        }
     }
+
+    let effectiveConfidence = anyMissed ? min(confidence, 0.4) : confidence
+    return .found(value: value, confidence: effectiveConfidence, sourceSpans: rebuilt)
 }
 
 // MARK: - locate
