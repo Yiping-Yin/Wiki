@@ -548,36 +548,22 @@ final class IngestionRunner: ObservableObject {
     }
 
     private func summarise(text: String, filename: String) async throws -> String {
-        let prompt = """
-        Summarise the following document (\(filename)) in 2-3 sentences, then list 3-5 key points.
-
-        ---
-        \(text)
-        ---
-
-        Respond with the summary first, then a blank line, then a bulleted list of key points.
-        """
-        let provider = AIProviderKind.current
-        switch provider {
-        case .openai:
-            return try await OpenAIClient.send(prompt: prompt, options: OpenAIClient.Options())
-        case .customEndpoint:
-            return try await CustomEndpointClient.send(prompt: prompt, options: CustomEndpointClient.Options())
-        case .ollama:
-            return try await OllamaClient.send(prompt: prompt, options: OllamaClient.Options())
-        case .claudeCli:
-            var opts = CLIRuntimeClient.Options()
-            opts.flavor = .claude
-            return try await CLIRuntimeClient.send(prompt: prompt, options: opts)
-        case .codexCli:
-            var opts = CLIRuntimeClient.Options()
-            opts.flavor = .codex
-            return try await CLIRuntimeClient.send(prompt: prompt, options: opts)
-        case .disabled:
-            throw IngestError.aiDisabled
-        default:
-            return try await AnthropicClient.send(prompt: prompt, options: AnthropicClient.Options())
-        }
+        // Phase 0 of the ingest-extractor refactor: route through
+        // `GenericDocExtractor`, which wraps the prior prompt + provider
+        // dispatch verbatim and returns the raw provider output. That
+        // keeps today's free-form ingest summaries byte-for-byte
+        // compatible while typed extractors are introduced separately.
+        //
+        // See `Sources/Ingest/IngestExtractor.swift` and
+        // `Sources/Ingest/GenericDocExtractor.swift`. Typed extractors
+        // (syllabus, textbook chapter, …) dispatch in Phase 1+.
+        let extractor = GenericDocExtractor()
+        let result = try await extractor.extract(
+            text: text,
+            filename: filename,
+            docId: "temp-\(UUID().uuidString)"
+        )
+        return result.rawOutput
     }
 
     private func describe(_ error: Error) -> String {

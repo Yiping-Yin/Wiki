@@ -31,6 +31,7 @@
 		34EDC9CDD79A48A8FB22EDE7 /* AnthropicClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00599DFB275B7B8000591296 /* AnthropicClientTests.swift */; };
 		351B60B8E6F17E78A7860DED /* NavigationBridgeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1253932E73830C2DD9B059 /* NavigationBridgeHandler.swift */; };
 		35A89DEBE88F6EFE38A870C8 /* LoomMigrationImporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9902715B7EE5A8B25248F051 /* LoomMigrationImporterTests.swift */; };
+		3C5EC68034DF0EC5037DDC40 /* IngestExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAB4344A9D5FEA3F99BBE23D /* IngestExtractor.swift */; };
 		4A07C211A0D26822457C750D /* DevServerPreflightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3A30BF1438BCFFDD5761F /* DevServerPreflightTests.swift */; };
 		4E0CF1C5476C505763E46097 /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B37504F9F0ED3D43A8C341 /* AppearanceSettingsView.swift */; };
 		50C1F901B210F46BAC4BB09C /* DevServerPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D5E0DFC2F363A9FDCC9A0B /* DevServerPreflight.swift */; };
@@ -39,6 +40,7 @@
 		57B5D9DC1353AFD625AAEF5D /* LoomDataModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F15ABB1ACE29DE47CE756B2F /* LoomDataModelTests.swift */; };
 		582A5DD8517D1126509216D0 /* EmbeddingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D618D7BF0962CD6E39207B1 /* EmbeddingClient.swift */; };
 		6432F892116325B00A613D05 /* DevServerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */; };
+		6590825352CFE696763A6437 /* GenericDocExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1347705EF1BE71C610F3948F /* GenericDocExtractor.swift */; };
 		6C8D0093C9BA4FF328AA3605 /* OverlayDataFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13B5941E45CEDF2AFAFB493 /* OverlayDataFlowTests.swift */; };
 		70CB370592F2AA33745BD3F9 /* OllamaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19B1CAD81EF9A7257E0A312 /* OllamaClient.swift */; };
 		72DFEDD02D325EBAA571412D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */; };
@@ -64,6 +66,7 @@
 		C5B93934406C13D7BD3F272C /* LoomURLSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48CB48D6E4655513E3F8CD54 /* LoomURLSchemeHandler.swift */; };
 		C61541C082D7DDDB4DC7AF9A /* LoomWeaveWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 652BA7E02AD1FCC49B0F406B /* LoomWeaveWriter.swift */; };
 		C65E968959C88DBBA2DDEE5F /* RehearsalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91309B1785AAA0FD9BBCAB9B /* RehearsalView.swift */; };
+		C697FC6F0D804AC59A2D874A /* IngestExtractorLocateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C465A55EF6D020019EF74BB /* IngestExtractorLocateTests.swift */; };
 		D050FC6FF87BE9CBEC8E7BD9 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F12807AEF51F6633743BA3 /* KeychainStore.swift */; };
 		D6C670EC4AB12F9BD0E0DFDB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5B34F36F6EAFC6BA0A1FF9CC /* PrivacyInfo.xcprivacy */; };
 		D717753C694893E6DAF0B37B /* LoomPursuitWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60E3169E26CB01CA6A193C /* LoomPursuitWriter.swift */; };
@@ -93,6 +96,7 @@
 		06FC617DEBD32A159754CD61 /* LoomWebViewInteractionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomWebViewInteractionPolicyTests.swift; sourceTree = "<group>"; };
 		0736D5D3EE82DC3E4B358DF9 /* KeyboardHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHelpView.swift; sourceTree = "<group>"; };
 		0DDB997F52D3D77DEFE401A4 /* ExaminerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExaminerView.swift; sourceTree = "<group>"; };
+		1347705EF1BE71C610F3948F /* GenericDocExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericDocExtractor.swift; sourceTree = "<group>"; };
 		1687BC8ADBB27D3FD0C502D7 /* LoomTraceWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomTraceWriter.swift; sourceTree = "<group>"; };
 		1C8C21FA61DBCDC92202589A /* LoomTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomTokens.swift; sourceTree = "<group>"; };
 		1F404A51FFFC4215A4DACB2C /* ShuttleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShuttleView.swift; sourceTree = "<group>"; };
@@ -133,11 +137,13 @@
 		9902715B7EE5A8B25248F051 /* LoomMigrationImporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomMigrationImporterTests.swift; sourceTree = "<group>"; };
 		9991A8B46F80260F1654A940 /* CLIRuntimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIRuntimeClient.swift; sourceTree = "<group>"; };
 		9B31374C524298382B25CAE5 /* DataSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSettingsView.swift; sourceTree = "<group>"; };
+		9C465A55EF6D020019EF74BB /* IngestExtractorLocateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngestExtractorLocateTests.swift; sourceTree = "<group>"; };
 		9C7150E29C609C574638AA92 /* CLIRuntimeClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIRuntimeClientTests.swift; sourceTree = "<group>"; };
 		A6BEBD4BB8D9C5730C215127 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		A87FAF953904D7676C1AEDF9 /* LoomTraceWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomTraceWriterTests.swift; sourceTree = "<group>"; };
 		B7F8CCD03C55D5771F90EF30 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BA1253932E73830C2DD9B059 /* NavigationBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationBridgeHandler.swift; sourceTree = "<group>"; };
+		BAB4344A9D5FEA3F99BBE23D /* IngestExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngestExtractor.swift; sourceTree = "<group>"; };
 		CFB0FB42BDCFD78AC68A01BF /* Loom.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loom.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D3080D41F3CA22A6933AC963 /* SecurityScopedFolderStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedFolderStoreTests.swift; sourceTree = "<group>"; };
 		D658FFE18D925548FA72223C /* IngestionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngestionView.swift; sourceTree = "<group>"; };
@@ -210,8 +216,18 @@
 				4534DD512710116134F47530 /* SecurityScopedFolderStore.swift */,
 				2746C5548C8E8ABC409DE737 /* SelectableTextEditor.swift */,
 				1F404A51FFFC4215A4DACB2C /* ShuttleView.swift */,
+				741CEA3BD7AAAD92DC5EE047 /* Ingest */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		741CEA3BD7AAAD92DC5EE047 /* Ingest */ = {
+			isa = PBXGroup;
+			children = (
+				1347705EF1BE71C610F3948F /* GenericDocExtractor.swift */,
+				BAB4344A9D5FEA3F99BBE23D /* IngestExtractor.swift */,
+			);
+			path = Ingest;
 			sourceTree = "<group>";
 		};
 		AE2495C2DD7C4012BED6E594 /* Products */ = {
@@ -245,6 +261,7 @@
 				2A78D44A8A1E04F2FF2FF6ED /* DevServerTests.swift */,
 				D98677EAB28D6F8769007F99 /* EmbeddingClientTests.swift */,
 				D7C554FF435D8BD9AC4D76B8 /* ExaminerVerdictParserTests.swift */,
+				9C465A55EF6D020019EF74BB /* IngestExtractorLocateTests.swift */,
 				7838A33BEFC23E835A507546 /* KeychainStoreTests.swift */,
 				738F4C9BD365A277EF6F4F2E /* LoomCommandScriptsTests.swift */,
 				F15ABB1ACE29DE47CE756B2F /* LoomDataModelTests.swift */,
@@ -398,6 +415,8 @@
 				13FADEDD4AB86C27F49B49F9 /* EveningView.swift in Sources */,
 				0505806677A4C74E9C32308D /* ExaminerView.swift in Sources */,
 				54B34835946DF92144FB14D5 /* FirstRunProviderSheet.swift in Sources */,
+				6590825352CFE696763A6437 /* GenericDocExtractor.swift in Sources */,
+				3C5EC68034DF0EC5037DDC40 /* IngestExtractor.swift in Sources */,
 				317E7110A8CC4324BFFC2889 /* IngestionView.swift in Sources */,
 				0A694EE3E798F683EEFC762D /* KeyboardHelpView.swift in Sources */,
 				D050FC6FF87BE9CBEC8E7BD9 /* KeychainStore.swift in Sources */,
@@ -440,6 +459,7 @@
 				6432F892116325B00A613D05 /* DevServerTests.swift in Sources */,
 				B8B8C97E6FE0672756447FF8 /* EmbeddingClientTests.swift in Sources */,
 				B6CD9CD89ED30455F805D569 /* ExaminerVerdictParserTests.swift in Sources */,
+				C697FC6F0D804AC59A2D874A /* IngestExtractorLocateTests.swift in Sources */,
 				0A33CF69C9CB7A623FC846CC /* KeychainStoreTests.swift in Sources */,
 				B8B8C6F5796088A9F0EA8337 /* LoomCommandScriptsTests.swift in Sources */,
 				57B5D9DC1353AFD625AAEF5D /* LoomDataModelTests.swift in Sources */,
