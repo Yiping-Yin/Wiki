@@ -12,6 +12,7 @@
       --muted: #86868b;
       --accent: #0071e3;
       --bg: #ffffff;
+      --hair: #d2d2d7;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -20,6 +21,7 @@
         --muted: #8e8e93;
         --accent: #0a84ff;
         --bg: #000000;
+        --hair: #2c2c2e;
       }
     }
     body {
@@ -54,6 +56,13 @@
     ul { padding-left: 1.2rem; margin: 0.4rem 0; }
     li { margin: 0.25rem 0; color: var(--fg-secondary); font-size: 0.95rem; }
     a { color: var(--accent); }
+    code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.86em;
+      background: rgba(127,127,127,0.12);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
     .eyebrow {
       font-size: 0.7rem;
       text-transform: uppercase;
@@ -64,6 +73,33 @@
     }
     strong { color: var(--fg); font-weight: 600; }
     .updated { font-size: 0.75rem; color: var(--muted); margin-top: 2rem; }
+
+    details {
+      border-top: 1px solid var(--hair);
+      padding: 0.9rem 0;
+    }
+    details:last-of-type { border-bottom: 1px solid var(--hair); }
+    summary {
+      font-weight: 600;
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 0.95rem;
+      list-style: none;
+      position: relative;
+      padding-right: 1.4rem;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+";
+      position: absolute;
+      right: 0;
+      top: 0;
+      color: var(--accent);
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    details[open] summary::after { content: "−"; }
+    details p { margin-top: 0.5rem; }
   </style>
 </head>
 <body>
@@ -73,15 +109,58 @@
   <p>Loom is a local Mac app for reading and thinking. If something fails, the fastest useful report is concrete and short.</p>
 
   <h2>Report an Issue</h2>
-  <p>Open an issue at <a href="https://github.com/Yiping-Yin/Wiki/issues" target="_blank" rel="noopener">github.com/Yiping-Yin/Wiki/issues</a>.</p>
+  <p>Open an issue at <a href="https://github.com/Yiping-Yin/Wiki/issues" target="_blank" rel="noopener">github.com/Yiping-Yin/Wiki/issues</a>, or email <a href="mailto:yiping_yin0521@outlook.com?subject=Loom%20Support">yiping_yin0521@outlook.com</a>. I read every message and reply within two working days.</p>
   <p>Please include:</p>
   <ul>
     <li>Your macOS version</li>
-    <li>The Loom app version and bundle identifier <code>com.yinyiping.loom</code></li>
+    <li>The Loom app version (<strong>Loom → About Loom</strong>) and bundle identifier <code>com.yinyiping.loom</code></li>
     <li>What you were trying to do</li>
     <li>Any visible error message</li>
     <li>Whether the issue involved AI provider settings or local files</li>
+    <li>Most recent file from <code>~/Library/Logs/Loom/</code> if the app crashed</li>
   </ul>
+
+  <h2>Common Questions</h2>
+
+  <details>
+    <summary>Which macOS versions does Loom run on?</summary>
+    <p>macOS 14 (Sonoma) and later. Loom is built for Apple Silicon and runs natively.</p>
+  </details>
+
+  <details>
+    <summary>Do I need an API key to use Loom?</summary>
+    <p>No. Loom works as a reading surface without AI. If you want the margin weaver, rehearsal, or examiner features, pick a provider in <strong>Settings → AI Provider</strong>: Anthropic, OpenAI, Ollama (local), or a custom HTTPS endpoint. Keys stay in the macOS Keychain.</p>
+  </details>
+
+  <details>
+    <summary>Which file types can I drop in?</summary>
+    <p>PDF, Word (<code>.docx</code>, <code>.doc</code>), Rich Text (<code>.rtf</code>, <code>.rtfd</code>), and plain text or Markdown (<code>.md</code>, <code>.mdx</code>, <code>.txt</code>, <code>.markdown</code>).</p>
+  </details>
+
+  <details>
+    <summary>Loom can't see my folder. What do I do?</summary>
+    <p>macOS sandboxing means Loom only reads folders you explicitly grant access to. Open <strong>Settings → Data</strong> and pick your sources folder again — Loom will remember it across launches via a security-scoped bookmark.</p>
+  </details>
+
+  <details>
+    <summary>My Ollama isn't answering. Why?</summary>
+    <p>Open <strong>Settings → AI Provider</strong> and confirm the host and model. Ollama defaults to <code>http://127.0.0.1:11434</code>; make sure Ollama is running (<code>ollama serve</code>) and the model you picked has been pulled (for example, <code>ollama pull llama3</code>).</p>
+  </details>
+
+  <details>
+    <summary>Why is "Claude CLI" or "Codex CLI" greyed out?</summary>
+    <p>In the Mac App Store build, sandbox rules block Loom from spawning local command-line binaries. HTTPS providers (Anthropic, OpenAI, a custom endpoint) and the local Ollama HTTP API remain available.</p>
+  </details>
+
+  <details>
+    <summary>Where does Loom store my data?</summary>
+    <p>Reading traces and held panels live in <code>~/Library/Application Support/Loom/</code>. Your source files stay exactly where you put them — Loom never moves or rewrites the originals.</p>
+  </details>
+
+  <details>
+    <summary>How do I delete everything Loom has learned?</summary>
+    <p><strong>Settings → Data → Wipe all Loom data</strong> clears Loom preferences and web storage. To remove traces, panels, weaves, and every sandboxed database, delete <code>~/Library/Containers/com.yinyiping.loom</code>. Remove API keys from <strong>Settings → AI Provider</strong>, or delete the <code>com.yinyiping.loom</code> entries in Keychain Access.</p>
+  </details>
 
   <h2>Privacy</h2>
   <p>For data handling details, read the <a href="/privacy.html">Loom privacy policy</a>.</p>
