@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { loomContentRootConfigPath } from '../../../lib/paths';
+import { writeScanScope } from '../../../lib/scan-scope';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,5 +71,6 @@ export async function POST(req: Request) {
   const configPath = loomContentRootConfigPath();
   await fs.mkdir(path.dirname(configPath), { recursive: true });
   await fs.writeFile(configPath, JSON.stringify({ contentRoot: next }, null, 2), 'utf-8');
+  await writeScanScope({ included: [] });
   return NextResponse.json({ contentRoot: next });
 }

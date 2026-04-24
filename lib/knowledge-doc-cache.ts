@@ -1,11 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CONTENT_ROOT } from './server-config';
+import { resolveContentRoot } from './runtime-roots';
 import { applyCorrections, readCorrections } from './source-corrections';
-
-const ROOT = CONTENT_ROOT;
-const RUNTIME_DOCS_DIR = path.join(ROOT, 'knowledge', '.cache', 'docs');
-const LEGACY_DOCS_DIR = path.join(ROOT, 'public', 'knowledge', 'docs');
 
 export type KnowledgeDocBody = {
   id: string;
@@ -13,16 +10,20 @@ export type KnowledgeDocBody = {
   body: string;
 };
 
+function contentRoot() {
+  return resolveContentRoot({ fallbackContentRoot: CONTENT_ROOT });
+}
+
 export function knowledgeDocRuntimeDir() {
-  return RUNTIME_DOCS_DIR;
+  return path.join(contentRoot(), 'knowledge', '.cache', 'docs');
 }
 
 export function knowledgeDocRuntimePath(id: string) {
-  return path.join(RUNTIME_DOCS_DIR, `${id}.json`);
+  return path.join(knowledgeDocRuntimeDir(), `${id}.json`);
 }
 
 export function knowledgeDocLegacyPath(id: string) {
-  return path.join(LEGACY_DOCS_DIR, `${id}.json`);
+  return path.join(contentRoot(), 'public', 'knowledge', 'docs', `${id}.json`);
 }
 
 export async function readKnowledgeDocBody(id: string): Promise<KnowledgeDocBody | null> {

@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   buildInstallFailure,
+  installRuntimeMetadata,
   isPermissionFallbackError,
 } from '../scripts/install-loom-app.mjs';
 import {
@@ -29,6 +30,46 @@ test('install script does not classify generic ditto failures as permission fall
   const error = buildInstallFailure(1, 'ditto: some unrelated failure\n') as Error & { code?: string };
 
   assert.equal(isPermissionFallbackError(error), false);
+});
+
+test('install script preserves an existing user-selected content root', async () => {
+  const homeRoot = fs.mkdtempSync(path.join(tmpdir(), 'loom-install-home-'));
+  const appSupport = path.join(homeRoot, 'Library', 'Application Support', 'Loom');
+  const pickedRoot = path.join(homeRoot, 'Knowledge', 'INFS 3822');
+
+  try {
+    fs.mkdirSync(appSupport, { recursive: true });
+    fs.writeFileSync(
+      path.join(appSupport, 'content-root.json'),
+      JSON.stringify({ contentRoot: pickedRoot }, null, 2),
+      'utf8',
+    );
+
+    await installRuntimeMetadata({ repoRoot: '/repo/Wiki', homeOverride: homeRoot, env: {} });
+
+    const persisted = JSON.parse(
+      fs.readFileSync(path.join(appSupport, 'content-root.json'), 'utf8'),
+    ) as { contentRoot?: string };
+    assert.equal(persisted.contentRoot, pickedRoot);
+  } finally {
+    fs.rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
+test('install script initializes content root only when no user selection exists', async () => {
+  const homeRoot = fs.mkdtempSync(path.join(tmpdir(), 'loom-install-home-'));
+  const appSupport = path.join(homeRoot, 'Library', 'Application Support', 'Loom');
+
+  try {
+    await installRuntimeMetadata({ repoRoot: '/repo/Wiki', homeOverride: homeRoot, env: {} });
+
+    const persisted = JSON.parse(
+      fs.readFileSync(path.join(appSupport, 'content-root.json'), 'utf8'),
+    ) as { contentRoot?: string };
+    assert.equal(persisted.contentRoot, '/repo/Wiki');
+  } finally {
+    fs.rmSync(homeRoot, { recursive: true, force: true });
+  }
 });
 
 test('package script resolves output under the repository root instead of a machine-specific path', () => {

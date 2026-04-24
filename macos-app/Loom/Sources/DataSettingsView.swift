@@ -6,7 +6,8 @@ import WebKit
 ///
 /// Covers:
 /// - Re-pick the content-root folder (triggers `NSOpenPanel`; updates
-///   security-scoped bookmark via `SecurityScopedFolderStore`).
+///   both the security-scoped bookmark and `content-root.json` via
+///   `SecurityScopedFolderStore`).
 /// - Clear migration status so Phase 2 re-runs on next launch.
 /// - Full local reset: wipes UserDefaults keys + asks the webview to
 ///   clear its `wiki:*` localStorage + IndexedDB, then reloads.
@@ -366,7 +367,7 @@ struct DataSettingsView: View {
         panel.prompt = "Choose Folder"
         panel.title = "Re-pick Loom content root"
         if panel.runModal() == .OK, let url = panel.url {
-            if SecurityScopedFolderStore.saveAndActivate(url) {
+            if SecurityScopedFolderStore.saveActivateAndPersistContentRoot(url) {
                 NotificationCenter.default.post(name: .loomContentRootChanged, object: nil)
                 status = "Content root updated."
             } else {

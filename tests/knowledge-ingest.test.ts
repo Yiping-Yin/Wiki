@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -77,5 +79,62 @@ test('ingest keeps a selected scoped subtree as the source category', async () =
       categorySlug: 'unsw-infs3822',
       subcategory: 'Week 2',
     },
+  );
+});
+
+test('ingest writes a picked folder as one source collection with its folders underneath', async (t) => {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-picked-folder-'));
+  const picked = path.join(tempRoot, 'INFS 3822');
+  await mkdir(path.join(picked, 'Assessment'), { recursive: true });
+  await mkdir(path.join(picked, 'Week'), { recursive: true });
+  await writeFile(path.join(picked, 'Course Guide.md'), '# Guide', 'utf8');
+  await writeFile(path.join(picked, 'Assessment', 'rubric.md'), '# Rubric', 'utf8');
+  await writeFile(path.join(picked, 'Week', 'week-1.md'), '# Week 1', 'utf8');
+
+  const previousKnowledgeRoot = process.env.LOOM_KNOWLEDGE_ROOT;
+  const previousContentRoot = process.env.LOOM_CONTENT_ROOT;
+  const previousUserDataRoot = process.env.LOOM_USER_DATA_ROOT;
+  process.env.LOOM_KNOWLEDGE_ROOT = picked;
+  process.env.LOOM_CONTENT_ROOT = picked;
+  process.env.LOOM_USER_DATA_ROOT = path.join(tempRoot, 'user-data');
+  t.after(() => {
+    if (previousKnowledgeRoot === undefined) delete process.env.LOOM_KNOWLEDGE_ROOT;
+    else process.env.LOOM_KNOWLEDGE_ROOT = previousKnowledgeRoot;
+    if (previousContentRoot === undefined) delete process.env.LOOM_CONTENT_ROOT;
+    else process.env.LOOM_CONTENT_ROOT = previousContentRoot;
+    if (previousUserDataRoot === undefined) delete process.env.LOOM_USER_DATA_ROOT;
+    else process.env.LOOM_USER_DATA_ROOT = previousUserDataRoot;
+  });
+
+  const { runIngest } = await importIngestModule();
+  await runIngest();
+
+  const navPath = path.join(picked, 'knowledge', '.cache', 'manifest', 'knowledge-nav.json');
+  const nav = JSON.parse(await readFile(navPath, 'utf8')) as {
+    knowledgeCategories: Array<{
+      slug: string;
+      label: string;
+      count: number;
+      subs: Array<{ label: string; count: number }>;
+    }>;
+    knowledgeTotal: number;
+  };
+
+  assert.equal(nav.knowledgeTotal, 3);
+  assert.deepEqual(
+    nav.knowledgeCategories.map((category) => ({
+      slug: category.slug,
+      label: category.label,
+      count: category.count,
+      subs: category.subs.map((sub) => sub.label),
+    })),
+    [
+      {
+        slug: 'infs-3822',
+        label: 'INFS 3822',
+        count: 3,
+        subs: ['', 'Assessment', 'Week'],
+      },
+    ],
   );
 });

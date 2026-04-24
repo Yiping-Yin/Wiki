@@ -29,6 +29,7 @@ const repoRoot = process.cwd();
 const serverConfigUrl = pathToFileURL(path.join(repoRoot, 'lib', 'server-config.ts')).href;
 const uploadRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'upload', 'route.ts')).href;
 const knowledgeCreateRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'knowledge', 'create', 'route.ts')).href;
+const contentRootRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'content-root', 'route.ts')).href;
 
 function runIsolatedTsEval(script: string, options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
   const childEnv: NodeJS.ProcessEnv = { ...process.env };
@@ -265,6 +266,49 @@ test('server-config falls back without throwing when persisted content-root conf
 
   assert.equal(parsed.CONTENT_ROOT, canonicalPath(fallbackRoot));
   assert.match(parsed.CONTENT_ROOT_CONFIG_ERROR ?? '', /content-root\.json/i);
+});
+
+test('content-root route resets stale scan scope when a new folder is picked', async () => {
+  const runtimeHome = await mkdtemp(path.join(os.tmpdir(), 'loom-content-root-home-'));
+  const userDataRoot = path.join(runtimeHome, 'user-data');
+  const contentRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-picked-content-'));
+
+  const output = runIsolatedTsEval(
+    `
+      import path from 'node:path';
+      import { mkdir, readFile, writeFile } from 'node:fs/promises';
+
+      const userDataRoot = ${JSON.stringify(userDataRoot)};
+      await mkdir(userDataRoot, { recursive: true });
+      await writeFile(
+        path.join(userDataRoot, 'scan-scope.json'),
+        JSON.stringify({ included: ['old/course'] }),
+        'utf8',
+      );
+
+      const mod = await import(${JSON.stringify(contentRootRouteUrl)});
+      const { POST } = mod.default ?? mod;
+      const response = await POST(new Request('http://localhost/api/content-root', {
+        method: 'POST',
+        body: JSON.stringify({ contentRoot: ${JSON.stringify(contentRoot)} }),
+        headers: { 'content-type': 'application/json' },
+      }));
+      const scope = JSON.parse(await readFile(path.join(userDataRoot, 'scan-scope.json'), 'utf8'));
+      console.log(JSON.stringify({ status: response.status, scope }));
+    `,
+    {
+      env: {
+        HOME: runtimeHome,
+        USERPROFILE: undefined,
+        LOOM_USER_DATA_ROOT: userDataRoot,
+        LOOM_CONTENT_ROOT: undefined,
+      },
+    },
+  );
+  const parsed = JSON.parse(output) as { status: number; scope: { included: string[] } };
+
+  assert.equal(parsed.status, 200);
+  assert.deepEqual(parsed.scope, { included: [] });
 });
 
 test('upload route triggers ingest from the execution root instead of the content root', async () => {

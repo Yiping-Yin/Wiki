@@ -42,6 +42,56 @@ final class SecurityScopedFolderStoreTests: XCTestCase {
         XCTAssertNil(SecurityScopedFolderStore.resolve(defaults: defaults))
     }
 
+    func testPersistContentRootConfigWritesFolderForIngestRoutes() throws {
+        let fm = FileManager.default
+        let home = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let picked = home.appendingPathComponent("Knowledge System/UNSW/INFS 3822", isDirectory: true)
+        try fm.createDirectory(at: picked, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: home) }
+
+        try SecurityScopedFolderStore.persistContentRootConfig(
+            picked,
+            homeDirectory: home.path,
+            fileManager: fm
+        )
+
+        let config = home.appendingPathComponent("Library/Application Support/Loom/content-root.json")
+        let data = try Data(contentsOf: config)
+        let decoded = try JSONDecoder().decode([String: String].self, from: data)
+        XCTAssertEqual(decoded["contentRoot"], picked.path)
+    }
+
+    func testSaveActivateAndPersistContentRootKeepsBookmarkAndJsonInSync() throws {
+        let fm = FileManager.default
+        let home = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let picked = home.appendingPathComponent("Knowledge System/UNSW/COMP 1511", isDirectory: true)
+        try fm.createDirectory(at: picked, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: home) }
+
+        let defaults = makeDefaults()
+        defer { SecurityScopedFolderStore.clear(defaults: defaults) }
+
+        XCTAssertTrue(
+            SecurityScopedFolderStore.saveActivateAndPersistContentRoot(
+                picked,
+                defaults: defaults,
+                homeDirectory: home.path,
+                fileManager: fm,
+                activateAndSave: { url, defaults in
+                    SecurityScopedFolderStore.save(url, defaults: defaults)
+                }
+            )
+        )
+
+        let resolved = SecurityScopedFolderStore.resolve(defaults: defaults)
+        XCTAssertEqual(resolved?.url.standardizedFileURL, picked.standardizedFileURL)
+
+        let config = home.appendingPathComponent("Library/Application Support/Loom/content-root.json")
+        let data = try Data(contentsOf: config)
+        let decoded = try JSONDecoder().decode([String: String].self, from: data)
+        XCTAssertEqual(decoded["contentRoot"], picked.path)
+    }
+
     func testResolveReturnsStaleFlagWhenFolderMoved() throws {
         let fm = FileManager.default
         let original = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

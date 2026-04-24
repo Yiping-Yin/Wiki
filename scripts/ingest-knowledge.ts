@@ -21,7 +21,7 @@
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { KNOWLEDGE_ROOT, toKnowledgeRelativePath } from '../lib/server-config';
+import { KNOWLEDGE_ROOT } from '../lib/server-config';
 import { knowledgeDocRuntimeDir, knowledgeDocRuntimePath } from '../lib/knowledge-doc-cache';
 import {
   collectionMetadataPath,
@@ -80,6 +80,10 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 80) || 'doc';
+}
+
+function sourceRelativePath(absPath: string, SRC: string): string {
+  return path.relative(SRC, absPath).split(path.sep).join('/');
 }
 
 async function walk(
@@ -568,7 +572,7 @@ async function main() {
       id, title, category, categorySlug,
       subcategory, subOrder: subOrder(subcategory),
       fileSlug,
-      sourcePath: toKnowledgeRelativePath(p), ext: ext || '.txt',
+      sourcePath: sourceRelativePath(p, SRC), ext: ext || '.txt',
       size: stat?.size ?? 0,
       hasText: !!textPath,
       preview,

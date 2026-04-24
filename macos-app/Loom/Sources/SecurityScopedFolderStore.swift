@@ -15,6 +15,10 @@ enum SecurityScopedFolderStore {
     static let defaultsKey = "loom.content-root.bookmark.v1"
     private static let manifestRelativePath = "knowledge/.cache/manifest/knowledge-nav.json"
 
+    private struct PersistedContentRoot: Encodable {
+        let contentRoot: String
+    }
+
     /// Capture and persist a security-scoped bookmark for a chosen URL.
     /// - Parameter url: the URL returned by NSOpenPanel.
     /// - Returns: true on success, false on bookmark-creation failure.
@@ -98,6 +102,7 @@ enum SecurityScopedFolderStore {
             return nil
         }
         activeURL = url
+        try? persistContentRootConfig(url, fileManager: fileManager)
         return url
     }
 
@@ -118,6 +123,49 @@ enum SecurityScopedFolderStore {
         guard url.startAccessingSecurityScopedResource() else { return false }
         activeURL = url
         return true
+    }
+
+    /// Keep the legacy JSON pointer in sync with the native bookmark.
+    ///
+    /// Next.js API routes such as `/api/ingest` run outside the Swift
+    /// process and cannot read `SecurityScopedFolderStore.currentActiveURL`.
+    /// They resolve the content root from
+    /// `~/Library/Application Support/Loom/content-root.json`, so the native
+    /// Settings picker must update both stores.
+    static func persistContentRootConfig(
+        _ url: URL,
+        homeDirectory: String = NSHomeDirectory(),
+        fileManager: FileManager = .default
+    ) throws {
+        let appSupport = URL(
+            fileURLWithPath: LoomRuntimePaths.appSupportRoot(homeDirectory: homeDirectory),
+            isDirectory: true
+        )
+        try fileManager.createDirectory(at: appSupport, withIntermediateDirectories: true)
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(PersistedContentRoot(contentRoot: url.path))
+        try data.write(to: appSupport.appendingPathComponent("content-root.json"), options: .atomic)
+    }
+
+    @discardableResult
+    static func saveActivateAndPersistContentRoot(
+        _ url: URL,
+        defaults: UserDefaults = .standard,
+        homeDirectory: String = NSHomeDirectory(),
+        fileManager: FileManager = .default,
+        activateAndSave: (URL, UserDefaults) -> Bool = { url, defaults in
+            SecurityScopedFolderStore.saveAndActivate(url, defaults: defaults)
+        }
+    ) -> Bool {
+        guard activateAndSave(url, defaults) else { return false }
+        do {
+            try persistContentRootConfig(url, homeDirectory: homeDirectory, fileManager: fileManager)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// The currently-active security-scoped URL, if `restoreAtLaunch` has

@@ -73,6 +73,8 @@ test('screenshot script defaults to Mac App Store dimensions and configurable in
   assert.match(source, /LOOM_SCREENSHOT_FORMAT \?\? 'jpeg'/);
   assert.match(source, /LOOM_SCREENSHOT_QUALITY \?\? 86/);
   assert.match(source, /LOOM_SCREENSHOT_MIN_BYTES \?\? 120_000/);
+  assert.match(source, /waitUntil: 'domcontentloaded'/);
+  assert.match(source, /waitForSelector\('body'/);
   assert.match(source, /appears blank or under-rendered/);
   assert.match(source, /is oversized/);
   assert.doesNotMatch(source, /\$\{flag\}/);

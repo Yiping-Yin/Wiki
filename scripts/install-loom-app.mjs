@@ -9,6 +9,7 @@ import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
  * @typedef {object} InstallRuntimeMetadataOptions
  * @property {string} [repoRoot]
  * @property {string} [homeOverride]
+ * @property {NodeJS.ProcessEnv} [env]
  */
 
 /**
@@ -61,15 +62,35 @@ export function isPermissionFallbackError(error) {
     || message.includes('not permitted');
 }
 
+function persistedContentRoot(text) {
+  if (!text) return null;
+
+  try {
+    const parsed = JSON.parse(text);
+    return typeof parsed.contentRoot === 'string' && parsed.contentRoot.trim()
+      ? parsed.contentRoot.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * @param {InstallRuntimeMetadataOptions} [options]
  */
-export async function installRuntimeMetadata({ repoRoot, homeOverride } = {}) {
+export async function installRuntimeMetadata({ repoRoot, homeOverride, env = process.env } = {}) {
   const appSupportRoot = path.join(homeOverride ?? home, 'Library', 'Application Support', 'Loom');
+  const contentRootPath = path.join(appSupportRoot, 'content-root.json');
+  const configuredContentRoot = typeof env.LOOM_CONTENT_ROOT === 'string' && env.LOOM_CONTENT_ROOT.trim()
+    ? env.LOOM_CONTENT_ROOT.trim()
+    : null;
+  const existingContentRoot = persistedContentRoot(await readTextIfExists(contentRootPath));
+  const contentRoot = configuredContentRoot ?? existingContentRoot ?? repoRoot;
+
   await fs.mkdir(appSupportRoot, { recursive: true });
   await fs.writeFile(
-    path.join(appSupportRoot, 'content-root.json'),
-    JSON.stringify({ contentRoot: repoRoot }, null, 2),
+    contentRootPath,
+    JSON.stringify({ contentRoot }, null, 2),
     'utf8',
   );
 }

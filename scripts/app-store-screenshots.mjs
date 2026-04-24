@@ -134,10 +134,12 @@ async function main() {
     const target = `${BASE}${url}`;
     const file = path.join(OUT_DIR, `${slug}.${EXTENSION}`);
     try {
-      const response = await page.goto(target, { waitUntil: 'networkidle', timeout: 25_000 });
+      const response = await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 25_000 });
       if (!response || !response.ok()) {
         throw new Error(`HTTP ${response?.status() ?? 'unknown'} for ${target}`);
       }
+      await page.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+      await page.waitForSelector('body', { state: 'visible', timeout: 10_000 });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.warn(`! ${slug} goto failed: ${message}`);

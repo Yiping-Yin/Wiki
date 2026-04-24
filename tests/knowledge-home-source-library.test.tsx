@@ -121,7 +121,7 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.match(sourceText, /onCancelHideCategory = \(\) => \{\}/);
   assert.match(sourceText, /onConfirmHideCategory = \(\) => \{\}/);
   assert.match(sourceText, /onMoveCategory = \(\) => \{\}/);
-  assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source files stay unchanged\./);
+  assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source\s+files stay unchanged\./);
   assert.doesNotMatch(sourceText, /buildSourceLibraryGroups/);
 
   const buttons = [] as ts.JsxElement[];
@@ -185,9 +185,9 @@ test('KnowledgeHomeStatic renders Atlas entry sections and collection tiles thro
   assert.match(sourceText, /<StageShell/);
   assert.match(sourceText, /<QuietScene tone="atlas"/);
   assert.match(sourceText, /<PageFrame/);
-  assert.match(sourceText, /<span>\{totalCollections\} collections · \{totalDocs\} docs<\/span>/);
+  assert.match(sourceText, /<span>\s*\{totalCollections\} collections · \{totalDocs\} docs\s*<\/span>/);
   assert.match(sourceText, /Your sources, grouped\./);
-  assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source files stay unchanged\./);
+  assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source\s+files stay unchanged\./);
   assert.match(sourceText, /href=\{`\/knowledge\/\$\{item\.slug\}`\}/);
   assert.match(sourceText, /Open collection/);
   assert.match(sourceText, /formatCount\(group\.items\.length, 'collection'\)/);
