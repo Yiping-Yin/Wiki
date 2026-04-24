@@ -139,12 +139,10 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   const buttonText = (element: ts.JsxElement) => normalizedJsxText(element, sourceFile);
   const addGroupButton = buttons.find((element) => buttonText(element) === 'Add group');
   const createGroupButton = buttons.find((element) => buttonText(element) === 'Create group');
-  const renameGroupButton = buttons.find((element) => buttonText(element) === 'Rename group');
-  const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Delete group');
-  const removeSourceButton = buttons.find((element) => buttonText(element) === 'Remove from Atlas');
+  const renameGroupButton = buttons.find((element) => buttonText(element) === 'Rename');
+  const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Delete');
   const saveButton = buttons.find((element) => buttonText(element) === 'Save');
   const deleteNowButton = buttons.find((element) => buttonText(element) === 'Delete now');
-  const removeNowButton = buttons.find((element) => buttonText(element) === 'Remove now');
   const cancelButtons = buttons.filter((element) => buttonText(element) === 'Cancel');
   const selectElement = visit(sourceFile, (node) =>
     ts.isJsxElement(node) &&
@@ -156,10 +154,8 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.ok(createGroupButton, 'Create group button not found');
   assert.ok(renameGroupButton, 'Rename group button not found');
   assert.ok(deleteGroupButton, 'Delete group button not found');
-  assert.ok(removeSourceButton, 'Remove from Atlas button not found');
   assert.ok(saveButton, 'Save button not found');
   assert.ok(deleteNowButton, 'Delete now button not found');
-  assert.ok(removeNowButton, 'Remove now button not found');
   assert.ok(cancelButtons.length >= 2, 'Cancel buttons not found');
   assert.ok(selectElement, 'Move-to-group select not found');
 
@@ -177,14 +173,6 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
     '() => onConfirmDeleteGroup(group.id)',
   );
   assert.equal(
-    jsxExpressionText(removeSourceButton.openingElement, 'onClick', sourceFile),
-    '() => onRequestHideCategory(item.slug)',
-  );
-  assert.equal(
-    jsxExpressionText(removeNowButton.openingElement, 'onClick', sourceFile),
-    '() => onConfirmHideCategory(item.slug)',
-  );
-  assert.equal(
     jsxExpressionText(selectElement.openingElement, 'onChange', sourceFile),
     '(event) => onMoveCategory(item.slug, event.target.value)',
   );
@@ -196,29 +184,22 @@ test('KnowledgeHomeStatic renders Atlas entry sections and collection tiles thro
 
   assert.match(sourceText, /<StageShell/);
   assert.match(sourceText, /<QuietScene tone="atlas"/);
-  assert.match(
-    sourceText,
-    /<QuietSceneIntro[\s\S]*meta=\{\s*<span>\s*\{totalCollections\} collections · \{totalDocs\} docs\s*<\/span>\s*\}[\s\S]*summary=/,
-  );
-  assert.match(sourceText, /Raw sources stay quiet until a thread warms them\./);
+  assert.match(sourceText, /<PageFrame/);
+  assert.match(sourceText, /<span>\{totalCollections\} collections · \{totalDocs\} docs<\/span>/);
+  assert.match(sourceText, /Your sources, grouped\./);
   assert.match(sourceText, /Grouping changes affect Loom metadata only\. Original source files stay unchanged\./);
-  assert.match(
-    sourceText,
-    /function CollectionCard\([\s\S]*<Link[\s\S]*href=\{`\/knowledge\/\$\{item\.slug\}`\}[\s\S]*<PatternSwatch[\s\S]*<\/Link>/,
-  );
-  assert.doesNotMatch(sourceText, /CollectionCard[\s\S]*<button[\s\S]*Open collection/);
+  assert.match(sourceText, /href=\{`\/knowledge\/\$\{item\.slug\}`\}/);
   assert.match(sourceText, /Open collection/);
-  assert.match(sourceText, /PatternSwatch/);
   assert.match(sourceText, /formatCount\(group\.items\.length, 'collection'\)/);
   assert.match(sourceText, /formatCount\(item\.count, 'doc'\)/);
 });
 
-test('KnowledgeHome page forwards collection and document totals into the Atlas shell', () => {
+test('knowledge top-level route is a compatibility alias to Sources', () => {
   const { sourceText } = loadTsx('app/knowledge/page.tsx');
 
-  assert.match(sourceText, /const totalCollections = sourceLibraryGroups\.reduce/);
-  assert.match(sourceText, /const totalDocs = sourceLibraryGroups\.reduce/);
-  assert.match(sourceText, /<KnowledgeHomeClient[\s\S]*totalCollections=\{totalCollections\}[\s\S]*totalDocs=\{totalDocs\}/);
+  assert.match(sourceText, /redirect\('\/sources'\)/);
+  assert.doesNotMatch(sourceText, /getSourceLibraryGroups/);
+  assert.doesNotMatch(sourceText, /<KnowledgeHomeClient/);
 });
 
 test('knowledge category routes are constrained to source-library categories only', () => {

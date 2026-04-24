@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import test from 'node:test';
@@ -282,53 +281,16 @@ test('useKnowledgeNav preserves the last known nav when refresh fails', async ()
   }
 });
 
-test('Sidebar consumes the runtime sourceLibraryGroups payload directly', () => {
-  const sidebarSource = fs.readFileSync(path.join(repoRoot, 'components/Sidebar.tsx'), 'utf8');
-  const hookSource = fs.readFileSync(path.join(repoRoot, 'lib/use-knowledge-nav.ts'), 'utf8');
+// Sidebar source-level structural tests retired 2026-04-22 — the web
+// Sidebar component is now a permanent null shell (see
+// components/Sidebar.tsx). `useKnowledgeNav` is still consumed by the
+// native SwiftUI sidebar via the knowledge-nav payload, so the three
+// hook-level tests above continue to exercise the live contract.
+// The retained hook path that used to be asserted against Sidebar.tsx
+// (sourceLibraryGroups from the runtime payload, preservation on failure,
+// refresh cache semantics) remains covered by those tests.
 
-  assert.match(sidebarSource, /const \{ sourceLibraryGroups \} = useKnowledgeNav\(\);/);
-  assert.match(sidebarSource, /<Section title="The Atlas"/);
-  assert.match(sidebarSource, /sourceLibraryGroups\.map\(\(group\) => \(/);
-  assert.match(sidebarSource, /<SourceLibraryGroupRow\s+key=\{group\.id\}\s+group=\{group\}/s);
-  assert.match(sidebarSource, /<Section title="LLM Wiki"/);
-  assert.match(sidebarSource, /const categorySignature = group\.categories\.map\(\(category\) => category\.slug\)\.join\('\|'\);/);
-  assert.match(sidebarSource, /const defaultExpanded = active \|\| group\.categories\.length <= 3;/);
-  assert.match(sidebarSource, /const \[expanded, setExpanded\] = useState\(defaultExpanded\);/);
-  assert.match(sidebarSource, /useEffect\(\(\) => \{\s*setExpanded\(defaultExpanded\);\s*\}, \[defaultExpanded, categorySignature\]\)/s);
-  assert.doesNotMatch(sidebarSource, /buildSourceLibraryGroups/);
-  assert.doesNotMatch(sidebarSource, /knowledgeCategories/);
-  assert.doesNotMatch(sidebarSource, /category\.label\.match/);
-  assert.doesNotMatch(sidebarSource, /label\.toLowerCase\(\)/);
-
-  assert.match(hookSource, /sourceLibraryGroups:\s*payload\?\.sourceLibraryGroups\s*\?\?\s*\[\]/);
-  assert.match(hookSource, /const r = await fetch\('\/api\/knowledge-nav', \{ cache: 'no-store' \}\);/);
-  assert.doesNotMatch(hookSource, /buildSourceLibraryGroups/);
-  assert.doesNotMatch(hookSource, /category\.label\.match/);
-  assert.doesNotMatch(hookSource, /label\.toLowerCase\(\)/);
-});
-
-test('Sidebar new topic flow refreshes nav and waits for navigation handoff before closing the editor', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'components/Sidebar.tsx'), 'utf8');
-
-  assert.match(source, /import \{ refreshKnowledgeNav, useKnowledgeNav \} from '\.\.\/lib\/use-knowledge-nav';/);
-  assert.match(source, /function NewTopicButton\(\{ onCreated \}: \{ onCreated: \(href: string\) => void \| Promise<void> \}\)/);
-  assert.match(source, /await Promise\.resolve\(onCreated\(j\.href\)\);/);
-  assert.match(source, /const navRefresh = refreshKnowledgeNav\(\);/);
-  assert.match(source, /router\.push\(href\);/);
-  assert.match(source, /await navRefresh;/);
-});
-
-test('QuickSwitcher builds search groups from runtime sourceLibraryGroups', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'components/QuickSwitcher.tsx'), 'utf8');
-
-  assert.match(source, /const \{ sourceLibraryGroups \} = useKnowledgeNav\(\);/);
-  assert.match(source, /sourceLibraryGroups\.flatMap\(\(group\) => group\.categories\.map/);
-  assert.match(source, /sourceLibraryGroups\.flatMap\(\(group\) => group\.categories\.flatMap/);
-  assert.match(source, /renderGroup\('Source Library', grouped\.collections\)/);
-  assert.match(source, /renderGroup\('Source Sections', grouped\.sourceSections\)/);
-  assert.match(source, /renderGroup\('LLM Wiki', grouped\.wikiDocs\)/);
-  assert.doesNotMatch(source, /knowledgeCategories/);
-  assert.doesNotMatch(source, /buildSourceLibraryGroups/);
-  assert.doesNotMatch(source, /category\.label\.match/);
-  assert.doesNotMatch(source, /label\.toLowerCase\(\)/);
-});
+// QuickSwitcher test retired 2026-04-21 — web Shuttle replaced by native
+// SwiftUI ShuttleView which loads .next-export/search-index.json directly
+// instead of consuming sourceLibraryGroups from the web nav hook. See
+// macos-app/Loom/Sources/ShuttleView.swift.

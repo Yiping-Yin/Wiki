@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const repoRoot = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('typecheck script falls back to npm when npm_execpath is unavailable', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'scripts/typecheck.mjs'), 'utf8');
@@ -17,10 +18,24 @@ test('typecheck script falls back to npm when npm_execpath is unavailable', () =
 
 test('typecheck script resolves repo root from the script path and serializes builds', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'scripts/typecheck.mjs'), 'utf8');
+  const buildSource = fs.readFileSync(path.join(repoRoot, 'scripts/build.mjs'), 'utf8');
+  const exportSource = fs.readFileSync(path.join(repoRoot, 'scripts/build-static-export.mjs'), 'utf8');
 
   assert.match(source, /fileURLToPath\(import\.meta\.url\)/);
   assert.match(source, /withNextBuildLock\(root, async \(\) => \{/);
+  assert.match(source, /removeDuplicateArtifacts\(path\.join\(root, '\.next'\)\)/);
   assert.match(source, /removeDuplicateArtifacts\(path\.join\(root, '\.next-build'\)\)/);
+  assert.match(source, /output\.includes\('TS6053'\) \|\| output\.includes\('TS2307'\)/);
+  assert.match(source, /output\.includes\('\.next-build\/types\/'\) \|\| output\.includes\('\.next\/types\/'\)/);
+  assert.match(source, /await removeDuplicateArtifacts\(path\.join\(root, '\.next'\)\);[\s\S]*await run\('rm', \['-rf', path\.join\(root, '\.next', 'types'\)\]\);[\s\S]*await run\('rm', \['-rf', path\.join\(root, '\.next-build', 'types'\)\]\)/);
+  assert.match(source, /run\('rm', \['-rf', path\.join\(root, '\.next', 'types'\)\]\)/);
+  assert.match(source, /run\('rm', \['-rf', path\.join\(root, '\.next-build', 'types'\)\]\)/);
+  assert.match(buildSource, /await removeDuplicateArtifacts\(path\.join\(root, '\.next'\)\);/);
+  assert.match(buildSource, /await run\(process\.execPath, \[pagefindScript, '\.next-build\/server\/app', 'public\/pagefind'\],[\s\S]*\);\s*await removeDuplicateArtifacts\(path\.join\(root, '\.next'\)\);\s*await removeDuplicateArtifacts\(path\.join\(root, '\.next-build'\)\);/);
+  assert.match(buildSource, /rmSync\(path\.join\(root, '\.next-build', 'types'\), \{ recursive: true, force: true \}\);/);
+  assert.match(exportSource, /import \{ removeDuplicateArtifacts \} from '\.\/next-build-lock\.mjs';/);
+  assert.match(exportSource, /await removeDuplicateArtifacts\(path\.join\(repoRoot, '\.next'\)\);/);
+  assert.match(exportSource, /await removeDuplicateArtifacts\(path\.join\(repoRoot, '\.next-export'\)\);/);
 });
 
 test('next build lock creates the lock directory recursively and retries missing owner writes', () => {
@@ -29,6 +44,7 @@ test('next build lock creates the lock directory recursively and retries missing
   assert.match(source, /await mkdir\(lockDir, \{ recursive: true \}\);/);
   assert.match(source, /if \(error\?\.code === 'ENOENT'\) \{/);
   assert.match(source, /await rm\(lockDir, \{ recursive: true, force: true \}\);/);
-  assert.match(source, /const DUPLICATE_ARTIFACT_PATTERN = \/ \\d\+\(\?=\\\.\)\//);
+  assert.match(source, /if \(error\?\.code === 'ENOENT' \|\| error\?\.code === 'ENOTEMPTY'\) return;/);
+  assert.match(source, /const DUPLICATE_ARTIFACT_PATTERN = \/ \\d\+\(\?=\(.+\)\)\//);
   assert.match(source, /DUPLICATE_ARTIFACT_PATTERN\.test\(entry\.name\)/);
 });
