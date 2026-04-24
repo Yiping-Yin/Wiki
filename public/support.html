@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loom · Support</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --fg: #1d1d1f;
+      --fg-secondary: #424245;
+      --muted: #86868b;
+      --accent: #0071e3;
+      --bg: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #f5f5f7;
+        --fg-secondary: #c7c7cc;
+        --muted: #8e8e93;
+        --accent: #0a84ff;
+        --bg: #000000;
+      }
+    }
+    body {
+      font-family: -apple-system, "SF Pro Text", ui-sans-serif, system-ui;
+      color: var(--fg);
+      background: var(--bg);
+      margin: 0;
+      padding: 56px 28px 72px;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-family: "New York", Georgia, serif;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-size: 2rem;
+      margin: 0 0 4px;
+    }
+    h2 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 2.4rem 0 0.5rem;
+    }
+    p { margin: 0.55rem 0; color: var(--fg-secondary); font-size: 0.95rem; }
+    ul { padding-left: 1.2rem; margin: 0.4rem 0; }
+    li { margin: 0.25rem 0; color: var(--fg-secondary); font-size: 0.95rem; }
+    a { color: var(--accent); }
+    .eyebrow {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    strong { color: var(--fg); font-weight: 600; }
+    .updated { font-size: 0.75rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Loom Support</div>
+  <h1>Support for Loom.</h1>
+  <p>Loom is a local Mac app for reading and thinking. If something fails, the fastest useful report is concrete and short.</p>
+
+  <h2>Report an Issue</h2>
+  <p>Open an issue at <a href="https://github.com/Yiping-Yin/Wiki/issues" target="_blank" rel="noopener">github.com/Yiping-Yin/Wiki/issues</a>.</p>
+  <p>Please include:</p>
+  <ul>
+    <li>Your macOS version</li>
+    <li>The Loom app version and bundle identifier <code>com.yinyiping.loom</code></li>
+    <li>What you were trying to do</li>
+    <li>Any visible error message</li>
+    <li>Whether the issue involved AI provider settings or local files</li>
+  </ul>
+
+  <h2>Privacy</h2>
+  <p>For data handling details, read the <a href="/privacy.html">Loom privacy policy</a>.</p>
+
+  <p class="updated">Last updated 2026-04-24.</p>
+</main>
+</body>
+</html>

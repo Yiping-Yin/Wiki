@@ -30,6 +30,7 @@
     "app:check-project": "node scripts/check-loom-macos-project-files.mjs",
     "app:smoke": "node scripts/installed-app-smoke.mjs",
     "app:screenshots": "node scripts/app-store-screenshots.mjs",
+    "app:preflight": "node scripts/app-store-preflight.mjs",
     "app:where": "node scripts/where-loom-app.mjs",
     "app:open": "if [ -d \"$HOME/Applications/Loom.app\" ]; then open \"$HOME/Applications/Loom.app\"; else open /Applications/Loom.app; fi"
   },

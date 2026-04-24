@@ -9,7 +9,8 @@ Draft metadata for the first Mac App Store submission.
 - Primary category: Education
 - Secondary category: Reference
 - Subtitle: A screen that replaces paper
-- Privacy Policy URL: `https://loom.app/privacy`
+- Privacy Policy URL: `https://loom.app/privacy.html`
+- Support URL: `https://loom.app/support.html`
 
 Apple limits the app name and subtitle to 30 characters. The subtitle above is 28 characters.
 
@@ -41,18 +42,26 @@ Default output:
 .app-store/screenshots/
 ```
 
+Default screenshot format: JPEG, 2880 x 1800.
+
 Default surfaces:
 
+- Library: your library, as a bookshelf
 - Home: a room for slow reading
-- Desk: return to the next reading action
-- Knowledge: source library and local materials
-- Knowledge docs: one collection in context
+- Sōan: cards become a thinking draft
+- Patterns: thoughts that return settle here
 - Frontispiece: book-like identity, not dashboard chrome
 
 Optional dark-mode set:
 
 ```bash
-LOOM_SCREENSHOT_WIDTH=2560 LOOM_SCREENSHOT_HEIGHT=1600 npm run app:screenshots
+LOOM_SCREENSHOT_WIDTH=2560 LOOM_SCREENSHOT_HEIGHT=1600 LOOM_SCREENSHOT_FORMAT=jpeg npm run app:screenshots
+```
+
+Preflight check before upload:
+
+```bash
+npm run app:preflight
 ```
 
 ## Review Notes
