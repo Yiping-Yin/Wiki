@@ -13,8 +13,8 @@ test('app store copy stays aligned with Phase 6 bundle and subtitle constraints'
   assert.doesNotMatch(source, /com\.loom\.app/);
   assert.match(source, /Subtitle: A screen that replaces paper/);
   assert.match(source, /28 characters/);
-  assert.match(source, /Privacy Policy URL: `https:\/\/loom\.app\/privacy\.html`/);
-  assert.match(source, /Support URL: `https:\/\/loom\.app\/support\.html`/);
+  assert.match(source, /Privacy Policy URL: `https:\/\/yiping-yin\.github\.io\/Wiki\/privacy\.html`/);
+  assert.match(source, /Support URL: `https:\/\/yiping-yin\.github\.io\/Wiki\/support\.html`/);
   assert.match(source, /Promotional text \(170-character cap\)/);
   assert.match(source, /reading, study, pdf, notes, research, syllabus, textbook, rehearsal, learning, patterns, pursuit/);
   assert.doesNotMatch(source, /reading, study, pdf, notes, research, syllabus, textbook, rehearsal, annotation, learning, patterns, pursuit/);

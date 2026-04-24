@@ -75,8 +75,8 @@ function checkAppStoreCopy() {
   expectIncludes(copy, 'Bundle ID: `com.yinyiping.loom`', 'App Store copy');
   expectIncludes(copy, 'Subtitle: A screen that replaces paper', 'App Store copy');
   expectIncludes(copy, '28 characters', 'App Store copy');
-  expectIncludes(copy, 'Privacy Policy URL: `https://loom.app/privacy.html`', 'App Store copy');
-  expectIncludes(copy, 'Support URL: `https://loom.app/support.html`', 'App Store copy');
+  expectIncludes(copy, 'Privacy Policy URL: `https://yiping-yin.github.io/Wiki/privacy.html`', 'App Store copy');
+  expectIncludes(copy, 'Support URL: `https://yiping-yin.github.io/Wiki/support.html`', 'App Store copy');
   expectIncludes(copy, 'Default screenshot format: JPEG', 'App Store copy');
   for (const label of ['Library', 'Home', 'S\u014dan', 'Patterns', 'Frontispiece']) {
     expectIncludes(copy, `- ${label}:`, 'App Store screenshot plan');

@@ -1,0 +1,77 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly in Loom.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Concrete and short is most useful.
+        If this is security-sensitive, see SECURITY.md instead.
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 14.5"
+    validations:
+      required: true
+
+  - type: input
+    id: loom-version
+    attributes:
+      label: Loom version
+      description: "Loom → About Loom (or the DMG you installed)"
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which build?
+      options:
+        - Mac App Store
+        - Developer-ID DMG from GitHub Releases
+        - Local build from source
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you were doing
+      description: Ordered steps. The shorter the better.
+      placeholder: |
+        1. Opened Loom.
+        2. Dropped three PDFs onto the window.
+        3. Pressed ⌘E with a selection.
+        4. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-actual
+    attributes:
+      label: Expected vs. actual
+      placeholder: |
+        Expected: a margin weaver opens.
+        Actual: the app beeps and nothing opens.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: "Most recent file from `~/Library/Logs/Loom/`. Feel free to paste the tail."
+      render: text
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before filing
+      options:
+        - label: "I searched existing issues and this is not a duplicate."
+          required: true

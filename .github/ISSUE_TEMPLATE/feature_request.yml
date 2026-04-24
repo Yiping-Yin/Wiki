@@ -1,0 +1,43 @@
+name: Feature request
+description: Propose a capability or interaction that Loom doesn't yet have.
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Loom is opinionated. Not every proposal is a fit, and that's fine.
+        The clearer you describe the problem, the easier to judge the shape.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the reading or thinking situation where Loom falls short.
+      placeholder: |
+        When I've read ~30 papers on a topic and want to see the shape of what
+        I've understood across them, I …
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would solve it?
+      description: Sketch a surface or interaction. Minimal and concrete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried, or what exists elsewhere?
+      description: Helps us see if the problem is already addressed by an existing surface (Shuttle, Weaves, Sōan, Patterns, Pursuits, …).
+
+  - type: checkboxes
+    id: fit
+    attributes:
+      label: Fit check
+      options:
+        - label: "This is about reading, understanding, or remembering — not productivity, messaging, or dashboards."
+        - label: "This can live alongside the existing surfaces, not replace the reading page as the center."

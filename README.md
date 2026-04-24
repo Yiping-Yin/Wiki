@@ -1,6 +1,18 @@
 # Loom
 
-**Think on the Loom. Live in your Patterns.**
+**A screen that replaces paper.** A Mac app for slow reading, source-bound notes, and AI in the margin.
+
+![Your library, as you arranged it.](docs/images/hero-library.jpg)
+
+---
+
+## Install
+
+- **macOS 14 Sonoma or later**, Apple Silicon.
+- **Mac App Store** — coming soon. In the meantime, grab the signed + notarized Developer-ID build from the [Releases](https://github.com/Yiping-Yin/Wiki/releases) page: download the `.dmg`, drag *Loom.app* into *Applications*, open it, and press **⌘K** to meet the Shuttle.
+- **From source** — see the **Dev Flow** section below.
+
+Your files stay on your Mac. Bring your own API key for Anthropic or OpenAI, or point Loom at a local Ollama. Keys live in the macOS Keychain.
 
 ---
 
@@ -9,18 +21,6 @@
 Loom is a thinking tool. Not a note app, not a chat app, not an AI assistant — a **loom**: a tool that turns loose threads of thought into woven fabric.
 
 In the AI era, two things matter that no chat tool gives you at the same time: **speed** (your brain never stops, ideas leap, you talk to AI continuously) and **permanence** (the trail of that thinking doesn't disappear when you close the tab). Loom gives you both.
-
-## Dev Flow
-
-- `npm run knowledge:refresh` rebuilds the local knowledge caches under `knowledge/.cache/` and prunes old generated files from `public/`.
-- `npm run verify` runs typecheck, production build, and smoke checks in the correct order.
-- `npm run app`, `npm run app:user`, and `npm run app:system` build and install the macOS shell.
-- `npm run app:where` prints the currently installed Loom.app location.
-- GitHub Actions runs `build -> typecheck -> smoke` and intentionally skips the chat-specific smoke path.
-- Generated knowledge bodies, manifests, and derived indexes now live in `knowledge/.cache/` rather than tracked `public/` or `lib/` files.
-- [docs/README.md](/Users/yinyiping/Desktop/Wiki/docs/README.md) indexes current design and process docs.
-- [DESIGN_ONBOARDING.md](/Users/yinyiping/Desktop/Wiki/docs/design/DESIGN_ONBOARDING.md) is the fastest collaborator-facing intro to the current product/design model.
-- [CURRENT_DESIGN_CANON.md](/Users/yinyiping/Desktop/Wiki/docs/design/CURRENT_DESIGN_CANON.md) is the shortest current product/design source of truth; use it before historical specs.
 
 ## Current surfaces
 
@@ -121,8 +121,39 @@ It is the discreteness that lets the picture be seen.
 
 ---
 
-> *Think on the Loom. Live in your Patterns.*
+## Dev Flow
+
+- `npm install` then `npm run verify` runs typecheck, production build, and smoke checks in the correct order.
+- `npm run dev` starts the Next.js surface at `http://127.0.0.1:3000`.
+- `npm run knowledge:refresh` rebuilds the local knowledge caches under `knowledge/.cache/` and prunes old generated files from `public/`.
+- `npm run app`, `npm run app:user`, and `npm run app:system` build and install the macOS shell.
+- `npm run app:where` prints the currently installed *Loom.app* location.
+- `npm run app:preflight` is the App Store submission preflight check.
+- GitHub Actions runs `build -> typecheck -> smoke` and intentionally skips the chat-specific smoke path.
+- Generated knowledge bodies, manifests, and derived indexes live in `knowledge/.cache/` rather than tracked `public/` or `lib/` files.
+- [docs/README.md](docs/README.md) indexes current design and process docs.
+- [DESIGN_ONBOARDING.md](docs/design/DESIGN_ONBOARDING.md) is the fastest collaborator-facing intro to the current product/design model.
+- [CURRENT_DESIGN_CANON.md](docs/design/CURRENT_DESIGN_CANON.md) is the shortest current product/design source of truth; use it before historical specs.
 
 ---
 
-License: Personal project. All rights reserved by the author.
+## Contributing
+
+Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+shape of the project and the PR checklist. For security issues, see
+[SECURITY.md](SECURITY.md) — please don't file those as public issues.
+
+## License
+
+Loom is released under the **[Apache License, Version 2.0](LICENSE)**.
+See the [NOTICE](NOTICE) file for attribution and trademark terms.
+
+"Loom," the Loom word-mark, and the Loom kesi-weave icon are trademarks
+of Yiping Yin. The Apache 2.0 grant covers the software source code
+only; it does not grant a license to use these marks in a derivative
+product that identifies itself primarily as "Loom." Fork freely;
+rename the fork.
+
+---
+
+> *Think on the Loom. Live in your Patterns.*

@@ -10,8 +10,8 @@ here are checked by `scripts/app-store-preflight.mjs` before upload.
 - Primary category: Education
 - Secondary category: Reference
 - Subtitle: A screen that replaces paper
-- Privacy Policy URL: `https://loom.app/privacy.html`
-- Support URL: `https://loom.app/support.html`
+- Privacy Policy URL: `https://yiping-yin.github.io/Wiki/privacy.html`
+- Support URL: `https://yiping-yin.github.io/Wiki/support.html`
 
 Apple limits the app name and subtitle to 30 characters. The subtitle above is 28 characters.
 
