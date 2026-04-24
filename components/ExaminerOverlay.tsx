@@ -53,7 +53,7 @@ export function ExaminerOverlay() {
         left: smallScreen ? 0 : 'auto',
         width: smallScreen ? '100vw' : 400,
         maxWidth: smallScreen ? '100vw' : '38vw',
-        zIndex: 900,
+        zIndex: 'var(--z-popover)',
         display: 'flex', flexDirection: 'column',
         background: 'color-mix(in srgb, var(--bg) 96%, var(--bg-elevated))',
         borderLeft: smallScreen ? 'none' : '0.5px solid color-mix(in srgb, var(--mat-border) 80%, transparent)',

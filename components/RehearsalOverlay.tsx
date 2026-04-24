@@ -60,7 +60,7 @@ export function RehearsalOverlay() {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 900,
+        zIndex: 'var(--z-popover)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

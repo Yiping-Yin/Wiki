@@ -27,7 +27,7 @@ export function RecursingOverlay() {
         left: smallScreen ? 0 : 'auto',
         width: smallScreen ? '100vw' : 440,
         maxWidth: smallScreen ? '100vw' : '42vw',
-        zIndex: 900,
+        zIndex: 'var(--z-popover)',
         display: 'flex', flexDirection: 'column',
         background: 'var(--bg)',
         borderLeft: smallScreen ? 'none' : '0.5px solid var(--mat-border)',
