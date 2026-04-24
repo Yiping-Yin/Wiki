@@ -17,8 +17,17 @@ import path from 'node:path';
 const OUT_DIR = path.resolve(process.env.LOOM_SCREENSHOT_DIR ?? '.app-store/screenshots');
 const BASE = process.env.LOOM_SCREENSHOT_BASE_URL ?? 'http://127.0.0.1:3000';
 
-const WIDTH = Number(process.env.LOOM_SCREENSHOT_WIDTH ?? 2880);
-const HEIGHT = Number(process.env.LOOM_SCREENSHOT_HEIGHT ?? 1800);
+// Output size Apple wants (2880x1800 or 2560x1600). We render at 1/2 the
+// CSS pixel size with deviceScaleFactor:2 so the layout fills the frame
+// the way it does on a real Retina display — otherwise a 2880x1800
+// viewport with dsf:1 gives Loom's --w-prose (~576px) content a tiny
+// island in an ocean of blank paper, and the grain texture blows up the
+// /home PNG past 3 MB for no visual benefit.
+const OUT_WIDTH = Number(process.env.LOOM_SCREENSHOT_WIDTH ?? 2880);
+const OUT_HEIGHT = Number(process.env.LOOM_SCREENSHOT_HEIGHT ?? 1800);
+const SCALE = Number(process.env.LOOM_SCREENSHOT_SCALE ?? 2);
+const WIDTH = Math.round(OUT_WIDTH / SCALE);
+const HEIGHT = Math.round(OUT_HEIGHT / SCALE);
 
 // Hero surfaces: one screenshot each, no dark variant, no responsive
 // breakpoint. Apple reviewers glance at these; showcase the product soul.
@@ -40,7 +49,7 @@ async function main() {
   const ctx = await browser.newContext({
     viewport: { width: WIDTH, height: HEIGHT },
     colorScheme: 'light',
-    deviceScaleFactor: 1,
+    deviceScaleFactor: SCALE,
   });
   const page = await ctx.newPage();
 

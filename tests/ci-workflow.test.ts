@@ -16,6 +16,6 @@ test('CI includes a dedicated macOS app build job', () => {
   assert.match(source, /brew install xcodegen/);
   assert.match(source, /npm run app:check-project/);
   assert.match(source, /npm run app:user/);
-  assert.doesNotMatch(source, /npm run app:smoke/);
+  assert.match(source, /npm run app:smoke/);
   assert.doesNotMatch(source, /CODEX_BIN:\s*\.\/scripts\/fake-codex-cli\.mjs/);
 });

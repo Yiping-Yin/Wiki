@@ -47,11 +47,9 @@ targets:
       - name: Stage Next.js static export into bundle Resources
         # Stages `.next-export/` output into the .app bundle's Resources/web
         # so the loom:// URL scheme handler can serve pre-rendered pages
-        # without a running Next.js server. Skips the rebuild when
-        # .next-export already exists (callers can run the full export
-        # manually via `node scripts/build-static-export.mjs` before
-        # kicking off a Release build). Never fails the build — the app
-        # still functions in localhost-dev mode without staged content.
+        # without a running Next.js server. Debug builds can still run in
+        # localhost-dev mode without staged content, but Release/App Store
+        # builds must fail if `.next-export/` is missing.
         runOnlyWhenInstalling: false
         script: |
           set -eu
@@ -62,6 +60,9 @@ targets:
             echo "Loom: .next-export/ not found — skipping web bundle stage."
             echo "       Run 'node scripts/build-static-export.mjs' from the repo root"
             echo "       before a Release build to bundle the pre-rendered pages."
+            if [ "${CONFIGURATION:-}" = "Release" ]; then
+              exit 1
+            fi
             exit 0
           fi
           mkdir -p "$DEST"
