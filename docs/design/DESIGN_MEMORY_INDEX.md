@@ -35,6 +35,9 @@ mother document.
 - [Logo Brief](/Users/yinyiping/Desktop/LOOM/docs/design/LOGO_BRIEF.md)
   Product mark, warp/weft logic, icon system
 
+- [Material Archive Direction](/Users/yinyiping/Desktop/LOOM/docs/design/MATERIAL_ARCHIVE_DIRECTION.md)
+  Product-safe material archive rules distilled from private design research
+
 ## Review Aid
 
 - [Design Review Checklist](/Users/yinyiping/Desktop/LOOM/docs/design/DESIGN_REVIEW_CHECKLIST.md)
@@ -44,9 +47,10 @@ mother document.
 
 1. `DESIGN_ONBOARDING.md`
 2. `CURRENT_DESIGN_CANON.md`
-3. `CAPTURE_SPEC.md`
-4. `DESIGN_MEMORY.md`
-5. `DESIGN_MEMORY_OPERATING_MODEL.md`
+3. `MATERIAL_ARCHIVE_DIRECTION.md`
+4. `CAPTURE_SPEC.md`
+5. `DESIGN_MEMORY.md`
+6. `DESIGN_MEMORY_OPERATING_MODEL.md`
 
 This is an orientation order, not precedence.
 
@@ -66,6 +70,7 @@ If you are asking:
 
 - "What is Loom?" → `CURRENT_DESIGN_CANON.md`
 - "How should I not break the product?" → `DESIGN_ONBOARDING.md`
+- "How should material archive surfaces feel?" → `MATERIAL_ARCHIVE_DIRECTION.md`
 - "What is the current capture model?" → `CAPTURE_SPEC.md`
 - "Why does this principle exist?" → `DESIGN_MEMORY.md`
 - "How should memory updates propagate?" → `DESIGN_MEMORY_OPERATING_MODEL.md`

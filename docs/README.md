@@ -11,6 +11,7 @@
 - [Loom Visual Grammar](/Users/yinyiping/Desktop/LOOM/docs/design/LOOM_VISUAL_GRAMMAR.md)
 - [Loom Epistemic Grammar](/Users/yinyiping/Desktop/LOOM/docs/design/LOOM_EPISTEMIC_GRAMMAR.md)
 - [Loom Panel System Plan](/Users/yinyiping/Desktop/LOOM/docs/design/LOOM_PANEL_SYSTEM_PLAN.md)
+- [Material Archive Direction](/Users/yinyiping/Desktop/LOOM/docs/design/MATERIAL_ARCHIVE_DIRECTION.md)
 - [Capture Spec](/Users/yinyiping/Desktop/LOOM/docs/design/CAPTURE_SPEC.md)
 - [Canvas Spec (Historical)](/Users/yinyiping/Desktop/LOOM/docs/design/CANVAS_SPEC.md)
 - [Logo Brief](/Users/yinyiping/Desktop/LOOM/docs/design/LOGO_BRIEF.md)

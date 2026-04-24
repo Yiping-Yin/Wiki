@@ -265,17 +265,25 @@ When list has 1 element, renders as single-span (common case). When >1, UI shows
 - Test on 3+ real syllabi in `~/Desktop/Knowledge System/UNSW/*/Week 0/`
 - **Gate**: ≥80% of declared fields return `.found`; `.notFound` fields have non-empty `tried`; red-team `courseCode`-quoting-filename case is rejected
 
-### Phase 2 — Swift-side cleanText port (1 day)
-- Port `scripts/ingest-knowledge.ts:cleanText()` (lines 255-347) to pure Swift
-- Apply to PDF extraction in Swift (currently uses raw PDFKit `.string`)
-- Golden-file parity: same PDF through Node and Swift paths must produce identical cleaned text
+### Phase 2 — Swift-side cleanText port (1 day) — ✅ SHIPPED 2026-04-24
+- Port `scripts/ingest-knowledge.ts:cleanText()` (lines 255-347) to pure Swift — `Sources/Ingest/CleanText.swift` (265 lines)
+- Apply to PDF extraction in Swift — `Sources/Ingest/PDFExtraction.swift` (146 lines) wraps PDFKit + CleanText
+- `IngestionView.extractPDFText()` delegates to `PDFExtraction.extract()`
+- Golden-file parity: **27/27 byte-identical** (16 synthetic + 11 UNSW syllabi + 5 PDF pipeline)
+- UTF-16 offset semantics (aligned with `locate()`, web layer, Python verifier)
+- Node wrapper at `scripts/node-cleantext-wrapper.mjs` (181 lines) for CI/offline parity runs
+- Known documented limitation: PDFKit vs pdfjs tokenizer divergence at byte level (e.g., `(Math):` vs `(Math) :`) is pre-cleaner and out of scope for this phase
 
-### Phase 3 — Remaining extractors (3-4 days)
-- `MarkdownNotesExtractor` (no AI, anchor scan + preview)
-- `SlideDeckExtractor` (PPTX via ZipFoundation)
-- `TranscriptExtractor` (timestamp-aware)
-- `TextbookChapterExtractor`
-- `SpreadsheetExtractor` (deterministic, no AI)
+### Phase 3 — Remaining extractors (3-4 days) — ✅ SHIPPED 2026-04-24
+- `MarkdownNotesExtractor` (no AI, anchor scan + preview) — 284 lines + 52-line schema
+- `SpreadsheetExtractor` (CSV/TSV deterministic + XLSX via CoreXLSX) — 306 lines + 35-line schema
+- `TranscriptExtractor` (timestamp-aware segmentation deterministic, AI labels topics) — 322 lines + 26-line schema
+- `TextbookChapterExtractor` (AI, FieldResult + hardening) — 232 lines + 18-line schema
+- `SlideDeckExtractor` (AI, PDF slide-density path live; PPTX via ZIPFoundation hook stub) — 243 lines + 22-line schema
+- `ExtractorRegistry` updated: 6 typed lanes + Generic fallback, ranked by match score
+- SPM deps added via project.yml: CoreXLSX (0.14.0+), ZIPFoundation (0.9.18+) — both pure-Swift, sandbox OK
+- New red-team fixtures: `slide-deck-filename-leak`, `textbook-filename-leak` — both demote via shared `demoteIfFilenameQuote`
+- Known stub points: PPTX unzip (Phase 4+), XLSX live fixture (not yet tested end-to-end), Transcript 30-segment AI cap (may need chunking for long recordings)
 
 ### Phase 4 — UI surface (2 days)
 - Schema-aware renderer replaces freeform summary display
