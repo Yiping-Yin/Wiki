@@ -456,15 +456,6 @@ html {
   box-shadow: var(--shadow-3), var(--mat-hi);
 }
 
-.material-reg:hover {
-  box-shadow:
-    var(--shadow-2),
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.9),
-    -1px 0 3px rgba(158, 124, 62, 0.12), /* Vellum bronze */
-    1px 0 3px rgba(184, 142, 63, 0.10);
-  transform: translateY(-2px);
-}
-
 /* ── Prose Typography (The Sacred Strand) ── */
 .loom-source-prose {
   font-family: var(--serif);
@@ -671,16 +662,13 @@ html {
    each chapter with a Cormorant display capital that floats two
    lines deep. We scale to 3.6em (vs the mockup's 5.6em) because
    Loom's docs often open with a short sentence, and a 5.6em cap
-   over a two-line paragraph looks comical. The `loom-dropcap`
-   utility class is available if an MDX author wants the full
-   five-line display initial on a deliberate opener.
+   over a two-line paragraph looks comical.
 
    Scoped to the direct first <p> child so headings, figures, or
    metadata blocks that precede the prose don't accidentally pick
    up a cap. `.loom-source-prose > h1 + p` would also work but the
    pseudo-class is terser and survives MDX structure changes. */
-.loom-source-prose > p:first-of-type::first-letter,
-.loom-dropcap::first-letter {
+.loom-source-prose > p:first-of-type::first-letter {
   font-family: var(--display);
   line-height: 0.86;
   float: left;
@@ -688,40 +676,7 @@ html {
   font-weight: 500;
   font-style: normal;
   color: var(--fg);
-}
-.loom-source-prose > p:first-of-type::first-letter {
   font-size: 3.6em;
-}
-.loom-dropcap::first-letter {
-  /* Honors the mockup's deliberate five-line opener — authors opt in. */
-  font-size: 5.6em;
-  line-height: 0.86;
-  padding: 4px 10px 0 0;
-}
-
-.skip-link {
-  display: none;
-  position: fixed;
-  z-index: 1200;
-  opacity: 0;
-  pointer-events: none;
-  padding: 0.45rem 0.72rem;
-  border-radius: 999px;
-  background: var(--bg-elevated);
-  color: var(--fg);
-  text-decoration: none;
-  box-shadow: var(--shadow-1);
-  border: 0.5px solid var(--mat-border);
-  transition: opacity 0.18s var(--ease);
-}
-
-html.user-tabbing .skip-link:focus,
-html.user-tabbing .skip-link:focus-visible {
-  display: inline-flex;
-  top: 12px;
-  left: 12px;
-  opacity: 1;
-  pointer-events: auto;
 }
 
 .mobile-menu-btn {
@@ -733,63 +688,6 @@ html.user-tabbing .skip-link:focus-visible {
 .layout {
   display: flex;
   min-height: 100vh;
-}
-
-/* ─── Vellum ornament primitives ─────────────────────────────────
-   CSS-only implementations of the canonical book-chrome primitives
-   defined in /Users/yinyiping/Downloads/Wiki Logo/loom-tokens.jsx.
-   Any surface that opts into `.loom-paper` inherits foxing + deckle
-   automatically. The individual utilities (`.loom-foxing`,
-   `.loom-deckle-right`) remain available for targeted use. */
-
-.loom-foxing::before {
-  /* Aged paper spots — six radial gradients scattered per the
-     mockup's Foxing() positions (loom-tokens.jsx:60-67). No bitmap;
-     just layered gradients. Kept under pointer-events:none so it
-     never absorbs clicks on the content above. */
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background-image:
-    radial-gradient(circle at 8% 22%,  rgba(138, 111, 62, 0.04) 0%, transparent 70%),
-    radial-gradient(circle at 85% 14%, rgba(138, 111, 62, 0.03) 0%, transparent 70%),
-    radial-gradient(circle at 92% 78%, rgba(138, 111, 62, 0.05) 0%, transparent 70%),
-    radial-gradient(circle at 22% 88%, rgba(138, 111, 62, 0.03) 0%, transparent 70%),
-    radial-gradient(circle at 55% 92%, rgba(138, 111, 62, 0.04) 0%, transparent 70%),
-    radial-gradient(circle at 68%  6%, rgba(138, 111, 62, 0.04) 0%, transparent 70%);
-  background-size:
-    clamp(96px, 10vw, 140px) clamp(96px, 10vw, 140px),
-    clamp(120px, 12vw, 170px) clamp(120px, 12vw, 170px),
-    clamp(80px, 9vw, 120px) clamp(80px, 9vw, 120px),
-    clamp(130px, 13vw, 180px) clamp(130px, 13vw, 180px),
-    clamp(60px, 6vw, 80px) clamp(60px, 6vw, 80px),
-    clamp(70px, 8vw, 100px) clamp(70px, 8vw, 100px);
-  background-repeat: no-repeat;
-}
-
-.loom-deckle-right::after {
-  /* Irregular torn right edge. Replaces the mockup's per-render SVG
-     path (loom-tokens.jsx:85-103) with a single static SVG encoded
-     as data URL — cheaper than generating path points on the
-     client, and the edge is supposed to feel permanent anyway. */
-  content: '';
-  position: absolute;
-  top: 0; bottom: 0; right: -2px;
-  width: 6px;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 100' preserveAspectRatio='none'><path d='M 0,-1 L 0,101 L 1.2,98 L 0.6,94 L 1.5,90 L 0.3,86 L 1.8,82 L 0.9,78 L 1.4,74 L 0.2,70 L 1.7,66 L 0.7,62 L 1.3,58 L 0.4,54 L 1.6,50 L 0.8,46 L 1.1,42 L 0.5,38 L 1.9,34 L 0.6,30 L 1.4,26 L 0.3,22 L 1.7,18 L 0.9,14 L 1.2,10 L 0.4,6 L 1.5,2 L 0,-1 Z' fill='%23F4F0E4'/></svg>");
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-}
-
-@media (prefers-color-scheme: dark) {
-  .loom-deckle-right::after {
-    /* Dark-mode deckle mirrors the night background so the edge
-       reads as torn from night paper, not pasted from day paper. */
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 100' preserveAspectRatio='none'><path d='M 0,-1 L 0,101 L 1.2,98 L 0.6,94 L 1.5,90 L 0.3,86 L 1.8,82 L 0.9,78 L 1.4,74 L 0.2,70 L 1.7,66 L 0.7,62 L 1.3,58 L 0.4,54 L 1.6,50 L 0.8,46 L 1.1,42 L 0.5,38 L 1.9,34 L 0.6,30 L 1.4,26 L 0.3,22 L 1.7,18 L 0.9,14 L 1.2,10 L 0.4,6 L 1.5,2 L 0,-1 Z' fill='%231A1815'/></svg>");
-  }
 }
 
 .layout main {
@@ -1550,25 +1448,6 @@ kbd:not(pre kbd):not(code kbd) {
   }
 }
 
-/* Breathing Margins — idle-responsive whispers. When the reader pauses
-   (body.loom-idle is set by the web shell after 4s of no activity),
-   any element tagged .loom-margin-whisper fades in. Activity removes
-   the class and they retreat. Screen-only — print can't idle. */
-.loom-margin-whisper {
-  opacity: 0;
-  transition: opacity 900ms var(--ease-enter, cubic-bezier(0, 0, 0.2, 1));
-  pointer-events: none;
-}
-body.loom-idle .loom-margin-whisper {
-  opacity: 0.35;
-  pointer-events: auto;
-}
-@media (prefers-reduced-motion: reduce) {
-  .loom-margin-whisper {
-    transition: none;
-  }
-}
-
 @media (max-width: 1024px) {
   :root {
     --prose-width: min(100%, calc(100vw - 3rem));
@@ -2287,27 +2166,10 @@ select:focus-visible,
   letter-spacing: -0.006em;
 }
 
-.t-callout {
-  font-size: var(--t-callout);
-  letter-spacing: -0.011em;
-}
-
-.t-body {
-  font-size: var(--t-body);
-  letter-spacing: -0.014em;
-}
-
 .t-headline {
   font-size: var(--t-headline);
   letter-spacing: -0.014em;
   font-weight: 600;
-}
-
-.t-title3 {
-  font-size: var(--t-title3);
-  letter-spacing: -0.018em;
-  font-weight: 600;
-  font-family: var(--display);
 }
 
 @media (max-width: 900px) {
@@ -2347,64 +2209,6 @@ select:focus-visible,
   }
 }
 
-/* Compatibility contracts retained from the archived globals.css revision. */
-.loom-cowork-tidy-html > *:first-child { margin-top: 0; }
-.loom-cowork-tidy-html > *:last-child  { margin-bottom: 0; }
-.loom-cowork-tidy-html h1,
-.loom-cowork-tidy-html h2,
-.loom-cowork-tidy-html h3 {
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--fg);
-}
-.loom-cowork-tidy-html h1 {
-  font-size: 1.55rem;
-  line-height: 1.25;
-  margin: 1.6rem 0 0.7rem;
-  padding-bottom: 0.35rem;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--mat-border) 70%, transparent);
-}
-.loom-cowork-tidy-html h2 {
-  font-size: 1.25rem;
-  line-height: 1.3;
-  margin: 1.3rem 0 0.55rem;
-}
-.loom-cowork-tidy-html h3 {
-  font-size: 1.08rem;
-  line-height: 1.35;
-  margin: 1rem 0 0.45rem;
-  color: color-mix(in srgb, var(--fg) 85%, var(--accent));
-}
-.loom-cowork-tidy-html h1 + p,
-.loom-cowork-tidy-html h2 + p,
-.loom-cowork-tidy-html h3 + p { margin-top: 0; }
-.loom-cowork-tidy-html p  { margin: 0.55rem 0; }
-.loom-cowork-tidy-html ul,
-.loom-cowork-tidy-html ol { margin: 0.5rem 0 0.5rem 1.2rem; padding: 0; }
-.loom-cowork-tidy-html li { margin: 0.2rem 0; }
-.loom-cowork-tidy-html a  { color: var(--accent); text-decoration: none; }
-.loom-cowork-tidy-html a:hover { text-decoration: underline; }
-.loom-cowork-tidy-html strong { font-weight: 700; color: var(--fg); }
-.loom-cowork-tidy-html em { color: color-mix(in srgb, var(--fg) 92%, transparent); }
-.loom-cowork-tidy-html blockquote {
-  margin: 0.7rem 0;
-  padding: 0.1rem 0 0.1rem 0.9rem;
-  border-left: 3px solid color-mix(in srgb, var(--accent) 50%, var(--mat-border));
-  color: var(--fg-secondary);
-  font-style: italic;
-}
-.loom-cowork-tidy-html code {
-  font-family: var(--mono, ui-monospace, monospace);
-  background: color-mix(in srgb, var(--mat-border) 30%, transparent);
-  padding: 0 0.2rem;
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-
-.loom-tidy-hover .loom-tidy-actions { opacity: 1 !important; }
-
 @keyframes loom-overlay-fade-in {
   from { opacity: 0; transform: scale(0.98) translateY(6px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -2442,13 +2246,8 @@ select:focus-visible,
   opacity: 1 !important;
   pointer-events: auto !important;
 }
-.loom-today-cowork-row:hover,
-.loom-coworks-row:hover,
-.loom-today-row:hover {
+.loom-coworks-row:hover {
   background: color-mix(in srgb, var(--mat-thin-bg) 55%, transparent) !important;
-}
-.loom-today-row:hover .loom-today-row-source {
-  opacity: 1 !important;
 }
 [data-drop-active="true"] [data-atlas-empty-group] {
   border: 1px dashed var(--accent) !important;
@@ -2456,23 +2255,6 @@ select:focus-visible,
   padding: 0.55rem 1rem !important;
   border-radius: var(--r-2) !important;
 }
-.loom-cowork-header-link {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 0;
-  font: inherit;
-  font-size: var(--fs-caption);
-  transition: color var(--dur-1) var(--ease);
-}
-.loom-cowork-header-link:hover {
-  color: var(--fg);
-}
-.loom-cowork-header-link--danger:hover {
-  color: var(--tint-red);
-}
-
 /* Word-like page skin for cowork Read view.
  * People have muscle memory for Word/PDF layouts — serif body on a centered
  * "page", ample margins, drop shadow that implies paper. The point isn't to
@@ -2494,63 +2276,6 @@ select:focus-visible,
               0 2px 8px color-mix(in srgb, var(--fg) 4%, transparent);
   padding: 72px 88px;
   font-family: var(--serif);
-}
-.loom-cowork-document-body h1,
-.loom-cowork-document-body h2,
-.loom-cowork-document-body h3,
-.loom-cowork-document-body h4 {
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-.loom-cowork-document-body h1 {
-  font-size: 1.7rem;
-  line-height: 1.25;
-  margin: 1.6em 0 0.5em;
-  padding-bottom: 0.3em;
-  border-bottom: 1px solid color-mix(in srgb, var(--mat-border) 90%, transparent);
-}
-.loom-cowork-document-body h2 {
-  font-size: 1.38rem;
-  line-height: 1.3;
-  margin: 1.4em 0 0.4em;
-}
-.loom-cowork-document-body h3 {
-  font-size: 1.14rem;
-  line-height: 1.35;
-  margin: 1.2em 0 0.35em;
-  color: var(--accent);
-}
-.loom-cowork-document-body p {
-  margin: 0 0 0.85em;
-  text-align: justify;
-  text-justify: inter-word;
-  hyphens: auto;
-}
-.loom-cowork-document-body blockquote {
-  margin: 1em 0;
-  padding: 0.3em 1em;
-  border-left: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--fg-secondary);
-  font-style: italic;
-}
-.loom-cowork-document-body code {
-  font-family: var(--mono);
-  font-size: 0.9em;
-  background: var(--code-bg);
-  padding: 0.08em 0.35em;
-  border-radius: 3px;
-}
-.loom-cowork-document-body pre {
-  font-family: var(--mono);
-  font-size: 0.88em;
-  line-height: 1.55;
-  padding: 0.9em 1em;
-  background: var(--mat-thin-bg);
-  border: 0.5px solid var(--mat-border);
-  border-radius: var(--r-2);
-  overflow-x: auto;
 }
 @media (max-width: 820px) {
   .loom-cowork-page {
@@ -3492,20 +3217,6 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   display: inline-block;
   width: 1.125rem; height: 0.0625rem; background: var(--accent);
   vertical-align: middle;
-}
-.loom-weaves-legend-dashed {
-  display: inline-block;
-  width: 1.125rem; height: 0;
-  border-top: 0.0625rem dashed var(--muted);
-  vertical-align: middle;
-}
-.loom-weaves-hint kbd {
-  font-family: var(--mono);
-  font-style: normal;
-  color: var(--ink);
-  padding: 0.1rem 0.325rem;
-  border: 0.5px solid rgba(236, 226, 201, 0.18);
-  font-size: 0.78em;
 }
 
 /* M9 — Pursuits. Loom's top-level: questions held at different weights. */
@@ -4472,22 +4183,6 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   letter-spacing: 0.06em;
   color: var(--muted);
 }
-/* Dead: the `weave | quote note link hold` pill row was removed from
-   AtelierClient because the pills were aspirational (no onClick).
-   Keeping the class defs as dead CSS is harmless — nobody renders
-   them. Delete on next CSS sweep if nothing else picks them up. */
-.loom-atelier-toolbar-active {
-  padding: 0.15rem 0.5rem;
-  background: var(--fg);
-  color: var(--bg);
-  border-radius: 2px;
-  font-weight: 500;
-  font-variant: small-caps;
-}
-.loom-atelier-toolbar-sep {
-  color: var(--fg-secondary);
-  opacity: 0.4;
-}
 .loom-atelier-toolbar-status {
   margin-left: auto;
   font-variant: normal;
@@ -4505,9 +4200,6 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   color: var(--muted);
   font-variant-numeric: oldstyle-nums;
   font-feature-settings: "onum";
-}
-.loom-atelier-compose-eyebrow {
-  display: none; /* superseded by toolbar */
 }
 /* Atelier editor + overlay share one wrap so they can layer on top
    of each other with perfect pixel alignment. The wrap establishes
@@ -4827,53 +4519,6 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   margin: 0.5rem 0 0.5rem;
   letter-spacing: -0.02em;
 }
-.loom-salon-participants {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 2.5rem;
-}
-.loom-salon-participant {
-  display: flex; align-items: center; gap: 0.625rem;
-  padding: 0.625rem 1rem;
-  border: 0.5px solid var(--border);
-  background: var(--bg-elevated, var(--bg));
-}
-.loom-salon-avatar {
-  width: 1.75rem; height: 1.75rem;
-  border-radius: 50%;
-  background: var(--participant-color, var(--accent));
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--display);
-  font-style: italic;
-  font-size: 0.9rem;
-  color: var(--bg-elevated);
-  flex-shrink: 0;
-}
-.loom-salon-participant-meta {
-  font-family: var(--serif);
-  font-size: 0.78rem;
-  line-height: 1.3;
-  color: var(--muted);
-}
-.loom-salon-participant-name {
-  font-style: italic;
-  color: var(--fg);
-  font-size: 0.9rem;
-}
-.loom-salon-reader {
-  padding: 2rem 3rem;
-  background: var(--bg-elevated, var(--bg));
-  border: 0.5px solid var(--border);
-  min-height: 24rem;
-  color: var(--fg-secondary, var(--muted));
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 0.95rem;
-  line-height: 1.7;
-}
-.loom-salon-reader p { margin: 0; }
-
 /* M12 — PanelDetail. A held panel, all its wefts. */
 .loom-panel-detail {
   min-height: 100vh;
@@ -5055,69 +4700,6 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   color: var(--muted);
   font-weight: 500;
   margin-bottom: 1.25rem;
-}
-
-.loom-weft-quote {
-  display: grid;
-  grid-template-columns: 1.625rem 1fr;
-  gap: 0.625rem;
-  padding: 0.875rem 0;
-  border-bottom: 0.5px solid var(--hair, rgba(26,23,18,0.04));
-}
-.loom-weft-quote:last-of-type { border-bottom: 0; }
-.loom-weft-n {
-  font-family: var(--display);
-  font-style: italic;
-  font-size: 1.125rem;
-  color: var(--weft-color, var(--accent));
-  font-variant-numeric: oldstyle-nums;
-  text-align: right;
-}
-.loom-weft-src {
-  font-family: var(--serif);
-  font-style: italic;
-  font-variant: small-caps;
-  text-transform: lowercase;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  color: var(--weft-color, var(--accent));
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-.loom-weft-diamond {
-  display: inline-block;
-  width: 0.25rem; height: 0.25rem;
-  background: var(--weft-color, var(--accent));
-  transform: rotate(45deg);
-}
-.loom-weft-new {
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--accent);
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 0.65rem;
-  margin-left: 0.25rem;
-  opacity: 0.85;
-}
-.loom-weft-quote-body {
-  font-family: var(--serif);
-  font-size: 0.85rem;
-  line-height: 1.55;
-  color: var(--fg);
-  font-style: italic;
-  margin-top: 0.375rem;
-}
-.loom-weft-date {
-  font-family: var(--serif);
-  font-size: 0.68rem;
-  color: var(--muted);
-  margin-top: 0.3rem;
-  font-style: italic;
-  font-variant-numeric: oldstyle-nums;
-  font-feature-settings: "onum";
 }
 
 .loom-panel-detail-footer {
@@ -5611,25 +5193,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
 }
 .loom-branching-column.supports .loom-branch-node { border-left: 0.1875rem solid var(--tint-green); }
 .loom-branching-column.counters .loom-branch-node { border-left: 0.1875rem solid var(--tint-red); border-left-style: dashed; }
-/* Sub-support nesting — two smaller children under each support */
 .loom-branch-group { margin-bottom: 1.25rem; }
-.loom-branch-subs {
-  margin: -0.25rem 0 0 1.25rem;
-  padding-left: 0.875rem;
-  border-left: 0.5px dashed var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.loom-branch-sub {
-  padding: 0.5rem 0.75rem;
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--fg-secondary, var(--fg));
-  background: transparent;
-}
 .loom-branching-footer {
   border-top: 0.5px solid var(--border);
   padding-top: 1rem;
@@ -6149,23 +5713,6 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   font-family: var(--serif);
   color: var(--fg);
   padding: 2rem;
-}
-.loom-empty-state-title {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 400;
-  font-size: clamp(2rem, 1.6vw + 1.6rem, 2.8rem);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.5rem;
-  color: var(--fg);
-}
-.loom-empty-state-subtitle {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 1.05rem;
-  color: var(--fg-secondary);
-  margin: 0;
 }
 .loom-empty-state-ornament {
   font-size: 1rem;
