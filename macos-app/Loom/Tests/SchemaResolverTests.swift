@@ -73,4 +73,75 @@ final class SchemaResolverTests: XCTestCase {
             "ingested_Course_Overview_FINS3640_pdf"
         )
     }
+
+    // MARK: - Phase 7.3
+
+    func testFileSlugParsingExtractsTrailingFileSegment() {
+        XCTAssertEqual(
+            SchemaResolver.fileSlug(fromReadingDocId: "know/unsw-fins-3640__week-3-lecture"),
+            "week-3-lecture"
+        )
+        XCTAssertEqual(
+            SchemaResolver.fileSlug(fromReadingDocId: "know/cat__file__with__doublescores"),
+            "file__with__doublescores"
+        )
+        XCTAssertNil(SchemaResolver.fileSlug(fromReadingDocId: "wiki/transformer"))
+        XCTAssertNil(SchemaResolver.fileSlug(fromReadingDocId: "know/no-double-score"))
+    }
+
+    func testFilenameSlugMatchesIngestKnowledgeRule() {
+        // Mirrors `scripts/ingest-knowledge.ts:slugify` — the title is
+        // first stripped of a recognised extension, then lowercased,
+        // then non-alphanumerics collapse to `-`.
+        XCTAssertEqual(
+            SchemaResolver.filenameSlug(from: "Week 3 Lecture.vtt"),
+            "week-3-lecture"
+        )
+        XCTAssertEqual(
+            SchemaResolver.filenameSlug(from: "Chapter 2_The Bond Market.pdf"),
+            "chapter-2-the-bond-market"
+        )
+        // Unknown extension: do not strip — the slug includes it.
+        XCTAssertEqual(
+            SchemaResolver.filenameSlug(from: "v0.5 notes.unknownext"),
+            "v0-5-notes-unknownext"
+        )
+        // Leading / trailing dashes are trimmed; internal whitespace
+        // collapses to a single dash.
+        XCTAssertEqual(
+            SchemaResolver.filenameSlug(from: "  Hello  World  "),
+            "hello-world"
+        )
+    }
+
+    func testExtractorAnchorPayloadCarriesProvisionalAttribution() {
+        let payload = ExtractorAnchorPayload(
+            id: "t_1::keyQuotes[0]",
+            docId: "know/unsw-fins-3640__week-3-lecture",
+            traceId: "t_1",
+            extractorId: "transcript",
+            sourceDocId: "ingested:Week 3 Lecture.vtt",
+            fieldPath: "keyQuotes[0]",
+            text: "Bond replication requires matching cash flows.",
+            pageNum: 12,
+            fingerprint: "t_1::keyQuotes[0]",
+            sourceSpans: [["quote": "Bond replication requires matching cash flows.", "verified": true]]
+        )
+        let dict = payload.jsonDictionary()
+        XCTAssertEqual(dict["attribution"] as? String, "extractor")
+        XCTAssertEqual(dict["status"] as? String, "provisional")
+        XCTAssertEqual(dict["fingerprint"] as? String, "t_1::keyQuotes[0]")
+        XCTAssertEqual(dict["pageNum"] as? Int, 12)
+        let spans = dict["sourceSpans"] as? [[String: Any]]
+        XCTAssertEqual(spans?.first?["verified"] as? Bool, true)
+    }
+
+    func testExtractorAnchorsDismissedStoreSlugMatchesSchemaRule() {
+        // Both stores use the same slugify rule — co-locating the
+        // assertion here flags any drift early.
+        XCTAssertEqual(
+            ExtractorAnchorsDismissedStore.slugified("know/unsw-fins-3640__week-3-lecture"),
+            "know_unsw-fins-3640__week-3-lecture"
+        )
+    }
 }

@@ -3600,6 +3600,89 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
 }
 .loom-pursuit-meta-dot { color: var(--accent); }
 
+/* Phase 7.2 · Auto-spawned Pursuit eyebrow + body line.
+   The eyebrow is small-caps lowercase serif (matches the chrome
+   eyebrow rule in `feedback_vellum_polish_rules`); the body line
+   uses oldstyle figures for percentages and dates. Keep the styling
+   quiet — these Pursuits should look like first-class citizens of
+   the room, not flagged as "not yours". */
+.loom-pursuit-spawn-eyebrow {
+  font-family: var(--serif);
+  font-feature-settings: "smcp" 1;
+  font-variant: small-caps;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: lowercase;
+  margin-bottom: 0.32rem;
+}
+.loom-pursuit-spawn-source {
+  color: var(--accent);
+}
+.loom-pursuit-spawn-body {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.84rem;
+  color: var(--muted);
+  margin-top: 0.4rem;
+  line-height: 1.45;
+  white-space: pre-line;
+  font-variant-numeric: oldstyle-nums;
+  font-feature-settings: "onum";
+}
+
+/* Phase 7.2 · Per-pursuit hide / restore button. The row is now a
+   flex container so the button can sit at the right margin without
+   nesting inside the link (which would steal the click). The hide
+   button is intentionally small and serif-italic — same posture as
+   the meta line, so it doesn't shout for attention. */
+.loom-pursuit-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.loom-pursuit-row .loom-pursuit { flex: 1; }
+.loom-pursuit-row--hidden .loom-pursuit { opacity: 0.55; }
+.loom-pursuit-hide {
+  align-self: center;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 150ms ease-out, background 150ms ease-out;
+}
+.loom-pursuit-hide:hover {
+  color: var(--accent-text);
+  background: var(--hair, rgba(26,23,18,0.06));
+}
+
+/* Phase 7.2 · Bottom disclosure for hidden auto-spawned Pursuits. */
+.loom-pursuits-hidden {
+  margin-top: 2.5rem;
+}
+.loom-pursuits-hidden-toggle {
+  font-family: var(--serif);
+  font-feature-settings: "smcp" 1;
+  font-variant: small-caps;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 0.4rem 0;
+  cursor: pointer;
+  text-transform: lowercase;
+}
+.loom-pursuits-hidden-toggle:hover { color: var(--accent-text); }
+.loom-pursuits-hidden-list {
+  margin-top: 0.5rem;
+}
+
 .loom-pursuit-detail {
   min-height: 100vh;
   background: var(--bg);
@@ -6312,4 +6395,189 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   /* Ornaments keep their ink — they're the book's signature
      marks. Folio + running-head-in-print would be handled by
      `@page` rules in the printer's margin, not here. */
+}
+
+/* =========================================================================
+   Phase 7.3 · Provisional extractor anchors
+   ------------------------------------------------------------------------
+   Selector matches every anchor surface that may receive a Phase 7.3
+   provisional dot — the ExtractorAnchorLayer wraps each dot in a
+   `[data-attribution="extractor"][data-status="provisional"]` element.
+   When the user confirms an anchor it leaves this state and renders
+   through the normal AnchorDot path; when dismissed it disappears.
+   The styling rule (plan §6 Phase 7.3 deliverable D) is gray outline,
+   reduced opacity, faint bronze tint on hover.
+   ========================================================================= */
+.loom-extractor-anchor[data-attribution="extractor"][data-status="provisional"] {
+  pointer-events: auto;
+}
+.loom-extractor-anchor-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: -8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  appearance: none;
+}
+.loom-extractor-anchor-mark {
+  /* Diamond shape (45°-rotated square) so the provisional marks
+     read as a sibling of the user-anchor InkAnchor — same family,
+     dimmer voice. */
+  width: 6px;
+  height: 6px;
+  display: block;
+  background: transparent;
+  border: 1px dashed var(--mat-border);
+  transform: rotate(45deg);
+  opacity: 0.7;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease),
+    opacity 0.18s var(--ease), transform 0.18s var(--ease);
+}
+.loom-extractor-anchor-dot:hover .loom-extractor-anchor-mark,
+.loom-extractor-anchor-dot:focus-visible .loom-extractor-anchor-mark {
+  /* Hover lifts the dim — faint bronze tint per the chrome-tint
+     playbook so it reads as Loom-native, not a generic UI hover. */
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--mat-border));
+  opacity: 1;
+  transform: rotate(45deg) scale(1.18);
+}
+.loom-extractor-anchor-dot:focus-visible {
+  outline: 0.125rem solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+.loom-extractor-anchor-tooltip {
+  position: absolute;
+  top: -6px;
+  right: 28px;
+  width: min(320px, calc(100vw - 48px));
+  padding: 0.6rem 0.75rem;
+  background: var(--bg, var(--paper, #faf6ec));
+  border: 0.5px solid var(--mat-border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(20, 16, 8, 0.08);
+  font-family: var(--serif);
+  font-size: var(--fs-small);
+  color: var(--fg);
+  z-index: 60;
+}
+@media (prefers-color-scheme: dark) {
+  .loom-extractor-anchor-tooltip {
+    background: color-mix(in srgb, var(--fg) 6%, var(--bg, #1a160e));
+  }
+}
+.loom-extractor-anchor-tip-eyebrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: var(--serif);
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  font-style: italic;
+  color: var(--accent-text);
+  font-size: var(--fs-caption);
+  margin-bottom: 0.25rem;
+}
+.loom-extractor-anchor-tip-page {
+  font-family: var(--serif);
+  font-variant-numeric: oldstyle-nums;
+  color: var(--muted);
+  font-style: italic;
+}
+.loom-extractor-anchor-tip-field {
+  font-family: var(--mono);
+  font-size: var(--fs-caption);
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.loom-extractor-anchor-tip-quote {
+  font-style: italic;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+  margin-bottom: 0.55rem;
+  /* Clamp long quotes — prevents tooltip from running off-screen. */
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.loom-extractor-anchor-tip-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.loom-extractor-anchor-tip-action {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.55rem;
+  background: transparent;
+  border: 0.5px solid var(--mat-border);
+  border-radius: 4px;
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease),
+    background 0.18s var(--ease);
+}
+.loom-extractor-anchor-tip-action:hover:not(:disabled),
+.loom-extractor-anchor-tip-action:focus-visible:not(:disabled) {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--mat-border));
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.loom-extractor-anchor-tip-action.is-primary {
+  color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--mat-border));
+}
+.loom-extractor-anchor-tip-action.is-primary:hover:not(:disabled),
+.loom-extractor-anchor-tip-action.is-primary:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.loom-extractor-anchor-tip-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* When the user-confirmed extractor anchor renders through the normal
+   AnchorCard path (post-confirm), the optional `data-attribution`
+   marker on the card lets the version badge surface a small bronze
+   "EXT" eyebrow next to the version count. The Card itself owns
+   layout; this rule just provides the tag styling. */
+.loom-attribution-tag[data-attribution="extractor"],
+.loom-attribution-tag[data-attribution="mixed"][data-origin="extractor"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 0.5px solid color-mix(in srgb, var(--accent) 50%, var(--mat-border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: var(--accent-text);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.loom-attribution-tag[data-attribution="extractor"]::before,
+.loom-attribution-tag[data-attribution="mixed"][data-origin="extractor"]::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.8;
 }

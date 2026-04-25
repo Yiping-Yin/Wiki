@@ -213,6 +213,8 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
                 payload = LoomSchemaBridge.buildPayload(traceId: target.id)
             case .schemaForDoc:
                 payload = LoomSchemaBridge.buildPayload(forReadingDocId: target.id)
+            case .extractorAnchorsForDoc:
+                payload = LoomExtractorAnchorsBridge.buildPayload(forReadingDocId: target.id)
             }
 
             guard let payload else {
@@ -258,6 +260,7 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
         case sourceLibraryGroups
         case schema
         case schemaForDoc = "schema-for-doc"
+        case extractorAnchorsForDoc = "extractor-anchors-for-doc"
     }
 
     private struct NativeTarget {

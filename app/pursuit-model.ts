@@ -24,6 +24,19 @@ export type PursuitPanelItem = {
   title: string;
 };
 
+/** Phase 7.2 · Provenance metadata for a spawned Pursuit. Mirrors the
+ *  Swift sidecar layout exactly so the projection round-trips without
+ *  a renaming layer. Absent on user-minted Pursuits. */
+export type PursuitSpawnMeta = {
+  extractorId: string;
+  fieldPath: string;
+  sourceDocId: string;
+  sourceTraceId: string;
+  sourceTitle: string;
+  body: string;
+  at: number;
+};
+
 export type Pursuit = {
   id: string;
   question: string;
@@ -42,6 +55,14 @@ export type Pursuit = {
    *  `PursuitDetailClient` so the meta line can read "held for X"
    *  before the native projection refreshes. */
   settledAt?: number;
+  /** Phase 7.2 · `true` when the user has dismissed this Pursuit via
+   *  the per-pursuit hide affordance. Reversible — the row is still
+   *  loaded; the surface filters it out (or stashes it behind a
+   *  "hidden N · show" disclosure at the bottom of the room). */
+  hidden?: boolean;
+  /** Phase 7.2 · Provenance metadata when this Pursuit was
+   *  auto-spawned from extracted schema (`PursuitSpawner`). */
+  spawn?: PursuitSpawnMeta;
 };
 
 const DAY_MS = 86_400_000;

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 
 private let showDebugHUDDefaultsKey = "loom.showDebugHUD.v2"
@@ -192,8 +193,7 @@ struct LoomApp: App {
             }
             #endif
             CommandGroup(replacing: .newItem) {
-                Button("New Topic") { NotificationCenter.default.post(name: .loomNewTopic, object: nil) }
-                    .keyboardShortcut("n", modifiers: .command)
+                NewTopicMenuItem()
             }
             // File menu · Export / Import — flat-file JSON dump of the
             // user's pursuits, traces, Sōan cards + edges, weaves. Round
@@ -213,9 +213,11 @@ struct LoomApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     let server = DevServer()
+    private var fallbackMainWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = false
+        NSApp.setActivationPolicy(.regular)
         UserDefaults.standard.set(false, forKey: showDebugHUDDefaultsKey)
         // Restore the security-scoped bookmark for the user's content
         // folder (if any) before ContentView's URL scheme handler
@@ -239,13 +241,98 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             server.markReadyForStaticBundle()
         }
 
+        ensureMainWindowVisible(reason: "launch")
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            DispatchQueue.main.async { [weak self] in
+                self?.ensureMainWindowVisible(reason: "reopen")
+            }
+        }
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         server.stop()
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // A Mac document-like app should not become a terminated app
+        // just because the main room was closed or restored as closed.
+        // Reopen events below bring the main room back explicitly.
+        false
+    }
+
+    private func ensureMainWindowVisible(reason: String) {
+        if let window = mainWindowCandidate() {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            NotificationCenter.default.post(name: .loomOpenMainWindow, object: nil)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.identifier = NSUserInterfaceItemIdentifier(MainWindow.id)
+        window.title = "Loom"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.toolbarStyle = .unifiedCompact
+        window.tabbingMode = .disallowed
+        window.isMovableByWindowBackground = true
+        window.setFrameAutosaveName("LoomMainWindow")
+        window.contentViewController = NSHostingController(
+            rootView: ContentView()
+                .frame(minWidth: 960, minHeight: 640)
+                .environmentObject(server)
+                .background(WindowOpener())
+        )
+        window.center()
+        fallbackMainWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        NotificationCenter.default.post(name: .loomOpenMainWindow, object: nil)
+    }
+
+    private func mainWindowCandidate() -> NSWindow? {
+        NSApp.windows.first { window in
+            window.identifier?.rawValue == MainWindow.id
+                || window.title == "Loom"
+                || window.title.hasSuffix(" · Loom")
+                || window.title.hasSuffix("· Loom")
+        }
+    }
+}
+
+/// Replaces File > New without losing SwiftUI's `openWindow` bridge.
+/// If the app is reopened from Dock/Finder with no visible window, the
+/// AppDelegate posts `.loomOpenMainWindow` and this command-scoped view
+/// owns the actual scene open.
+struct NewTopicMenuItem: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("New Topic") {
+            openMainWindow()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .loomNewTopic, object: nil)
+            }
+        }
+        .keyboardShortcut("n", modifiers: .command)
+        .onReceive(NotificationCenter.default.publisher(for: .loomOpenMainWindow)) { _ in
+            openMainWindow()
+        }
+    }
+
+    private func openMainWindow() {
+        openWindow(id: MainWindow.id)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 }
 
 /// App-menu item that opens the native About window, replacing the
@@ -568,6 +655,7 @@ extension Notification.Name {
     static let loomOpenInBrowser = Notification.Name("loomOpenInBrowser")
     static let loomGoBack = Notification.Name("loomGoBack")
     static let loomGoForward = Notification.Name("loomGoForward")
+    static let loomOpenMainWindow = Notification.Name("loomOpenMainWindow")
     static let loomNewTopic = Notification.Name("loomNewTopic")
     static let loomLearn = Notification.Name("loomLearn")
     static let loomZoomIn = Notification.Name("loomZoomIn")

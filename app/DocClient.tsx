@@ -10,6 +10,7 @@ import { PinButton } from '../components/PinButton';
 import { RehearseThisButton } from '../components/RehearseThisButton';
 import { LiveArtifact } from '../components/LiveArtifact';
 import { AnchorLayer } from '../components/AnchorLayer';
+import { ExtractorAnchorLayer } from '../components/ExtractorAnchorLayer';
 import { TrackView } from '../components/TrackView';
 import { EmptyDocCaptureSurface } from '../components/knowledge/EmptyDocCaptureSurface';
 import { CourseContextStrip } from '../components/CourseContextStrip';
@@ -484,6 +485,10 @@ export default function DocClient() {
 
         {!showCapture ? <LiveArtifact docId={doc.trackId} /> : null}
         {!showCapture ? <AnchorLayer docId={doc.trackId} /> : null}
+        {/* Phase 7.3 · Provisional extractor anchors. Renders next to
+            user/AI anchors as gray-outlined dots; quiet, dismissible,
+            curiosity-led. Empty / no-match resolves to nothing. */}
+        {!showCapture ? <ExtractorAnchorLayer docId={doc.trackId} /> : null}
       </div>
     </div>
   );
