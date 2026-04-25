@@ -162,6 +162,19 @@ test('mac app launch scene presents the main window by default', () => {
   );
 
   assert.match(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.doesNotMatch(source, /\.restorationBehavior\(\.disabled\)/);
+  assert.match(source, /applicationShouldHandleReopen\(_ sender: NSApplication,\s*hasVisibleWindows flag: Bool\)/);
+  assert.match(source, /applicationShouldTerminateAfterLastWindowClosed\(_ sender: NSApplication\) -> Bool/);
+  assert.match(source, /false\s*\n\s*\}/);
+  assert.match(source, /ensureMainWindowVisible\(reason:\s*"launch"\)/);
+  assert.match(source, /ensureMainWindowVisible\(reason:\s*"reopen"\)/);
+  assert.match(source, /private func ensureMainWindowVisible\(reason: String\)/);
+  assert.match(source, /window\.identifier = NSUserInterfaceItemIdentifier\(MainWindow\.id\)/);
+  assert.match(source, /NSHostingController\(/);
+  assert.match(source, /NotificationCenter\.default\.post\(name:\s*\.loomOpenMainWindow,\s*object:\s*nil\)/);
+  assert.match(source, /struct NewTopicMenuItem: View/);
+  assert.match(source, /@Environment\(\\\.openWindow\) private var openWindow/);
+  assert.match(source, /openWindow\(id:\s*MainWindow\.id\)/);
   assert.doesNotMatch(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
 });
 

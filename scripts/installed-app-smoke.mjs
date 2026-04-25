@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { isStaleBuildArtifactName } from './next-build-lock.mjs';
 
 const expectedBundleId = 'com.yinyiping.loom';
 const appSandboxEntitlementPattern = /<key>com\.apple\.security\.app-sandbox<\/key>\s*<true\/>/;
@@ -87,6 +88,22 @@ async function countFiles(root) {
   return total;
 }
 
+async function findStaleArtifacts(root, base = root) {
+  const stale = [];
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const child = path.join(root, entry.name);
+    if (isStaleBuildArtifactName(entry.name)) {
+      stale.push(path.relative(base, child));
+      continue;
+    }
+    if (entry.isDirectory()) {
+      stale.push(...await findStaleArtifacts(child, base));
+    }
+  }
+  return stale;
+}
+
 function assertIncludes(source, needle, label) {
   if (!source.includes(needle)) {
     throw new Error(`${label} does not include ${needle}`);
@@ -125,6 +142,11 @@ export async function runInstalledAppSmoke(options = {}) {
   const fileCount = await countFiles(webRoot);
   if (fileCount < 50) {
     throw new Error(`Static web bundle looks too small: ${fileCount} file(s) in ${webRoot}`);
+  }
+
+  const staleArtifacts = await findStaleArtifacts(webRoot);
+  if (staleArtifacts.length > 0) {
+    throw new Error(`Static web bundle contains stale macOS/Finder artifacts: ${staleArtifacts.slice(0, 8).join(', ')}`);
   }
 
   if (process.env.LOOM_SMOKE_SKIP_CODESIGN !== '1') {
