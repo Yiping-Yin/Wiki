@@ -31,6 +31,14 @@ export type SchemaCorrection = {
   at: number;
 };
 
+/**
+ * How the Swift resolver picked this trace. `null` for legacy payloads
+ * that pre-date the field; otherwise a discrete tag the UI can use to
+ * vary subtle provenance hints (`folder-fallback` carries lower
+ * confidence than `token`).
+ */
+export type SchemaMatchSource = 'token' | 'folder-fallback' | null;
+
 /** The response shape from `loom://native/schema-for-doc/<docId>.json`. */
 export type SchemaRecord = {
   traceId: string;
@@ -46,6 +54,13 @@ export type SchemaRecord = {
   schema: unknown;
   corrections: SchemaCorrection[];
   updatedAt: number;
+  /**
+   * Resolver provenance — `"token"` when the filename / courseCode
+   * carried a UPPER+digit token match, `"folder-fallback"` when the
+   * resolver picked the only syllabus sibling in the same folder,
+   * `null` when the field was absent on the wire (older builds).
+   */
+  matchSource: SchemaMatchSource;
 };
 
 function coerceRecord(raw: unknown): SchemaRecord | null {
@@ -62,6 +77,11 @@ function coerceRecord(raw: unknown): SchemaRecord | null {
           typeof (c as SchemaCorrection).corrected === 'string',
       )
     : [];
+  const matchSourceRaw = obj.matchSource;
+  const matchSource: SchemaMatchSource =
+    matchSourceRaw === 'token' || matchSourceRaw === 'folder-fallback'
+      ? matchSourceRaw
+      : null;
   return {
     traceId: obj.traceId,
     extractorId: obj.extractorId,
@@ -70,6 +90,7 @@ function coerceRecord(raw: unknown): SchemaRecord | null {
     schema: obj.schema,
     corrections,
     updatedAt: typeof obj.updatedAt === 'number' ? obj.updatedAt : 0,
+    matchSource,
   };
 }
 

@@ -39,57 +39,124 @@ enum SchemaResolver {
 
     /// Resolve the best-matching syllabus payload for a reading page.
     /// Returns `nil` when the reading page is not knowledge-scoped, or
-    /// when no syllabus trace matches the page's category.
-    static func resolveSyllabus(forReadingDocId readingDocId: String) -> SchemaPayload? {
+    /// when no syllabus trace can be tied to the page's folder.
+    ///
+    /// Two-stage match (stage 2 added 2026-04-24, plan §6 Phase 7.1
+    /// robustness):
+    ///   1. **Token match.** Walk every syllabus trace, normalise its
+    ///      filename + extracted `courseCode` field into the same
+    ///      uppercase-letter / digit-run tokens as the category slug,
+    ///      and pick the most-recently-updated full match.
+    ///   2. **Folder fallback.** If no token match, count syllabus
+    ///      traces whose source file's parent folder slugifies to the
+    ///      reading page's category slug. If **exactly one** sibling
+    ///      syllabus exists, use it (marked `matchSource = "folder-fallback"`).
+    ///      Zero or multiple siblings → return `nil` (forced-pick is
+    ///      worse than nothing per `feedback_source_fidelity`).
+    ///
+    /// `store` is injectable so unit tests can run against an in-memory
+    /// `LoomDataStore`; production callers fall through to `.shared`.
+    static func resolveSyllabus(
+        forReadingDocId readingDocId: String,
+        store: LoomDataStore = .shared
+    ) -> SchemaPayload? {
         guard let categorySlug = categorySlug(fromReadingDocId: readingDocId) else {
             return nil
         }
-        let categoryTokens = tokens(fromSlug: categorySlug)
-        guard !categoryTokens.isEmpty else { return nil }
 
         let traces: [LoomTrace]
         do {
-            traces = try LoomTraceWriter.allTraces()
+            traces = try LoomTraceWriter.allTraces(store: store)
         } catch {
             NSLog("[Loom] SchemaResolver.resolveSyllabus: allTraces failed: \(error)")
             return nil
         }
 
-        var best: (trace: LoomTrace, event: [String: Any])? = nil
-        for trace in traces where trace.kind == "ingestion-\(SyllabusPDFExtractor.extractorId)" {
-            guard let event = firstSchemaEvent(in: trace) else { continue }
-            let filename = trace.sourceTitle ?? ""
-            let filenameTokens = tokens(from: filename)
-            let courseCodeTokens = tokens(fromCourseCodeField: event["schemaJSON"] as? String)
-            let combined = filenameTokens.union(courseCodeTokens)
-            guard categoryTokens.isSubset(of: combined) else { continue }
+        // Stage 1 — token match (cheap, deterministic). Skipped when the
+        // category slug yields no usable tokens (e.g. `investments` —
+        // lowercase only, no digit run); the fallback below covers that
+        // case explicitly.
+        let categoryTokens = tokens(fromSlug: categorySlug)
+        var tokenBest: (trace: LoomTrace, event: [String: Any])? = nil
+        if !categoryTokens.isEmpty {
+            for trace in traces where trace.kind == "ingestion-\(SyllabusPDFExtractor.extractorId)" {
+                guard let event = firstSchemaEvent(in: trace) else { continue }
+                let filename = trace.sourceTitle ?? ""
+                let filenameTokens = tokens(from: filename)
+                let courseCodeTokens = tokens(fromCourseCodeField: event["schemaJSON"] as? String)
+                let combined = filenameTokens.union(courseCodeTokens)
+                guard categoryTokens.isSubset(of: combined) else { continue }
 
-            if let current = best {
-                if trace.updatedAt > current.trace.updatedAt {
-                    best = (trace, event)
+                if let current = tokenBest {
+                    if trace.updatedAt > current.trace.updatedAt {
+                        tokenBest = (trace, event)
+                    }
+                } else {
+                    tokenBest = (trace, event)
                 }
-            } else {
-                best = (trace, event)
             }
         }
 
-        guard let winner = best else { return nil }
+        if let winner = tokenBest {
+            return makePayload(
+                trace: winner.trace,
+                event: winner.event,
+                matchSource: "token"
+            )
+        }
 
-        let schemaJSON = (winner.event["schemaJSON"] as? String) ?? "{}"
-        let sourceDocId = winner.trace.sourceDocId ?? ""
+        // Stage 2 — folder fallback. Only fires when token match
+        // produced no winner. Counts syllabi whose parent folder
+        // (slugified the same way `ingest-knowledge.ts` slugifies
+        // category labels) equals the reading page's category slug.
+        var folderCandidates: [(trace: LoomTrace, event: [String: Any])] = []
+        for trace in traces where trace.kind == "ingestion-\(SyllabusPDFExtractor.extractorId)" {
+            guard let event = firstSchemaEvent(in: trace) else { continue }
+            guard let parentSlug = parentFolderSlug(fromTraceHref: trace.sourceHref),
+                  parentSlug == categorySlug else {
+                continue
+            }
+            folderCandidates.append((trace, event))
+        }
+
+        // "Exactly one" rule — multiple syllabi in the same folder is
+        // ambiguous; refusing is honest. Zero is the existing silent
+        // miss case (the strip will render the hint UI).
+        guard folderCandidates.count == 1, let only = folderCandidates.first else {
+            return nil
+        }
+
+        return makePayload(
+            trace: only.trace,
+            event: only.event,
+            matchSource: "folder-fallback"
+        )
+    }
+
+    /// Build a `SchemaPayload` from a winning trace + its first
+    /// schema-bearing event. Centralised so the two match paths
+    /// (token / folder-fallback) emit identical wire shape modulo
+    /// `matchSource`.
+    private static func makePayload(
+        trace: LoomTrace,
+        event: [String: Any],
+        matchSource: String
+    ) -> SchemaPayload {
+        let schemaJSON = (event["schemaJSON"] as? String) ?? "{}"
+        let sourceDocId = trace.sourceDocId ?? ""
         let corrections = SchemaCorrectionsStore.read(
             extractorId: SyllabusPDFExtractor.extractorId,
             sourceDocId: sourceDocId
         )
-
         return SchemaPayload(
-            traceId: winner.trace.id,
+            traceId: trace.id,
             extractorId: SyllabusPDFExtractor.extractorId,
             sourceDocId: sourceDocId,
-            sourceTitle: winner.trace.sourceTitle ?? "",
+            sourceTitle: trace.sourceTitle ?? "",
             schemaJSON: schemaJSON,
             corrections: corrections,
-            updatedAt: winner.trace.updatedAt
+            updatedAt: trace.updatedAt,
+            matchSource: matchSource
         )
     }
 
@@ -220,7 +287,8 @@ enum SchemaResolver {
             sourceTitle: trace.sourceTitle ?? "",
             schemaJSON: schemaJSON,
             corrections: corrections,
-            updatedAt: trace.updatedAt
+            updatedAt: trace.updatedAt,
+            matchSource: "token"
         )
     }
 
@@ -307,6 +375,32 @@ enum SchemaResolver {
             return rest
         }
         return nil
+    }
+
+    /// Phase 7.1 robustness · Slugify the parent-folder name of a
+    /// trace's `sourceHref` so it can be compared against a reading
+    /// page's category slug. Mirrors the slugify rule used by
+    /// `scripts/ingest-knowledge.ts:slugify` (lowercase NFKD,
+    /// non-alphanumerics → `-`, leading/trailing dashes trimmed) so a
+    /// folder like `Investments` slugifies to `investments`, matching
+    /// the categorySlug emitted by the knowledge-manifest.
+    ///
+    /// Returns `nil` when the href is missing, not a `file://` URL, or
+    /// has no parent folder. Non-file URLs (e.g. `https://`) currently
+    /// return `nil` — folder semantics don't apply to remote sources.
+    static func parentFolderSlug(fromTraceHref href: String?) -> String? {
+        guard let href, !href.isEmpty else { return nil }
+        guard let url = URL(string: href), url.isFileURL else { return nil }
+        let parent = url.deletingLastPathComponent().lastPathComponent
+        guard !parent.isEmpty, parent != "/" else { return nil }
+        // Replace `+` with "plus" to match `ingest-knowledge.ts:slugify`
+        // (so a folder named `C++ Stuff` slugifies the same on both
+        // sides — `c-plus-plus-stuff`). Folder names rarely have
+        // recognised extensions, so the trailing-extension strip in
+        // `filenameSlug` is a no-op here in practice.
+        let plussed = parent.replacingOccurrences(of: "+", with: "-plus-")
+        let slug = filenameSlug(from: plussed)
+        return slug.isEmpty ? nil : slug
     }
 
     /// Phase 7.3 · Extract the file-portion slug from a reading docId.
@@ -543,6 +637,14 @@ struct SchemaPayload {
     /// — later corrections win per field path.
     let corrections: [SchemaCorrectionsStore.Correction]
     let updatedAt: Double
+    /// How the resolver picked this trace:
+    ///   - `"token"` — filename / courseCode token match (high
+    ///     confidence; the historical default).
+    ///   - `"folder-fallback"` — only one syllabus PDF in the same
+    ///     folder, name didn't carry a course-code token. The web
+    ///     layer can show subtle provenance UI for this case so the
+    ///     user knows the match wasn't deterministic.
+    let matchSource: String
 
     func jsonDictionary() -> [String: Any] {
         // Schema JSON is re-parsed into a dictionary so the web side
@@ -572,6 +674,7 @@ struct SchemaPayload {
                 ] as [String: Any]
             },
             "updatedAt": updatedAt,
+            "matchSource": matchSource,
         ]
     }
 }
