@@ -312,7 +312,14 @@ struct KnowledgeSidebarView: View {
 
     /// Normalize the webview's current URL to the search-index `href` shape.
     private var currentHref: String? {
-        guard let url = URL(string: webState.currentURL) else { return nil }
+        // Use committedURL (not currentURL) so active-link state doesn't
+        // flip during provisional navigation. With currentURL, clicking a
+        // sidebar link re-renders the link's Button mid-press (because
+        // its isActive recomputes the moment WKWebView starts the nav)
+        // and the click gets eaten — user has to click twice to enter
+        // /weaves or /llm-wiki. See ContentView.WebDebugState.committedURL.
+        let stableURL = webState.committedURL.isEmpty ? webState.currentURL : webState.committedURL
+        guard let url = URL(string: stableURL) else { return nil }
         var path = url.path
         if path.hasSuffix(".html") { path.removeLast(5) }
         else if path.hasSuffix(".mdx") { path.removeLast(4) }
