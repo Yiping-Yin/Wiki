@@ -9,7 +9,7 @@ struct LoomApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
     var body: some Scene {
-        WindowGroup("Loom", id: MainWindow.id) {
+        Window("Loom", id: MainWindow.id) {
             ContentView()
                 .frame(minWidth: 960, minHeight: 640)
                 .environmentObject(delegate.server)
