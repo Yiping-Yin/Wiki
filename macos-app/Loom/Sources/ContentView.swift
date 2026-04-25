@@ -5,6 +5,13 @@ private let lastLocalPathDefaultsKey = "loom.lastLocalPath"
 
 final class WebDebugState: ObservableObject {
     @Published var currentURL: String = ""
+    /// URL of the last committed navigation. Updated only on
+    /// `didCommit` / `didFinish` — NOT on `didStartProvisionalNavigation`.
+    /// Used by the sidebar's currentHref so active-link state doesn't
+    /// flip mid-press during provisional navigation (which was eating
+    /// first clicks on Weaves / Reference). The chrome no longer reads
+    /// any URL state — see ContentView.chromeColorScheme.
+    @Published var committedURL: String = ""
     @Published var pageTitle: String = ""
     @Published var isLoading: Bool = false
     @Published var lastError: String = ""
@@ -140,37 +147,25 @@ struct ContentView: View {
         }
     }
 
-    /// Chrome background color that tracks the resolved app theme, with a
-    /// route-level night override for ink-wash pages. The resolved theme has
-    /// to drive the NSWindow appearance too; otherwise the sidebar text can
-    /// flip dark while the native sidebar material stays Aqua-light.
+    /// Chrome background color — single source of truth, follows the
+    /// resolved app theme (system or manual override). NO route-level
+    /// overrides. Per user 2026-04-25: "白天的时候,所有页面都是浅色主题,
+    /// 晚上都是深色主题。不搞特殊。" Day = paper everywhere, night = night
+    /// everywhere. The previous per-route forcedNightChromePaths machinery
+    /// (which flipped chrome on /weaves, /sources, /knowledge, etc.) was
+    /// the root cause of sidebar flicker AND first-click eating on
+    /// Weaves/Reference (the colorScheme env churn invalidated mid-press
+    /// Buttons). Killed.
     private var chromeBackground: Color {
         usesDarkChrome ? LoomTokens.night : LoomTokens.paper
     }
 
-    /// Whether the current active surface + page forces ink-wash night.
-    /// Source/archive routes are visually night-forward even when the
-    /// global theme has not caught up yet; the native sidebar must follow
-    /// the content background instead of staying Aqua-light beside it.
-    private var isNightChrome: Bool {
-        guard activeSurface == .web else { return false }
-        return Self.forcedNightChromePaths.contains { webState.currentURL.contains($0) }
-    }
-
-    private static let forcedNightChromePaths = [
-        "/weaves",
-        "/sources",
-        "/knowledge/",
-        "/llm-wiki",
-        "/wiki/",
-    ]
-
     private var usesDarkChrome: Bool {
-        sidebarColorScheme == .dark || isNightChrome
+        sidebarColorScheme == .dark
     }
 
     private var chromeColorScheme: ColorScheme {
-        usesDarkChrome ? .dark : sidebarColorScheme
+        sidebarColorScheme
     }
 
     private var sidebarColorScheme: ColorScheme {
@@ -194,13 +189,20 @@ struct ContentView: View {
                 // reads as the window's center of gravity instead of
                 // sharing it with the nav column.
                 .navigationSplitViewColumnWidth(min: 180, ideal: 208, max: 300)
-                // Scoped colorScheme — flip sidebar to dark when the
-                // resolved chrome is night so `.primary`, `.secondary`,
-                // `.tertiary`, and our own ink tokens render in candle.
-                // Doesn't cascade to other SwiftUI scenes, so the
-                // sticky-dark regression from `.preferredColorScheme`
-                // (#139) can't happen.
-                .environment(\.colorScheme, chromeColorScheme)
+                // Scoped colorScheme — pinned to the SYSTEM-following
+                // sidebar scheme, NOT the route-aware chromeColorScheme.
+                //
+                // Why pinned (2026-04-25): when this flipped on every
+                // committed nav into /weaves, SwiftUI invalidated the
+                // entire sidebar subtree at commit time. A user's first
+                // click on the Weaves link landed on a Button that was
+                // mid-rerender; the click was eaten and a second click
+                // was required to actually navigate. Decoupling the
+                // sidebar's colorScheme from chrome keeps the sidebar
+                // tree stable through navigation; the chrome (toolbar +
+                // window background) still flips via the toolbar
+                // modifiers below.
+                .environment(\.colorScheme, sidebarColorScheme)
         } detail: {
             surfaceContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -2425,6 +2427,13 @@ struct LoomWebView: NSViewRepresentable {
                 }
             }
             updateDebugState(from: webView, errorMessage: "")
+            // didFinish is the second commit point — re-promote to
+            // committedURL in case the URL changed via redirect between
+            // didCommit and didFinish.
+            let committed = webView.url?.absoluteString ?? ""
+            if debugState.committedURL != committed {
+                debugState.committedURL = committed
+            }
             if !debugState.didFirstLoad {
                 revealFirstPaintIfNeeded(in: webView, reason: "didFinish")
             }
@@ -2460,6 +2469,12 @@ struct LoomWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             syncState(from: webView)
+            // Promote currentURL to committedURL — used by chrome
+            // predicates that need a stable cross-transition signal.
+            let committed = webView.url?.absoluteString ?? ""
+            if debugState.committedURL != committed {
+                debugState.committedURL = committed
+            }
             scheduleFirstPaintFallback(for: webView)
         }
 
