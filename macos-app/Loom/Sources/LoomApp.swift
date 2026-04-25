@@ -21,6 +21,11 @@ struct LoomApp: App {
                 // mismatch half the time.
         }
         .defaultSize(width: 1400, height: 900)
+        // macOS 15+ is the product floor. Do not let system state
+        // restoration reopen Loom into the "all windows closed" state:
+        // clicking the app icon should always present the room.
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.presented)
         // `.unifiedCompact` collapses the titlebar+toolbar into one
         // thin band. `.unified(showsTitle: true)` produces two visual
         // bands — title on top, empty toolbar strip below — which the
@@ -213,7 +218,6 @@ struct LoomApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     let server = DevServer()
-    private var fallbackMainWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = false
@@ -240,15 +244,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // boot latency to wait for.
             server.markReadyForStaticBundle()
         }
-
-        ensureMainWindowVisible(reason: "launch")
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            DispatchQueue.main.async { [weak self] in
-                self?.ensureMainWindowVisible(reason: "reopen")
-            }
+            sender.activate(ignoringOtherApps: true)
+            NotificationCenter.default.post(name: .loomOpenMainWindow, object: nil)
         }
         return true
     }
@@ -262,50 +263,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // just because the main room was closed or restored as closed.
         // Reopen events below bring the main room back explicitly.
         false
-    }
-
-    private func ensureMainWindowVisible(reason: String) {
-        if let window = mainWindowCandidate() {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            NotificationCenter.default.post(name: .loomOpenMainWindow, object: nil)
-            return
-        }
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.identifier = NSUserInterfaceItemIdentifier(MainWindow.id)
-        window.title = "Loom"
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.toolbarStyle = .unifiedCompact
-        window.tabbingMode = .disallowed
-        window.isMovableByWindowBackground = true
-        window.setFrameAutosaveName("LoomMainWindow")
-        window.contentViewController = NSHostingController(
-            rootView: ContentView()
-                .frame(minWidth: 960, minHeight: 640)
-                .environmentObject(server)
-                .background(WindowOpener())
-        )
-        window.center()
-        fallbackMainWindow = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        NotificationCenter.default.post(name: .loomOpenMainWindow, object: nil)
-    }
-
-    private func mainWindowCandidate() -> NSWindow? {
-        NSApp.windows.first { window in
-            window.identifier?.rawValue == MainWindow.id
-                || window.title == "Loom"
-                || window.title.hasSuffix(" · Loom")
-                || window.title.hasSuffix("· Loom")
-        }
     }
 }
 
