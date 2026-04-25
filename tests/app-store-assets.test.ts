@@ -161,7 +161,7 @@ test('mac app launch scene presents the main window by default', () => {
     'utf8',
   );
 
-  assert.match(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.match(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
   assert.match(source, /\.restorationBehavior\(\.disabled\)/);
   assert.match(source, /\.defaultLaunchBehavior\(\.presented\)/);
   assert.match(source, /applicationShouldHandleReopen\(_ sender: NSApplication,\s*hasVisibleWindows flag: Bool\)/);
@@ -174,7 +174,7 @@ test('mac app launch scene presents the main window by default', () => {
   assert.match(source, /struct NewTopicMenuItem: View/);
   assert.match(source, /@Environment\(\\\.openWindow\) private var openWindow/);
   assert.match(source, /openWindow\(id:\s*MainWindow\.id\)/);
-  assert.doesNotMatch(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.doesNotMatch(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
 });
 
 test('first-run sheet is refreshed from current defaults instead of restored state', () => {
