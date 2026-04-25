@@ -2714,7 +2714,7 @@ select:focus-visible,
 }
 
 .note-rendered .wikilink-broken {
-  color: #dc2626;
+  color: var(--tint-red);
   background: rgba(220,38,38,0.08);
   padding: 0 4px;
   border-radius: 4px;
@@ -2972,7 +2972,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   position: absolute;
   top: 0.875rem; left: -0.75rem; right: -0.75rem;
   height: 0.1875rem;
-  background: linear-gradient(180deg, #6b4a30, transparent);
+  background: linear-gradient(180deg, var(--accent-text), transparent);
   pointer-events: none;
   z-index: 1;
 }
@@ -3044,7 +3044,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
       rgba(26, 18, 10, 0.10) 15px,
       rgba(26, 18, 10, 0) 17px
     ),
-    linear-gradient(180deg, var(--tint-orange) 0%, #3a2818 100%);
+    linear-gradient(180deg, var(--tint-orange) 0%, var(--fg) 100%);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2), 0 0.5rem 0.875rem rgba(26, 23, 18, 0.18);
   z-index: 1;
 }
@@ -3114,7 +3114,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   overflow: hidden;
 }
 .loom-atlas-book.is-active .loom-atlas-book-title {
-  color: #fcefd0;
+  color: var(--bg-elevated);
 }
 .loom-atlas-book-foot {
   display: flex;
@@ -3337,8 +3337,13 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
 /* M7 — Weaves. Night-palette focused graph around a single Panel. */
 .loom-weaves {
   min-height: 100vh;
-  background: #13110D;
-  color: #ECE2C9;
+  /* 2026-04-25: was hardcoded #13110D / #ECE2C9 (always-night). Per
+     user "白天的时候,所有页面都是浅色主题,晚上都是深色主题。不搞特殊"
+     — Weaves now follows system theme via tokens. The night ambience
+     remains intact under prefers-color-scheme: dark and the noise
+     overlay below stays scoped, just no longer forced on light users. */
+  background: var(--bg);
+  color: var(--ink);
   padding: clamp(3rem, 6vh, 5rem) clamp(4rem, 6vw, 6rem) 3rem;
   font-family: var(--serif);
   display: flex;
@@ -3367,7 +3372,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   text-transform: lowercase;
   font-size: 0.78rem;
   letter-spacing: 0.08em;
-  color: #B9AE93;
+  color: var(--muted);
   font-weight: 500;
   margin-bottom: 0.875rem;
 }
@@ -3378,14 +3383,14 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   font-weight: 300;
   line-height: 1.04;
   letter-spacing: -0.02em;
-  color: #ECE2C9;
+  color: var(--ink);
   margin: 0 0 0.4rem;
 }
 .loom-weaves-subtitle {
   font-family: var(--serif);
   font-style: italic;
   font-size: 0.88rem;
-  color: #B9AE93;
+  color: var(--muted);
   margin: 0;
 }
 
@@ -3430,7 +3435,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   text-transform: lowercase;
   font-size: 0.7rem;
   letter-spacing: 0.08em;
-  color: #B9AE93;
+  color: var(--muted);
   opacity: 0.85;
   margin-bottom: 6px;
 }
@@ -3438,11 +3443,11 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   height: 8px;
   background: linear-gradient(
     90deg,
-    #C27070 0%,    /* rose — alive now */
-    #C4A468 35%,   /* thread — hot */
-    #D8A168 55%,   /* ochre — warm */
-    #8CA07A 78%,   /* sage — cooling */
-    #6F6756 100%   /* muted — archived */
+    var(--tint-red) 0%,    /* rose — alive now */
+    var(--accent) 35%,   /* thread — hot */
+    var(--tint-orange) 55%,   /* ochre — warm */
+    var(--tint-mint) 78%,   /* sage — cooling */
+    var(--muted) 100%   /* muted — archived */
   );
   opacity: 0.85;
   border-radius: 1px;
@@ -3454,7 +3459,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   font-family: var(--serif);
   font-style: italic;
   font-size: 0.7rem;
-  color: #B9AE93;
+  color: var(--muted);
   opacity: 0.72;
 }
 
@@ -3467,7 +3472,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   font-family: var(--serif);
   font-style: italic;
   font-size: 0.85rem;
-  color: #B9AE93;
+  color: var(--muted);
   position: relative;
   z-index: 1;
 }
@@ -3476,28 +3481,28 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
 .loom-weaves-legend-diamond {
   display: inline-block;
   width: 0.45rem; height: 0.45rem;
-  background: #9E7C3E; transform: rotate(45deg);
+  background: var(--accent); transform: rotate(45deg);
 }
 .loom-weaves-legend-circle {
   display: inline-block;
   width: 0.45rem; height: 0.45rem; border-radius: 50%;
-  background: #8F4646;
+  background: var(--tint-pink);
 }
 .loom-weaves-legend-solid {
   display: inline-block;
-  width: 1.125rem; height: 0.0625rem; background: #C4A468;
+  width: 1.125rem; height: 0.0625rem; background: var(--accent);
   vertical-align: middle;
 }
 .loom-weaves-legend-dashed {
   display: inline-block;
   width: 1.125rem; height: 0;
-  border-top: 0.0625rem dashed #B9AE93;
+  border-top: 0.0625rem dashed var(--muted);
   vertical-align: middle;
 }
 .loom-weaves-hint kbd {
   font-family: var(--mono);
   font-style: normal;
-  color: #ECE2C9;
+  color: var(--ink);
   padding: 0.1rem 0.325rem;
   border: 0.5px solid rgba(236, 226, 201, 0.18);
   font-size: 0.78em;
@@ -4842,7 +4847,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   font-family: var(--display);
   font-style: italic;
   font-size: 0.9rem;
-  color: #FCEFD0;
+  color: var(--bg-elevated);
   flex-shrink: 0;
 }
 .loom-salon-participant-meta {
@@ -6298,7 +6303,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
       font-family: "EB Garamond", Georgia, serif;
       font-style: italic;
       font-size: 10pt;
-      color: #555;
+      color: var(--muted);
     }
   }
 
@@ -6376,7 +6381,7 @@ body.loom-interlace-active .prose-notion > [data-loom-selected] {
   .prose-notion a[href]:not([href^="#"]):not([href^="mailto:"])::after {
     content: " (" attr(href) ")";
     font-size: 0.85em;
-    color: #555;
+    color: var(--muted);
     word-break: break-all;
   }
   .prose-notion a {
