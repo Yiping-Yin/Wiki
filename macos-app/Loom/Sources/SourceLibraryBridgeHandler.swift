@@ -385,6 +385,10 @@ private struct SourceLibraryGroupRecord: Codable {
     var label: String
     var order: Double
 
+    private enum CodingKeys: String, CodingKey {
+        case id, label, order
+    }
+
     init(id: String, label: String, order: Double) {
         self.id = id
         self.label = label
@@ -404,6 +408,10 @@ private struct SourceLibraryMembershipRecord: Codable {
     var groupId: String
     var order: Double
     var hidden: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case categorySlug, groupId, order, hidden
+    }
 
     init(categorySlug: String, groupId: String, order: Double, hidden: Bool?) {
         self.categorySlug = categorySlug
