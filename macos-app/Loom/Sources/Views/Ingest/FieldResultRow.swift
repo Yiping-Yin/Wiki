@@ -263,7 +263,7 @@ struct FieldResultRow<T: CustomStringConvertible & Codable>: View {
         switch reason {
         case "quote_not_substring_of_source": return "quote not in source"
         case "quote_appears_non_contiguous":  return "quote stitched from fragments"
-        case "quote_matches_filename_stem":   return "quote matches filename"
+        case "quote_contains_filename_stem":  return "quote matches filename"
         default:
             // Generic fallback: turn snake_case into sentence words.
             return reason.replacingOccurrences(of: "_", with: " ")
@@ -300,7 +300,7 @@ struct FieldResultRow<T: CustomStringConvertible & Codable>: View {
         charEnd: 0,
         quote: "Course Overview_FINS3640.pdf",
         verified: false,
-        verifyReason: "quote_matches_filename_stem"
+        verifyReason: "quote_contains_filename_stem"
     )
     return FieldResultRow<String>(
         label: "Course Name",
