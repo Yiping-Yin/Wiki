@@ -1207,6 +1207,31 @@ struct LoomWebView: NSViewRepresentable {
         )
         context.coordinator.schemaCorrectionsBridge = schemaCorrectionsBridge
 
+        // Phase 7.2: per-pursuit hide writes. Same idiom as the schema-
+        // corrections bridge — the static native shell has no Next.js
+        // API server so the Pursuits room posts hide / restore through
+        // this reply bridge instead of `POST /api/pursuit-hide`.
+        let pursuitHideBridge = LoomPursuitHideBridgeHandler()
+        userContentController.addScriptMessageHandler(
+            pursuitHideBridge,
+            contentWorld: .page,
+            name: LoomPursuitHideBridgeHandler.name
+        )
+        context.coordinator.pursuitHideBridge = pursuitHideBridge
+
+        // Phase 7.3: extractor-anchor dismissal writes. Same idiom —
+        // reading-page provisional anchors post `dismiss` through this
+        // reply bridge instead of `POST /api/extractor-anchors-dismissed`.
+        // Confirmation flows do NOT route here (they write to IndexedDB
+        // via the existing capture path); only dismissal lands on disk.
+        let extractorAnchorsBridge = LoomExtractorAnchorsBridgeHandler()
+        userContentController.addScriptMessageHandler(
+            extractorAnchorsBridge,
+            contentWorld: .page,
+            name: LoomExtractorAnchorsBridgeHandler.name
+        )
+        context.coordinator.extractorAnchorsBridge = extractorAnchorsBridge
+
         #if DEBUG
         let debugScript = """
         (() => {
@@ -1497,6 +1522,8 @@ struct LoomWebView: NSViewRepresentable {
         var sourceLibraryBridge: SourceLibraryBridgeHandler?
         var embedBridge: EmbeddingBridgeHandler?
         var schemaCorrectionsBridge: LoomSchemaCorrectionsBridgeHandler?
+        var pursuitHideBridge: LoomPursuitHideBridgeHandler?
+        var extractorAnchorsBridge: LoomExtractorAnchorsBridgeHandler?
         var lastRequestedURL: URL?
         var fallbackURL: URL?
         let debugState: WebDebugState
@@ -1912,6 +1939,16 @@ struct LoomWebView: NSViewRepresentable {
                     ]
                 }
             }
+
+            // Phase 7.2: layer per-pursuit hide state + spawn metadata
+            // onto the projection. `hidden` is a quiet boolean flag —
+            // the web side filters by it (or surfaces hidden behind a
+            // disclosure). `spawn` carries the "from syllabus" eyebrow
+            // body so user-spawned vs. auto-spawned can be distinguished
+            // without changing the LoomPursuit schema (deliverable D).
+            let hiddenIds = PursuitHideStore.readAll()
+            let spawnEntriesById = PursuitSpawnMetaStore.readAllEntriesById()
+
             var out: [[String: Any]] = []
             for pursuit in pursuits {
                 let sourceItems = pursuit.decodedSourceDocIds.map { docId in
@@ -1929,7 +1966,7 @@ struct LoomWebView: NSViewRepresentable {
                 }
                 let sourceCount = sourceItems.count
                 let panelCount = panelItems.count
-                let entry: [String: Any] = [
+                var entry: [String: Any] = [
                     "id": pursuit.id,
                     "question": pursuit.question,
                     "weight": pursuit.weight,
@@ -1939,7 +1976,19 @@ struct LoomWebView: NSViewRepresentable {
                     "sourceItems": sourceItems,
                     "panelItems": panelItems,
                     "at": pursuit.updatedAt,
+                    "hidden": hiddenIds.contains(pursuit.id),
                 ]
+                if let spawn = spawnEntriesById[pursuit.id] {
+                    entry["spawn"] = [
+                        "extractorId": spawn.extractorId,
+                        "fieldPath": spawn.fieldPath,
+                        "sourceDocId": pursuit.decodedSourceDocIds.first ?? "",
+                        "sourceTraceId": spawn.sourceTraceId,
+                        "sourceTitle": spawn.sourceTitle,
+                        "body": spawn.body,
+                        "at": spawn.at,
+                    ] as [String: Any]
+                }
                 out.append(entry)
             }
             return out

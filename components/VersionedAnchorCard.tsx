@@ -221,6 +221,23 @@ export function VersionedAnchorCard({
                 v{item.versionCount}
               </button>
             )}
+            {/* Phase 7.3 · attribution badge. `extractor` is shown
+                only while a pure-extractor anchor is in the trace
+                (rare — confirms upgrade to `mixed`); `mixed` shows
+                EXT only when the user confirmed an extractor-found
+                anchor (we can't distinguish ai+user mixes today, so
+                the conservative rule is: show EXT only on `extractor`
+                attribution itself). The styling lives in globals.css
+                under `.loom-attribution-tag`. */}
+            {item.attribution === 'extractor' && (
+              <span
+                className="loom-attribution-tag"
+                data-attribution="extractor"
+                title="Drawn from extractor — provisional"
+              >
+                EXT
+              </span>
+            )}
             {item.isLocked && (
               <span
                 title="This local thought is locked"

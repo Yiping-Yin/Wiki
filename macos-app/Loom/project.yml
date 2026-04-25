@@ -2,7 +2,14 @@ name: Loom
 options:
   bundleIdPrefix: com.yinyiping
   deploymentTarget:
-    macOS: "14.0"
+    # macOS 15.0 — required by `LoomApp.swift:.restorationBehavior(.disabled)`
+    # (macOS 15 API used to suppress "blank window on relaunch" for App
+    # Store) and by the chrome-tint playbook's window+toolbar tint stack
+    # (`feedback_loom_chrome_tint_playbook.md`). Was 14.0 in the project
+    # file but the source code already depended on macOS 15 features —
+    # bumped during Phase 7.3 build verification when the mismatch
+    # surfaced as a hard compile error.
+    macOS: "15.0"
   xcodeVersion: "16.0"
   minimumXcodeGenVersion: "2.30"
 
@@ -45,7 +52,7 @@ targets:
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
-        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_HARDENED_RUNTIME: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Education/Reference per the trademark-check memo (2026-04-21) —

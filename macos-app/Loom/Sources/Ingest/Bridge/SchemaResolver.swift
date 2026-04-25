@@ -93,6 +93,103 @@ enum SchemaResolver {
         )
     }
 
+    /// Phase 7.3 · Resolve provisional `extractor`-attribution anchors
+    /// for a reading page.
+    ///
+    /// The 7.3 plan (§5.3 / §6) projects `TranscriptSchema.keyQuotes`
+    /// and `TextbookSchema.keyTerms` onto the matching reading page's
+    /// margin as gray-outlined provisional anchors. Each one carries
+    /// `attribution: "extractor"` (Q2 in plan §8 — the first emission
+    /// of this widened enum value). The user can confirm or dismiss;
+    /// confirmation lands as a real `thought-anchor` event with
+    /// `attribution: "mixed"` via the existing IndexedDB capture path,
+    /// dismissal lands in a sidecar so the same provisional doesn't
+    /// re-render after reload.
+    ///
+    /// Filename matching: `know/<cat>__<file>` ↔ `ingested:<filename>`.
+    /// We slugify the trace's `sourceTitle` (the original filename, sans
+    /// extension) and compare against the reading doc's `<file>` portion.
+    /// First exact slug match wins; ties break by most-recent updatedAt.
+    /// When no transcript or textbook trace matches, returns `[]` and
+    /// the reading page renders no provisional layer (silent — plan
+    /// §7.1 gate "no spurious anchors").
+    static func resolveExtractorAnchors(
+        forReadingDocId readingDocId: String
+    ) -> [ExtractorAnchorPayload] {
+        guard let fileSlug = fileSlug(fromReadingDocId: readingDocId) else {
+            return []
+        }
+        guard !fileSlug.isEmpty else { return [] }
+
+        let traces: [LoomTrace]
+        do {
+            traces = try LoomTraceWriter.allTraces()
+        } catch {
+            NSLog("[Loom] SchemaResolver.resolveExtractorAnchors: allTraces failed: \(error)")
+            return []
+        }
+
+        // Find the best (most-recently-updated) transcript/textbook
+        // trace whose filename slug matches.
+        var transcriptBest: (trace: LoomTrace, event: [String: Any])? = nil
+        var textbookBest: (trace: LoomTrace, event: [String: Any])? = nil
+
+        let transcriptKind = "ingestion-\(TranscriptExtractor.extractorId)"
+        let textbookKind = "ingestion-\(TextbookChapterExtractor.extractorId)"
+
+        for trace in traces {
+            guard trace.kind == transcriptKind || trace.kind == textbookKind else {
+                continue
+            }
+            guard let event = firstSchemaEvent(in: trace) else { continue }
+            let title = trace.sourceTitle ?? ""
+            let traceSlug = filenameSlug(from: title)
+            guard !traceSlug.isEmpty else { continue }
+            guard traceSlug == fileSlug else { continue }
+
+            if trace.kind == transcriptKind {
+                if let current = transcriptBest {
+                    if trace.updatedAt > current.trace.updatedAt {
+                        transcriptBest = (trace, event)
+                    }
+                } else {
+                    transcriptBest = (trace, event)
+                }
+            } else {
+                if let current = textbookBest {
+                    if trace.updatedAt > current.trace.updatedAt {
+                        textbookBest = (trace, event)
+                    }
+                } else {
+                    textbookBest = (trace, event)
+                }
+            }
+        }
+
+        // Read the dismissal sidecar so already-dismissed anchors are
+        // filtered out before they ever reach the web side.
+        let dismissed = ExtractorAnchorsDismissedStore.read(docId: readingDocId)
+
+        var out: [ExtractorAnchorPayload] = []
+        if let winner = transcriptBest {
+            out.append(contentsOf: anchorsFromTranscript(
+                trace: winner.trace,
+                event: winner.event,
+                readingDocId: readingDocId,
+                dismissed: dismissed
+            ))
+        }
+        if let winner = textbookBest {
+            out.append(contentsOf: anchorsFromTextbook(
+                trace: winner.trace,
+                event: winner.event,
+                readingDocId: readingDocId,
+                dismissed: dismissed
+            ))
+        }
+        return out
+    }
+
     /// Resolve by trace id (primary path for the native bridge —
     /// `loom://native/schema/<traceId>.json`). Returns `nil` when the
     /// trace does not exist or is not an ingestion trace.
@@ -212,6 +309,204 @@ enum SchemaResolver {
         return nil
     }
 
+    /// Phase 7.3 · Extract the file-portion slug from a reading docId.
+    /// Reading docIds shaped `know/<cat>__<file>` carry the file slug
+    /// after the `__` separator. Matches the slug `ingest-knowledge.ts`
+    /// produces from the source filename, so trace.sourceTitle's
+    /// `filenameSlug` should equal this for a hit.
+    static func fileSlug(fromReadingDocId docId: String) -> String? {
+        guard docId.hasPrefix("know/") else { return nil }
+        let rest = String(docId.dropFirst("know/".count))
+        guard let sep = rest.range(of: "__") else { return nil }
+        return String(rest[sep.upperBound...])
+    }
+
+    /// Phase 7.3 · Slugify a raw filename (with or without extension)
+    /// the same way `scripts/ingest-knowledge.ts:slugify` does, so a
+    /// trace's `sourceTitle` ("Week 3 Lecture.vtt") slugifies to the
+    /// same value the knowledge manifest assigned to the matching
+    /// `know/<cat>__<file>` doc ("week-3-lecture").
+    static func filenameSlug(from raw: String) -> String {
+        // 1. Strip extension (case-insensitive) — `readableTitle` in
+        //    `ingest-knowledge.ts` first removes the extension, then
+        //    converts `_-` runs to spaces, then `slugify` lowercases
+        //    and re-collapses non-alphanumerics into `-`.
+        var s = raw
+        if let dot = s.lastIndex(of: ".") {
+            let extPart = s[s.index(after: dot)...]
+            // Only strip recognised extensions to avoid eating "."
+            // chars in titles like `v0.5 notes`.
+            let known: Set<String> = [
+                "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx",
+                "csv", "tsv", "json", "ipynb", "parquet",
+                "txt", "md", "mdx",
+                "vtt", "srt", "html", "htm",
+            ]
+            if known.contains(String(extPart).lowercased()) {
+                s = String(s[..<dot])
+            }
+        }
+        // 2. Lowercase + ascii-fold via NFKD + collapse non-allowed.
+        let lowered = s.lowercased()
+        let folded = lowered.applyingTransform(.toLatin, reverse: false) ?? lowered
+        let stripped = folded.applyingTransform(.stripCombiningMarks, reverse: false) ?? folded
+        var out = ""
+        var lastWasDash = true
+        for scalar in stripped.unicodeScalars {
+            let isLower = scalar >= "a" && scalar <= "z"
+            let isDigit = scalar >= "0" && scalar <= "9"
+            let isCJK = scalar.value >= 0x4e00 && scalar.value <= 0x9fa5
+            if isLower || isDigit || isCJK {
+                out.unicodeScalars.append(scalar)
+                lastWasDash = false
+            } else if !lastWasDash {
+                out.append("-")
+                lastWasDash = true
+            }
+        }
+        // Trim leading/trailing dashes; cap at 80 chars per
+        // `ingest-knowledge.ts:slugify`.
+        while out.hasPrefix("-") { out.removeFirst() }
+        while out.hasSuffix("-") { out.removeLast() }
+        if out.count > 80 { out = String(out.prefix(80)) }
+        return out
+    }
+
+    // MARK: - Provisional anchor builders
+
+    /// Build provisional anchors from `TranscriptSchema.keyQuotes`. Each
+    /// `.found` entry with at least one verified `sourceSpan` becomes
+    /// one anchor; `.notFound` entries are skipped (plan §6 Phase 7.3
+    /// "Skip .notFound items"). The `fingerprint` is a stable hash over
+    /// `(traceId, fieldPath)` so dismissal sidecars survive re-extracts.
+    private static func anchorsFromTranscript(
+        trace: LoomTrace,
+        event: [String: Any],
+        readingDocId: String,
+        dismissed: Set<String>
+    ) -> [ExtractorAnchorPayload] {
+        guard let schema = parsedSchema(event: event),
+              let quotes = schema["keyQuotes"] as? [[String: Any]] else {
+            return []
+        }
+        let extractorId = (event["extractorId"] as? String) ?? TranscriptExtractor.extractorId
+        let sourceDocId = trace.sourceDocId ?? ""
+        var out: [ExtractorAnchorPayload] = []
+        for (idx, field) in quotes.enumerated() {
+            let fieldPath = "keyQuotes[\(idx)]"
+            guard let anchor = buildAnchor(
+                field: field,
+                traceId: trace.id,
+                extractorId: extractorId,
+                sourceDocId: sourceDocId,
+                fieldPath: fieldPath,
+                readingDocId: readingDocId,
+                dismissed: dismissed
+            ) else { continue }
+            out.append(anchor)
+        }
+        return out
+    }
+
+    /// Build provisional anchors from `TextbookSchema.keyTerms`. Same
+    /// shape as transcript keyQuotes — each `.found` term with a
+    /// verified span becomes a provisional anchor.
+    private static func anchorsFromTextbook(
+        trace: LoomTrace,
+        event: [String: Any],
+        readingDocId: String,
+        dismissed: Set<String>
+    ) -> [ExtractorAnchorPayload] {
+        guard let schema = parsedSchema(event: event),
+              let terms = schema["keyTerms"] as? [[String: Any]] else {
+            return []
+        }
+        let extractorId = (event["extractorId"] as? String) ?? TextbookChapterExtractor.extractorId
+        let sourceDocId = trace.sourceDocId ?? ""
+        var out: [ExtractorAnchorPayload] = []
+        for (idx, field) in terms.enumerated() {
+            let fieldPath = "keyTerms[\(idx)]"
+            guard let anchor = buildAnchor(
+                field: field,
+                traceId: trace.id,
+                extractorId: extractorId,
+                sourceDocId: sourceDocId,
+                fieldPath: fieldPath,
+                readingDocId: readingDocId,
+                dismissed: dismissed
+            ) else { continue }
+            out.append(anchor)
+        }
+        return out
+    }
+
+    /// Shared `FieldResult<String>` → ExtractorAnchorPayload converter.
+    /// Returns `nil` when the field is `.notFound`, has no value, or
+    /// has no usable `sourceSpan` quote.
+    private static func buildAnchor(
+        field: [String: Any],
+        traceId: String,
+        extractorId: String,
+        sourceDocId: String,
+        fieldPath: String,
+        readingDocId: String,
+        dismissed: Set<String>
+    ) -> ExtractorAnchorPayload? {
+        guard (field["status"] as? String) == "found" else { return nil }
+        let value = field["value"] as? String
+        let spans = (field["sourceSpans"] as? [[String: Any]]) ?? []
+        // Prefer the first span's quote; fall back to value (so a
+        // valid keyTerm with no span still renders).
+        var quote: String? = nil
+        var pageNum: Int? = nil
+        if let first = spans.first {
+            if let q = first["quote"] as? String, !q.isEmpty {
+                quote = q
+            }
+            if let p = first["pageNum"] as? Int { pageNum = p }
+        }
+        if quote == nil { quote = value }
+        guard let text = quote, !text.isEmpty else { return nil }
+
+        // Deterministic id from (traceId, fieldPath) — survives re-renders
+        // and matches the sidecar dismissal fingerprint.
+        let fingerprint = "\(traceId)::\(fieldPath)"
+        if dismissed.contains(fingerprint) { return nil }
+
+        // Source spans round-trip as plain dictionaries so the
+        // resolver doesn't need to understand the full Codable shape.
+        let sourceSpans: [[String: Any]] = spans.map { span in
+            var out: [String: Any] = [:]
+            if let q = span["quote"] as? String { out["quote"] = q }
+            if let p = span["pageNum"] as? Int { out["pageNum"] = p }
+            if let v = span["verified"] as? Bool { out["verified"] = v }
+            return out
+        }
+
+        return ExtractorAnchorPayload(
+            id: fingerprint,
+            docId: readingDocId,
+            traceId: traceId,
+            extractorId: extractorId,
+            sourceDocId: sourceDocId,
+            fieldPath: fieldPath,
+            text: text,
+            pageNum: pageNum,
+            fingerprint: fingerprint,
+            sourceSpans: sourceSpans
+        )
+    }
+
+    /// Decode the full schema JSON dictionary from a trace event.
+    private static func parsedSchema(event: [String: Any]) -> [String: Any]? {
+        guard let schemaJSON = event["schemaJSON"] as? String,
+              let data = schemaJSON.data(using: .utf8),
+              let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return parsed
+    }
+
     /// Pull the first `thought-anchor` event with a non-empty
     /// `schemaJSON` string from a trace. IngestionView persists
     /// exactly one such event per trace (`IngestionView.swift:763-784`)
@@ -278,6 +573,51 @@ struct SchemaPayload {
             },
             "updatedAt": updatedAt,
         ]
+    }
+}
+
+// MARK: - ExtractorAnchorPayload
+
+/// Phase 7.3 · A single provisional anchor projected onto a reading
+/// page from a transcript / textbook schema. Serialised as the payload
+/// items of `loom://native/extractor-anchors-for-doc/<docId>.json`.
+///
+/// `attribution` is fixed to `"extractor"` on the wire — the type
+/// union widening shipped in Phase 7.1 (`lib/trace/types.ts:149`) and
+/// this is its first emitter (Q2 in plan §8). On confirm, the web
+/// side promotes the value to `"mixed"` when it writes the real
+/// thought-anchor event into IndexedDB.
+struct ExtractorAnchorPayload {
+    /// Stable React key. Same as `fingerprint` today.
+    let id: String
+    let docId: String
+    let traceId: String
+    let extractorId: String
+    let sourceDocId: String
+    let fieldPath: String
+    let text: String
+    let pageNum: Int?
+    let fingerprint: String
+    let sourceSpans: [[String: Any]]
+
+    func jsonDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": id,
+            "docId": docId,
+            "traceId": traceId,
+            "extractorId": extractorId,
+            "sourceDocId": sourceDocId,
+            "fieldPath": fieldPath,
+            "text": text,
+            "fingerprint": fingerprint,
+            "attribution": "extractor",
+            "status": "provisional",
+            "sourceSpans": sourceSpans,
+        ]
+        if let pageNum {
+            dict["pageNum"] = pageNum
+        }
+        return dict
     }
 }
 
