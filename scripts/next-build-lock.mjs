@@ -10,8 +10,61 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function removeDuplicateArtifacts(dir) {
+export function isStaleBuildArtifactName(name) {
+  return name === '.DS_Store'
+    || name.startsWith('._')
+    || DUPLICATE_ARTIFACT_PATTERN.test(name);
+}
+
+export async function findStaleBuildArtifacts(dir, { limit = Infinity } = {}) {
+  const stale = [];
+  await findStaleBuildArtifactsInDir(dir, stale, limit);
+  return stale;
+}
+
+async function findStaleBuildArtifactsInDir(dir, stale, limit) {
+  if (!existsSync(dir) || stale.length >= limit) return;
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (isStaleBuildArtifactName(entry.name)) {
+      stale.push(fullPath);
+      if (stale.length >= limit) return;
+      continue;
+    }
+    if (entry.isDirectory()) {
+      await findStaleBuildArtifactsInDir(fullPath, stale, limit);
+      if (stale.length >= limit) return;
+    }
+  }
+}
+
+export async function assertNoStaleBuildArtifacts(dir, label = dir) {
+  const stale = await findStaleBuildArtifacts(dir, { limit: 10 });
+  if (stale.length === 0) return;
+  throw new Error(`stale macOS/Finder build artifacts remain in ${label}:\n${stale.join('\n')}`);
+}
+
+export async function removeDuplicateArtifacts(dir, { strict = true } = {}) {
   if (!existsSync(dir)) return;
+  const failures = [];
+  await removeDuplicateArtifactsInDir(dir, failures);
+  if (strict && failures.length > 0) {
+    const listed = failures
+      .slice(0, 10)
+      .map(({ target, error }) => `${target}: ${error?.message ?? String(error)}`)
+      .join('\n');
+    const more = failures.length > 10 ? `\n...and ${failures.length - 10} more` : '';
+    throw new Error(`failed to remove stale macOS/Finder build artifacts:\n${listed}${more}`);
+  }
+}
+
+async function removeDuplicateArtifactsInDir(dir, failures) {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -20,14 +73,16 @@ export async function removeDuplicateArtifacts(dir) {
   }
   await Promise.all(entries.map(async (entry) => {
     const fullPath = path.join(dir, entry.name);
-    if (DUPLICATE_ARTIFACT_PATTERN.test(entry.name)) {
+    if (isStaleBuildArtifactName(entry.name)) {
       try {
         await removePathWithRetry(fullPath);
-      } catch {}
+      } catch (error) {
+        failures.push({ target: fullPath, error });
+      }
       return;
     }
     if (entry.isDirectory()) {
-      await removeDuplicateArtifacts(fullPath);
+      await removeDuplicateArtifactsInDir(fullPath, failures);
     }
   }));
 }

@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertNoStaleBuildArtifacts } from './next-build-lock.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const macosRoot = path.join(repoRoot, 'macos-app', 'Loom');
@@ -44,9 +45,10 @@ function removeStaleNamedProjects() {
   }
 }
 
-function buildReleaseApp() {
+async function buildReleaseApp() {
   run('npm', ['run', 'build']);
   nodeScript('scripts/build-static-export.mjs');
+  await assertNoStaleBuildArtifacts(path.join(repoRoot, '.next-export'), '.next-export after static export');
 
   removeStaleNamedProjects();
   run('xcodegen', ['generate'], { cwd: macosRoot });
@@ -59,26 +61,31 @@ function buildReleaseApp() {
     'Release',
     'build',
   ], { cwd: macosRoot });
+  await assertNoStaleBuildArtifacts(path.join(repoRoot, '.next-export'), '.next-export after Xcode staging');
 }
 
-let exitCode = 0;
+async function main() {
+  let exitCode = 0;
 
-try {
-  buildReleaseApp();
-  nodeScript('scripts/install-loom-app.mjs', [mode]);
-  console.log(successMessages[mode] ?? successMessages.auto);
-} catch (error) {
-  exitCode = error?.exitCode ?? 1;
-  console.error(error instanceof Error ? error.message : String(error));
-} finally {
   try {
-    nodeScript('scripts/clean-loom-app-bundles.mjs');
+    await buildReleaseApp();
+    nodeScript('scripts/install-loom-app.mjs', [mode]);
+    console.log(successMessages[mode] ?? successMessages.auto);
   } catch (error) {
+    exitCode = error?.exitCode ?? 1;
     console.error(error instanceof Error ? error.message : String(error));
-    if (exitCode === 0) {
-      exitCode = error?.exitCode ?? 1;
+  } finally {
+    try {
+      nodeScript('scripts/clean-loom-app-bundles.mjs');
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      if (exitCode === 0) {
+        exitCode = error?.exitCode ?? 1;
+      }
     }
   }
+
+  process.exit(exitCode);
 }
 
-process.exit(exitCode);
+main();

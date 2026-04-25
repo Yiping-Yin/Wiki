@@ -59,5 +59,9 @@ test('next build lock creates the lock directory recursively and retries missing
   assert.match(source, /maxRetries: 2/);
   assert.match(source, /error\?\.code === 'ENOTEMPTY' \|\| error\?\.code === 'EBUSY' \|\| error\?\.code === 'EPERM'/);
   assert.match(source, /const DUPLICATE_ARTIFACT_PATTERN = \/ \\d\+\(\?=\(.+\)\)\//);
-  assert.match(source, /DUPLICATE_ARTIFACT_PATTERN\.test\(entry\.name\)/);
+  assert.match(source, /export function isStaleBuildArtifactName\(name\)/);
+  assert.match(source, /name === '\.DS_Store'/);
+  assert.match(source, /name\.startsWith\('\._'\)/);
+  assert.match(source, /DUPLICATE_ARTIFACT_PATTERN\.test\(name\)/);
+  assert.match(source, /isStaleBuildArtifactName\(entry\.name\)/);
 });
