@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { color } from '../lib/loom-design-system';
 
 // Visualizes SGD on f(x,y) = (x^2 + y^2)/4 + sin(x)*cos(y)
 function f(x: number, y: number) { return (x * x + y * y) / 4 + Math.sin(x) * Math.cos(y); }
@@ -31,14 +32,14 @@ export function GradientDescent() {
       img.data[i * 4 + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
-    ctx.strokeStyle = '#B98E3F'; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.strokeStyle = color.thread; ctx.lineWidth = 2; ctx.beginPath();
     path.forEach(([x, y], i) => {
       const px = ((x + R) / (2 * R)) * W, py = ((y + R) / (2 * R)) * H;
       if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     });
     ctx.stroke();
     const [cx, cy] = pt;
-    ctx.fillStyle = '#B98E3F';
+    ctx.fillStyle = color.thread;
     ctx.beginPath();
     ctx.arc(((cx + R) / (2 * R)) * W, ((cy + R) / (2 * R)) * H, 5, 0, Math.PI * 2);
     ctx.fill();
