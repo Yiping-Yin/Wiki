@@ -1,9 +1,21 @@
 # Phase C — Presentation Layer (体面 OUT)
 
-> Status: **planning · no code yet**
+> Status: **M1/Path B partial · M2-M4 not started** (updated 2026-04-30)
 > Filed: 2026-04-27
 > Triggered by: user "差很远。这怎么给人看" after v1.1.5 (HN extractor shipped)
 > Expected effort: ~5–10 days, broken into 4 milestones below
+>
+> **Progress (as of 2026-04-30):**
+> - **M1 / Path B (in-Loom capture renderer)** — partially shipped at
+>   `app/loom-render/capture/page.tsx`, paired with `app/loom-render/captures/page.tsx`
+>   (magazine landing) and `app/loom-render/snapshot/page.tsx` (full-fidelity
+>   HTML viewer). Hosted in a dedicated `CaptureWebView` (Swift) per the
+>   2026-04-29 Web Capture extension shipping. Still in iteration on
+>   media/scroll/theme details (Codex active territory).
+> - **M2 (List shape detection + renderer)** — not started.
+> - **M3 (Article shape renderer)** — not started.
+> - **M4 (Passage / Conversation shapes)** — not started. Syllabus
+>   deferred to a later phase.
 
 ## Why this exists (frame)
 

@@ -1,10 +1,31 @@
 # Loom Design System v1.0 — Plan
 
-> Status: **planning · not started**
+> Status: **foundation shipped · tranche 1 done · tranches 2-4 not started** (updated 2026-04-30)
 > Filed: 2026-04-28
 > Triggered by: 一夜累积~80 个 patch 后的架构债诊断
 > Expected effort: **4 nights** of disciplined work + 1 optional polish night
 > Related plans: `phase-c-presentation-layer.md`, `snapshot-capture-mode.md`
+>
+> **Progress (as of 2026-04-30):**
+> - **Foundation shipped**: canonical token source at `lib/loom-design-system.ts`
+>   (11 base color tokens + 4 semantic state colors with muted variants +
+>   typography scale + spacing + motion). CSS twin staging at
+>   `app/globals-v2.css`. TS primitives shipped at `components/loom/*`
+>   (Body / Display / Eyebrow / HairlineRule / LayoutArticle / LayoutGallery /
+>   LayoutIndex / LayoutMagazine / LayoutSnapshot / Stack / Surface).
+>   First consumer: `app/loom-render/capture/page.tsx` (Phase C M1).
+> - **Tranche 1 done** (commit `e4c57c0`): collapsed 7 hex literals in
+>   `components/{GradientDescent,NeuralNetCanvas}.tsx` to
+>   `color.{thread,paperDeep,ink1,ink3,paperUp,paperCard}`.
+> - **Tranche 2 blocked on lib expansion**: BPETokenizer palette + the
+>   plum/sage/indigo/umber/rose connection strokes in NeuralNetCanvas need
+>   a tint family added to the lib first (currently lib has only 4
+>   semantic colors, not the 5 categorical tints the inventory expects).
+> - **Tranche 3 (CSS migration)**: `app/globals.css` hex collapse + JSX
+>   inline-style audits — not started; HOT-FILE-required surface.
+> - **Tranche 4 (Swift mirror + light-mode tokens)**: `LoomTokens.swift`
+>   alignment + light-mode variants (lib is currently dark-only) — not
+>   started.
 
 ## Why this exists
 

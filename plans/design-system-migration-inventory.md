@@ -3,6 +3,19 @@
 > **Scope.** Read-only audit of `app/loom-render/`, `components/`, `macos-app/Loom/Sources/` against the v1.0 plan in `plans/loom-design-system-v1.md`. Skips `node_modules`, `.next-build`, `.next-export`. Hot files: `capture/page.tsx` (2591 lines), `captures/page.tsx` (2153), `snapshot/page.tsx` (2156), plus 3 Swift surfaces > 1000 lines.
 >
 > **Intent.** Tonight's three parallel agents (tokens / TS primitives / Swift mirror) ship the foundation. Nights 2-4 consume this doc to know precisely what to migrate, where the constitutional landmines sit, and which 10-minute fixes already pay off.
+>
+> **Progress (added 2026-04-30):**
+> - **Tranche 1 (commit `e4c57c0`)** collapsed 7 hex literals to tokens.
+>   See "Tranche-1 done" annotations inline in the tables below.
+> - **Tranche 2 blocked**: BPETokenizer palette + NeuralNetCanvas
+>   plum/rose connection strokes need a tint family (sage / plum /
+>   indigo / umber / rose) added to `lib/loom-design-system.ts` first.
+>   Current lib has only 4 semantic state tokens (alert / success /
+>   info / warning), not the 5 categorical tints the inventory's
+>   "Tint family" section expects.
+> - **Light-mode tokens not yet defined** in lib (lib is dark-only per
+>   its header). Any `#FAF7EC` / `#fbf6ec` / `#F4F0E4` collapse waits
+>   on lib expansion (planned night 4 per main plan).
 
 ---
 
