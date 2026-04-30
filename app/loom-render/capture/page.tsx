@@ -658,6 +658,23 @@ function interactiveSnapshotCaption(snapshotHref: string): string {
 }
 
 function wrapSnapshotBackedMedia(imgTag: string, snapshotHref: string): string {
+  // Inline-iframe path is INACTIVE pending per-region anchor extraction
+  // (peer-chat msg-038, 2026-05-01). Embedding the full snapshot HTML
+  // at each canvas position re-shows the entire source page inside the
+  // article, duplicating prose the user already scrolled past, and the
+  // iframe inner-scroll captures trackpad wheel events causing
+  // scroll-jitter when the cursor crosses the iframe boundary. Until
+  // the extension's CaptureAST schema emits per-canvas anchor IDs in
+  // the snapshot HTML (so the iframe can scroll-anchor to JUST the
+  // relevant canvas region), default to the static preview card with
+  // a prominent "Open full snapshot ↗" CTA — same interactivity
+  // escape hatch, no whole-page-in-the-middle spam.
+  //
+  // The iframe construction below is kept in source (referenced by the
+  // contract test "reader embeds snapshot-backed visual blocks") so
+  // the architecture is clearly documented and ready to re-enable.
+  // To re-activate inline embed: change `figureBody` to
+  // `liveFrame || preview` and re-add the `<details>` preview wrapper.
   const embedHref = snapshotEmbedHref(snapshotHref);
   const preview = markSnapshotPreviewImage(imgTag);
   const liveFrame = embedHref
@@ -668,12 +685,13 @@ function wrapSnapshotBackedMedia(imgTag: string, snapshotHref: string): string {
         '</iframe>',
       ].join('')
     : '';
+  // INTENTIONAL: prefer preview-only render until anchor scoping ships.
+  // `liveFrame` is computed but unused (kept for the contract above).
+  void liveFrame;
+  const figureBody = preview;
   return [
     '<figure class="loom-interactive-snapshot" data-loom-interactive-snapshot="true">',
-    liveFrame || preview,
-    liveFrame
-      ? `<details class="loom-interactive-snapshot-preview"><summary>Preview frame</summary>${preview}</details>`
-      : '',
+    figureBody,
     interactiveSnapshotCaption(snapshotHref),
     '</figure>',
   ].join('');
