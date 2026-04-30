@@ -225,6 +225,38 @@ The file gradually heals itself; no destructive migration script needed.
 
 Reverse-chronological. Date in YYYY-MM-DD.
 
+### 2026-04-29 — Web Capture extension shipped
+
+**Decision:** Loom now ships a Safari Web Extension at `macos-app/Loom/LoomWebExtension/` paired with a native host (`Sources/Capture{Shape,Sheet,View,WebView}.swift`, `LoomURLSchemeHandler.swift` capture-bridge additions). The extension surfaces a toolbar action + three context menu items (page / selection / link) and emits one of two URL shapes: `loom://capture?payload=<json>` for small payloads or `loom://capture?via=clipboard` (short URL + clipboard JSON) for multi-MB rich-media payloads. Manifest declares `clipboardWrite`. `background.js` uses `scripting.executeScript({world: 'MAIN'})` to bypass page CSP for the `loom://` href click.
+**Rationale:** Source files (Notion-style web pages, articles, HN threads) were second-class citizens — the only way to "save" one was to bookmark in the browser and rely on the user to revisit. Web Capture brings them under the same per-folder `Loom.md` substrate as PDFs. The two URL shapes exist because URL-encoded JSON truncates around ~2MB on multi-image captures; clipboard fallback tolerates anything the OS clipboard accepts.
+**Coverage:** Atlas-compatible (the extension provides context menu items even when the toolbar action is hidden). Tested against `flipdisc.io` as the golden case fixture (long article + YouTube embed + Vimeo embed + composite SVG/canvas blocks + image gallery + code blocks).
+**Reference:** `docs/process/WEB_CAPTURE_GOLDEN_CASE_2026-04-29.md` documents 11 failure modes (SVG layout attrs as black blocks, re-sign without entitlements, theme resolver gaps, validation locality, provider video fallback, extension-not-injected detection, etc.) + 13 product rules (never re-sign with bare codesign, source folder remains read-only, capture from live DOM not detached cloneNode for media-rich docs, screenshots as media sidecars not inline base64, etc.).
+**Open caveat:** YouTube returns `Error 153` in `loom://` WKWebView origin; capture data and source link are present but provider playback requires trusted HTTPS origin. Vimeo plays fine.
+
+### 2026-04-28 — Loom Design System v1.0 spec
+
+**Decision:** Canonical visual-token source filed at `lib/loom-design-system.ts`. CSS twin staging at `app/globals-v2.css`. Swift mirror is `LoomTokens.swift` (existing, will be brought into alignment in tranche 2+). Primitives shipped at `components/loom/*` (Body, Display, Eyebrow, HairlineRule, LayoutArticle, LayoutGallery, LayoutIndex, LayoutMagazine, LayoutSnapshot, Stack, Surface).
+**Rationale:** Loom had drifted into 15 font sizes, 5 expressions of the same bronze accent (`#9E7C3E` / `#C4A468` / `#B98E3F` / `#D4B478` / `#7A5E2E`), no spacing scale, no motion scale, and 4 rendering paths each with its own CSS. Per-feature improvisation was ratcheting inconsistency upward with every patch. The plan diagnoses 10 constitutional rules (no `backdrop-filter` on sticky/scroll-aware elements, hover may only change color/opacity/border, all `useEffect` must list real dependencies, scroll-spy callbacks read-only or 1Hz hysteresis-throttled, no `position: fixed` + `transform`, no inline `<style>` blocks, no new font sizes/colors/spacings outside the system, etc.).
+**Migration:** 4 nights of disciplined work per `plans/loom-design-system-v1.md`. Inventory of 67 hex literals + ~40 more mapped to tokens at `plans/design-system-migration-inventory.md`. Tranche 1 (commit `e4c57c0`) collapsed 7 hexes in `components/{GradientDescent,NeuralNetCanvas}` to `color.{thread,paperDeep,ink1,ink3,paperUp,paperCard}`. Tranche 2 will require expanding the DS lib's tint family (sage/plum/indigo/umber/rose) and a light-mode token set (currently dark-only).
+
+### 2026-04-27 — Phase C presentation layer (体面 OUT)
+
+**Decision:** Filed `plans/phase-c-presentation-layer.md` for the 体面 OUT half of Loom (the rendering layer — Phase A handled 顺手 IN, capture-into-substrate). The plan establishes 4 content shapes (List / Article / Passage / Conversation; Syllabus deferred), each detected by heuristic content shape and rendered by a per-shape view. Source of truth remains `.md` files; renders are derived; AI distill (Phase C2) is the only path to write back to source as a tagged section.
+**Rationale:** A perfectly-extracted markdown document still reads as raw source code in iA Writer / Xcode / wherever the user's default markdown viewer is. The unit of "体面" is rendered output, not extracted text. Phase A's optimization track (mini-Defuddle, sr-only stripping, HN tuple extractor) was the wrong ladder — even perfect extraction doesn't ship presentation.
+**Status:** M1/Path B (in-Loom capture renderer at `app/loom-render/capture/page.tsx`) is partially shipped — explicit phase comment in the file. M2/M3/M4 (List / Article / Passage / Conversation renderers as a content-shape selector) not started.
+**Constitutional rules:** Source folder remains immutable; `.md` is canonical; content-shape-aware (one renderer per detected shape, not user choice); no AI-generated rewriting at render time (render is deterministic given source); user retains full editing power on the rendered surface; no in-Loom AI chat (external LLMs do thinking, Loom does archive + presentation).
+
+### 2026-04-27 — Source folder is immutable (LoomFileStore enforced)
+
+**Decision:** Loom-managed data writes go through `LoomFileStore` (sandbox container at `~/Library/Containers/com.yinyiping.loom/Data/Documents/Loom Data/`). Zero automated writes to the user's external folder. `Loom.md`, sidecars, caches all live in the sandbox; the user's source folder is read-only.
+**Rationale:** Source authority (V1 in §3) is one of Loom's two load-bearing trust contracts. Any automated mutation of the user's folder breaks the contract. Hiding artifacts inside the user folder isn't a fix — redirect the writes. Don't auto-migrate or auto-delete legacy artifacts either; only humans modify the source folder.
+**Coverage:** All capture writes go via `LoomFileStore.loomMDURL(for: rootID, subPath:)`. Tests `tests/source-authority-contract.test.ts` and `tests/web capture routing never falls back to broad or source-mutating paths` enforce.
+
+### 2026-04-27 — Ingest-to-learning-loop bridge
+
+**Decision:** Storage P0 + routing P1 of `plans/ingest-to-learning-loop-bridge.md` shipped. Schema-bound extractors land their structured output where the learning-loop surfaces (CourseContextStrip, Pursuits, extractor anchors) can read it. Folder-fallback resolver fires when the folder name lacks a course code AND there's exactly one syllabus sibling — eyebrow shows "folder fallback"; otherwise muted dismissible hint guides the user to drop a syllabus PDF and Extract.
+**Rationale:** Ingest extractor refactor (Phases 0-7.4 plus 6 hardening commits) produced typed extractor lanes; without a bridge, the structured output sat unused. The bridge connects the schema layer to the reading-page surfaces so users see typed metadata without manual reconciliation.
+
 ### 2026-04-26 — Apple Foundation Models as default provider
 
 **Decision:** New `AIProviderKind.appleFoundation` case wired through `AppleFoundationClient` (wraps the macOS 26+ `FoundationModels` framework). Set as the default for new installs / first-run. Streams natively via snapshot diffing. Graceful `notAvailable` failure with actionable banner when on unsupported hardware/OS.
@@ -392,4 +424,4 @@ If you (the AI assistant) are about to make a design decision that contradicts s
 
 ---
 
-*Last meaningful update: 2026-04-26. Initial version captures decisions accumulated through the late-April 2026 reading-flow rewrite.*
+*Last meaningful update: 2026-04-30. §8 catchup added 5 entries (2026-04-27 ×2, 2026-04-28, 2026-04-29) covering Phase C plan, source-folder immutability, ingest-bridge, DS v1 spec, and Web Capture extension. Initial version captured decisions through the late-April 2026 reading-flow rewrite.*
