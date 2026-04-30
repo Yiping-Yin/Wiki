@@ -142,11 +142,6 @@ final class AIStreamBridgeHandler: NSObject, WKScriptMessageHandler {
             var opts = OllamaClient.Options()
             opts.onChunk = onChunk
             _ = try await OllamaClient.send(prompt: prompt, options: opts)
-        case .claudeCli:
-            var opts = CLIRuntimeClient.Options()
-            opts.flavor = .claude
-            opts.onChunk = onChunk
-            _ = try await CLIRuntimeClient.send(prompt: prompt, options: opts)
         case .codexCli:
             var opts = CLIRuntimeClient.Options()
             opts.flavor = .codex

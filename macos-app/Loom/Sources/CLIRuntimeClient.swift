@@ -1,7 +1,7 @@
 import Foundation
 
 /// Subprocess-based AI runtime. Generic wrapper for shell-spawned CLIs
-/// (`claude`, `codex`, or any future OpenAI-compatible shell tool).
+/// (`codex`, or any future OpenAI-compatible shell tool).
 ///
 /// **Sandbox caveat**: `Process.launch()` under `com.apple.security.app-sandbox`
 /// can only spawn executables inside the `.app` bundle. Users running an
@@ -11,7 +11,7 @@ import Foundation
 enum CLIRuntimeClient {
     struct Options {
         /// Well-known CLI flavor. Drives argument formatting.
-        var flavor: Flavor = .claude
+        var flavor: Flavor = .codex
         /// Absolute path to the binary. Caller usually fills this from
         /// DevServerPreflight's PATH search.
         var binaryPath: String = ""
@@ -26,7 +26,6 @@ enum CLIRuntimeClient {
     }
 
     enum Flavor {
-        case claude
         case codex
     }
 
@@ -41,7 +40,7 @@ enum CLIRuntimeClient {
         var errorDescription: String? {
             switch self {
             case .missingBinary(let path):
-                return "CLI binary not found at \(path). Install `claude` / `codex`, or switch to an HTTPS provider in Settings."
+                return "CLI binary not found at \(path). Install `codex`, or switch to an HTTPS provider in Settings."
             case .spawnFailed(let message):
                 return "CLI spawn failed: \(message)"
             case .nonZeroExit(let code, let stderr):
@@ -106,9 +105,7 @@ enum CLIRuntimeClient {
             throw Failure.spawnFailed(desc)
         }
 
-        // Write prompt to stdin and close — the claude/codex flavors both
-        // accept the prompt either via argv (with a flag) or via stdin;
-        // stdin is safer for long prompts.
+        // Write prompt to stdin and close; stdin is safer for long prompts.
         stdinPipe.fileHandleForWriting.write(Data(prompt.utf8))
         try? stdinPipe.fileHandleForWriting.close()
 
@@ -159,9 +156,6 @@ enum CLIRuntimeClient {
 
     static func buildArgs(flavor: Flavor, extra: [String]) -> [String] {
         switch flavor {
-        case .claude:
-            // `claude -p <prompt-from-stdin> --output-format text`
-            return ["-p", "--output-format", "text"] + extra
         case .codex:
             // `codex exec --skip-git-repo-check --ephemeral --color never`
             return ["exec", "--skip-git-repo-check", "--ephemeral", "--color", "never"] + extra
@@ -173,12 +167,6 @@ enum CLIRuntimeClient {
     static func resolveDefaultBinary(for flavor: Flavor) throws -> String {
         let candidates: [String]
         switch flavor {
-        case .claude:
-            candidates = [
-                NSHomeDirectory() + "/.local/bin/claude",
-                "/opt/homebrew/bin/claude",
-                "/usr/local/bin/claude",
-            ]
         case .codex:
             candidates = [
                 "/opt/homebrew/bin/codex",

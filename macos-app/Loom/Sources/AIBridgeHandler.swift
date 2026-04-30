@@ -53,10 +53,6 @@ final class AIBridgeHandler: NSObject, WKScriptMessageHandlerWithReply {
                 case .ollama:
                     let ollamaOpts = OllamaClient.Options()
                     text = try await OllamaClient.send(prompt: prompt, options: ollamaOpts)
-                case .claudeCli:
-                    var cliOpts = CLIRuntimeClient.Options()
-                    cliOpts.flavor = .claude
-                    text = try await CLIRuntimeClient.send(prompt: prompt, options: cliOpts)
                 case .codexCli:
                     var cliOpts = CLIRuntimeClient.Options()
                     cliOpts.flavor = .codex

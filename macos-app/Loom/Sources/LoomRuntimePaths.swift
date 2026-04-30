@@ -14,6 +14,14 @@ enum LoomRuntimePaths {
         "\(homeDirectory)/Library/Application Support/Loom"
     }
 
+    static func derivedDataRoot(homeDirectory: String = NSHomeDirectory()) -> String {
+        appSupportRoot(homeDirectory: homeDirectory) + "/derived"
+    }
+
+    static func userDataRoot(homeDirectory: String = NSHomeDirectory()) -> String {
+        appSupportRoot(homeDirectory: homeDirectory) + "/user-data"
+    }
+
     static func resolveInstalledRuntimeRoot(
         env: [String: String] = ProcessInfo.processInfo.environment,
         homeDirectory: String = NSHomeDirectory(),
@@ -105,6 +113,8 @@ enum LoomRuntimePaths {
         ) {
             hostRoots["bundle"] = bundleRoot
         }
+        hostRoots["derived"] = URL(fileURLWithPath: derivedDataRoot(homeDirectory: homeDirectory))
+        hostRoots["user-data"] = URL(fileURLWithPath: userDataRoot(homeDirectory: homeDirectory))
 
         return hostRoots
     }
@@ -138,9 +148,10 @@ enum LoomLocalResourceLoader {
     static func data(
         from url: URL,
         hostRoots: [String: URL],
+        contentRoots: [UUID: URL] = [:],
         fileManager: FileManager = .default
     ) throws -> Data {
-        guard let resolved = LoomURLSchemeHandler.resolve(url, hostRoots: hostRoots) else {
+        guard let resolved = LoomURLSchemeHandler.resolve(url, hostRoots: hostRoots, contentRoots: contentRoots) else {
             throw LoadError.unresolvedURL(url.absoluteString)
         }
         guard let data = fileManager.contents(atPath: resolved.path) else {

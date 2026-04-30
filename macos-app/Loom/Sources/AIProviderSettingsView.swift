@@ -2,7 +2,7 @@ import SwiftUI
 
 /// macOS-native Settings pane for AI provider choice + credentials.
 ///
-/// Every provider — Anthropic HTTPS, OpenAI HTTPS, local Claude/Codex CLI,
+/// Every provider — Anthropic HTTPS, OpenAI HTTPS, local Codex CLI,
 /// Ollama, custom OpenAI-compatible endpoint — is wired end-to-end. The
 /// picker exposes the full menu; the conditional sections below swap to
 /// the credentials/endpoint/model fields each provider needs.
@@ -34,7 +34,7 @@ struct AIProviderSettingsView: View {
     }
 
     private var provider: AIProviderKind {
-        AIProviderKind(rawValue: providerRaw) ?? .anthropic
+        AIProviderKind(rawValue: providerRaw) ?? .codexCli
     }
 
     var body: some View {
@@ -159,10 +159,9 @@ struct AIProviderSettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            } else if provider == .claudeCli || provider == .codexCli {
+            } else if provider == .codexCli {
                 Section {
-                    let flavor: CLIRuntimeClient.Flavor = (provider == .claudeCli) ? .claude : .codex
-                    let resolved = (try? CLIRuntimeClient.resolveDefaultBinary(for: flavor)) ?? "(not found)"
+                    let resolved = (try? CLIRuntimeClient.resolveDefaultBinary(for: .codex)) ?? "(not found)"
                     HStack {
                         Text("Binary")
                         Spacer()
@@ -181,7 +180,7 @@ struct AIProviderSettingsView: View {
                         .font(.callout)
                     }
                 } header: {
-                    Text(provider == .claudeCli ? "Claude CLI" : "Codex CLI")
+                    Text("Codex CLI")
                 } footer: {
                     Text("Loom shells out to the CLI you've already logged in — no API key needed.")
                         .font(.caption)
@@ -207,7 +206,12 @@ struct AIProviderSettingsView: View {
         .scrollContentBackground(.hidden)
         .background(LoomTokens.paper)
         .tint(LoomTokens.thread)
-        .onAppear(perform: loadExisting)
+        .onAppear {
+            if AIProviderKind(rawValue: providerRaw) == nil {
+                providerRaw = AIProviderKind.codexCli.rawValue
+            }
+            loadExisting()
+        }
     }
 
     @ViewBuilder
@@ -339,21 +343,25 @@ struct AIProviderSettingsView: View {
 /// CustomEndpointClient) and routed through AIBridgeHandler /
 /// AIStreamBridgeHandler based on the current selection.
 enum AIProviderKind: String, CaseIterable, Identifiable {
+    case appleFoundation
     case anthropic
     case openai
-    case claudeCli
     case codexCli
     case ollama
     case customEndpoint
     case disabled
 
+    static var allCases: [AIProviderKind] {
+        [.appleFoundation, .anthropic, .openai, .codexCli, .ollama, .customEndpoint, .disabled]
+    }
+
     var id: String { rawValue }
 
     var label: String {
         switch self {
+        case .appleFoundation: return "Apple Intelligence (on-device)"
         case .anthropic: return "Anthropic (HTTPS)"
         case .openai: return "OpenAI (HTTPS)"
-        case .claudeCli: return "Local Claude CLI"
         case .codexCli: return "Local Codex CLI"
         case .ollama: return "Local Ollama"
         case .customEndpoint: return "Custom endpoint"
@@ -363,9 +371,10 @@ enum AIProviderKind: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .appleFoundation: return "apple.logo"
         case .anthropic: return "sparkles"
         case .openai: return "sparkles.rectangle.stack"
-        case .claudeCli, .codexCli: return "terminal"
+        case .codexCli: return "terminal"
         case .ollama: return "cube"
         case .customEndpoint: return "network"
         case .disabled: return "nosign"
@@ -380,18 +389,21 @@ enum AIProviderKind: String, CaseIterable, Identifiable {
     /// Current user selection from UserDefaults. Centralized so bridges
     /// and dispatchers agree on the active provider.
     static var current: AIProviderKind {
-        let raw = UserDefaults.standard.string(forKey: "loom.ai.provider") ?? anthropic.rawValue
-        return AIProviderKind(rawValue: raw) ?? .anthropic
+        // Default to Apple Foundation Models — works out of the box on
+        // supported hardware, no API key or installation. User can
+        // switch in Settings.
+        let raw = UserDefaults.standard.string(forKey: "loom.ai.provider") ?? appleFoundation.rawValue
+        return AIProviderKind(rawValue: raw) ?? .codexCli
     }
 
     var footerBlurb: String {
         switch self {
+        case .appleFoundation:
+            return "On-device Apple Intelligence — no API key, no internet, no setup. Works on Apple Silicon Macs running macOS 26+ with Apple Intelligence enabled. Best for quick lookups, translations, and short questions; the on-device model is small (~3B params) so deeper analysis or long passages benefit from Anthropic / OpenAI / a custom endpoint."
         case .anthropic:
             return "Loom calls Anthropic's Messages API directly with the key you provide. Keys stay in Keychain; no server sees them."
         case .openai:
             return "OpenAI support is queued next. Bring your own OpenAI API key; Loom will call chat completions directly."
-        case .claudeCli:
-            return "Shell out to the `claude` CLI you already have logged in. No API key required. (Not available under Mac App Store sandbox.)"
         case .codexCli:
             return "Shell out to the `codex` CLI you already have logged in. No API key required. (Not available under Mac App Store sandbox.)"
         case .ollama:
