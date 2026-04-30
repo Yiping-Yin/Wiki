@@ -2561,9 +2561,14 @@ function ArticleRender({
         /* Snapshot-backed visual modules. Canvas/SVG-heavy widgets cannot
            be faithfully represented as a still image. The reader embeds the
            saved interactive snapshot inline and keeps the still image only as
-           an optional preview/fallback. */
+           an optional preview/fallback. Inline iframe is currently
+           suppressed (peer-chat msg-038) — preview img + "Open full
+           snapshot" CTA is the active path until per-region anchoring
+           ships in CaptureAST. CSS sized for the preview-only case:
+           compact card, narrow image strip, no alt-text leak when the
+           preview source is empty (canvas captured before render). */
         .loom-capture-article .loom-interactive-snapshot {
-          max-width: min(100%, 48rem);
+          max-width: min(100%, 32rem);
           margin: var(--space-lg) auto;
           border: 0.5px solid color-mix(in srgb, var(--fg) 14%, transparent);
           border-radius: var(--radius-sm);
@@ -2581,12 +2586,20 @@ function ArticleRender({
         .loom-capture-article .loom-interactive-snapshot > img,
         .loom-capture-article .loom-interactive-snapshot-preview img {
           width: 100%;
-          max-height: 24rem;
+          max-height: 9rem;
           object-fit: contain;
           margin: 0;
           border: 0;
           border-radius: 0;
           background: color-mix(in srgb, var(--mat-thin-bg) 70%, var(--paper-deep) 30%);
+          /* Hide the broken-image alt-text fallback when the preview
+             source is empty — the alt is set to "structured-visual
+             capture" / similar by the extension and leaks visually
+             when the captured canvas was empty (regression 3b in
+             peer-chat msg-029). The "Open full snapshot" CTA below
+             is the user-visible affordance regardless. */
+          font-size: 0;
+          color: transparent;
         }
         .loom-capture-article .loom-interactive-snapshot-preview {
           border-top: 0.5px solid color-mix(in srgb, var(--fg) 8%, transparent);
