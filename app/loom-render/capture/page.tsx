@@ -2567,9 +2567,10 @@ function ArticleRender({
            ships in CaptureAST. CSS sized for the preview-only case:
            compact card, narrow image strip, no alt-text leak when the
            preview source is empty (canvas captured before render). */
-        .loom-capture-article .loom-interactive-snapshot {
-          max-width: min(100%, 32rem);
-          margin: var(--space-lg) auto;
+        .loom-capture-article .loom-interactive-snapshot,
+        .loom-capture-article figure.loom-interactive-snapshot {
+          max-width: min(100%, 32rem) !important;
+          margin: var(--space-lg) auto !important;
           border: 0.5px solid color-mix(in srgb, var(--fg) 14%, transparent);
           border-radius: var(--radius-sm);
           overflow: hidden;
@@ -2583,14 +2584,27 @@ function ArticleRender({
           border: 0;
           background: color-mix(in srgb, black 86%, var(--mat-thin-bg) 14%);
         }
+        /* Aggressively constrain the preview img — earlier we saw
+           visually-rendered cards ~400px tall instead of the targeted
+           ~180px (img 9rem + caption ~30px). Likely cause: a more
+           specific selector or the broken-image placeholder rendering
+           at intrinsic alt-text size. !important + multiple selector
+           shapes wins any specificity battle, and display:block +
+           min-height:0 prevents the broken-image fallback from
+           expanding the box. peer-chat msg-041. */
         .loom-capture-article .loom-interactive-snapshot > img,
+        .loom-capture-article .loom-interactive-snapshot > img.loom-snapshot-preview-image,
+        .loom-capture-article figure.loom-interactive-snapshot > img,
         .loom-capture-article .loom-interactive-snapshot-preview img {
-          width: 100%;
-          max-height: 9rem;
+          display: block !important;
+          width: 100% !important;
+          height: 9rem !important;
+          max-height: 9rem !important;
+          min-height: 0 !important;
           object-fit: contain;
-          margin: 0;
-          border: 0;
-          border-radius: 0;
+          margin: 0 !important;
+          border: 0 !important;
+          border-radius: 0 !important;
           background: color-mix(in srgb, var(--mat-thin-bg) 70%, var(--paper-deep) 30%);
           /* Hide the broken-image alt-text fallback when the preview
              source is empty — the alt is set to "structured-visual
@@ -2598,8 +2612,8 @@ function ArticleRender({
              when the captured canvas was empty (regression 3b in
              peer-chat msg-029). The "Open full snapshot" CTA below
              is the user-visible affordance regardless. */
-          font-size: 0;
-          color: transparent;
+          font-size: 0 !important;
+          color: transparent !important;
         }
         .loom-capture-article .loom-interactive-snapshot-preview {
           border-top: 0.5px solid color-mix(in srgb, var(--fg) 8%, transparent);
