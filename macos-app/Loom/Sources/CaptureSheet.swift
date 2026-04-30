@@ -2186,7 +2186,7 @@ struct CaptureSheet: View {
         // `[text](url)` pattern means this chunk is structural content
         // (a list of references), not nav chrome.
         let hasMarkdownLink = lines.contains { line in
-            String(line).range(of: "\\[[^\\]]+\\]\\([^)]+\\)", options: .regularExpression) != nil
+            String(line).range(of: #"\[[^\]]+\]\([^)]+\)"#, options: .regularExpression) != nil
         }
         if hasMarkdownLink { return false }
         let words = chunk.split { $0.isWhitespace }
