@@ -622,51 +622,76 @@ function promoteHeroImage(html: string): string {
   return html.replace(tag, `<div class="loom-hero">${tag}</div>`);
 }
 
-const STILL_FRAME_KINDS = ['canvas', 'composite-media', 'structured-visual', 'svg'];
+const SNAPSHOT_BACKED_KINDS = ['canvas', 'composite-media', 'structured-visual', 'svg'];
 
-function markStillFrameImage(imgTag: string): string {
-  if (/\bdata-loom-still-frame-image=/.test(imgTag)) return imgTag;
+function markSnapshotPreviewImage(imgTag: string): string {
+  if (/\bdata-loom-snapshot-preview-image=/.test(imgTag)) return imgTag;
   return imgTag.replace(/\s*\/?>$/, (end) =>
     end.includes('/>')
-      ? ' data-loom-still-frame-image="true" />'
-      : ' data-loom-still-frame-image="true">',
+      ? ' data-loom-snapshot-preview-image="true" />'
+      : ' data-loom-snapshot-preview-image="true">',
   );
 }
 
-function stillFrameCaption(snapshotHref: string): string {
+function snapshotEmbedHref(snapshotHref: string): string {
+  if (!snapshotHref) return '';
+  try {
+    const url = new URL(snapshotHref);
+    url.searchParams.set('embed', '1');
+    return url.toString();
+  } catch {
+    const joiner = snapshotHref.includes('?') ? '&' : '?';
+    return `${snapshotHref}${joiner}embed=1`;
+  }
+}
+
+function interactiveSnapshotCaption(snapshotHref: string): string {
   const action = snapshotHref
-    ? `<a class="loom-still-frame-action" href="${escapeAttr(snapshotHref)}">View Snapshot</a>`
-    : '<span class="loom-still-frame-action muted">Snapshot unavailable</span>';
+    ? `<a class="loom-interactive-snapshot-action" href="${escapeAttr(snapshotHref)}">Open full snapshot</a>`
+    : '<span class="loom-interactive-snapshot-action muted">Snapshot unavailable</span>';
   return [
-    '<figcaption class="loom-still-frame-caption">',
-    '<span class="loom-still-frame-label">Static still frame</span>',
+    '<figcaption class="loom-interactive-snapshot-caption">',
+    '<span class="loom-interactive-snapshot-label">Interactive snapshot</span>',
     action,
     '</figcaption>',
   ].join('');
 }
 
-function wrapStillFrameImage(imgTag: string, snapshotHref: string): string {
+function wrapSnapshotBackedMedia(imgTag: string, snapshotHref: string): string {
+  const embedHref = snapshotEmbedHref(snapshotHref);
+  const preview = markSnapshotPreviewImage(imgTag);
+  const liveFrame = embedHref
+    ? [
+        `<iframe class="loom-interactive-snapshot-frame" src="${escapeAttr(embedHref)}"`,
+        ' title="Interactive snapshot"',
+        ' loading="lazy">',
+        '</iframe>',
+      ].join('')
+    : '';
   return [
-    '<figure class="loom-still-frame" data-loom-still-frame="true">',
-    markStillFrameImage(imgTag),
-    stillFrameCaption(snapshotHref),
+    '<figure class="loom-interactive-snapshot" data-loom-interactive-snapshot="true">',
+    liveFrame || preview,
+    liveFrame
+      ? `<details class="loom-interactive-snapshot-preview"><summary>Preview frame</summary>${preview}</details>`
+      : '',
+    interactiveSnapshotCaption(snapshotHref),
     '</figure>',
   ].join('');
 }
 
-function annotateStaticStillFrames(html: string, snapshotHref: string): string {
-  const kindPattern = STILL_FRAME_KINDS.join('|');
+function annotateSnapshotBackedMedia(html: string, snapshotHref: string): string {
+  const kindPattern = SNAPSHOT_BACKED_KINDS.join('|');
   const imageOnlyParagraph = new RegExp(
-    `<p>\\s*(<img\\b(?=[^>]*\\bdata-loom-capture-kind=(["'])(?:${kindPattern})\\2)(?![^>]*\\bdata-loom-still-frame-image=)[^>]*>)\\s*<\\/p>`,
+    `<p>\\s*(<img\\b(?=[^>]*\\bdata-loom-capture-kind=(["'])(?:${kindPattern})\\2)(?![^>]*\\bdata-loom-snapshot-preview-image=)[^>]*>)\\s*<\\/p>`,
     'gi',
   );
   const bareImage = new RegExp(
-    `(<img\\b(?=[^>]*\\bdata-loom-capture-kind=(["'])(?:${kindPattern})\\2)(?![^>]*\\bdata-loom-still-frame-image=)[^>]*>)`,
+    `(<img\\b(?=[^>]*\\bdata-loom-capture-kind=(["'])(?:${kindPattern})\\2)(?![^>]*\\bdata-loom-snapshot-preview-image=)[^>]*>)`,
     'gi',
   );
   return html
-    .replace(imageOnlyParagraph, (_match, imgTag: string) => wrapStillFrameImage(imgTag, snapshotHref))
-    .replace(bareImage, (_match, imgTag: string) => wrapStillFrameImage(imgTag, snapshotHref));
+    .replace(imageOnlyParagraph, (_match, imgTag: string) => wrapSnapshotBackedMedia(imgTag, snapshotHref))
+    .replace(bareImage, (_match, imgTag: string) => wrapSnapshotBackedMedia(imgTag, snapshotHref));
 }
 
 /// Detect blockquotes that contain only a single `<p>` and tag them
@@ -768,7 +793,7 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
       out = promoteHeroImage(out);
       out = tagPullquotes(out);
       out = preflightInlineSvgArtifacts(out);
-      out = annotateStaticStillFrames(out, snapshotHref);
+      out = annotateSnapshotBackedMedia(out, snapshotHref);
       return out;
     } catch (e) {
       console.error('[Loom render] marked.parse failed', e);
@@ -1652,34 +1677,55 @@ function ArticleRender({
     root.classList.add('loom-capture-reader-scroll');
     bodyEl.classList.add('loom-capture-reader-scroll');
 
-		const onWheel = (event: WheelEvent) => {
-			if (event.defaultPrevented || event.ctrlKey || event.metaKey) return;
-			if (Math.abs(event.deltaY) < 1) return;
-			const target = event.target instanceof Element ? event.target : null;
-			if (!target) return;
+    // Accumulate wheel deltas across multiple events per RAF, then
+    // apply ONCE per frame via scrollBy. The previous implementation
+    // called window.scrollTo({ behavior: 'auto' }) on every wheel event;
+    // macOS trackpad fires 60-120 wheel events/sec, so per-event
+    // instant scrollTo destroyed native momentum-smoothing → visible
+    // scroll jitter ("乱跳"). RAF batching restores smoothness while
+    // preserving the original intent (media elements don't consume
+    // scroll; user can scroll page even when cursor is on video /
+    // canvas / iframe / fallback card). See peer-chat msg-036.
+    let pendingDy = 0;
+    let rafQueued = false;
+    const flushScroll = () => {
+      rafQueued = false;
+      if (Math.abs(pendingDy) < 0.5) { pendingDy = 0; return; }
+      window.scrollBy({ top: pendingDy, left: 0 });
+      pendingDy = 0;
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey) return;
+      if (Math.abs(event.deltaY) < 1) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
       const mediaTarget = target.closest(
         'video, audio, iframe, canvas, .loom-embed-card, .loom-provider-embed-frame, .loom-media-fallback',
-			);
-			if (!mediaTarget) return;
-			const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 1;
-			const max = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
-			if (max <= 0) return;
-			const unit = event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-				? viewportHeight
-				: event.deltaMode === WheelEvent.DOM_DELTA_LINE
-					? 16
-					: 1;
-			const dy = event.deltaY * unit;
-			const currentY = window.scrollY || window.pageYOffset || 0;
-			const nextY = Math.min(max, Math.max(0, currentY + dy));
-			if (Math.abs(nextY - currentY) < 0.5) return;
-			event.preventDefault();
-			window.scrollTo({ top: nextY, left: 0, behavior: 'auto' });
-		};
+      );
+      if (!mediaTarget) return;
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+        ? (window.innerHeight || document.documentElement.clientHeight || 1)
+        : event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? 16
+          : 1;
+      pendingDy += event.deltaY * unit;
+      event.preventDefault();
+      if (!rafQueued) {
+        rafQueued = true;
+        requestAnimationFrame(flushScroll);
+      }
+    };
 
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
     return () => {
       window.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions);
+      if (rafQueued) {
+        // Best-effort flush + cancel; not strictly needed since the
+        // listener is gone but keeps state clean if remounted.
+        pendingDy = 0;
+        rafQueued = false;
+      }
       root.classList.remove('loom-capture-reader-scroll');
       bodyEl.classList.remove('loom-capture-reader-scroll');
     };
@@ -2494,31 +2540,48 @@ function ArticleRender({
           max-width: 100% !important;
           object-fit: contain;
         }
-        /* Still-frame card — compact, paper-canon-styled, with the
-           "View Snapshot" CTA promoted to primary action. The capture
-           may have an empty/black image (canvas wasn't rendered at
-           capture time — see peer-chat msg-029 regression 3b, fix
-           pending in content.js). Cap height aggressively so empty
-           captures don't dominate the article visually; promote the
-           snapshot link as the user's escape hatch. */
-        .loom-capture-article .loom-still-frame {
-          max-width: min(100%, 32rem);
+        /* Snapshot-backed visual modules. Canvas/SVG-heavy widgets cannot
+           be faithfully represented as a still image. The reader embeds the
+           saved interactive snapshot inline and keeps the still image only as
+           an optional preview/fallback. */
+        .loom-capture-article .loom-interactive-snapshot {
+          max-width: min(100%, 48rem);
           margin: var(--space-lg) auto;
           border: 0.5px solid color-mix(in srgb, var(--fg) 14%, transparent);
           border-radius: var(--radius-sm);
           overflow: hidden;
           background: color-mix(in srgb, var(--mat-thin-bg) 60%, var(--paper-deep) 40%);
         }
-        .loom-capture-article .loom-still-frame > img {
+        .loom-capture-article .loom-interactive-snapshot-frame {
+          display: block;
           width: 100%;
-          max-height: 14rem;
+          height: clamp(22rem, 58vh, 46rem);
+          margin: 0;
+          border: 0;
+          background: color-mix(in srgb, black 86%, var(--mat-thin-bg) 14%);
+        }
+        .loom-capture-article .loom-interactive-snapshot > img,
+        .loom-capture-article .loom-interactive-snapshot-preview img {
+          width: 100%;
+          max-height: 24rem;
           object-fit: contain;
           margin: 0;
           border: 0;
           border-radius: 0;
           background: color-mix(in srgb, var(--mat-thin-bg) 70%, var(--paper-deep) 30%);
         }
-        .loom-capture-article .loom-still-frame-caption {
+        .loom-capture-article .loom-interactive-snapshot-preview {
+          border-top: 0.5px solid color-mix(in srgb, var(--fg) 8%, transparent);
+        }
+        .loom-capture-article .loom-interactive-snapshot-preview summary {
+          cursor: pointer;
+          padding: var(--space-xs) var(--space-md);
+          color: var(--muted);
+          font-family: var(--serif);
+          font-size: var(--font-caption);
+          font-style: italic;
+        }
+        .loom-capture-article .loom-interactive-snapshot-caption {
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -2530,17 +2593,14 @@ function ArticleRender({
           font-style: italic;
           border-top: 0.5px solid color-mix(in srgb, var(--fg) 8%, transparent);
         }
-        .loom-capture-article .loom-still-frame-label {
+        .loom-capture-article .loom-interactive-snapshot-label {
           font-size: var(--font-eyebrow);
           letter-spacing: 0.12em;
           text-transform: uppercase;
           font-style: normal;
           color: color-mix(in srgb, var(--muted) 80%, transparent);
         }
-        /* Promoted "View Snapshot" CTA — paper-tinted pill, bronze
-           accent, ↗ glyph. The arrow hints at "navigate elsewhere",
-           consistent with other Loom open-original affordances. */
-        .loom-capture-article .loom-still-frame-action {
+        .loom-capture-article .loom-interactive-snapshot-action {
           color: var(--thread);
           font-style: normal;
           font-weight: 500;
@@ -2555,21 +2615,21 @@ function ArticleRender({
           width: fit-content;
           transition: background var(--motion-fast), border-color var(--motion-fast);
         }
-        .loom-capture-article .loom-still-frame-action::after {
+        .loom-capture-article .loom-interactive-snapshot-action::after {
           content: " ↗";
           font-style: normal;
           margin-left: 0.15em;
         }
-        .loom-capture-article .loom-still-frame-action:hover {
+        .loom-capture-article .loom-interactive-snapshot-action:hover {
           background: color-mix(in srgb, var(--thread) 14%, transparent);
           border-color: color-mix(in srgb, var(--thread) 60%, transparent);
         }
-        .loom-capture-article .loom-still-frame-action.muted {
+        .loom-capture-article .loom-interactive-snapshot-action.muted {
           color: color-mix(in srgb, var(--muted) 72%, transparent);
           border-color: color-mix(in srgb, var(--fg) 12%, transparent);
           background: transparent;
         }
-        .loom-capture-article .loom-still-frame-action.muted::after {
+        .loom-capture-article .loom-interactive-snapshot-action.muted::after {
           content: "";
         }
         /* Image gallery — 2 or 3 column grid. Activated when the
