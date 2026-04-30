@@ -1,18 +1,16 @@
 import Foundation
 
-/// Persists a security-scoped bookmark for the user-picked study folder so
-/// that, once `com.apple.security.app-sandbox` is enabled, Loom can re-open
-/// the folder across app launches without re-prompting.
+/// Compatibility shim around the multi-root `ContentRootStore`. Pre-existing
+/// call sites (sidebar empty state, Next.js bridge for `content-root.json`,
+/// the Re-pick button in Settings) all expect "the active content root" as
+/// a single URL. Under multi-root those callers get the **first** active
+/// root, which preserves single-folder behaviour for users who only ever
+/// add one folder while letting power users add many.
 ///
-/// Bookmark bytes land in UserDefaults (small, opaque blob — this is the
-/// standard Apple pattern for single-folder persistence; Keychain would be
-/// overkill since the data is not secret).
-///
-/// Today's non-sandboxed build does not NEED this — `NSOpenPanel` returns a
-/// path that stays readable forever. But saving the bookmark now is harmless
-/// dead data and makes the sandbox flip one atomic change.
+/// New code should reach `ContentRootStore` directly so it can address
+/// each root by id.
 enum SecurityScopedFolderStore {
-    static let defaultsKey = "loom.content-root.bookmark.v1"
+    static let defaultsKey = ContentRootStore.legacyV1Key
     private static let manifestRelativePath = "knowledge/.cache/manifest/knowledge-nav.json"
 
     private struct PersistedContentRoot: Encodable {
@@ -20,39 +18,29 @@ enum SecurityScopedFolderStore {
     }
 
     /// Capture and persist a security-scoped bookmark for a chosen URL.
-    /// - Parameter url: the URL returned by NSOpenPanel.
-    /// - Returns: true on success, false on bookmark-creation failure.
+    /// Routes through `ContentRootStore.add(url:)` so a single-root caller
+    /// (Settings Re-pick button) ends up populating the multi-root list.
     @discardableResult
     static func save(
         _ url: URL,
         defaults: UserDefaults = .standard
     ) -> Bool {
-        do {
-            let data = try url.bookmarkData(
-                options: .withSecurityScope,
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            )
-            defaults.set(data, forKey: defaultsKey)
-            return true
-        } catch {
-            return false
-        }
+        ContentRootStore.add(url: url, defaults: defaults) != nil
     }
 
-    /// Attempt to resolve the saved bookmark back to a URL. Does NOT yet call
-    /// `startAccessingSecurityScopedResource()`; the caller must do that once
-    /// ready to read from the folder (and balance it with
-    /// `stopAccessingSecurityScopedResource()`).
-    /// - Returns: the resolved URL, or nil if no bookmark is stored or resolution failed.
+    /// Resolve the FIRST stored bookmark back to a URL. Legacy callers
+    /// expecting a single result get whichever root sorts first in the
+    /// store. Does NOT call `startAccessingSecurityScopedResource()` —
+    /// the multi-root activator already did that at launch.
     static func resolve(
         defaults: UserDefaults = .standard
     ) -> (url: URL, isStale: Bool)? {
-        guard let data = defaults.data(forKey: defaultsKey) else { return nil }
+        guard let first = ContentRootStore.loadAll(defaults: defaults).first,
+              let bookmark = first.externalFolderBookmark else { return nil }
         var isStale = false
         do {
             let url = try URL(
-                resolvingBookmarkData: data,
+                resolvingBookmarkData: bookmark,
                 options: [.withSecurityScope],
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
@@ -64,74 +52,48 @@ enum SecurityScopedFolderStore {
     }
 
     static func clear(defaults: UserDefaults = .standard) {
-        if let activeURL {
-            activeURL.stopAccessingSecurityScopedResource()
-            self.activeURL = nil
+        let roots = ContentRootStore.loadAll(defaults: defaults)
+        for root in roots {
+            ContentRootStore.remove(id: root.id, defaults: defaults)
         }
-        defaults.removeObject(forKey: defaultsKey)
+        defaults.removeObject(forKey: ContentRootStore.legacyV1Key)
     }
 
-    /// Private holder for the currently-active security-scoped URL across
-    /// the app lifetime. We call `startAccessingSecurityScopedResource()`
-    /// exactly once and leave it active until quit; trying to balance
-    /// start/stop across multiple readers would leak easily.
-    private static var activeURL: URL?
-
-    /// Call at app launch. Resolves the saved bookmark (if any), activates
-    /// security-scoped access, and returns the URL so content-root consumers
-    /// can read from it. Returns nil if nothing was saved or resolution
-    /// failed (user will see the first-run folder picker).
+    /// Restore at launch — kept for binary compatibility with existing
+    /// AppDelegate call sites. Forwards to the multi-root activator and
+    /// returns the first active URL (or nil if no roots).
     @discardableResult
     static func restoreAtLaunch(
         fallbackPath: String? = nil,
         defaults: UserDefaults = .standard,
         fileManager: FileManager = .default
     ) -> URL? {
-        if let existing = activeURL { return existing }
-        guard let (url, isStale) = resolve(defaults: defaults) else { return nil }
-        if isStale || !shouldPreferBookmark(
-            resolvedURL: url,
-            fallbackPath: fallbackPath,
-            fileManager: fileManager
-        ) {
-            clear(defaults: defaults)
+        let active = ContentRootStore.activateAtLaunch(defaults: defaults)
+        guard let firstRoot = active.first,
+              let url = ContentRootStore.activeURL(for: firstRoot.id) else {
             return nil
         }
-        guard url.startAccessingSecurityScopedResource() else {
-            clear(defaults: defaults)
-            return nil
-        }
-        activeURL = url
         try? persistContentRootConfig(url, fileManager: fileManager)
         return url
     }
 
-    /// Persist + activate in one step. Used by the first-run folder picker
-    /// so the newly-picked URL becomes the live content root without a
-    /// relaunch. Stops accessing any previously-active URL first so the
-    /// start/stop pair stays balanced across re-picks.
+    /// Add-and-activate a folder. Multi-root semantics: this APPENDS a new
+    /// root rather than replacing the previous one, matching the user's
+    /// stated need that re-picking shouldn't lose access to the previously-
+    /// picked folder. To replace, callers must remove the old root first
+    /// via `ContentRootStore.remove(id:)`.
     @discardableResult
     static func saveAndActivate(
         _ url: URL,
         defaults: UserDefaults = .standard
     ) -> Bool {
-        guard save(url, defaults: defaults) else { return false }
-        if let previous = activeURL, previous != url {
-            previous.stopAccessingSecurityScopedResource()
-            activeURL = nil
-        }
-        guard url.startAccessingSecurityScopedResource() else { return false }
-        activeURL = url
-        return true
+        ContentRootStore.add(url: url, defaults: defaults) != nil
     }
 
-    /// Keep the legacy JSON pointer in sync with the native bookmark.
-    ///
-    /// Next.js API routes such as `/api/ingest` run outside the Swift
-    /// process and cannot read `SecurityScopedFolderStore.currentActiveURL`.
-    /// They resolve the content root from
-    /// `~/Library/Application Support/Loom/content-root.json`, so the native
-    /// Settings picker must update both stores.
+    /// Mirror the first active root's path into `content-root.json` so
+    /// any remaining Next.js API routes (`/api/ingest` etc.) keep working.
+    /// Multi-root callers should not depend on this — they should address
+    /// roots by id via `loom://content/<root-id>/...`.
     static func persistContentRootConfig(
         _ url: URL,
         homeDirectory: String = NSHomeDirectory(),
@@ -168,20 +130,16 @@ enum SecurityScopedFolderStore {
         }
     }
 
-    /// The currently-active security-scoped URL, if `restoreAtLaunch` has
-    /// been called and succeeded. Read-only accessor for content-root
-    /// consumers that want to know the real path without reactivating.
-    static var currentActiveURL: URL? { activeURL }
+    /// First active multi-root URL. Single-folder consumers see the same
+    /// behaviour as before (one URL); multi-root consumers should query
+    /// `ContentRootStore.allActiveURLs` instead.
+    static var currentActiveURL: URL? {
+        ContentRootStore.allActiveURLs.values.first
+    }
 
-    /// Display-friendly name of the currently-picked folder, derived from
-    /// its last path component. Returns `nil` when nothing is picked.
-    /// Used by the sidebar to label the user-source section with the
-    /// folder's name ("MyStudy") rather than a generic "Library", so the
-    /// learner knows which pile of material they're looking at.
     static var currentRootDisplayName: String? {
-        if let url = activeURL {
-            let name = url.lastPathComponent
-            return name.isEmpty ? nil : name
+        if let firstRoot = ContentRootStore.loadAll().first {
+            return firstRoot.displayName.isEmpty ? nil : firstRoot.displayName
         }
         if let fallbackPath = LoomRuntimePaths.resolveContentRoot() {
             let name = URL(fileURLWithPath: fallbackPath).lastPathComponent

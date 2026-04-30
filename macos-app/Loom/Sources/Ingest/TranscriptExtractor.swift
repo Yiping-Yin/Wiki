@@ -40,7 +40,7 @@ struct TranscriptExtractor: IngestExtractor {
     /// Upper bound on concurrent provider calls for a single transcript.
     /// 4 balances wall-time (an hour-long lecture = ~120 segments = 4
     /// chunks, all fire at once) against rate-limits and CLI fork-storm
-    /// risk (Anthropic free tier ≈ 5 rpm, claude CLI spawns a process
+    /// risk (Anthropic free tier ≈ 5 rpm, local CLI spawns a process
     /// per call). Configurable should a user ship a 3000-segment auto-
     /// generated transcript — see `runChunksConcurrent` for the cap.
     static let maxConcurrentChunks = 4

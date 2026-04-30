@@ -750,11 +750,6 @@ final class AskAIRunner: ObservableObject {
             var opts = OllamaClient.Options()
             opts.onChunk = onChunk
             _ = try await OllamaClient.send(prompt: upstreamPrompt, options: opts)
-        case .claudeCli:
-            var opts = CLIRuntimeClient.Options()
-            opts.flavor = .claude
-            opts.onChunk = onChunk
-            _ = try await CLIRuntimeClient.send(prompt: upstreamPrompt, options: opts)
         case .codexCli:
             var opts = CLIRuntimeClient.Options()
             opts.flavor = .codex
@@ -838,7 +833,7 @@ struct AskAIDocRef: Identifiable, Hashable {
         guard parts.count >= 3 else { return nil }
         let cat = parts[1].replacingOccurrences(of: "[^a-zA-Z0-9_\\-]", with: "", options: .regularExpression)
         let slug = parts[2].replacingOccurrences(of: "[^a-zA-Z0-9_\\-]", with: "", options: .regularExpression)
-        guard let url = URL(string: "loom://content/knowledge/.cache/docs/\(cat)__\(slug).json") else {
+        guard let url = URL(string: "loom://derived/knowledge/.cache/docs/\(cat)__\(slug).json") else {
             return nil
         }
         do {

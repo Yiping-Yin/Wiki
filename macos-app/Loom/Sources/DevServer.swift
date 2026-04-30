@@ -241,9 +241,8 @@ class DevServer: ObservableObject {
 
     /// Restart the node server so it re-reads API keys from the Keychain on
     /// next spawn. Called from `AIProviderSettingsView` after the user saves
-    /// or removes a key; the BYO-key broker (`shouldUseHttpForClaude`) picks
-    /// up the change automatically once the fresh child inherits the injected
-    /// env vars.
+    /// or removes a key; the provider broker picks up the change
+    /// automatically once the fresh child inherits the injected env vars.
     func reloadFromKeychain() {
         stop(invalidateGeneration: false)
         start(resetRetry: true)
