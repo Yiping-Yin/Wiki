@@ -1942,15 +1942,18 @@ function ArticleRender({
   };
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const onSel = () => {
+    // Toolbar must NOT appear during an in-progress mouse drag — it
+    // popped up under the user's cursor mid-drag, causing mouseup to
+    // land on a toolbar button which collapsed or hijacked the
+    // selection. Track drag state and only commit toolbar position on
+    // mouseup. Keyboard selections (shift+arrow, ⌘A) still run through
+    // selectionchange but only when not dragging.
+    let isDragging = false;
+    const computeToolbar = () => {
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed) {
-        setSelToolbar(null);
-        return;
-      }
+      if (!sel || sel.isCollapsed) { setSelToolbar(null); return; }
       const text = sel.toString().trim();
       if (text.length < 3) { setSelToolbar(null); return; }
-      // Only if the selection is inside the article body.
       const node = sel.anchorNode;
       const article = document.querySelector('.loom-capture-article');
       if (!node || !article || !article.contains(node)) { setSelToolbar(null); return; }
@@ -1962,8 +1965,29 @@ function ArticleRender({
         text,
       });
     };
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('.loom-capture-sel-toolbar, .loom-capture-note-popover')) return;
+      isDragging = true;
+      setSelToolbar(null);
+    };
+    const onMouseUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      requestAnimationFrame(computeToolbar);
+    };
+    const onSel = () => {
+      if (isDragging) return;
+      computeToolbar();
+    };
+    document.addEventListener('mousedown', onMouseDown, true);
+    document.addEventListener('mouseup', onMouseUp, true);
     document.addEventListener('selectionchange', onSel);
-    return () => document.removeEventListener('selectionchange', onSel);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown, true);
+      document.removeEventListener('mouseup', onMouseUp, true);
+      document.removeEventListener('selectionchange', onSel);
+    };
   }, []);
   // Re-apply highlights to the rendered article on mount + when the set
   // changes. We walk text nodes and wrap any literal match in <mark>.
