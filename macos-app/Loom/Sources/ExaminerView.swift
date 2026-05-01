@@ -617,10 +617,6 @@ final class ExaminerRunner: ObservableObject {
             return try await CustomEndpointClient.send(prompt: prompt, options: CustomEndpointClient.Options())
         case .ollama:
             return try await OllamaClient.send(prompt: prompt, options: OllamaClient.Options())
-        case .claudeCli:
-            var opts = CLIRuntimeClient.Options()
-            opts.flavor = .claude
-            return try await CLIRuntimeClient.send(prompt: prompt, options: opts)
         case .codexCli:
             var opts = CLIRuntimeClient.Options()
             opts.flavor = .codex

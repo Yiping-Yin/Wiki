@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import PDFKit
+import SwiftData
 
 /// Native port of `components/IngestionOverlay.tsx` → Phase 4 overlay #2.
 ///
@@ -33,6 +34,13 @@ struct IngestionView: View {
     @State private var urlText: String = ""
     @FocusState private var urlFocused: Bool
 
+    /// Phase 7.4 fragment-paste picker state. The capture is held in
+    /// memory only between paste and Save/Cancel — there is no
+    /// persistence between sheet dismissal and re-open, by design
+    /// (`feedback_loom_never_do#3`: cancel = data loss).
+    @State private var fragmentPickerCapture: ClipboardInspector.Capture? = nil
+    @State private var fragmentPickerVisible: Bool = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             dropZone
@@ -62,6 +70,41 @@ struct IngestionView: View {
             let pending = IngestionContext.shared.consume()
             for url in pending { runner.ingest(fileURL: url) }
         }
+        .sheet(isPresented: $fragmentPickerVisible) {
+            // Phase 7.4 — mandatory destination picker. Save commits;
+            // Cancel discards the in-memory capture (no fallback inbox).
+            if let capture = fragmentPickerCapture {
+                FragmentDestinationPicker(
+                    capture: capture,
+                    pursuits: runner.fragmentPickerPursuits(),
+                    panels: runner.fragmentPickerPanels(),
+                    onSave: { destination in
+                        // Hide the sheet first so the picker tears down
+                        // before the runner mutates state. Then run the
+                        // ingest off the main task so slow SwiftData
+                        // writes don't block dismiss animation.
+                        let pending = capture
+                        fragmentPickerVisible = false
+                        fragmentPickerCapture = nil
+                        Task { @MainActor in
+                            await runner.ingestFragment(
+                                capture: pending,
+                                destination: destination
+                            )
+                        }
+                    },
+                    onCancel: {
+                        // Cancel = discard. NO inbox fallback by design.
+                        fragmentPickerVisible = false
+                        fragmentPickerCapture = nil
+                    }
+                )
+            } else {
+                // Defensive: should never render — if capture went nil
+                // before sheet hydrated, fall back to a no-op view.
+                Color.clear.frame(width: 1, height: 1)
+            }
+        }
     }
 
     @ViewBuilder
@@ -81,11 +124,11 @@ struct IngestionView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .tint(LoomTokens.thread)
-                Button("Paste text") { pasteClipboardText() }
+                Button("Paste fragment") { pasteClipboardText() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .tint(LoomTokens.thread)
-                    .help("Ingest whatever plain text is on your clipboard")
+                    .help("Quote a paragraph from anywhere — pick a destination at capture time.")
             }
             .padding(.top, 6)
             if !runner.inFlight.isEmpty {
@@ -278,30 +321,26 @@ struct IngestionView: View {
         .background(LoomTokens.paper)
     }
 
-    /// Read plain text from the pasteboard, wrap it as a synthetic
-    /// `.txt` file in a temp dir, and run it through the same ingest
-    /// pipeline.
+    /// Phase 7.4 — paste flow now opens the mandatory destination picker
+    /// rather than wrapping the clipboard as a `.txt` file. Capturing
+    /// the source provenance (URL + frontmost app + best-effort window
+    /// title) happens at this moment via `ClipboardInspector.captureNow`.
+    /// If the clipboard is empty or whitespace-only the call is a no-op
+    /// (system beep) and the picker never opens.
+    @MainActor
     private func pasteClipboardText() {
-        guard let text = NSPasteboard.general.string(forType: .string) else {
+        guard let capture = ClipboardInspector.captureNow(),
+              !capture.text.isEmpty else {
             NSSound.beep()
             return
         }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            NSSound.beep()
-            return
-        }
-        let tmpDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("loom-ingestion", isDirectory: true)
-        try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-        let stamp = Int(Date().timeIntervalSince1970)
-        let tmpFile = tmpDir.appendingPathComponent("clipboard-\(stamp).txt")
-        do {
-            try trimmed.write(to: tmpFile, atomically: true, encoding: .utf8)
-            runner.ingest(fileURL: tmpFile)
-        } catch {
-            NSSound.beep()
-        }
+        // Stash the capture and present the picker. The user must
+        // choose a destination or Cancel — there is NO fallback to
+        // auto-save (`feedback_loom_never_do#3`). The picker view
+        // bound on `body` reads `fragmentPickerCapture` and renders
+        // when `fragmentPickerVisible` flips true.
+        fragmentPickerCapture = capture
+        fragmentPickerVisible = true
     }
 
     private func pickFile() {
@@ -741,6 +780,290 @@ final class IngestionRunner: ObservableObject {
         state = .idle
     }
 
+    // MARK: - Phase 7.4 · Fragment paste
+
+    /// Produce projection rows for the destination picker's "Pursuits"
+    /// section. Most-recently-updated first, lightly filtered to the
+    /// pursuits the user is most likely to want — `retired` season is
+    /// dropped so a long tail of stale questions doesn't hide the
+    /// active ones. Empty list when no pursuits exist; the picker
+    /// nudges toward "+ Or start a new question…".
+    func fragmentPickerPursuits() -> [PursuitPickerRow] {
+        let pursuits: [LoomPursuit]
+        do {
+            pursuits = try LoomPursuitWriter.allPursuits()
+        } catch {
+            NSLog("[Loom] fragmentPickerPursuits fetch failed: \(error)")
+            return []
+        }
+        return pursuits
+            .filter { $0.season != "retired" }
+            .map { p in
+                PursuitPickerRow(
+                    id: p.id,
+                    question: p.question,
+                    weight: p.weight,
+                    season: p.season,
+                    updatedAt: p.updatedAt
+                )
+            }
+    }
+
+    /// Produce projection rows for the destination picker's "Panels"
+    /// section. The Swift side has no `LoomPanelWriter` (panels are
+    /// derived on the web side via `derivePanelFromTraces`), so we
+    /// query the SwiftData store directly through `LoomDataStore`.
+    /// When the picker presents these and the user picks one, the
+    /// fragment is persisted as a `reading`-kind trace whose
+    /// `sourceDocId` matches the panel's docId — the existing
+    /// derivation pipeline picks it up without requiring a writer
+    /// API extension.
+    func fragmentPickerPanels() -> [PanelPickerRow] {
+        let store = LoomDataStore.shared
+        var descriptor = FetchDescriptor<LoomPanel>()
+        descriptor.sortBy = [SortDescriptor(\.updatedAt, order: .reverse)]
+        let panels: [LoomPanel]
+        do {
+            panels = try store.mainContext.fetch(descriptor)
+        } catch {
+            NSLog("[Loom] fragmentPickerPanels fetch failed: \(error)")
+            return []
+        }
+        return panels.map { p in
+            PanelPickerRow(
+                id: p.id,
+                title: p.title,
+                docId: p.docId,
+                status: p.status,
+                updatedAt: p.updatedAt
+            )
+        }
+    }
+
+    /// Phase 7.4 deliverable F — persist a paste fragment with a
+    /// mandatory destination. Steps:
+    ///
+    ///   1. Build a `FragmentSchema` from the capture (verbatim text).
+    ///   2. Mint a `LoomTrace` of kind `"fragment-paste"` with a
+    ///      synthetic `sourceDocId = "fragment:<uuid>"`. The schema
+    ///      JSON is packed into `eventsJSON` like every other typed
+    ///      extraction (plan: do not change LoomDataModel).
+    ///   3. Attach to destination:
+    ///        • `.pursuit(id:)`     — `LoomPursuitWriter.attachSource`
+    ///        • `.panel(id:)`       — append a thought-anchor event onto
+    ///          a reading-kind trace whose `sourceDocId == panel.docId`.
+    ///          (The Swift side has no panel writer; this is the
+    ///          Phase 7.3 pattern: derive via the existing
+    ///          `derivePanelFromTraces` web reader.)
+    ///        • `.newQuestion(text:)` — `createPursuit` at tertiary
+    ///          weight, then `attachSource` against the new id.
+    ///   4. Transition state to `.extracted` so the IngestionView's
+    ///      ExtractedPane renders the fragment card. No `.extracting`
+    ///      step — fragments are one-shot, no AI call.
+    ///   5. Reload history so the fragment shows up under "INGESTED".
+    ///
+    /// Failures are non-fatal at the per-step level: a downstream
+    /// attach failure does not roll back the trace mint (the fragment
+    /// itself is not lost), but does post a `.failed` state so the
+    /// user sees the error.
+    @MainActor
+    func ingestFragment(
+        capture: ClipboardInspector.Capture,
+        destination: FragmentDestination
+    ) async {
+        let now = Date().timeIntervalSince1970 * 1000
+
+        // 1. Build the schema verbatim. No AI call.
+        let schema = FragmentExtractor.build(
+            text: capture.text,
+            sourceURL: capture.sourceURL,
+            sourceApp: capture.sourceApp,
+            sourceTitle: capture.sourceTitle,
+            capturedAt: now
+        )
+
+        // 2. Mint the LoomTrace. The synthetic sourceDocId namespaces
+        //    fragments separately from `ingested:<filename>` and
+        //    `ingested-url:<url>` so consumers can disambiguate.
+        let fragmentId = UUID().uuidString
+        let sourceDocId = "fragment:\(fragmentId)"
+        let summary = composeFragmentSummary(schema: schema)
+        let sourceTitle = capture.sourceTitle
+            ?? capture.sourceURL
+            ?? "Pasted fragment"
+
+        let schemaJSON: String
+        do {
+            let data = try JSONEncoder().encode(schema)
+            schemaJSON = String(data: data, encoding: .utf8) ?? "{}"
+        } catch {
+            NSLog("[Loom] ingestFragment schema encode failed: \(error)")
+            self.state = .failed("Couldn't encode fragment schema.")
+            return
+        }
+
+        var event: [String: Any] = [
+            "kind": "thought-anchor",
+            "blockId": "fragment-root",
+            "content": capture.text,
+            "summary": summary,
+            "extractorId": FragmentExtractor.extractorId,
+            "schemaJSON": schemaJSON,
+            "at": now,
+        ]
+        if let sourceURL = capture.sourceURL {
+            event["sourceURL"] = sourceURL
+        }
+        if let sourceApp = capture.sourceApp {
+            event["sourceApp"] = sourceApp
+        }
+
+        let trace: LoomTrace
+        do {
+            trace = try LoomTraceWriter.createTrace(
+                kind: "fragment-paste",
+                sourceDocId: sourceDocId,
+                sourceTitle: sourceTitle,
+                sourceHref: capture.sourceURL,
+                initialEvents: [event]
+            )
+            _ = try LoomTraceWriter.updateSummary(traceId: trace.id, summary: summary)
+        } catch {
+            NSLog("[Loom] ingestFragment trace mint failed: \(error)")
+            self.state = .failed("Couldn't save fragment.")
+            return
+        }
+
+        // 3. Attach to destination.
+        let resolvedDestination: FragmentDestination
+        do {
+            resolvedDestination = try await attachFragment(
+                sourceDocId: sourceDocId,
+                fragmentEvent: event,
+                destination: destination
+            )
+        } catch {
+            NSLog("[Loom] ingestFragment attach failed: \(error)")
+            self.state = .failed("Couldn't attach fragment to destination.")
+            return
+        }
+
+        // 4. Transition to .extracted with the fragment schema bound to
+        //    its committed destination. The pane renders FragmentSchemaView.
+        let ready = ExtractionReady(
+            filename: sourceTitle,
+            sourceText: capture.text,
+            extractorId: FragmentExtractor.extractorId,
+            result: .fragment(schema, destination: resolvedDestination)
+        )
+        self.state = .extracted(ready)
+
+        // 5. Reload + broadcast notifications. Loom's webview reads
+        //    pursuit + trace projections through these events.
+        await self.reload()
+        NotificationCenter.default.post(
+            name: .loomTraceChanged,
+            object: nil,
+            userInfo: ["traceId": trace.id, "op": "fragment-paste"]
+        )
+        switch resolvedDestination {
+        case .pursuit, .newQuestion:
+            NotificationCenter.default.post(
+                name: .loomPursuitChanged,
+                object: nil,
+                userInfo: ["pursuitId": "", "op": "fragment-attach"]
+            )
+        case .panel:
+            // No panel writer change; the panel-derivation pipeline
+            // re-runs off the trace event we just emitted.
+            break
+        }
+    }
+
+    /// Wire the just-minted fragment trace into its destination. Returns
+    /// the destination (possibly canonicalised — e.g. `.newQuestion`
+    /// becomes `.pursuit(id:)` after the new pursuit is minted) so the
+    /// rendered card shows the FINAL attachment.
+    @MainActor
+    private func attachFragment(
+        sourceDocId: String,
+        fragmentEvent: [String: Any],
+        destination: FragmentDestination
+    ) async throws -> FragmentDestination {
+        switch destination {
+        case .pursuit(let id):
+            try LoomPursuitWriter.attachSource(
+                pursuitId: id,
+                sourceDocId: sourceDocId
+            )
+            return .pursuit(id: id)
+
+        case .newQuestion(let text):
+            // Verbatim — no AI re-phrasing. `feedback_extract_not_author`
+            // applies even when the source is the user typing the
+            // question themselves: we save what they typed.
+            let pursuit = try LoomPursuitWriter.createPursuit(
+                question: text,
+                weight: "tertiary"
+            )
+            try LoomPursuitWriter.attachSource(
+                pursuitId: pursuit.id,
+                sourceDocId: sourceDocId
+            )
+            return .pursuit(id: pursuit.id)
+
+        case .panel(let id):
+            // No `LoomPanelWriter.attachSource` exists — Panels are
+            // derived on the web side via `derivePanelFromTraces`.
+            // Smallest extension that doesn't fork the storage layer:
+            // emit a `reading`-kind trace whose `sourceDocId == panel.docId`
+            // carrying the same fragment event. The web-side derivation
+            // pipeline already folds `thought-anchor` events from
+            // reading traces into Panels (Phase 7.3 pattern).
+            let store = LoomDataStore.shared
+            let descriptor = FetchDescriptor<LoomPanel>(
+                predicate: #Predicate { $0.id == id }
+            )
+            guard let panel = try store.mainContext.fetch(descriptor).first,
+                  let panelDocId = panel.docId,
+                  !panelDocId.isEmpty else {
+                throw NSError(
+                    domain: "IngestionRunner",
+                    code: 404,
+                    userInfo: [NSLocalizedDescriptionKey: "Panel \(id) has no docId; cannot attach."]
+                )
+            }
+            // Mint a sibling reading trace anchored to the panel's docId.
+            // Same event payload as the fragment-paste trace so the
+            // verbatim quote survives in both places. Trace title carries
+            // the panel title so traces-for-doc views read clearly.
+            let panelTitle = panel.title.isEmpty ? "Panel \(id)" : panel.title
+            _ = try LoomTraceWriter.createTrace(
+                kind: "reading",
+                sourceDocId: panelDocId,
+                sourceTitle: panelTitle,
+                sourceHref: nil,
+                initialEvents: [fragmentEvent]
+            )
+            return .panel(id: id)
+        }
+    }
+
+    /// Compose the short summary line that appears in the INGESTED list.
+    /// The first ~80 chars of the verbatim text, collapsed whitespace,
+    /// with a "fragment · Nw" suffix so users can tell paste rows apart
+    /// from file rows at a glance.
+    private func composeFragmentSummary(schema: FragmentSchema) -> String {
+        let collapsed = schema.text.collapsingWhitespace()
+        let head: String
+        if collapsed.count <= 80 {
+            head = collapsed
+        } else {
+            head = String(collapsed.prefix(80)) + "…"
+        }
+        return "fragment · \(schema.wordCount)w · \(head)"
+    }
+
     // MARK: - Persistence (plan §4 Phase 5 deliverable G)
 
     /// Write a `LoomTrace` for a completed typed extraction. Schema JSON
@@ -781,6 +1104,32 @@ final class IngestionRunner: ObservableObject {
             initialEvents: [event]
         )
         _ = try LoomTraceWriter.updateSummary(traceId: trace.id, summary: summary)
+
+        // Phase 7.2 · Spawn Pursuits from SyllabusSchema.assessmentItems.
+        // Q3 of plan §8 locked: ingest-time spawn (not visit-time), with
+        // per-pursuit hide for individual dismissal. Limited to syllabus
+        // for now — other schemas have separate Phase 7.3+ bridges.
+        // Side-effect spawning is fire-and-forget at the IngestionView
+        // level: PursuitSpawner is fail-silent at the per-item level so a
+        // single failed spawn never blocks the rest, and the surrounding
+        // do/catch in `runExtraction` already swallows persist errors.
+        if case .syllabus(let syllabus) = result {
+            Task { @MainActor in
+                await PursuitSpawner.spawn(
+                    from: syllabus,
+                    sourceTraceId: trace.id,
+                    sourceDocId: sourceDocId,
+                    sourceTitle: filename
+                )
+                // Notify the webview to refresh — same pattern the
+                // Pursuit writer uses for create/update events.
+                NotificationCenter.default.post(
+                    name: .loomPursuitChanged,
+                    object: nil,
+                    userInfo: ["pursuitId": "", "op": "spawn"]
+                )
+            }
+        }
     }
 
     /// Write a stub trace when the user skipped AI via "Close". No
@@ -833,6 +1182,13 @@ final class IngestionRunner: ObservableObject {
                 let extra = try LoomTraceWriter.traces(ofKind: kind)
                 traces.append(contentsOf: extra)
             }
+            // Phase 7.4: include paste fragments so they show up in the
+            // INGESTED list alongside file ingests. They live under
+            // their own `fragment-paste` kind (NOT `ingestion-fragment`)
+            // so the registry never auto-picks them and downstream
+            // readers can distinguish file ingest from paste capture.
+            let fragments = try LoomTraceWriter.traces(ofKind: "fragment-paste")
+            traces.append(contentsOf: fragments)
             traces.sort { $0.updatedAt > $1.updatedAt }
             ingested = traces.map { trace in
                 IngestedItem(
@@ -850,8 +1206,11 @@ final class IngestionRunner: ObservableObject {
 
     /// Turn `"ingestion-syllabus-pdf"` → `"syllabus-pdf"` for the
     /// history row's extractor badge. Returns empty string for the
-    /// generic `"ingestion"` kind so the badge just disappears.
+    /// generic `"ingestion"` kind so the badge just disappears. The
+    /// Phase 7.4 fragment-paste kind gets its own short label so the
+    /// history row reads "fragment" alongside the verbatim quote.
     private static func extractorLabel(fromTraceKind kind: String) -> String {
+        if kind == "fragment-paste" { return "fragment" }
         let prefix = "ingestion-"
         guard kind.hasPrefix(prefix) else { return "" }
         return String(kind.dropFirst(prefix.count))

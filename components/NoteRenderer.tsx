@@ -45,7 +45,8 @@ export function NoteRenderer({ source, addIds = false }: { source: string; addId
           return `<${tag} id="${id}">${text}</${tag}>`;
         });
       }
-      if (!cancelled) setHtml(rendered);
+      const safe = sanitizeHtml(rendered);
+      if (!cancelled) setHtml(safe);
     })();
     return () => { cancelled = true; };
   }, [source, addIds]);
@@ -72,4 +73,42 @@ function escapeHtml(s: string) {
 
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+
+// Minimal in-browser HTML sanitizer. Strips script/iframe/object/embed/link/
+// meta/base/form/style elements, on* event handlers, and javascript:/data:
+// URL schemes. Runs only in client (DOMParser available); SSR returns input
+// unchanged (component does not render HTML before useEffect anyway).
+//
+// Long-term, swap for DOMPurify when a sanitizer dep is added.
+const DANGEROUS_TAGS = new Set([
+  'script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'style',
+]);
+const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'action', 'formaction']);
+// Per WHATWG URL spec, browsers strip ASCII tab (U+0009), LF (U+000A), and
+// CR (U+000D) anywhere in URLs before parsing — so `java<TAB>script:alert(1)`
+// resolves and executes as `javascript:alert(1)`. Strip the same chars before
+// scheme matching to close that bypass (codex review, P1).
+const URL_STRIP_CHARS = new RegExp('[' + String.fromCharCode(9, 10, 13) + ']', 'g');
+const DANGEROUS_SCHEME = /^(javascript|data|vbscript):/i;
+function sanitizeHtml(dirty: string): string {
+  if (typeof DOMParser === 'undefined') return dirty;
+  const doc = new DOMParser().parseFromString(`<!DOCTYPE html><body>${dirty}`, 'text/html');
+  doc.querySelectorAll(Array.from(DANGEROUS_TAGS).join(',')).forEach((n) => n.remove());
+  doc.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      if (URL_ATTRS.has(name)) {
+        const normalized = (attr.value || '').replace(URL_STRIP_CHARS, '').trim();
+        if (DANGEROUS_SCHEME.test(normalized)) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    }
+  });
+  return doc.body.innerHTML;
 }

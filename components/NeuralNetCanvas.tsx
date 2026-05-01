@@ -7,6 +7,7 @@
  * - Neuron brightness encodes activation
  */
 import { useEffect, useRef, useState } from 'react';
+import { color } from '../lib/loom-design-system';
 
 export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -29,7 +30,7 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
       const maxN = Math.max(...sizes);
       const layerW = W / (sizes.length + 1);
 
-      ctx.fillStyle = '#1A1815';
+      ctx.fillStyle = color.paperDeep;
       ctx.fillRect(0, 0, W, H);
 
       const positions: { x: number; y: number }[][] = [];
@@ -89,7 +90,7 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
 
       // labels
       const labels = ['Input', ...Array(sizes.length - 2).fill('').map((_, i) => `L${i + 1}`), 'Output'];
-      ctx.fillStyle = '#8A8373';
+      ctx.fillStyle = color.ink3;
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'center';
       positions.forEach((layer, l) => ctx.fillText(labels[l], layer[0].x, H - 8));
@@ -128,16 +129,16 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
   }, [layers, running]);
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '1.2rem 0', background: '#1A1815' }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '1.2rem 0', background: color.paperDeep }}>
       <div style={{ padding: '0.5rem 0.9rem', background: 'rgba(36,32,24,0.85)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: '0.88rem', color: '#D9CFA8', fontWeight: 400 }}>Live Neural Network</span>
+        <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: '0.88rem', color: color.ink1, fontWeight: 400 }}>Live Neural Network</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label style={{ fontSize: '0.7rem', color: '#8A8373' }}>
+          <label style={{ fontSize: '0.7rem', color: color.ink3 }}>
             layers
             <select
               value={layers}
               onChange={(e) => setLayers(parseInt(e.target.value))}
-              style={{ marginLeft: 4, background: '#242018', color: '#FAF7EC', border: '1px solid #3A3428', borderRadius: 3, fontSize: '0.7rem', padding: '1px 4px' }}
+              style={{ marginLeft: 4, background: color.paperUp, color: '#FAF7EC', border: `1px solid ${color.paperCard}`, borderRadius: 3, fontSize: '0.7rem', padding: '1px 4px' }}
             >
               {[3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -145,7 +146,7 @@ export function NeuralNetCanvas({ initialLayers = 4 }: { initialLayers?: number 
           <button
             onClick={() => setRunning((r) => !r)}
             style={{
-              fontSize: '0.7rem', background: '#9E7C3E', color: '#FAF7EC',
+              fontSize: '0.7rem', background: 'var(--thread)', color: '#FAF7EC',
               border: 0, padding: '3px 10px', borderRadius: 3, cursor: 'pointer',
             }}
           >{running ? 'Pause' : 'Play'}</button>

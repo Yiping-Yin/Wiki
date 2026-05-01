@@ -42,6 +42,14 @@ struct DataSettingsView: View {
     // no per-row @State explosion.
     @State private var pendingDeletion: PendingDeletion? = nil
 
+    // Multi-root list state. Reloaded on appear + every
+    // loomContentRootsChanged notification so adding/removing in this
+    // pane reflects without manual refresh.
+    @State private var contentRootsState: [ContentRoot] = []
+    @State private var editingRootID: UUID? = nil
+    @State private var editingDisplayName: String = ""
+    @State private var confirmRemovalRoot: ContentRoot? = nil
+
     // MARK: - Body
 
     var body: some View {
@@ -72,28 +80,94 @@ struct DataSettingsView: View {
             actions: deletionAlertActions,
             message: deletionAlertMessage
         )
-        .onAppear { refreshAll() }
+        // Single top-level remove-root alert. Mounting per-row inside
+        // ForEach (where it lived initially) is well-known to misfire
+        // because every row re-binds the same @State on appearance.
+        .alert(item: $confirmRemovalRoot) { root in
+            Alert(
+                title: Text("Remove “\(root.displayName)” from Loom?"),
+                message: Text("Folder is unchanged on disk. You can re-add it anytime."),
+                primaryButton: .destructive(Text("Remove")) {
+                    removeRoot(root)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .onAppear { refreshAll(); reloadContentRoots() }
         .onReceive(NotificationCenter.default.publisher(for: .loomPursuitChanged)) { _ in refreshPursuits() }
         .onReceive(NotificationCenter.default.publisher(for: .loomTraceChanged))   { _ in refreshPanels() }
         .onReceive(NotificationCenter.default.publisher(for: .loomSoanChanged))    { _ in refreshSoan() }
         .onReceive(NotificationCenter.default.publisher(for: .loomWeaveChanged))   { _ in refreshWeaves() }
+        .onReceive(NotificationCenter.default.publisher(for: .loomContentRootsChanged)) { _ in reloadContentRoots() }
     }
 
     // MARK: - Top-level sections
 
     @ViewBuilder
     private var contentRootSection: some View {
-        Section("Content root") {
-            HStack {
-                Text(currentContentRoot ?? "No folder selected")
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 11, design: .monospaced))
-                Spacer()
-                Button("Re-pick…") { pickContentRoot() }
+        Section("Folders") {
+            if contentRootsState.isEmpty {
+                HStack {
+                    Text("No folders added.")
+                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11))
+                    Spacer()
+                    Button("Add folder…") { pickContentRoot() }
+                }
+            } else {
+                ForEach(contentRootsState, id: \.id) { root in
+                    contentRootRow(root)
+                }
+                HStack {
+                    Spacer()
+                    Button("Add folder…") { pickContentRoot() }
+                }
             }
         }
+    }
+
+    @ViewBuilder
+    private func contentRootRow(_ root: ContentRoot) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "folder")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .frame(width: 18, alignment: .center)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                if editingRootID == root.id {
+                    TextField("Display name", text: Binding(
+                        get: { editingDisplayName },
+                        set: { editingDisplayName = $0 }
+                    ), onCommit: { commitRootEdit() })
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12, weight: .medium))
+                } else {
+                    Text(root.displayName.isEmpty ? "Untitled" : root.displayName)
+                        .font(.system(size: 12, weight: .medium))
+                }
+                if let resolvedPath = resolvedRootPath(root) {
+                    Text(resolvedPath)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+            Spacer()
+            if editingRootID == root.id {
+                Button("Save") { commitRootEdit() }
+                Button("Cancel") { cancelRootEdit() }
+            } else {
+                Button("Rename") { startRootEdit(root) }
+                Button(role: .destructive) {
+                    confirmRemovalRoot = root
+                } label: {
+                    Text("Remove")
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -365,15 +439,55 @@ struct DataSettingsView: View {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.prompt = "Choose Folder"
-        panel.title = "Re-pick Loom content root"
+        panel.title = "Add a study folder"
         if panel.runModal() == .OK, let url = panel.url {
-            if SecurityScopedFolderStore.saveActivateAndPersistContentRoot(url) {
-                NotificationCenter.default.post(name: .loomContentRootChanged, object: nil)
-                status = "Content root updated."
+            if let added = ContentRootStore.add(url: url) {
+                // Mirror first root into legacy content-root.json so any
+                // remaining Next.js callers keep working.
+                if let firstURL = ContentRootStore.allActiveURLs.values.first {
+                    try? SecurityScopedFolderStore.persistContentRootConfig(firstURL)
+                }
+                status = "Added “\(added.displayName)”."
             } else {
                 status = "Couldn't activate that folder. Try again."
             }
         }
+    }
+
+    private func reloadContentRoots() {
+        contentRootsState = ContentRootStore.loadAll()
+    }
+
+    private func resolvedRootPath(_ root: ContentRoot) -> String? {
+        if let url = ContentRootStore.activeURL(for: root.id) { return url.path }
+        return nil
+    }
+
+    private func startRootEdit(_ root: ContentRoot) {
+        editingRootID = root.id
+        editingDisplayName = root.displayName
+    }
+
+    private func cancelRootEdit() {
+        editingRootID = nil
+        editingDisplayName = ""
+    }
+
+    private func commitRootEdit() {
+        guard let id = editingRootID,
+              let existing = contentRootsState.first(where: { $0.id == id }) else { return }
+        var updated = existing
+        let trimmed = editingDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        updated.displayName = trimmed.isEmpty ? existing.displayName : trimmed
+        ContentRootStore.update(updated)
+        editingRootID = nil
+        editingDisplayName = ""
+    }
+
+    private func removeRoot(_ root: ContentRoot) {
+        ContentRootStore.remove(id: root.id)
+        confirmRemovalRoot = nil
+        status = "Removed “\(root.displayName)”."
     }
 
     private func wipeLocalData() {

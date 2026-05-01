@@ -85,6 +85,7 @@ export function CourseContextStrip({ docId }: { docId: string }) {
   const [record, setRecord] = useState<SchemaRecord | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [hintDismissed, setHintDismissed] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [savingField, setSavingField] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export function CourseContextStrip({ docId }: { docId: string }) {
     setErrorMessage(null);
     if (!docId) {
       setDismissed(false);
+      setHintDismissed(false);
       setRecord(null);
       setLoaded(true);
       return () => {
@@ -106,7 +108,9 @@ export function CourseContextStrip({ docId }: { docId: string }) {
       };
     }
     const wasDismissed = readDismissed(docId);
+    const wasHintDismissed = readHintDismissed(docId);
     setDismissed(wasDismissed);
+    setHintDismissed(wasHintDismissed);
     if (wasDismissed) {
       setLoaded(true);
       return () => {
@@ -118,6 +122,16 @@ export function CourseContextStrip({ docId }: { docId: string }) {
       if (!cancelled) {
         setRecord(next);
         setLoaded(true);
+        // Folder-fallback log — surfaces resolver provenance to the
+        // dev console without nagging the user. Kept low-volume
+        // (single line, not per-render) so it doesn't pollute the
+        // console during scrolling.
+        if (next?.matchSource === 'folder-fallback') {
+          // eslint-disable-next-line no-console
+          console.info(
+            `[Loom] CourseContextStrip: schema matched via folder-fallback for ${docId} (sourceTitle=${next.sourceTitle})`,
+          );
+        }
       }
     })();
     return () => {
@@ -169,7 +183,78 @@ export function CourseContextStrip({ docId }: { docId: string }) {
     [corrected, record],
   );
 
-  if (dismissed || !loaded || !record || !corrected) return null;
+  // Strip-level dismissal hides everything (incl. hint). Loading state
+  // renders nothing — avoids a flash of "no syllabus" before the
+  // resolver has answered.
+  if (dismissed || !loaded) return null;
+
+  // No schema attached → render a single muted hint line so the user
+  // sees that course context EXISTS as a feature and how to populate it.
+  // The hint is independently dismissible (separate sessionStorage key)
+  // so dismissing the hint doesn't suppress a future strip render once
+  // a syllabus is dropped, and dismissing the strip doesn't suppress
+  // the hint on a sibling page.
+  if (!record || !corrected) {
+    if (hintDismissed) return null;
+    return (
+      <aside
+        className="loom-course-context-hint"
+        aria-label="Course Context hint"
+      >
+        <span className="loom-course-context-hint-text">
+          No syllabus context · drop a syllabus PDF into this folder and Extract to enable
+        </span>
+        <button
+          type="button"
+          className="loom-course-context-hint-dismiss"
+          aria-label="Dismiss course context hint"
+          onClick={() => {
+            writeHintDismissed(docId);
+            setHintDismissed(true);
+          }}
+        >
+          ×
+        </button>
+        <style jsx>{`
+          .loom-course-context-hint {
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            margin: 0 0 1.2rem;
+            padding: 4px 0.95rem;
+            border-bottom: 0.5px solid var(--mat-border);
+            font-family: var(--serif);
+            font-style: italic;
+            font-size: 11px;
+            line-height: 1.3;
+            color: var(--muted);
+            opacity: 0.8;
+          }
+          .loom-course-context-hint-text {
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+          .loom-course-context-hint-dismiss {
+            flex: 0 0 auto;
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font: inherit;
+            font-size: 11px;
+            line-height: 1;
+            padding: 0.05rem 0.2rem;
+            border-radius: 2px;
+          }
+          .loom-course-context-hint-dismiss:hover {
+            color: var(--fg);
+            background: color-mix(in srgb, var(--fg) 6%, transparent);
+          }
+        `}</style>
+      </aside>
+    );
+  }
 
   const courseCode = fieldValue(corrected.courseCode);
   const courseName = fieldValue(corrected.courseName);
@@ -231,10 +316,26 @@ export function CourseContextStrip({ docId }: { docId: string }) {
   const assessments = corrected.assessmentItems ?? [];
   if (!hasAny && assessments.length === 0) return null;
 
+  // Folder-fallback marker — a tiny italic provenance tail so the user
+  // knows the match wasn't deterministic (the folder had exactly one
+  // syllabus and the resolver picked it without a name-token match).
+  // Per `feedback_source_fidelity` — be honest about how we got here.
+  const isFolderFallback = record.matchSource === 'folder-fallback';
+
   return (
     <aside className="loom-course-context-strip" aria-label="Course Context">
       <div className="loom-course-context-header">
-        <span className="loom-course-context-eyebrow">Course</span>
+        <span className="loom-course-context-eyebrow">
+          Course
+          {isFolderFallback && (
+            <span
+              className="loom-course-context-fallback-tail"
+              title="Matched by single syllabus in folder, not filename"
+            >
+              {' '}· folder fallback
+            </span>
+          )}
+        </span>
         <div className="loom-course-context-row">
           {headerChips
             .filter((c) => c.value != null || c.editable)
@@ -349,6 +450,13 @@ export function CourseContextStrip({ docId }: { docId: string }) {
           font-size: var(--fs-caption);
           color: var(--muted);
           flex-shrink: 0;
+        }
+        .loom-course-context-fallback-tail {
+          font-variant: small-caps;
+          text-transform: lowercase;
+          color: var(--muted);
+          opacity: 0.65;
+          font-style: italic;
         }
         .loom-course-context-row {
           display: flex;
@@ -641,6 +749,10 @@ function dismissKey(docId: string): string {
   return `loom:course-context-dismissed:${docId}`;
 }
 
+function hintDismissKey(docId: string): string {
+  return `loom.context-hint-dismissed.${docId}`;
+}
+
 function readDismissed(docId: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
@@ -657,6 +769,24 @@ function writeDismissed(docId: string): void {
   } catch {
     // Ignore private browsing / storage-denied cases; dismissal still
     // applies to the current mounted component through local state.
+  }
+}
+
+function readHintDismissed(docId: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(hintDismissKey(docId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeHintDismissed(docId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(hintDismissKey(docId), '1');
+  } catch {
+    // Ignore private browsing / storage-denied cases.
   }
 }
 

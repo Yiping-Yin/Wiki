@@ -161,8 +161,24 @@ test('mac app launch scene presents the main window by default', () => {
     'utf8',
   );
 
-  assert.match(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
-  assert.doesNotMatch(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.match(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.match(source, /\.restorationBehavior\(\.disabled\)/);
+  assert.match(source, /\.defaultLaunchBehavior\(\.presented\)/);
+  assert.match(source, /applicationShouldHandleReopen\(_ sender: NSApplication,\s*hasVisibleWindows flag: Bool\)/);
+  assert.match(source, /applicationShouldTerminateAfterLastWindowClosed\(_ sender: NSApplication\) -> Bool/);
+  assert.match(source, /false\s*\n\s*\}/);
+  // NOTE: the original 73777a5 contract forbade fallbackMainWindow /
+  // ensureMainWindowVisible because macOS 15 native primitives were
+  // believed sufficient. The 2026-05-01 minimal-mode rewrite (commit
+  // 7351784) restored that fallback as defense-in-depth on top of the
+  // native primitives — both layers now coexist intentionally. The
+  // positive assertions above still enforce the macOS 15 native shape.
+  assert.doesNotMatch(source, /NSHostingController\(\s*rootView:\s*ContentView\(\)/);
+  assert.match(source, /NotificationCenter\.default\.post\(name:\s*\.loomOpenMainWindow,\s*object:\s*nil\)/);
+  assert.match(source, /struct NewTopicMenuItem: View/);
+  assert.match(source, /@Environment\(\\\.openWindow\) private var openWindow/);
+  assert.match(source, /openWindow\(id:\s*MainWindow\.id\)/);
+  assert.doesNotMatch(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
 });
 
 test('first-run sheet is refreshed from current defaults instead of restored state', () => {

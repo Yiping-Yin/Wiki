@@ -384,10 +384,11 @@ extension AIProviderKind {
             return (keyReader(KeychainAccount.openAIAPIKey) ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .isEmpty == false
-        case .claudeCli, .codexCli, .ollama, .customEndpoint, .disabled:
-            // These providers either use local auth, local services, optional
-            // endpoint configuration, or intentionally disable AI. None should
-            // be blocked by a missing Anthropic key on first launch.
+        case .appleFoundation, .codexCli, .ollama, .customEndpoint, .disabled:
+            // These providers either use local on-device models, local
+            // auth, local services, optional endpoint configuration, or
+            // intentionally disable AI. None should be blocked by a
+            // missing Anthropic/OpenAI key on first launch.
             return true
         }
     }
@@ -399,7 +400,7 @@ extension AIProviderKind {
     ) -> Bool {
         if defaults.bool(forKey: "loom.ai.firstRunPromptSeen") { return false }
         let raw = defaults.string(forKey: "loom.ai.provider") ?? anthropic.rawValue
-        let provider = AIProviderKind(rawValue: raw) ?? .anthropic
+        let provider = AIProviderKind(rawValue: raw) ?? .codexCli
         if provider.firstRunCredentialIsSatisfied(keyReader: keyReader) && hasFolder { return false }
         return true
     }

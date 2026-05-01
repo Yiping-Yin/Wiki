@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 
 private let showDebugHUDDefaultsKey = "loom.showDebugHUD.v2"
@@ -7,19 +8,37 @@ private let showDebugHUDDefaultsKey = "loom.showDebugHUD.v2"
 struct LoomApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
+    /// Experimental clean-mode toggle. When the user defaults flag
+    /// `loom.minimal.enabled` is true we render the new minimal Loom
+    /// (page-only, no webview, no overlay machinery). Lets us iterate
+    /// on the new architecture without inheriting any legacy chrome.
+    /// Default ON for now — flip in `defaults write com.yinyiping.loom
+    /// loom.minimal.enabled 0` to fall back to the legacy ContentView.
+    private var minimalModeEnabled: Bool {
+        let raw = UserDefaults.standard.object(forKey: "loom.minimal.enabled") as? Bool
+        return raw ?? true
+    }
+
     var body: some Scene {
-        WindowGroup("Loom", id: MainWindow.id) {
-            ContentView()
-                .frame(minWidth: 960, minHeight: 640)
-                .environmentObject(delegate.server)
-                .background(WindowOpener())
-                // Chrome tint is applied INSIDE ContentView because it
-                // needs to follow the active page's bg — paper on
-                // Home / Desk / reading, night on Weaves /
-                // Constellation / Branching. Static tint here would
-                // mismatch half the time.
+        Window("Loom", id: MainWindow.id) {
+            Group {
+                if minimalModeEnabled {
+                    LoomMinimalRootView()
+                        .environmentObject(delegate.server)
+                } else {
+                    ContentView()
+                        .environmentObject(delegate.server)
+                        .background(WindowOpener())
+                }
+            }
+            .frame(minWidth: 960, minHeight: 640)
         }
         .defaultSize(width: 1400, height: 900)
+        // macOS 15+ is the product floor. Do not let system state
+        // restoration reopen Loom into the "all windows closed" state:
+        // clicking the app icon should always present the room.
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.presented)
         // `.unifiedCompact` collapses the titlebar+toolbar into one
         // thin band. `.unified(showsTitle: true)` produces two visual
         // bands — title on top, empty toolbar strip below — which the
@@ -192,8 +211,7 @@ struct LoomApp: App {
             }
             #endif
             CommandGroup(replacing: .newItem) {
-                Button("New Topic") { NotificationCenter.default.post(name: .loomNewTopic, object: nil) }
-                    .keyboardShortcut("n", modifiers: .command)
+                NewTopicMenuItem()
             }
             // File menu · Export / Import — flat-file JSON dump of the
             // user's pursuits, traces, Sōan cards + edges, weaves. Round
@@ -213,10 +231,60 @@ struct LoomApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     let server = DevServer()
+    private var fallbackMainWindow: NSWindow?
+    private var launchConfigured = false
+    private var captureSpaceRestoreBehavior: NSWindow.CollectionBehavior?
+    private var captureSpaceRestoreToken: UUID?
+
+    override init() {
+        super.init()
+        NSLog("[Loom] AppDelegate init")
+        DispatchQueue.main.async { [weak self] in
+            Task { @MainActor in
+                self?.configureLaunchIfNeeded()
+                self?.ensureMainWindowVisible()
+                self?.scheduleMainWindowRepair()
+            }
+        }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { @MainActor in
+            NSLog("[Loom] applicationDidFinishLaunching")
+            configureLaunchIfNeeded()
+            ensureMainWindowVisible()
+            scheduleMainWindowRepair()
+        }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        Task { @MainActor in
+            NSLog("[Loom] applicationDidBecomeActive visibleWindows=%d", existingMainWindow(includeHidden: false) == nil ? 0 : 1)
+            configureLaunchIfNeeded()
+            if existingMainWindow(includeHidden: false) == nil {
+                ensureMainWindowVisible()
+            }
+        }
+    }
+
+    @MainActor
+    private func configureLaunchIfNeeded() {
+        guard !launchConfigured else { return }
+        launchConfigured = true
         NSWindow.allowsAutomaticWindowTabbing = false
+        NSApp.setActivationPolicy(.regular)
         UserDefaults.standard.set(false, forKey: showDebugHUDDefaultsKey)
+        // Phase A3 — register the `loom://` URL handler. Bookmarklet
+        // navigates the browser to `loom://capture?payload=…` which
+        // bounces back to the app via this AppleEvent. We re-post as
+        // a Notification so the active root view can mount the
+        // CaptureSheet without the AppDelegate knowing SwiftUI state.
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
         // Restore the security-scoped bookmark for the user's content
         // folder (if any) before ContentView's URL scheme handler
         // initializes — otherwise under sandbox it can't read user files.
@@ -238,14 +306,200 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // boot latency to wait for.
             server.markReadyForStaticBundle()
         }
+    }
 
+    @MainActor
+    private func scheduleMainWindowRepair() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            Task { @MainActor in
+                self?.ensureMainWindowVisible()
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            Task { @MainActor in
+                self?.ensureMainWindowVisible()
+            }
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            Task { @MainActor in
+                sender.activate(ignoringOtherApps: true)
+                ensureMainWindowVisible()
+                NotificationCenter.default.post(name: .loomOpenMainWindow, object: nil)
+            }
+        }
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         server.stop()
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    /// AppleEvent handler for the `loom://` URL scheme. Routes the
+    /// `loom://capture?payload=<json>` shape (Phase A3) to the
+    /// `.loomCaptureFromURL` notification; other paths fall through
+    /// (the existing in-webview scheme handler covers `loom://content`,
+    /// `loom://anchor`, etc.).
+    @objc func handleGetURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+        guard
+            let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+            let url = URL(string: urlString),
+            url.scheme == "loom"
+        else { return }
+        // External capture entry point. Internal `loom://content/…` /
+        // `loom://anchor?…` URLs are handled by `LoomURLSchemeHandler`
+        // inside the webview; only `loom://capture` arrives here from
+        // outside the app.
+        if url.host == "capture" {
+            Task { @MainActor in
+                handleCaptureURL(url)
+            }
+        }
+    }
+
+    @MainActor
+    private func handleCaptureURL(_ url: URL) {
+        // URL-scheme handler activation is user-initiated (they
+        // clicked L in the browser), so cross-space + cross-app
+        // activation is legitimate. Use the deprecated
+        // `activate(ignoringOtherApps:)` form anyway — it's still
+        // the only API that reliably switches macOS Spaces when
+        // Loom is fullscreen on a different Space than the
+        // browser. Without it, the CaptureSheet pops up on Loom's
+        // Space invisibly while the user stays on the browser.
+        NSApp.activate(ignoringOtherApps: true)
+        ensureMainWindowVisible()
+
+        // Bring main window forward + force it onto the active
+        // Space. `collectionBehavior += .canJoinAllSpaces`
+        // temporarily lets the window appear on the user's
+        // current Space; we revert after the activate so the
+        // window doesn't permanently ride along.
+        if let window = NSApp.windows.first(where: { $0.canBecomeKey && !$0.isMiniaturized }) {
+            if captureSpaceRestoreBehavior == nil {
+                var originalBehavior = window.collectionBehavior
+                originalBehavior.remove(.canJoinAllSpaces)
+                captureSpaceRestoreBehavior = originalBehavior
+            }
+            let token = UUID()
+            captureSpaceRestoreToken = token
+            window.collectionBehavior.insert(.canJoinAllSpaces)
+            window.makeKeyAndOrderFront(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self, weak window] in
+                Task { @MainActor in
+                    guard let self, self.captureSpaceRestoreToken == token else { return }
+                    if let originalBehavior = self.captureSpaceRestoreBehavior {
+                        window?.collectionBehavior = originalBehavior
+                    }
+                    self.captureSpaceRestoreBehavior = nil
+                    self.captureSpaceRestoreToken = nil
+                }
+            }
+        }
+        NotificationCenter.default.post(
+            name: .loomCaptureFromURL,
+            object: nil,
+            userInfo: ["url": url]
+        )
+    }
+
+    /// SwiftUI's `Window(...).defaultLaunchBehavior(.presented)` is the
+    /// desired primary path, but in local installed builds macOS can
+    /// still start the process with zero scene windows after prior
+    /// close/restore state. Keep a narrow AppKit fallback so clicking
+    /// Loom, reopening from Dock, or receiving `loom://capture` never
+    /// leaves the user with a running app and no room.
+    @MainActor
+    private func ensureMainWindowVisible() {
+        NSLog("[Loom] ensureMainWindowVisible windows=%d", NSApp.windows.count)
+        if let window = existingMainWindow(includeHidden: false) {
+            NSLog("[Loom] ensureMainWindowVisible using existing window=%d", window.windowNumber)
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        if let fallbackMainWindow {
+            NSLog("[Loom] ensureMainWindowVisible reusing fallback window=%d", fallbackMainWindow.windowNumber)
+            fallbackMainWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let rootView: AnyView
+        let minimalModeEnabled = (UserDefaults.standard.object(forKey: "loom.minimal.enabled") as? Bool) ?? true
+        if minimalModeEnabled {
+            rootView = AnyView(LoomMinimalRootView().environmentObject(server))
+        } else {
+            rootView = AnyView(
+                ContentView()
+                    .environmentObject(server)
+                    .background(WindowOpener())
+            )
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.identifier = NSUserInterfaceItemIdentifier(MainWindow.id)
+        window.title = "Loom"
+        window.center()
+        window.titlebarAppearsTransparent = true
+        window.toolbarStyle = .unifiedCompact
+        window.isRestorable = false
+        window.contentView = NSHostingView(rootView: rootView)
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        fallbackMainWindow = window
+        NSLog("[Loom] ensureMainWindowVisible created fallback window=%d", window.windowNumber)
+    }
+
+    @MainActor
+    private func existingMainWindow(includeHidden: Bool) -> NSWindow? {
+        NSApp.windows.first { window in
+            let isMainWindow = window.identifier?.rawValue == MainWindow.id || window.title == "Loom"
+            guard isMainWindow, window.canBecomeKey, !window.isMiniaturized else { return false }
+            return includeHidden || window.isVisible
+        }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // A Mac document-like app should not become a terminated app
+        // just because the main room was closed or restored as closed.
+        // Reopen events below bring the main room back explicitly.
+        false
+    }
+}
+
+/// Replaces File > New without losing SwiftUI's `openWindow` bridge.
+/// If the app is reopened from Dock/Finder with no visible window, the
+/// AppDelegate posts `.loomOpenMainWindow` and this command-scoped view
+/// owns the actual scene open.
+struct NewTopicMenuItem: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("New Topic") {
+            openMainWindow()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .loomNewTopic, object: nil)
+            }
+        }
+        .keyboardShortcut("n", modifiers: .command)
+        .onReceive(NotificationCenter.default.publisher(for: .loomOpenMainWindow)) { _ in
+            openMainWindow()
+        }
+    }
+
+    private func openMainWindow() {
+        openWindow(id: MainWindow.id)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 }
 
 /// App-menu item that opens the native About window, replacing the
@@ -563,11 +817,26 @@ struct KeyboardShortcutsMenuItem: View {
 }
 
 extension Notification.Name {
+    /// Phase A3 — `loom://capture?payload=<json>` arrived via the URL
+    /// scheme handler. UserInfo carries `["url": URL]`. Subscribed by
+    /// `LoomMinimalRootView` to mount the CaptureSheet.
+    static let loomCaptureFromURL = Notification.Name("loomCaptureFromURL")
+    /// Posted by the toolbar's "Paste" button on a source-file surface.
+    /// `SourceFileView` listens and runs `startCaptureFromClipboard()`
+    /// (it owns the PDF selection state needed for the passage anchor).
+    /// Replaces the previous hidden ⌘⇧V hotkey per user feedback that
+    /// captures should use direct, visible affordances.
+    static let loomTriggerCaptureFromClipboard = Notification.Name("loomTriggerCaptureFromClipboard")
+    /// Posted after `CaptureWriter.save` completes. CaptureWebView bridges it
+    /// into the captures landing as `window` event `loom:capture-saved` so
+    /// the list can refetch without forcing a full WKWebView reload.
+    static let loomCaptureSaved = Notification.Name("loomCaptureSaved")
     static let loomReview = Notification.Name("loomReview")
     static let loomReload = Notification.Name("loomReload")
     static let loomOpenInBrowser = Notification.Name("loomOpenInBrowser")
     static let loomGoBack = Notification.Name("loomGoBack")
     static let loomGoForward = Notification.Name("loomGoForward")
+    static let loomOpenMainWindow = Notification.Name("loomOpenMainWindow")
     static let loomNewTopic = Notification.Name("loomNewTopic")
     static let loomLearn = Notification.Name("loomLearn")
     static let loomZoomIn = Notification.Name("loomZoomIn")

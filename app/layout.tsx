@@ -10,19 +10,10 @@ const cormorant = Cormorant_Garamond({
   variable: '--font-cormorant',
   display: 'swap',
 });
-// Sidebar retired 2026-04-22 — web component is now a null shell; the
-// native SwiftUI `KnowledgeSidebarView` is Loom's only sidebar. See
-// components/Sidebar.tsx for the historic-import stub.
 import { CopyButtonInjector } from '../components/CopyButton';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
-// QuickSwitcher retired 2026-04-21 — replaced by native SwiftUI Shuttle
-// (⌘K) with doc search via search-index.json. File stays on disk until
-// Phase 5 sweep; two tests still reference its source as fixture.
 import { DropZone } from '../components/DropZone';
-// SettingsPanel retired 2026-04-21 — replaced by native SwiftUI Settings
-// scene (Appearance / AI / Data tabs) reached via ⌘, in the Loom Mac app.
-// The web component file stays in place as dead code until Phase 5 sweeps.
 import { TraceMigrator } from '../components/TraceMigrator';
 import { GlobalLiveArtifact } from '../components/GlobalLiveArtifact';
 import { FreeInput } from '../components/FreeInput';
@@ -30,10 +21,6 @@ import { IngestionOverlay } from '../components/IngestionOverlay';
 import { RecursingOverlay } from '../components/RecursingOverlay';
 import { RehearsalOverlay } from '../components/RehearsalOverlay';
 import { ExaminerOverlay } from '../components/ExaminerOverlay';
-// KeyboardHelpOverlay retired 2026-04-21 — replaced by native SwiftUI
-// Keyboard Shortcuts window (⌘⇧?) in the Loom Mac app. The web-only
-// modal is no longer mounted; the component file stays in place as
-// dead code until Phase 5 deletes it.
 import { ExportAction } from '../components/ExportAction';
 import { CrystallizeListener } from '../components/CrystallizeListener';
 import { PanelSync } from '../components/PanelSync';
