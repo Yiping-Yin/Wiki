@@ -167,8 +167,12 @@ test('mac app launch scene presents the main window by default', () => {
   assert.match(source, /applicationShouldHandleReopen\(_ sender: NSApplication,\s*hasVisibleWindows flag: Bool\)/);
   assert.match(source, /applicationShouldTerminateAfterLastWindowClosed\(_ sender: NSApplication\) -> Bool/);
   assert.match(source, /false\s*\n\s*\}/);
-  assert.doesNotMatch(source, /private var fallbackMainWindow/);
-  assert.doesNotMatch(source, /private func ensureMainWindowVisible/);
+  // NOTE: the original 73777a5 contract forbade fallbackMainWindow /
+  // ensureMainWindowVisible because macOS 15 native primitives were
+  // believed sufficient. The 2026-05-01 minimal-mode rewrite (commit
+  // 7351784) restored that fallback as defense-in-depth on top of the
+  // native primitives — both layers now coexist intentionally. The
+  // positive assertions above still enforce the macOS 15 native shape.
   assert.doesNotMatch(source, /NSHostingController\(\s*rootView:\s*ContentView\(\)/);
   assert.match(source, /NotificationCenter\.default\.post\(name:\s*\.loomOpenMainWindow,\s*object:\s*nil\)/);
   assert.match(source, /struct NewTopicMenuItem: View/);
