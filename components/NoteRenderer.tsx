@@ -85,6 +85,12 @@ const DANGEROUS_TAGS = new Set([
   'script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'style',
 ]);
 const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'action', 'formaction']);
+// Per WHATWG URL spec, browsers strip ASCII tab (U+0009), LF (U+000A), and
+// CR (U+000D) anywhere in URLs before parsing — so `java<TAB>script:alert(1)`
+// resolves and executes as `javascript:alert(1)`. Strip the same chars before
+// scheme matching to close that bypass (codex review, P1).
+const URL_STRIP_CHARS = new RegExp('[' + String.fromCharCode(9, 10, 13) + ']', 'g');
+const DANGEROUS_SCHEME = /^(javascript|data|vbscript):/i;
 function sanitizeHtml(dirty: string): string {
   if (typeof DOMParser === 'undefined') return dirty;
   const doc = new DOMParser().parseFromString(`<!DOCTYPE html><body>${dirty}`, 'text/html');
@@ -92,13 +98,15 @@ function sanitizeHtml(dirty: string): string {
   doc.querySelectorAll('*').forEach((el) => {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase();
-      const value = (attr.value || '').trim();
       if (name.startsWith('on')) {
         el.removeAttribute(attr.name);
         continue;
       }
-      if (URL_ATTRS.has(name) && /^\s*(javascript|data|vbscript):/i.test(value)) {
-        el.removeAttribute(attr.name);
+      if (URL_ATTRS.has(name)) {
+        const normalized = (attr.value || '').replace(URL_STRIP_CHARS, '').trim();
+        if (DANGEROUS_SCHEME.test(normalized)) {
+          el.removeAttribute(attr.name);
+        }
       }
     }
   });
