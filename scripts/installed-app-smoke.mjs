@@ -53,8 +53,12 @@ function runTool(command, args) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  if (result.error) {
+    throw new Error(`${command}: ${result.error.message}`);
+  }
   if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed: ${(result.stderr || result.stdout).trim()}`);
+    const detail = (result.stderr || result.stdout || '').trim();
+    throw new Error(`${command} ${args.join(' ')} failed: ${detail}`);
   }
   return `${result.stdout ?? ''}${result.stderr ?? ''}`;
 }
@@ -126,16 +130,9 @@ export async function runInstalledAppSmoke(options = {}) {
   await assertFile(path.join(webRoot, 'knowledge.html'), 'static export knowledge route');
   await assertFile(path.join(webRoot, 'search-index.json'), 'static search index');
 
-  const bundleId = readPlistValue(infoPlist, 'CFBundleIdentifier');
-  if (bundleId !== expectedBundleId) {
-    throw new Error(`Expected CFBundleIdentifier ${expectedBundleId}, got ${bundleId}`);
-  }
-
-  const displayName = readPlistValue(infoPlist, 'CFBundleDisplayName');
-  if (displayName !== 'Loom') {
-    throw new Error(`Expected CFBundleDisplayName Loom, got ${displayName}`);
-  }
-
+  // Stale-artifact check runs before plist parsing so the (Linux-only,
+  // plutil-less) test path can exercise it. plutil is macOS-only — when
+  // it is absent, plist value reads are skipped instead of throwing.
   const indexHtml = await fs.readFile(path.join(webRoot, 'index.html'), 'utf8');
   assertIncludes(indexHtml, '/_next/static/', 'static export index');
 
@@ -147,6 +144,18 @@ export async function runInstalledAppSmoke(options = {}) {
   const staleArtifacts = await findStaleArtifacts(webRoot);
   if (staleArtifacts.length > 0) {
     throw new Error(`Static web bundle contains stale macOS/Finder artifacts: ${staleArtifacts.slice(0, 8).join(', ')}`);
+  }
+
+  if (process.platform === 'darwin') {
+    const bundleId = readPlistValue(infoPlist, 'CFBundleIdentifier');
+    if (bundleId !== expectedBundleId) {
+      throw new Error(`Expected CFBundleIdentifier ${expectedBundleId}, got ${bundleId}`);
+    }
+
+    const displayName = readPlistValue(infoPlist, 'CFBundleDisplayName');
+    if (displayName !== 'Loom') {
+      throw new Error(`Expected CFBundleDisplayName Loom, got ${displayName}`);
+    }
   }
 
   if (process.env.LOOM_SMOKE_SKIP_CODESIGN !== '1') {
