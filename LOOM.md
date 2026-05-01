@@ -2,7 +2,14 @@
 
 > **READ THIS FIRST** if you are an AI assistant or human collaborator newly arrived on Loom. This is the canonical product document — what Loom is, why it exists, and how its parts fit together.
 >
-> **Status**: v2.0 filed 2026-05-01 (replaces the v1 "six-verb" framing in `plans/loom-unified-product-vision.md`, which is now reduced to a sub-implementation map).
+> **Status**: v3.0 filed 2026-05-01 (Camp C reframe — Loom positioned as Prism-quality typography + Notes-grade editability + AI co-edit. v2.0 sections kept; new §1.5 + §6.5 added; §11 roadmap updated).
+>
+> **What changed in v3.0** (read this if you knew v2.0):
+> 1. **§1.5 added** — "Camp C — The Render Position" frames Loom against Prism (Camp A: frozen-beautiful) and Notion/Notes (Camp B: editable-mediocre).
+> 2. **§6.5 added** — "Editable Render Layer" as the 9th supporting piece; paper canon stays sealed but becomes editable in place.
+> 3. **§11 Roadmap** — added M-series milestones for Camp C work (M1 thesis falling now, M2-M5 phased gated by user data).
+> 4. **3-layer architecture** — terminal AI thinks, Loom renders, user orchestrates. Internal AI panel (askPassage / distill) being downgraded from main entry to convenience shortcut. See §6.5.
+> 5. **Cowork elevated** — moved from "Phase D polish" to first-class verify-layer of learning, on equal footing with capture/distill/wiki.
 >
 > **Read order**: this doc → `LOOM_RULES.md` (invariants/law) → `LOOM_USER_PROFILE.md` (audience) → relevant plan in `plans/` → memory entries surface as needed.
 >
@@ -19,6 +26,40 @@
 This single sentence is the product. Every other framing in this document expands on it. Five years from now, when many features have shipped and others have been replaced, this sentence still defines Loom.
 
 **What "knowledge system" means concretely**: not a graph, not a tag tree, not a database. It is your accumulated source-anchored thinking — every PDF, web page, course folder you ever encountered, with your notes, your AI dialogues archived, your compiled artifacts, all in markdown you own. Searchable by full-text. Re-readable as written. Cite-able by anchored URL. Re-compilable when models improve. Exportable in plain markdown. Lives forever in your `LoomFileStore` (or a future iCloud-synced equivalent), independent of any vendor.
+
+---
+
+## 1.5. Camp C — The Render Position (added v3.0)
+
+Knowledge tools have historically forced a choice between two camps:
+
+| Camp | Examples | Render quality | Edit form |
+|---|---|---|---|
+| **A — Compiled / frozen** | LaTeX, Typst, Prism → PDF, Pandoc | Academic / print-grade | Edit source → recompile; can't touch output |
+| **B — WYSIWYG / live** | Notion, Apple Notes, Google Docs, Obsidian | Basic — adequate but not refined | Click anywhere to edit; the rendered surface IS the document |
+
+Camp A wins typography, loses editability. Camp B wins editability, loses typography. Every tool picks one.
+
+**Loom's position is Camp C** — the third path that dissolves the dichotomy:
+
+- **Camp A's typography**: paper canon (vellum, page-on-deck, 60-72ch measure, oldstyle figures, hanging punctuation, KaTeX, real small caps, asymmetric inset, hairline separators, zero texture, sealed v1.0 2026-04-25)
+- **Camp B's editability**: the rendered paper canon IS the editable surface. `contenteditable` mounted on `.loom-capture-article`. User points and edits in place — no source-then-render round-trip, no separate edit mode.
+- **AI co-edit (Camp C original)**: select text → mid-stream AI affordances (rewrite / expand / cite source / translate / footnote). Borrows from Cursor's inline-AI for code, applied to prose at paper-canon quality.
+- **Structural invariant guard**: AI maintains chapter ornaments / figure layout / drop caps / running heads while user edits content. User cannot accidentally break canon by deleting the wrong span.
+- **Versioned blocks**: every edit auto-snapshotted; rollback at block granularity.
+
+**Why this is a real moat (not marketing)**: no incumbent does both. LaTeX/Prism cannot edit output. Notion/Notes cannot deliver page-on-deck typography. Cursor/Claude Code is for code, not prose. Substack is editable but trades typography for editor smoothness. Loom is the first tool where editing the published-grade rendering is the primary mode.
+
+**Why now**: three enabling shifts converged ~2025-2026 — (a) browser CSS reached print-grade (Loom paper canon proves it), (b) AI can maintain structural invariants during edits, (c) users trained by Notion + ChatGPT now expect both quality AND mid-stream control.
+
+**What Camp C is NOT**:
+- ❌ Not "Loom is a better Notion" — Notion remains the right tool for raw collaborative drafts
+- ❌ Not "Loom replaces LaTeX" — LaTeX remains the right tool for pure print artifacts that don't evolve
+- ❌ Not editable-source-with-preview (Obsidian split-pane) — there is no source/preview split; the render IS the surface
+
+**Concrete Camp C surface in Loom**: every reader page (`app/loom-render/capture/page.tsx`) and every shape renderer (List / Article / Passage / Conversation / Syllabus per Phase C presentation layer) becomes editable in place. Paper canon CSS rules continue to apply during and after edits. The selection toolbar (already shipped) gains AI co-edit affordances. See §6.5 for the engineering decomposition.
+
+**Validation status (honest)**: Camp C thesis is filed but un-shipped. Apple Note workflow (2026-05-01 user observation) demonstrates the principle: AI-rendered structured output that user reads and edits in place is a real workflow. Loom's task is to deliver that pattern at paper-canon typography. M2 prototype (single shape contenteditable) needed before broader claims. See `plans/loom-camp-c-editable-render.md`.
 
 ---
 
@@ -239,6 +280,75 @@ Plus the Design System v1 (canonical token source at `lib/loom-design-system.ts`
 ### Future-extensibility (when new source types arrive)
 
 When Loom adds video, audio, or notebook source support: these become new INGEST lanes feeding into the existing CaptureAST schema. They do NOT become a 9th supporting piece. Each new source type extends piece #2 (folder/PDF/clipboard import) with a new ingestion handler and a new content shape for Phase C detection. Compile pipeline is source-type-agnostic — it only sees structured text + metadata, regardless of original medium. This keeps the architecture stable as Loom's source coverage grows.
+
+---
+
+## 6.5. Editable Render Layer — The 9th Supporting Piece (added v3.0)
+
+§1.5 introduced Camp C as Loom's positioning. This section is the engineering decomposition: what concretely needs to be built so the rendered paper canon becomes the editable surface, not a read-only artifact.
+
+### Why this is the 9th piece, not part of an existing one
+
+Pieces 1-8 cover INGEST → STRUCTURE → COMPILE → READ. The user reads the result. v3.0 adds a 9th: **EDIT-IN-RENDER**. Distinct from compile (one-shot AI structuring) and from a hypothetical "edit mode" (which would be a separate UI affordance). This is editing the very thing being read — same surface, no mode switch.
+
+### The 5 engineering modules
+
+**(a) Editable paper canon** — Mount `contenteditable` on `.loom-capture-article`. Existing paper canon CSS rules (vellum, page-on-deck, drop cap, oldstyle figures, hanging punctuation, KaTeX math, asymmetric inset) all apply during edit. Estimated: 1-2 days for naïve implementation, more for hardening.
+
+**(b) DOM ↔ Markdown bi-directional binding** — User edits DOM → diff and write back to source `.md`. AI edits source `.md` → re-render local DOM region (not full reload). Single source of truth for content, two views for editability. Estimated: 3-5 days. Risk: lossy roundtripping for complex Loom-custom components (figures with captions, callouts, ProvenanceSlip).
+
+**(c) AI co-edit affordances on selection** — Existing `loom-capture-sel-toolbar` (Highlight / Note / Copy link, plus the v3.0 transient highlight model) gains a second row: **rewrite / expand / cite source / translate / footnote**. Each wire to `callAiPrompt` with the surrounding context. Estimated: ~1 day per affordance, 5 affordances total.
+
+**(d) Structural invariant guard** — Chapter ornaments, drop caps, figure containers, table structure, callout shells must survive arbitrary user edits. Two strategies (pick one or hybrid):
+1. CSS `user-modify: read-only` on structural shells, `read-write` on text spans inside
+2. MutationObserver intercepts destructive deletions and wraps them in undo prompts
+
+Estimated: 2-3 days. Risk: users find a thousand ways to break invariants; AI maintenance cost may grow.
+
+**(e) Block-level versioning + history** — Every edit auto-snapshotted, rollback at block granularity. Apple Notes has this natively; users rarely use it but its presence is reassurance. Estimated: 3-5 days.
+
+**Total engineering estimate**: ~15-20 days for the full Camp C MVP (one milestone).
+
+### What this does NOT change
+
+- **Paper canon visual rules**: sealed v1.0 (2026-04-25). Adding editability does not change vellum, measure, drop caps, or any other typographic decision. CSS rules are immutable through this work.
+- **Source folder immutability**: edits to `.md` continue to go through `LoomFileStore` (sandbox), never to the user's source folder. Camp C does not violate the immutable-source principle.
+- **Read-only rendering remains the default for source materials**: external PDFs, web captures' source pages, etc. Camp C applies to ARTIFACTS Loom or AI generates (drafts, distillations, articles, notes), not to immutable inputs.
+
+### How Camp C interacts with the 3-layer architecture (terminal AI thinks / Loom renders / user orchestrates)
+
+In the new world (also added v3.0 — see §1.5):
+
+```
+Terminal AI (Codex / Claude Code) writes draft to Loom file
+       ↓
+Loom paper canon renders draft
+       ↓
+User opens reader, edits in place (Camp C)  ← this section's work
+       ↓ optionally
+Selects passage → AI co-edit affordance  ← module (c) above
+       ↓
+Saves; iterates; eventually promotes draft to wiki
+```
+
+Loom's reader page is no longer a terminus. It is a **continuously editable workshop surface** where AI drafts arrive, user shapes, and finished pieces emerge.
+
+### Phased rollout (mirrors `plans/loom-camp-c-editable-render.md`)
+
+- **M1 — Thesis falling (now)**: this section + LOOM_RULES §7.5 + design doc + plan. No code.
+- **M2 — Single shape prototype**: Article shape only, contenteditable + naïve markdown roundtrip. User tests 1 week. Correction-log records reality.
+- **M3 — Decision gate**: M2 data → continue, scope-down, or abort.
+- **M4 — Full MVP**: all 5 modules, all 5 shapes' editable mode.
+- **M5 — Multi-shape expansion polish**: per-shape invariant rules, mobile, accessibility.
+
+### Honest unknowns (for §12)
+
+- Will users edit Loom rendering, or instinctively export to Notion?
+- Is selection-based AI co-edit actually useful for prose (vs code where Cursor proved it)?
+- Can DOM ↔ MD roundtripping survive Loom's custom components without a structured intermediate AST?
+- What does mobile editing of paper canon even look like?
+
+These don't block thesis filing but block M3 → M4 promotion until M2 surfaces real data.
 
 ---
 
@@ -488,8 +598,13 @@ Each incumbent would have to fundamentally rebuild their data model + design sys
 | 4 | Cosmic canon v1.0 SEALED + brand surfaces (splash / about / empty) | 3-4 weeks | Net-new product work; cosmic canon doc TBD |
 | 5 | Connect surface (Echoes eyebrow) — AI cross-source detection + quiet eyebrow UI | ~6 weeks (includes detection R&D) | Net-new product work |
 | 6 | Return surface (Last-read eyebrow) + Compile Subtask C (visualizations + interactive elements) | ~3-4 weeks | Net-new product work |
+| **C.M1** | **Camp C thesis falling — LOOM.md §1.5 + §6.5 + LOOM_RULES §7.5 + plan + design doc** | now | **filed 2026-05-01 (this commit)** |
+| **C.M2** | **Camp C — single Article shape contenteditable prototype + naïve MD roundtrip** | 3-5 days | gated on user authorization |
+| **C.M3** | **Camp C — decision gate after M2 user data (1 week test)** | review only | gated on M2 data |
+| **C.M4** | **Camp C — full 5-module MVP (editable canon + DOM↔MD bind + 5 AI co-edit affordances + invariant guard + block versioning)** | ~15-20 days | gated on M3 |
+| **C.M5** | **Camp C — multi-shape expansion (List / Passage / Conversation / Syllabus) + mobile + a11y** | ~3-4 weeks | gated on M4 |
 
-Approximate calendar: ~5-6 months from current state to full unified product.
+Approximate calendar: ~5-6 months from current state to full unified product, with Camp C work parallelizable to Tiers 3-6 once M3 gate passes.
 
 **Important**: Tier 2 (Compile MVP) is the next user-visible product moment. Once Tier 1 lands, ALL Loom's prior work pays off the moment Compile ships. Until Compile ships, Loom is "a great reading tool"; once it ships, Loom is "a learning loop."
 

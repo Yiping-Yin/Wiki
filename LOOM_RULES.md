@@ -1,7 +1,7 @@
 # Loom — Product Rules & Engineering Protocol
 
 > **Read this BEFORE starting any work on Loom.**
-> This document captures the accumulated product decisions, hard vetoes, and design rules made over many design sessions with the product owner. It exists so any AI assistant (Claude, GPT, Codex, Gemini, etc.) — and any human collaborator — can pick up the work without re-litigating settled questions.
+> This document captures the accumulated product decisions, hard vetoes, and design rules made over many design sessions with the product owner. It exists so any AI assistant (Codex, GPT, Gemini, etc.) — and any human collaborator — can pick up the work without re-litigating settled questions.
 >
 > **This is a living document.** Update it after every session in which a meaningful decision is made or a recurring feedback pattern emerges. Do not delete past entries; mark them superseded.
 >
@@ -218,6 +218,48 @@ The file gradually heals itself; no destructive migration script needed.
 - The standalone `[📍 Jump to passage](...)` link is folded into the preceding quote at render time
 - Quote becomes the click target; a small ↗ glyph hints at the action
 - Hover help: "Jump to source passage"
+
+---
+
+## 7.5. Editable Render Layer — Camp C (Locked thesis 2026-05-01)
+
+Loom's product position is **Camp C**: Prism-grade typography + Notes-grade in-place editability + AI co-edit. See `LOOM.md` §1.5 for the dichotomy this dissolves; see `LOOM.md` §6.5 for engineering decomposition.
+
+### Operating rules
+
+1. **Paper canon stays sealed**. Adding editability does NOT change vellum/measure/page-on-deck/drop-cap/oldstyle/hanging/KaTeX/zero-texture rules from §7. CSS rules are immutable through Camp C work.
+2. **`contenteditable` is the editing affordance, not a separate "edit mode"**. The reader page IS editable. No mode-switch button. No source/preview split.
+3. **AI co-edit goes on the existing `loom-capture-sel-toolbar`** (which already hosts Highlight / Note / Copy link). Add as a second row when M4 ships: rewrite / expand / cite source / translate / footnote.
+4. **Structural elements are guard-railed against destructive edits**. Chapter ornaments, drop caps, figure shells, table structure, callout containers cannot be deleted by random keystrokes. Either CSS `user-modify: read-only` on shells with `read-write` on inner text, or MutationObserver intercepts.
+5. **Source folder remains immutable**. Edits route through `LoomFileStore` per existing immutable-source principle (memory: feedback_loom_source_folder_immutable). Camp C does NOT touch this rule.
+6. **Source materials remain read-only**. External PDFs, web captures' source pages, ingested originals — Camp C does not apply. Camp C is for ARTIFACTS Loom or AI generates (drafts, distillations, articles, notes).
+7. **Bi-directional binding**: DOM is rendered FROM `.md`; user edits DOM; diff writes back to `.md`. `.md` is single source of truth. AI edits `.md`; local DOM region re-renders (not full page reload).
+8. **Block versioning auto-on**: every edit snapshotted; rollback at block granularity. Apple Notes parallel.
+9. **Internal Loom AI panel (askPassage / distill) downgraded**. From "main entry to AI" to "convenience shortcut when reading". Primary AI partnership is terminal AI (Codex / Claude Code) + Loom-as-render-target. See `LOOM.md` §1.5 3-layer architecture.
+
+### What's banned under Camp C
+
+- ❌ Don't add a separate "Edit" button that toggles edit mode. Editing is in-place, always.
+- ❌ Don't replicate paper canon CSS for an "editable variant" — there is one canon, applied identically read or write.
+- ❌ Don't ship invariant guard via runtime alerts ("Are you sure you want to delete this drop cap?"). Either prevent silently via CSS or undo via MutationObserver. No friction prompts.
+- ❌ Don't expose markdown source in the UI (no split-pane). Bi-directional binding is internal plumbing; user only sees rendered.
+- ❌ Don't promote Loom AI panel features (askPassage/distill) over terminal AI integration. The pivot is FROM "AI in Loom" TO "Loom as render target for terminal AI."
+
+### Phased shipping (mirrors `plans/loom-camp-c-editable-render.md` and `LOOM.md` §11 Tier C)
+
+- M1 (now): thesis falling — this section + LOOM.md §1.5 + §6.5 + plan + design doc.
+- M2 (3-5 days, gated on user GO): single Article shape contenteditable prototype.
+- M3: decision gate after 1 week of M2 user data.
+- M4 (~15-20 days, gated on M3 PASS): full 5-module MVP.
+- M5 (~3-4 weeks, gated on M4): multi-shape + mobile + a11y.
+
+### Cross-references
+
+- `LOOM.md` §1.5 — the Camp C / Camp A / Camp B framing
+- `LOOM.md` §6.5 — engineering decomposition of the 5 modules
+- `plans/loom-camp-c-editable-render.md` — phased plan with exit criteria
+- `docs/design/PRISM_VS_NOTES_VS_LOOM_2026-05-01.md` — design rationale + competitive position
+- `tmp/loom-correction-log.md` entry-006 — strategic reframe entry
 
 ---
 
