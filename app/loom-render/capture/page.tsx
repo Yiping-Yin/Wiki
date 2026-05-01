@@ -1974,7 +1974,31 @@ function ArticleRender({
     const onMouseUp = () => {
       if (!isDragging) return;
       isDragging = false;
-      requestAnimationFrame(computeToolbar);
+      requestAnimationFrame(() => {
+        computeToolbar();
+        // Auto-save: every committed selection becomes a persistent
+        // highlight. User cancels by clicking the mark. Idempotent on
+        // text — re-selecting the same span does not duplicate.
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const text = sel.toString().trim();
+        if (text.length < 3) return;
+        const node = sel.anchorNode;
+        const article = document.querySelector('.loom-capture-article');
+        if (!node || !article || !article.contains(node)) return;
+        setHighlights((prev) => {
+          if (prev.some((h) => h.text === text)) return prev;
+          const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          const next = [...prev, { id, text, ts: Date.now() }];
+          try {
+            window.localStorage.setItem(
+              `loom:highlights:${stableKey}`,
+              JSON.stringify(next),
+            );
+          } catch {}
+          return next;
+        });
+      });
     };
     const onSel = () => {
       if (isDragging) return;
@@ -2020,8 +2044,26 @@ function ArticleRender({
         const mark = document.createElement('mark');
         mark.className = 'loom-hl';
         mark.dataset.hlId = h.id;
-        if (h.note) mark.title = h.note;
+        mark.title = h.note || 'Click to remove highlight';
         mark.textContent = h.text;
+        // Click removes the highlight. Drag-from-mark still starts a
+        // new selection because click only fires on mouseup at same
+        // coords as mousedown — drag has different coords, so click
+        // never fires.
+        const hid = h.id;
+        mark.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setHighlights((prev) => {
+            const next = prev.filter((x) => x.id !== hid);
+            try {
+              window.localStorage.setItem(
+                `loom:highlights:${stableKey}`,
+                JSON.stringify(next),
+              );
+            } catch {}
+            return next;
+          });
+        });
         const parent = tn.parentNode;
         if (!parent) continue;
         if (before) parent.insertBefore(document.createTextNode(before), tn);
@@ -3260,9 +3302,10 @@ function ArticleRender({
           padding: 0 0.05em;
           border-radius: var(--radius-sm);
           box-shadow: 0 1px 0 0 color-mix(in srgb, var(--thread) 45%, transparent);
+          cursor: pointer;
         }
-        .loom-capture-article mark.loom-hl[title] {
-          cursor: help;
+        .loom-capture-article mark.loom-hl:hover {
+          background: color-mix(in srgb, var(--thread) 28%, transparent);
         }
         /* Selection floating toolbar — small bronze chip-row that
            appears above the user's current text selection. Centered
