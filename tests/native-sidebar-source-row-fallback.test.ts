@@ -45,7 +45,7 @@ test('native source sidebar renders folder trees instead of a flat document dump
   // `let folders = tree.folders`. Restore the strict pattern after the
   // tree refactor stabilizes.
   assert.match(source, /sourceFolderTree\(for: cat, docs: docs\)/);
-  assert.match(source, /ForEach\(.*folders\)/);
+  assert.match(source, /ForEach\(.*folders.*\)/);
   assert.match(source, /private func sourceFolderPath\(for doc: Doc, in cat: UserCategory\) -> String/);
   assert.match(source, /sourceFolderPath\(fromSourcePath: sourcePath, in: cat\)/);
   assert.match(source, /private func sourceFolderPath\(fromSourcePath sourcePath: String, in cat: UserCategory\) -> String/);

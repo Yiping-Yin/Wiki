@@ -146,8 +146,9 @@ export async function runInstalledAppSmoke(options = {}) {
     throw new Error(`Static web bundle contains stale macOS/Finder artifacts: ${staleArtifacts.slice(0, 8).join(', ')}`);
   }
 
+  let bundleId;
   if (process.platform === 'darwin') {
-    const bundleId = readPlistValue(infoPlist, 'CFBundleIdentifier');
+    bundleId = readPlistValue(infoPlist, 'CFBundleIdentifier');
     if (bundleId !== expectedBundleId) {
       throw new Error(`Expected CFBundleIdentifier ${expectedBundleId}, got ${bundleId}`);
     }
