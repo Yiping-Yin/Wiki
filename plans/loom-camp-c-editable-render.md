@@ -106,16 +106,11 @@ Knowledge tools have always forced a choice: Camp A (LaTeX/Prism — frozen-beau
 - **Time:** 3-5 days
 - **Risk:** lossy roundtripping of custom components; may need a structured intermediate AST. Surface in correction log if hits.
 
-### Module (c) — AI co-edit affordances on selection
-- Existing `loom-capture-sel-toolbar` (Highlight / Note / Copy link + transient highlight model from 2026-05-01) gains 5 new buttons:
-  - **Rewrite** — selected text → AI rewrite suggestion → diff modal → accept/reject
-  - **Expand** — selected paragraph → AI expansion suggestion → inline accept/reject
-  - **Cite source** — selected claim → AI find supporting passage in user's Loom corpus (uses ContentRootStore + EmbeddingStore) → inserts citation footnote
-  - **Translate** — selected text → AI translate to user's secondary language → diff modal
-  - **Footnote** — selected text → AI generates footnote (definition / context / source) → inline insert
-- Each wires to `callAiPrompt` Swift bridge with sufficient context window
-- **Time:** ~1 day per affordance, 5 days total
-- **Coordination:** AI co-edit UI is in `app/loom-render/capture/page.tsx` (shared with Codex). HOT-FILE.
+### ~~Module (c)~~ — DELETED v4.0
+
+> v3.0 had a "Module (c) — AI co-edit affordances on selection" with 5 buttons (rewrite / expand / cite / translate / footnote) on the loom-capture-sel-toolbar. **v4.0 deletes this module entirely** per the substrate thesis (no AI feature surface in Loom). The same value (AI helps refine content) is delivered via `plans/loom-ai-passes.md` background passes operating on the entire document, not via selection-based UI.
+>
+> If after M4.5 (AI passes integration) user data shows that selection-based AI affordances are genuinely missing, this module can be reconsidered. Until then: don't build.
 
 ### Module (d) — Structural invariant guard
 - Pick strategy:
