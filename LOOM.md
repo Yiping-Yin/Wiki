@@ -2,14 +2,17 @@
 
 > **READ THIS FIRST** if you are an AI assistant or human collaborator newly arrived on Loom. This is the canonical product document — what Loom is, why it exists, and how its parts fit together.
 >
-> **Status**: v3.0 filed 2026-05-01 (Camp C reframe — Loom positioned as Prism-quality typography + Notes-grade editability + AI co-edit. v2.0 sections kept; new §1.5 + §6.5 added; §11 roadmap updated).
+> **Status**: v4.0 filed 2026-05-02 (substrate / 思维超导值 reframe — Loom positioned as Word/PPT/Excel-tier substrate for thought, with AI as invisible plumbing not feature surface. v3.0 Camp C with AI co-edit affordances was wrong direction; reversed. See `tmp/loom-correction-log.md` entry-007 for full reframe history.)
 >
-> **What changed in v3.0** (read this if you knew v2.0):
-> 1. **§1.5 added** — "Camp C — The Render Position" frames Loom against Prism (Camp A: frozen-beautiful) and Notion/Notes (Camp B: editable-mediocre).
-> 2. **§6.5 added** — "Editable Render Layer" as the 9th supporting piece; paper canon stays sealed but becomes editable in place.
-> 3. **§11 Roadmap** — added M-series milestones for Camp C work (M1 thesis falling now, M2-M5 phased gated by user data).
-> 4. **3-layer architecture** — terminal AI thinks, Loom renders, user orchestrates. Internal AI panel (askPassage / distill) being downgraded from main entry to convenience shortcut. See §6.5.
-> 5. **Cowork elevated** — moved from "Phase D polish" to first-class verify-layer of learning, on equal footing with capture/distill/wiki.
+> **What changed in v4.0** (read this if you knew v3.0):
+> 1. **§1.5 rewritten** — "思维超导值 / 织机 substrate" replaces the "Camp C with AI co-edit" framing. Loom is a substrate (Word/Excel-tier), not a vertical AI tool.
+> 2. **§6.5 reduced** — Camp C editable rendering preserved BUT the "5th module AI co-edit affordances" deleted. 4 modules remain: contenteditable + DOM↔MD bind + invariant guard + versioning.
+> 3. **§6.7 added** — "Input Surface and AI Passes" — the document IS the AI's input; AI runs invisible background passes (idle 3-5s + on open + manual ⌘↩); no chat box, no /ai commands, no panels.
+> 4. **§7 Compile Pipeline elevated** — from "next milestone" to "always-on substrate loop." Subtask A+B+C continuously run as background passes, not as one-shot compilation.
+> 5. **§11 Roadmap** — Tier C milestones updated (5th module deleted; AI passes plan + CLI plan added).
+> 6. **Cowork demoted** — no longer a named feature/module. It's the default workflow pattern (user weaves on substrate using whatever AI is available).
+> 7. **Internal AI panel REMOVED** — askPassage / distill / co-edit affordances all deleted. AI happens via background passes (internal) or CLI (external). No UI surface for AI.
+> 8. **Wiki-scale AI assistance** (auto-link, auto-cluster, library assembly across many docs) — explicitly DEFERRED to v4.1+. Not in v4.0 scope.
 >
 > **Read order**: this doc → `LOOM_RULES.md` (invariants/law) → `LOOM_USER_PROFILE.md` (audience) → relevant plan in `plans/` → memory entries surface as needed.
 >
@@ -29,37 +32,120 @@ This single sentence is the product. Every other framing in this document expand
 
 ---
 
-## 1.5. Camp C — The Render Position (added v3.0)
+## 1.5. Loom as 思维超导值 / Substrate (rewritten v4.0)
 
-Knowledge tools have historically forced a choice between two camps:
+> v3.0 had this section as "Camp C — render position with AI co-edit affordances". That framing was a feature-pile mistake. v4.0 corrects: Loom is a **substrate**, not a feature platform. AI dissolves into the substrate as invisible plumbing, not as buttons / panels / commands.
 
-| Camp | Examples | Render quality | Edit form |
-|---|---|---|---|
-| **A — Compiled / frozen** | LaTeX, Typst, Prism → PDF, Pandoc | Academic / print-grade | Edit source → recompile; can't touch output |
-| **B — WYSIWYG / live** | Notion, Apple Notes, Google Docs, Obsidian | Basic — adequate but not refined | Click anywhere to edit; the rendered surface IS the document |
+### The thesis (50 words, user-confirmed 2026-05-02)
 
-Camp A wins typography, loses editability. Camp B wins editability, loses typography. Every tool picks one.
+> Loom = paper canon 排版的可编辑文档；AI 在背景 idle 时跑整理 passes；外部 AI 通过文件 + CLI 联动；用户输入到文档（=AI 输入）→ AI 整理 → 用户 edit 表达。无 chat box，无 /ai 命令，无 panel。
 
-**Loom's position is Camp C** — the third path that dissolves the dichotomy:
+### Loom's position — substrate, not vertical AI app
 
-- **Camp A's typography**: paper canon (vellum, page-on-deck, 60-72ch measure, oldstyle figures, hanging punctuation, KaTeX, real small caps, asymmetric inset, hairline separators, zero texture, sealed v1.0 2026-04-25)
-- **Camp B's editability**: the rendered paper canon IS the editable surface. `contenteditable` mounted on `.loom-capture-article`. User points and edits in place — no source-then-render round-trip, no separate edit mode.
-- **AI co-edit (Camp C original)**: select text → mid-stream AI affordances (rewrite / expand / cite source / translate / footnote). Borrows from Cursor's inline-AI for code, applied to prose at paper-canon quality.
-- **Structural invariant guard**: AI maintains chapter ornaments / figure layout / drop caps / running heads while user edits content. User cannot accidentally break canon by deleting the wrong span.
-- **Versioned blocks**: every edit auto-snapshotted; rollback at block granularity.
+Loom is to thought what **Word / PowerPoint / Excel** are to text / slides / spreadsheets — a stable, predictable, universal substrate. Specifically:
 
-**Why this is a real moat (not marketing)**: no incumbent does both. LaTeX/Prism cannot edit output. Notion/Notes cannot deliver page-on-deck typography. Cursor/Claude Code is for code, not prose. Substack is editable but trades typography for editor smoothness. Loom is the first tool where editing the published-grade rendering is the primary mode.
+- **Word/PPT/Excel grade of universality**: any field, any user, any context. Not specialized for one vertical.
+- **30-year stability target**: markdown + standard frontmatter, no proprietary format, no vendor lock-in. The artifacts you weave today will open in any markdown tool 30 years from now.
+- **AI is invisible plumbing**: like Word's spell-check (background, subtle red underline, you accept or fix). Not a feature pile. Not a chat partner. Not the author.
+- **User is the author**: Loom hosts the user's expression. AI helps with collection (capture) and organization (typeset / structure / link / cite). Authorship is the user's, always.
 
-**Why now**: three enabling shifts converged ~2025-2026 — (a) browser CSS reached print-grade (Loom paper canon proves it), (b) AI can maintain structural invariants during edits, (c) users trained by Notion + ChatGPT now expect both quality AND mid-stream control.
+### The 织机 (loom / weaving frame) metaphor
 
-**What Camp C is NOT**:
-- ❌ Not "Loom is a better Notion" — Notion remains the right tool for raw collaborative drafts
-- ❌ Not "Loom replaces LaTeX" — LaTeX remains the right tool for pure print artifacts that don't evolve
-- ❌ Not editable-source-with-preview (Obsidian split-pane) — there is no source/preview split; the render IS the surface
+A loom is a frame that holds threads under tension so the weaver can produce cloth. Loom-the-app is the same:
 
-**Concrete Camp C surface in Loom**: every reader page (`app/loom-render/capture/page.tsx`) and every shape renderer (List / Article / Passage / Conversation / Syllabus per Phase C presentation layer) becomes editable in place. Paper canon CSS rules continue to apply during and after edits. The selection toolbar (already shipped) gains AI co-edit affordances. See §6.5 for the engineering decomposition.
+| Loom (the weaving machine) | Loom (the app) |
+|---|---|
+| Frame holds tension | App provides paper canon + file storage |
+| Weaver brings threads | User dumps raw content (typed / dictated / captured / pasted) |
+| Loom doesn't supply threads | Loom doesn't author content |
+| Loom doesn't decide pattern | Loom doesn't impose structure (AI suggests, user accepts) |
+| Cloth IS the artifact | Paper canon document IS the artifact |
+| Continuous, not batch | AI passes run on idle, not as separate "compile" actions |
 
-**Validation status (honest)**: Camp C thesis is filed but un-shipped. Apple Note workflow (2026-05-01 user observation) demonstrates the principle: AI-rendered structured output that user reads and edits in place is a real workflow. Loom's task is to deliver that pattern at paper-canon typography. M2 prototype (single shape contenteditable) needed before broader claims. See `plans/loom-camp-c-editable-render.md`.
+### 思维超导值 (thought superconductor)
+
+A superconductor conducts current with zero resistance. Loom-as-thought-superconductor:
+
+- **Zero friction in**: voice, type, paste, capture, drop — all converge to the same writing surface
+- **Zero friction in organize**: AI runs typesetting / structuring passes in background; you don't trigger anything
+- **Zero friction out**: edit any rendered text in place at paper-canon quality; no mode switch
+- **Zero friction connect**: external AI reads/writes Loom files through standard markdown + CLI; no API negotiation
+
+The "超导" is the absence of friction at every layer of thought-flow. This is the design north star.
+
+### Where AI sits (the architecture answer)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  USER (the author / weaver)                              │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          │ voice / type / paste / capture
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│  LOOM DOCUMENT (paper canon, editable in place)          │
+│  ─────────────────────────────────────────              │
+│  • This IS the AI's input (no separate dialog box)       │
+│  • This IS the AI's output (renders happen here)         │
+│  • This IS the user's edit surface (Camp C)              │
+└─────────────────────────────────────────────────────────┘
+                          │
+            ┌─────────────┼─────────────┐
+            ▼                           ▼
+    ┌──────────────┐           ┌──────────────────┐
+    │ INTERNAL AI   │           │ EXTERNAL AI       │
+    │ (background)  │           │ (Codex / API)     │
+    │ ────────────  │           │ ────────────      │
+    │ Idle 3-5s ▶   │           │ Reads files       │
+    │ On open ▶     │           │ Writes files      │
+    │ ⌘↩ manual ▶   │           │ Calls Loom CLI    │
+    │               │           │                   │
+    │ Pass types:   │           │ Tools:            │
+    │ • typeset     │           │ • loom capture    │
+    │ • structure   │           │ • loom search     │
+    │ • link        │           │ • loom open       │
+    │ • cite        │           │ • loom related    │
+    └──────────────┘           └──────────────────┘
+```
+
+**Internal AI** = Loom invokes API (OpenAI / Anthropic / etc.) as background passes that organize the document. Subtle margin marks indicate AI-touched content; hover shows diff + revert.
+
+**External AI** = Codex / Claude Code / any agent reads/writes Loom files via the file system + CLI. No proprietary integration needed; standard markdown + Unix-style tools.
+
+**No internal AI UI panel exists.** No askPassage, no distill button, no /ai inline command, no chat box, no co-edit affordance toolbar. The document is everything.
+
+### What this means for incumbents
+
+| Tool | Position | Loom's relationship |
+|---|---|---|
+| Word / PPT / Excel | Universal substrate, basic typography, no AI native | Loom is the same tier but with paper canon + AI plumbing |
+| LaTeX / Prism / Typst | Frozen high-quality output | Loom delivers similar typography but editable, not frozen |
+| Notion / Apple Notes | Editable, basic typography, bolt-on AI | Loom is the substrate they wanted to be — typography + edit + AI integration |
+| Cursor / Codex | Vertical AI app for code | Loom is the substrate Cursor would call from outside |
+| Obsidian | Substrate + plugin ecosystem, basic typography | Loom is more opinionated on typography, less on plugins |
+
+Loom is closest to **Word/PPT/Excel-tier** (substrate-pure) **plus** modern AI plumbing — a position no incumbent occupies cleanly.
+
+### What Loom is NOT (per v4.0)
+
+- ❌ NOT a Cursor for knowledge — no agent loop, no inline /ai commands
+- ❌ NOT a Notion AI competitor — no chat panel, no /ai slash menu
+- ❌ NOT a thinking partner — Loom doesn't initiate, suggest unprompted, or argue
+- ❌ NOT a 3D / specialized design tool — text + academic models (math, citations, structured prose, tables) only
+- ❌ NOT an LLM wrapper — AI is plumbing, not the product
+
+### Validation status (honest, 2026-05-02)
+
+- **Substrate / 织机 thesis** = user-confirmed 2026-05-02. 50-word version logged in correction log entry-007.
+- **Single-document AI passes** = M2 milestone work; un-shipped. M2 must validate that idle-triggered organize-passes are useful without being distracting.
+- **External AI via CLI + files** = Loom CLI is to-be-built; spec in `plans/loom-cli.md`.
+- **Multi-document wiki-scale stringing** (auto-link / auto-cluster / library assembly across N docs) = explicitly DEFERRED to v4.1+ per user 2026-05-02. Not in v4.0 scope.
+
+See:
+- `tmp/loom-correction-log.md` entry-007 — full reframe history (3 wrong attempts before this one)
+- `plans/loom-ai-passes.md` — internal AI passes engineering spec
+- `plans/loom-cli.md` — external AI integration spec
+- `LOOM_RULES.md` §7.5 — operating rules + bans
 
 ---
 
@@ -283,72 +369,165 @@ When Loom adds video, audio, or notebook source support: these become new INGEST
 
 ---
 
-## 6.5. Editable Render Layer — The 9th Supporting Piece (added v3.0)
+## 6.5. Editable Render Layer — The 9th Supporting Piece (revised v4.0)
 
-§1.5 introduced Camp C as Loom's positioning. This section is the engineering decomposition: what concretely needs to be built so the rendered paper canon becomes the editable surface, not a read-only artifact.
+§1.5 (rewritten v4.0) positions Loom as a substrate. This section is the engineering decomposition for the editable rendering layer — Camp B's editability applied to paper canon. The v3.0 module list had **5 modules** including AI co-edit affordances; v4.0 deletes that 5th module per the substrate thesis (no AI feature surface inside Loom).
 
 ### Why this is the 9th piece, not part of an existing one
 
-Pieces 1-8 cover INGEST → STRUCTURE → COMPILE → READ. The user reads the result. v3.0 adds a 9th: **EDIT-IN-RENDER**. Distinct from compile (one-shot AI structuring) and from a hypothetical "edit mode" (which would be a separate UI affordance). This is editing the very thing being read — same surface, no mode switch.
+Pieces 1-8 cover INGEST → STRUCTURE → COMPILE → READ. The user reads the result. v3.0 added a 9th: **EDIT-IN-RENDER**. v4.0 keeps this 9th piece but scopes it tighter — editing is a substrate property (Word/PPT/Excel-tier), not an AI co-edit surface.
 
-### The 5 engineering modules
+### The 4 engineering modules (v4.0 — was 5 in v3.0)
 
 **(a) Editable paper canon** — Mount `contenteditable` on `.loom-capture-article`. Existing paper canon CSS rules (vellum, page-on-deck, drop cap, oldstyle figures, hanging punctuation, KaTeX math, asymmetric inset) all apply during edit. Estimated: 1-2 days for naïve implementation, more for hardening.
 
-**(b) DOM ↔ Markdown bi-directional binding** — User edits DOM → diff and write back to source `.md`. AI edits source `.md` → re-render local DOM region (not full reload). Single source of truth for content, two views for editability. Estimated: 3-5 days. Risk: lossy roundtripping for complex Loom-custom components (figures with captions, callouts, ProvenanceSlip).
+**(b) DOM ↔ Markdown bi-directional binding** — User edits DOM → diff and write back to source `.md`. AI passes (see §6.7) edit source `.md` → re-render local DOM region (not full reload). Single source of truth for content, two views for editability. Estimated: 3-5 days. Risk: lossy roundtripping for complex Loom-custom components (figures with captions, callouts, ProvenanceSlip).
 
-**(c) AI co-edit affordances on selection** — Existing `loom-capture-sel-toolbar` (Highlight / Note / Copy link, plus the v3.0 transient highlight model) gains a second row: **rewrite / expand / cite source / translate / footnote**. Each wire to `callAiPrompt` with the surrounding context. Estimated: ~1 day per affordance, 5 affordances total.
+**(c) ~~AI co-edit affordances on selection~~** — **DELETED v4.0.** Was: selection toolbar with rewrite / expand / cite / translate / footnote buttons. Per substrate thesis, AI is invisible plumbing not a feature surface. The same value (AI helps refine selected text) is delivered via §6.7 AI passes operating on the entire document, not via selection-based UI.
 
 **(d) Structural invariant guard** — Chapter ornaments, drop caps, figure containers, table structure, callout shells must survive arbitrary user edits. Two strategies (pick one or hybrid):
 1. CSS `user-modify: read-only` on structural shells, `read-write` on text spans inside
 2. MutationObserver intercepts destructive deletions and wraps them in undo prompts
 
-Estimated: 2-3 days. Risk: users find a thousand ways to break invariants; AI maintenance cost may grow.
+Estimated: 2-3 days. Risk: users find a thousand ways to break invariants; cost may grow.
 
 **(e) Block-level versioning + history** — Every edit auto-snapshotted, rollback at block granularity. Apple Notes has this natively; users rarely use it but its presence is reassurance. Estimated: 3-5 days.
 
-**Total engineering estimate**: ~15-20 days for the full Camp C MVP (one milestone).
+**Total engineering estimate (v4.0)**: ~10-12 days for the full editable render MVP. (v3.0 was 15-20 days; v4.0 is faster because module (c) is removed.)
 
 ### What this does NOT change
 
 - **Paper canon visual rules**: sealed v1.0 (2026-04-25). Adding editability does not change vellum, measure, drop caps, or any other typographic decision. CSS rules are immutable through this work.
-- **Source folder immutability**: edits to `.md` continue to go through `LoomFileStore` (sandbox), never to the user's source folder. Camp C does not violate the immutable-source principle.
-- **Read-only rendering remains the default for source materials**: external PDFs, web captures' source pages, etc. Camp C applies to ARTIFACTS Loom or AI generates (drafts, distillations, articles, notes), not to immutable inputs.
+- **Source folder immutability**: edits to `.md` continue to go through `LoomFileStore` (sandbox), never to the user's source folder.
+- **Read-only rendering remains the default for source materials**: external PDFs, web captures' source pages, etc. Editable render applies to ARTIFACTS Loom or AI generates (drafts, distillations, articles, notes), not to immutable inputs.
 
-### How Camp C interacts with the 3-layer architecture (terminal AI thinks / Loom renders / user orchestrates)
-
-In the new world (also added v3.0 — see §1.5):
+### How editable render interacts with AI passes (§6.7)
 
 ```
-Terminal AI (Codex / Claude Code) writes draft to Loom file
+External AI (Codex / API) writes draft to Loom file
+       OR
+User dumps content into document via input surface
        ↓
-Loom paper canon renders draft
+Loom paper canon renders content
        ↓
-User opens reader, edits in place (Camp C)  ← this section's work
-       ↓ optionally
-Selects passage → AI co-edit affordance  ← module (c) above
+AI background pass (idle 3-5s) typesets / structures / links / cites
        ↓
-Saves; iterates; eventually promotes draft to wiki
+User reads + edits in place (modules a-e of this section)
+       ↓
+Loop: user edit → 5s idle → AI re-pass → user edit → ...
+       ↓
+Eventually: user promotes draft to wiki location
 ```
 
-Loom's reader page is no longer a terminus. It is a **continuously editable workshop surface** where AI drafts arrive, user shapes, and finished pieces emerge.
+The reader page is a **continuously editable workshop surface** where content arrives (typed / dictated / AI-written), AI passes structure it, user refines, and finished artifacts emerge.
 
-### Phased rollout (mirrors `plans/loom-camp-c-editable-render.md`)
+### Phased rollout (updated v4.0)
 
-- **M1 — Thesis falling (now)**: this section + LOOM_RULES §7.5 + design doc + plan. No code.
-- **M2 — Single shape prototype**: Article shape only, contenteditable + naïve markdown roundtrip. User tests 1 week. Correction-log records reality.
+See `plans/loom-camp-c-editable-render.md` for full milestone scope.
+
+- **M1 — Thesis filed (done 2026-05-02)**: this section + §6.7 + LOOM_RULES §7.5 + design doc + 2 plans + correction log entry-007.
+- **M2 — Single shape contenteditable prototype**: Article shape only, contenteditable + naïve markdown roundtrip. NO AI passes yet. User tests 1 week.
 - **M3 — Decision gate**: M2 data → continue, scope-down, or abort.
-- **M4 — Full MVP**: all 5 modules, all 5 shapes' editable mode.
-- **M5 — Multi-shape expansion polish**: per-shape invariant rules, mobile, accessibility.
+- **M4 — Full editable render MVP (4 modules)**: all 4 modules, Article shape end-to-end.
+- **M4.5 — AI passes integration (§6.7 work)**: Add idle-triggered AI passes that operate on the document.
+- **M5 — Multi-shape expansion**: List / Passage / Conversation / Syllabus + mobile + a11y.
 
 ### Honest unknowns (for §12)
 
 - Will users edit Loom rendering, or instinctively export to Notion?
-- Is selection-based AI co-edit actually useful for prose (vs code where Cursor proved it)?
 - Can DOM ↔ MD roundtripping survive Loom's custom components without a structured intermediate AST?
+- Does AI margin-marking (per §6.7 spec) read as "transparency" or "clutter"?
 - What does mobile editing of paper canon even look like?
 
 These don't block thesis filing but block M3 → M4 promotion until M2 surfaces real data.
+
+---
+
+## 6.7. Input Surface and AI Passes (added v4.0)
+
+**The deepest design question** answered by v4.0: where does AI integration live in Loom? Answer: **the document IS the AI's input AND output**. There is no separate AI dialog box, no chat panel, no /ai inline command, no co-edit toolbar. The writing surface is everything.
+
+### Why no separate AI input
+
+A separate AI input (chat box, command palette, side panel) would create a feature surface — and Loom is a substrate, not a feature platform. Word doesn't have a chat box for spell-check; spell-check just runs in background and underlines words. Loom AI works the same way at a higher level of organization.
+
+### How content arrives in Loom
+
+Five equivalent input streams (per §1 / §2 / §3 of LOOM.md):
+
+1. **Type / dictate** directly into a Loom document (paper canon styled writing surface)
+2. **Voice** — OS dictation (⌥ hotkey) or 3rd-party tool transcribes into the active Loom document
+3. **Web capture** — extension pushes a captured page into LoomFileStore, opens reader
+4. **External AI write** — Codex / Claude Code / API call writes a markdown file directly to LoomFileStore (Loom watches and renders)
+5. **Paste / drop** — clipboard or file drop targets a Loom document; structure-detection runs
+
+All five end up at the same place: a Loom document with paper canon rendering.
+
+### How AI work happens (background passes)
+
+Once content exists in a Loom document, AI runs **invisible background passes**:
+
+| Pass | What it does | Triggered by |
+|---|---|---|
+| **Typeset** | Apply paper canon visual structure to raw content (headings, lists, blockquotes, etc.) | Idle 3-5s after edit / on document open / manual ⌘↩ |
+| **Structure** | Detect 5 shapes (Article / List / Passage / Conversation / Syllabus) and apply matching layout | Idle 5-10s after content stabilizes |
+| **Link** | Cross-reference: find other Loom documents that mention the same concepts and add subtle margin links | Idle 10-15s after content stabilizes |
+| **Cite** | For academic-leaning content, find external citations (DOI lookup, etc.) and add footnotes | Idle 15-30s after content stabilizes |
+
+Passes run via `callAiPrompt` Swift bridge to the user's configured AI provider (5 supported per existing AIProviderSettingsView). API costs are user-paid; passes are aggressively debounced to minimize call volume.
+
+### How AI changes are surfaced to user
+
+AI-touched content is **subtly margin-marked** in the right margin (a small bronze dot — see paper canon recipe). On hover:
+- Dot expands to a small affordance
+- Click reveals a popover with: what AI did + diff + revert button
+- Click outside closes popover
+
+This is borrowed from Word's revision marks but redesigned for paper-canon aesthetic. **AI changes are visible enough that user doesn't lose authorial control, but subtle enough to not pollute the read.**
+
+### The triggering model (idle + open + manual)
+
+- **Idle** (~3-5s after last edit) — most passes; lets the user write without interruption, then catches up when they pause
+- **On document open** — re-runs typeset/structure passes to apply latest model improvements to old documents
+- **Manual ⌘↩** — user explicitly demands a pass right now (e.g., "I just dictated a paragraph; please typeset it now")
+
+NO continuous-while-typing trigger in v4.0. (Tested as "too distracting" in informal user research; deferred to v4.2+ as opt-in.)
+
+### What AI passes do NOT do
+
+- ❌ Do not author content (only restructure/typeset what's already there)
+- ❌ Do not delete user content (additive only — AI can wrap, mark, link, but not remove)
+- ❌ Do not present a chat / command interface
+- ❌ Do not initiate unprompted (only respond to user's content stream)
+- ❌ Do not work across documents (single-document scope in v4.0; cross-document is v4.1+ wiki work)
+
+### How external AI integrates (Loom CLI)
+
+External AI (Codex / Claude Code / Cursor / future X) integrates via:
+
+1. **File system access** — LoomFileStore is plain markdown + standard frontmatter. Any AI can read/write directly.
+2. **Loom CLI** — exposes substrate operations:
+   - `loom capture <url>` — trigger web capture
+   - `loom search "query"` — full-text + embedding search across user's Loom corpus
+   - `loom open <file>` — open Loom UI to specific file
+   - `loom related <file>` — find related Loom documents
+   - `loom render <file>` — headless render markdown to paper canon HTML
+   - `loom write <path>` — write artifact to LoomFileStore (with frontmatter)
+
+External AI doesn't need a Loom-specific API; CLI + files are the standard substrate interface.
+
+See `plans/loom-cli.md` for full CLI design and `plans/loom-ai-passes.md` for internal passes design.
+
+### Wiki-scale stringing (DEFERRED to v4.1+)
+
+When Loom contains many documents (personal wiki / 维基百科库), additional AI work becomes valuable:
+- Auto-link concepts across documents
+- Auto-cluster related documents into topics
+- Auto-generate library indexes
+- Auto-detect contradictions across documents
+- Auto-suggest new wiki entries from accumulated captures
+
+User explicitly deferred this to v4.1+ on 2026-05-02 ("这个是后话"). v4.0 ships single-document AI passes only. Wiki-scale work scopes after v4.0 ships and yields data on real usage patterns.
 
 ---
 
@@ -598,11 +777,14 @@ Each incumbent would have to fundamentally rebuild their data model + design sys
 | 4 | Cosmic canon v1.0 SEALED + brand surfaces (splash / about / empty) | 3-4 weeks | Net-new product work; cosmic canon doc TBD |
 | 5 | Connect surface (Echoes eyebrow) — AI cross-source detection + quiet eyebrow UI | ~6 weeks (includes detection R&D) | Net-new product work |
 | 6 | Return surface (Last-read eyebrow) + Compile Subtask C (visualizations + interactive elements) | ~3-4 weeks | Net-new product work |
-| **C.M1** | **Camp C thesis falling — LOOM.md §1.5 + §6.5 + LOOM_RULES §7.5 + plan + design doc** | now | **filed 2026-05-01 (this commit)** |
-| **C.M2** | **Camp C — single Article shape contenteditable prototype + naïve MD roundtrip** | 3-5 days | gated on user authorization |
-| **C.M3** | **Camp C — decision gate after M2 user data (1 week test)** | review only | gated on M2 data |
-| **C.M4** | **Camp C — full 5-module MVP (editable canon + DOM↔MD bind + 5 AI co-edit affordances + invariant guard + block versioning)** | ~15-20 days | gated on M3 |
-| **C.M5** | **Camp C — multi-shape expansion (List / Passage / Conversation / Syllabus) + mobile + a11y** | ~3-4 weeks | gated on M4 |
+| **C.M1** | **v4.0 thesis filed — LOOM.md §1.5 + §6.5 + §6.7 + LOOM_RULES §7.5 + plans/loom-ai-passes.md + plans/loom-cli.md + design doc + correction-log entry-007** | now | **filed 2026-05-02 (this commit)** |
+| **C.M2** | **Single Article shape contenteditable prototype + naïve MD roundtrip (NO AI passes yet)** | 3-5 days | gated on user authorization |
+| **C.M3** | **Decision gate after M2 user data (1 week test)** | review only | gated on M2 data |
+| **C.M4** | **Full editable render MVP (4 modules: contenteditable + DOM↔MD bind + invariant guard + versioning). NO AI co-edit affordances per v4.0.** | ~10-12 days | gated on M3 |
+| **C.M4.5** | **AI passes integration per §6.7 (idle-triggered typeset/structure/link/cite passes + margin-marking)** | ~5-7 days | gated on M4 |
+| **C.M5** | **Multi-shape expansion (List / Passage / Conversation / Syllabus) + mobile + a11y** | ~3-4 weeks | gated on M4.5 |
+| **C.M6** | **Loom CLI implementation per `plans/loom-cli.md`** | ~3-5 days | parallelizable with C.M4 |
+| **W.M1** | **(v4.1+) Wiki-scale AI: auto-link + auto-cluster + library indexing across N documents** | TBD | DEFERRED per user 2026-05-02 |
 
 Approximate calendar: ~5-6 months from current state to full unified product, with Camp C work parallelizable to Tiers 3-6 once M3 gate passes.
 

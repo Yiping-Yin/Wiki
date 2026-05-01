@@ -221,45 +221,64 @@ The file gradually heals itself; no destructive migration script needed.
 
 ---
 
-## 7.5. Editable Render Layer — Camp C (Locked thesis 2026-05-01)
+## 7.5. Substrate / Editable Render / AI Passes — v4.0 (rewritten 2026-05-02)
 
-Loom's product position is **Camp C**: Prism-grade typography + Notes-grade in-place editability + AI co-edit. See `LOOM.md` §1.5 for the dichotomy this dissolves; see `LOOM.md` §6.5 for engineering decomposition.
+> **v3.0 of this section** had Loom positioned as "Camp C with AI co-edit affordances on selection toolbar." That was wrong — feature-pile thinking. **v4.0 corrects**: Loom is a substrate (Word/PPT/Excel-tier); AI is invisible plumbing not a feature surface. See `LOOM.md` §1.5 (rewritten v4.0) for positioning and `tmp/loom-correction-log.md` entry-007 for full correction.
+
+### The thesis (50 words, user-confirmed 2026-05-02)
+
+> Loom = paper canon 排版的可编辑文档；AI 在背景 idle 时跑整理 passes；外部 AI 通过文件 + CLI 联动；用户输入到文档（=AI 输入）→ AI 整理 → 用户 edit 表达。无 chat box，无 /ai 命令，无 panel。
 
 ### Operating rules
 
-1. **Paper canon stays sealed**. Adding editability does NOT change vellum/measure/page-on-deck/drop-cap/oldstyle/hanging/KaTeX/zero-texture rules from §7. CSS rules are immutable through Camp C work.
+1. **Paper canon stays sealed**. Adding editability or AI passes does NOT change vellum / measure / page-on-deck / drop-cap / oldstyle / hanging / KaTeX / zero-texture rules from §7. CSS rules are immutable.
 2. **`contenteditable` is the editing affordance, not a separate "edit mode"**. The reader page IS editable. No mode-switch button. No source/preview split.
-3. **AI co-edit goes on the existing `loom-capture-sel-toolbar`** (which already hosts Highlight / Note / Copy link). Add as a second row when M4 ships: rewrite / expand / cite source / translate / footnote.
-4. **Structural elements are guard-railed against destructive edits**. Chapter ornaments, drop caps, figure shells, table structure, callout containers cannot be deleted by random keystrokes. Either CSS `user-modify: read-only` on shells with `read-write` on inner text, or MutationObserver intercepts.
-5. **Source folder remains immutable**. Edits route through `LoomFileStore` per existing immutable-source principle (memory: feedback_loom_source_folder_immutable). Camp C does NOT touch this rule.
-6. **Source materials remain read-only**. External PDFs, web captures' source pages, ingested originals — Camp C does not apply. Camp C is for ARTIFACTS Loom or AI generates (drafts, distillations, articles, notes).
-7. **Bi-directional binding**: DOM is rendered FROM `.md`; user edits DOM; diff writes back to `.md`. `.md` is single source of truth. AI edits `.md`; local DOM region re-renders (not full page reload).
-8. **Block versioning auto-on**: every edit snapshotted; rollback at block granularity. Apple Notes parallel.
-9. **Internal Loom AI panel (askPassage / distill) downgraded**. From "main entry to AI" to "convenience shortcut when reading". Primary AI partnership is terminal AI (Codex / Claude Code) + Loom-as-render-target. See `LOOM.md` §1.5 3-layer architecture.
+3. **AI passes run in background, not via UI buttons**. Idle 3-5s after edit → typeset/structure passes. On document open → re-typeset. Manual ⌘↩ → user-triggered immediate pass. Never: chat box, /ai inline command, AI panel, co-edit toolbar.
+4. **AI-touched content is margin-marked**. Right-margin bronze dot indicates "AI touched this span." Hover reveals diff + revert affordance. Subtle enough to not pollute read; visible enough that user retains authorial control.
+5. **Structural elements are guard-railed against destructive edits**. Chapter ornaments, drop caps, figure shells, table structure, callout containers cannot be deleted by random keystrokes. CSS `user-modify: read-only` on shells with `read-write` on inner text, or MutationObserver intercepts.
+6. **Source folder remains immutable**. Edits + AI passes route through `LoomFileStore` per existing immutable-source principle (memory: feedback_loom_source_folder_immutable).
+7. **Source materials remain read-only**. External PDFs, web captures' source pages, ingested originals — substrate editing + passes do not apply. Editable surface is for ARTIFACTS Loom / AI generates (drafts, distillations, articles, notes).
+8. **Bi-directional binding**: DOM is rendered FROM `.md`; user edits DOM; diff writes back to `.md`. `.md` is single source of truth. AI passes edit `.md`; local DOM region re-renders (not full page reload).
+9. **Block versioning auto-on**: every edit snapshotted; rollback at block granularity. Apple Notes parallel.
+10. **Internal Loom AI = passes only**. Not a panel, not buttons, not commands. Passes operate on the entire document (or a region) per their type (typeset / structure / link / cite). No askPassage panel, no distill button — those v2.0 features are REMOVED in v4.0.
+11. **External AI integrates via files + CLI**. LoomFileStore is plain markdown + frontmatter; any AI can read/write directly. Loom CLI exposes substrate operations (capture / search / open / related / render). NO Loom-specific API; everything through standard Unix interfaces.
+12. **Wiki-scale AI work is DEFERRED to v4.1+**. v4.0 ships single-document AI passes only. Multi-document auto-link, auto-cluster, library indexing — explicitly out of scope per user 2026-05-02.
 
-### What's banned under Camp C
+### What's banned (substrate purity)
 
 - ❌ Don't add a separate "Edit" button that toggles edit mode. Editing is in-place, always.
 - ❌ Don't replicate paper canon CSS for an "editable variant" — there is one canon, applied identically read or write.
 - ❌ Don't ship invariant guard via runtime alerts ("Are you sure you want to delete this drop cap?"). Either prevent silently via CSS or undo via MutationObserver. No friction prompts.
 - ❌ Don't expose markdown source in the UI (no split-pane). Bi-directional binding is internal plumbing; user only sees rendered.
-- ❌ Don't promote Loom AI panel features (askPassage/distill) over terminal AI integration. The pivot is FROM "AI in Loom" TO "Loom as render target for terminal AI."
+- ❌ **Don't add internal AI UI features**. No chat box, no /ai inline command palette, no AI side panel, no askPassage button, no distill button, no co-edit toolbar, no AI-suggestion popovers. Only allowed AI surface: subtle margin marks indicating background-pass touched content.
+- ❌ **Don't add AI agent-loop in Loom**. Loom's internal AI is single-step passes (one API call → one structuring action). Multi-step / spawn / cross-file work happens via external AI calling Loom CLI.
+- ❌ **Don't continuous-render AI** (every keystroke triggers AI). Distracting. v4.0 trigger model is idle 3-5s + on open + manual. Continuous-render is v4.2+ opt-in at earliest.
+- ❌ **Don't extend AI passes to wiki-scale in v4.0**. Single-document only. Cross-document work is v4.1+.
+- ❌ **Don't make AI an author**. AI passes are additive (wrap, mark, link, restructure). Never delete user content. Never write content the user didn't initiate.
 
-### Phased shipping (mirrors `plans/loom-camp-c-editable-render.md` and `LOOM.md` §11 Tier C)
+### Phased shipping (mirrors `plans/loom-camp-c-editable-render.md` + `plans/loom-ai-passes.md` + `plans/loom-cli.md` and `LOOM.md` §11 Tier C)
 
-- M1 (now): thesis falling — this section + LOOM.md §1.5 + §6.5 + plan + design doc.
-- M2 (3-5 days, gated on user GO): single Article shape contenteditable prototype.
-- M3: decision gate after 1 week of M2 user data.
-- M4 (~15-20 days, gated on M3 PASS): full 5-module MVP.
-- M5 (~3-4 weeks, gated on M4): multi-shape + mobile + a11y.
+- **M1 (filed 2026-05-02)**: this section + LOOM.md §1.5 + §6.5 + §6.7 + 2 plans + design doc + correction-log entry-007.
+- **M2 (3-5 days, gated on user GO)**: single Article shape contenteditable prototype — NO AI passes yet.
+- **M3**: decision gate after 1 week of M2 user data.
+- **M4 (~10-12 days, gated on M3 PASS)**: full editable render MVP — 4 modules (no AI co-edit per v4.0).
+- **M4.5 (~5-7 days, gated on M4)**: AI passes integration per §6.7.
+- **M5 (~3-4 weeks, gated on M4.5)**: multi-shape + mobile + a11y.
+- **M6 (~3-5 days, parallelizable with M4)**: Loom CLI implementation per `plans/loom-cli.md`.
+- **W.M1 (DEFERRED)**: wiki-scale AI work. Not in v4.0.
 
 ### Cross-references
 
-- `LOOM.md` §1.5 — the Camp C / Camp A / Camp B framing
-- `LOOM.md` §6.5 — engineering decomposition of the 5 modules
-- `plans/loom-camp-c-editable-render.md` — phased plan with exit criteria
-- `docs/design/PRISM_VS_NOTES_VS_LOOM_2026-05-01.md` — design rationale + competitive position
-- `tmp/loom-correction-log.md` entry-006 — strategic reframe entry
+- `LOOM.md` §1.5 — substrate / 思维超导值 positioning (rewritten v4.0)
+- `LOOM.md` §6.5 — editable render 4 modules (revised v4.0)
+- `LOOM.md` §6.7 — input surface + AI passes (added v4.0)
+- `LOOM.md` §7 — Compile Pipeline (now scoped as always-on substrate loop, not next-milestone)
+- `plans/loom-camp-c-editable-render.md` — phased plan with M2/M4/M4.5/M5 exit criteria
+- `plans/loom-ai-passes.md` — internal AI passes engineering spec (NEW v4.0)
+- `plans/loom-cli.md` — external AI integration spec (NEW v4.0)
+- `docs/design/PRISM_VS_NOTES_VS_LOOM_2026-05-01.md` — design rationale (§4 rewritten v4.0)
+- `tmp/loom-correction-log.md` entry-006 — v3.0 strategic reframe (partially superseded)
+- `tmp/loom-correction-log.md` entry-007 — v4.0 substrate reframe (current load-bearing)
 
 ---
 

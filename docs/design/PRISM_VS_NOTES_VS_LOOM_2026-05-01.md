@@ -87,28 +87,34 @@ Three enabling shifts converged ~2025-2026:
 
 ---
 
-## 3. Camp C — Loom's position
+## 3. Camp C — Loom's position (revised v4.0 — substrate, not feature pile)
 
-**Camp C** dissolves the dichotomy by combining all three:
+> **v3.0 had this section as "AI co-edit selection toolbar (rewrite/expand/cite/translate/footnote)" being part of Camp C.** That was a feature-pile mistake. **v4.0 corrects**: Camp C is editability of paper canon rendering. AI's role in Camp C is **invisible background plumbing** (passes that organize/typeset/link), NOT user-facing UI affordances. See `tmp/loom-correction-log.md` entry-007 for full reframe.
+
+**Camp C** dissolves the A/B dichotomy by combining three substrate-level properties:
 
 1. **Camp A's typography** — full paper canon (sealed v1.0)
 2. **Camp B's editability** — `contenteditable` on the rendered surface; no source/preview split; no compile step
-3. **AI co-edit (the Camp C original)** — selection-based affordances (rewrite / expand / cite / translate / footnote) that maintain structural invariants
-4. **Versioning** — block-level history (Apple Notes parallel)
+3. **Versioning** — block-level history (Apple Notes parallel)
 
-The user reads at print quality. The user clicks any text and edits in place. The user selects a passage and asks AI to rewrite it. The structure (chapter ornaments, drop caps, figure layout) survives every edit.
+Plus, layered on top, **invisible AI plumbing** (NOT a user-facing UI feature):
+- Background passes (typeset / structure / link / cite) trigger on idle, on open, or manual ⌘↩
+- AI-touched content margin-marked subtly (bronze dot in margin); hover for diff + revert
+- NO chat box, NO /ai inline command, NO co-edit toolbar, NO AI panel
+
+The user reads at print quality. The user clicks any text and edits in place. AI runs in background and tidies up the structure / typography / cross-links. The structure (chapter ornaments, drop caps, figure layout) survives every edit. Author is the user.
 
 **This is not a research idea.** Each component exists in production today:
 - Paper canon CSS: shipped in Loom v1.0 (sealed)
 - contenteditable on rich rendered surfaces: shipped in Apple Notes, Notion, Substack
-- Selection-based AI co-edit: shipped in Cursor (for code), partially in Notion AI (for prose)
+- Background AI passes: closest precedent is Word's spell-check (continuous, background, margin-marked)
 - Block versioning: shipped in Apple Notes, Notion
 
-**The integration is novel.** No tool combines all four AT PAPER-CANON QUALITY.
+**The integration is novel.** No tool combines paper-canon-grade typography + editability + invisible-AI-passes + block versioning at this fidelity.
 
 ---
 
-## 4. Loom is uniquely positioned to deliver Camp C
+## 4. Loom is uniquely positioned to deliver Camp C (revised v4.0)
 
 ### Capabilities Loom already has (sealed)
 - Paper canon v1.0 (vellum, page-on-deck, 60-72ch, KaTeX, oldstyle, hanging, asymmetric inset, zero texture)
@@ -117,25 +123,51 @@ The user reads at print quality. The user clicks any text and edits in place. Th
 - Sandboxed `LoomFileStore` (immutable source folder protected)
 - AI integration framework (`callAiPrompt` Swift bridge, 5 providers + custom + off)
 - CaptureAST schema for structured source representation
-- Selection toolbar (Highlight / Note / Copy link with transient highlight model added 2026-05-01)
+- Selection toolbar (Highlight / Note / Copy link with transient highlight model added 2026-05-01) — kept for highlighting/copying use; NOT extended with AI affordances
 - Vellum visual identity (warm paper + bronze)
 
-### Capabilities Loom needs to add (M2-M5 of `plans/loom-camp-c-editable-render.md`)
+### Capabilities Loom needs to add (v4.0 scope — see `plans/loom-camp-c-editable-render.md` + `plans/loom-ai-passes.md` + `plans/loom-cli.md`)
+
+**Editable render (4 modules, not 5):**
 - contenteditable on `.loom-capture-article` body
 - DOM ↔ Markdown bi-directional binding
-- AI co-edit affordances on selection (5 actions)
 - Structural invariant guard (CSS + MutationObserver)
 - Block-level versioning + history
 
+**Internal AI plumbing (background passes, NO UI):**
+- Idle / on-open / manual triggers
+- Typeset / structure / link / cite pass types
+- Margin marking with hover diff + revert
+- API cost tracking + per-day cap
+
+**External AI integration (CLI + files):**
+- 6 commands: capture / search / open / related / render / write
+- Standard markdown + frontmatter conventions
+- Sandbox-respecting
+
+**NOT in v4.0:**
+- ❌ AI co-edit selection toolbar (deleted from v3.0 plan)
+- ❌ askPassage / distill UI panels (removed)
+- ❌ Wiki-scale AI work (cross-document auto-link/cluster) — deferred to v4.1+
+
 ### Why competitors can't do this
 - **LaTeX / Prism**: their entire architecture is source-then-compile. Adding edit-in-place would require rewriting the rendering engine to be browser-based + bidirectional. Years of work.
-- **Notion**: their typography would need to be rebuilt from scratch. Their editor architecture is block-based at the WRONG granularity for paper canon.
-- **Apple Notes**: not extensible enough. Apple controls the surface; can't add domain-specific affordances.
-- **Obsidian**: WYSIWYG plugin space exists but typography is community-driven and fragmented; no canonical paper rendering.
-- **Substack**: editor is locked-down; no way to add academic structure.
+- **Notion**: their typography would need to be rebuilt from scratch. Their editor architecture is block-based at the WRONG granularity for paper canon. Notion AI is a panel; substrate-style invisible-passes are not their pattern.
+- **Apple Notes**: not extensible enough. Apple controls the surface; can't add domain-specific renderers (paper canon) or AI passes.
+- **Obsidian**: WYSIWYG plugin space exists but typography is community-driven and fragmented; no canonical paper rendering. AI plugins exist but as feature-pile, not as substrate plumbing.
+- **Substack**: editor is locked-down; no way to add academic structure or AI plumbing.
 - **Quarto / R Markdown**: dual-pane (source + preview); not single-surface edit.
+- **Word + Copilot**: closest in spirit (background AI in a substrate), but typography is corner-cut. Word can't deliver paper canon.
 
-Loom comes in fresh, with paper canon already done, AI integration already done, and the design discipline (sealed canon, immutable source, hard vetoes) to maintain quality through edit cycles.
+Loom comes in fresh, with paper canon already done, AI integration framework already done, and the design discipline (sealed canon, immutable source, hard vetoes, substrate-purity) to maintain quality through edit cycles + AI passes.
+
+### The deepest position statement (substrate, not vertical AI)
+
+Loom is **a Word/PPT/Excel-tier substrate for thought** — universal, stable, predictable, with paper-canon-grade rendering and modern AI plumbing baked in as invisible infrastructure.
+
+Loom is NOT a vertical AI app for knowledge work. Vertical AI apps (Cursor, Notion AI, ChatGPT) compete on AI feature richness. Loom's moat is substrate quality + typography + AI being so well-integrated it's invisible.
+
+This positioning is closer to **Word in 1990s** (universal substrate, conservative on features, deeply right on the things that matter) than to **Cursor in 2026** (vertical AI maximalism). The comparison is intentional.
 
 ---
 
