@@ -17,6 +17,32 @@
 
 v4.0 establishes that Loom internal AI runs as **invisible background passes** on the active document, not as user-facing buttons / panels / commands. This plan specs how those passes work: triggers, types, marking, error handling.
 
+## v4.1 update — non-generative hard rule
+
+**Background passes are STRUCTURAL or REFERENTIAL ONLY. NEVER generative.**
+
+Per `LOOM_RULES.md` §7.5 v4.1 rule #14, this is a HARD rule, not a guideline:
+
+- ✓ **Structural** (allowed): rearrange paragraphs, detect heading levels, format lists, apply 5-shape detection, wrap blockquotes, KaTeX math syntax detection, oldstyle figure formatting
+- ✓ **Referential** (allowed): cross-reference to other Loom documents, external citation lookup (DOI / Crossref / Semantic Scholar), add footnote references, suggest related captures
+- ❌ **Generative** (FORBIDDEN): rewriting prose, suggesting new sentences, expanding bullets, generating alt text, auto-translating, auto-completing, ANY form of new content creation
+
+**Generative work goes through ⌘K palette** (`plans/loom-cmd-k-palette.md`, M6/M7) — user-summoned with explicit invocation. NEVER background.
+
+**M4.5 ships a contract test** (`tests/loom-ai-passes-non-generative.test.ts`) that asserts no pass function generates new content. Test verifies: pass output cardinality ≤ pass input cardinality (i.e., AI rearranges or annotates, never adds bulk text). Failing this test blocks the commit.
+
+**Why this rule:**
+- Substrate purity (Word's spell-check is structural; Word doesn't auto-write paragraphs in background)
+- User authorial control (no surprise new content)
+- Cost discipline (generative passes are expensive; structural are cheap)
+- Trust building (users learn to trust background AI when they know its scope is bounded)
+
+If a future feature seems to need background generative work, it should:
+1. Move to ⌘K palette (user-summoned, explicit)
+2. OR be redesigned to surface as a suggestion (margin mark with "AI suggests writing X here") that user accepts via click — never auto-applied
+
+---
+
 ## What this plan does NOT do
 
 - Does NOT add AI UI features (panels, chat boxes, /ai commands, co-edit toolbars). Per `LOOM_RULES.md` §7.5 ban list.

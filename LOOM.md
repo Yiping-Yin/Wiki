@@ -2,17 +2,22 @@
 
 > **READ THIS FIRST** if you are an AI assistant or human collaborator newly arrived on Loom. This is the canonical product document — what Loom is, why it exists, and how its parts fit together.
 >
-> **Status**: v4.0 filed 2026-05-02 (substrate / 思维超导值 reframe — Loom positioned as Word/PPT/Excel-tier substrate for thought, with AI as invisible plumbing not feature surface. v3.0 Camp C with AI co-edit affordances was wrong direction; reversed. See `tmp/loom-correction-log.md` entry-007 for full reframe history.)
+> **Status**: v4.1 filed 2026-05-02 (Option ε v2 — Loom as unimodal substrate with 3 AI surfaces by role: ⌘K quick-invocation, AskAIWindow threaded chat, background passes structural-only. Cursor-pattern adapted to prose. v4.0 "no panel anywhere" was over-推generalized — corrected per `tmp/loom-correction-log.md` entry-009/010/011.)
 >
-> **What changed in v4.0** (read this if you knew v3.0):
-> 1. **§1.5 rewritten** — "思维超导值 / 织机 substrate" replaces the "Camp C with AI co-edit" framing. Loom is a substrate (Word/Excel-tier), not a vertical AI tool.
-> 2. **§6.5 reduced** — Camp C editable rendering preserved BUT the "5th module AI co-edit affordances" deleted. 4 modules remain: contenteditable + DOM↔MD bind + invariant guard + versioning.
-> 3. **§6.7 added** — "Input Surface and AI Passes" — the document IS the AI's input; AI runs invisible background passes (idle 3-5s + on open + manual ⌘↩); no chat box, no /ai commands, no panels.
-> 4. **§7 Compile Pipeline elevated** — from "next milestone" to "always-on substrate loop." Subtask A+B+C continuously run as background passes, not as one-shot compilation.
-> 5. **§11 Roadmap** — Tier C milestones updated (5th module deleted; AI passes plan + CLI plan added).
-> 6. **Cowork demoted** — no longer a named feature/module. It's the default workflow pattern (user weaves on substrate using whatever AI is available).
-> 7. **Internal AI panel REMOVED** — askPassage / distill / co-edit affordances all deleted. AI happens via background passes (internal) or CLI (external). No UI surface for AI.
-> 8. **Wiki-scale AI assistance** (auto-link, auto-cluster, library assembly across many docs) — explicitly DEFERRED to v4.1+. Not in v4.0 scope.
+> **What changed in v4.1** (read this if you knew v4.0):
+> 1. **§1.5 re-rewritten** — Loom is unimodal (no mode switching). 3 AI surfaces split by ROLE not by mode:
+>    - **⌘K palette** (NEW M6/M7): quick generative invocation (selection-based + document-level). Replaces distill panel + LoomAIBar.
+>    - **AskAIWindow** (KEPT, ⌘⇧E): threaded conversation, persistent chat history. The 957-line existing implementation is correct.
+>    - **Background passes** (M4.5): structural / referential ONLY (typeset / structure / link / cite). HARD RULE: never generative.
+> 2. **§6.5 M2 scope cut** — M2 prototype ships modules (a) contenteditable + (b) DOM↔MD bind only (~5 days, was 10-12). Modules (d) invariant guard + (e) versioning deferred to M4 based on M2 user data.
+> 3. **§6.7 scope corrected** — "AI passes" applies to background plumbing only. Generative AI invocation lives in ⌘K palette per `plans/loom-cmd-k-palette.md`.
+> 4. **NEW §6.8** — "AI Surface Pattern" enumerates the 3 surfaces by role with explicit boundaries.
+> 5. **§7.5 LOOM_RULES rewritten** — generative vs non-generative boundary is the new hard rule.
+> 6. **DELETIONS** — `LoomAIBar.swift` (224 lines) + distill panel (~80 lines) DELETED in M7, ONLY after ⌘K palette M6 ships replacements.
+> 7. **KEPT** — `AskAIWindow.swift` (957 lines), AskAIContext singleton, all AI provider clients, `.loomOpenAskAI` notification. v4.1 does NOT delete reading-mode threaded chat.
+> 8. **Wiki-scale AI** — still DEFERRED to v4.2+ per user 2026-05-02 ("这个是后话").
+>
+> **The unifying principle**: Loom is a substrate. Substrates have summoned utilities (Word's spell-check, Excel's formulas), not always-visible AI bars. Option ε v2 = Cursor's IDE pattern (⌘K + chat panel + background lint) translated to prose with paper canon as the rendering layer.
 >
 > **Read order**: this doc → `LOOM_RULES.md` (invariants/law) → `LOOM_USER_PROFILE.md` (audience) → relevant plan in `plans/` → memory entries surface as needed.
 >
@@ -32,13 +37,13 @@ This single sentence is the product. Every other framing in this document expand
 
 ---
 
-## 1.5. Loom as 思维超导值 / Substrate (rewritten v4.0)
+## 1.5. Loom as 思维超导值 / Substrate (rewritten v4.1)
 
-> v3.0 had this section as "Camp C — render position with AI co-edit affordances". That framing was a feature-pile mistake. v4.0 corrects: Loom is a **substrate**, not a feature platform. AI dissolves into the substrate as invisible plumbing, not as buttons / panels / commands.
+> v4.0 framed Loom as "no panel anywhere; AI = invisible plumbing globally". User clarified next turn that this was over-推generalized: reading mode wants AskAI; writing mode wants substrate. v4.1 corrects via Cursor-pattern adaptation: unimodal Loom + 3 AI surfaces split by **role**, not by mode. See `tmp/loom-correction-log.md` entry-009/010/011 for the correction.
 
-### The thesis (50 words, user-confirmed 2026-05-02)
+### The thesis (50 words, user-confirmed 2026-05-02 with explicit role-scope)
 
-> Loom = paper canon 排版的可编辑文档；AI 在背景 idle 时跑整理 passes；外部 AI 通过文件 + CLI 联动；用户输入到文档（=AI 输入）→ AI 整理 → 用户 edit 表达。无 chat box，无 /ai 命令，无 panel。
+> **Loom = paper canon 可编辑文档（unimodal）+ 3 个 AI surface 按 role 分：⌘K 一次性 invocation、AskAI 持续对话窗口、background passes 无形整理（structural-only，never generative）。无 mode 切换。LoomAIBar + distill panel 删除（被 ⌘K palette 替代）。AskAIWindow 保留。外部 AI 通过 Loom CLI 联动。**
 
 ### Loom's position — substrate, not vertical AI app
 
@@ -73,79 +78,149 @@ A superconductor conducts current with zero resistance. Loom-as-thought-supercon
 
 The "超导" is the absence of friction at every layer of thought-flow. This is the design north star.
 
-### Where AI sits (the architecture answer)
+### Where AI sits (Option ε v2 architecture, v4.1)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  USER (the author / weaver)                              │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  USER (the author / weaver)                                 │
+└──────────────────────────────────────────────────────────┘
                           │
                           │ voice / type / paste / capture
                           ▼
-┌─────────────────────────────────────────────────────────┐
-│  LOOM DOCUMENT (paper canon, editable in place)          │
-│  ─────────────────────────────────────────              │
-│  • This IS the AI's input (no separate dialog box)       │
-│  • This IS the AI's output (renders happen here)         │
-│  • This IS the user's edit surface (Camp C)              │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  LOOM DOCUMENT (paper canon, Camp C editable, unimodal)    │
+│  ─────────────────────────────────────────                │
+│  • Always reachable; no mode switching                      │
+│  • Edit anywhere (Camp C — see §6.5)                        │
+│  • AI surfaces are summoned from here, not always-visible   │
+└──────────────────────────────────────────────────────────┘
                           │
-            ┌─────────────┼─────────────┐
-            ▼                           ▼
-    ┌──────────────┐           ┌──────────────────┐
-    │ INTERNAL AI   │           │ EXTERNAL AI       │
-    │ (background)  │           │ (Codex / API)     │
-    │ ────────────  │           │ ────────────      │
-    │ Idle 3-5s ▶   │           │ Reads files       │
-    │ On open ▶     │           │ Writes files      │
-    │ ⌘↩ manual ▶   │           │ Calls Loom CLI    │
-    │               │           │                   │
-    │ Pass types:   │           │ Tools:            │
-    │ • typeset     │           │ • loom capture    │
-    │ • structure   │           │ • loom search     │
-    │ • link        │           │ • loom open       │
-    │ • cite        │           │ • loom related    │
-    └──────────────┘           └──────────────────┘
+       ┌──────────────────┼──────────────────┐
+       │ generative       │ generative       │ structural-only
+       │ summoned         │ threaded         │ background
+       ▼                  ▼                  ▼
+   ┌────────┐      ┌──────────────┐    ┌──────────────────┐
+   │  ⌘K    │      │ AskAIWindow   │    │ Background Passes │
+   │ Palette │      │ (KEPT, ⌘⇧E)  │    │ (M4.5+)           │
+   │ (M6/M7) │      │ ────────────  │    │ ────────────────  │
+   │         │      │ • Persistent  │    │ • Idle 3-5s        │
+   │ Quick   │      │   chat        │    │ • On open          │
+   │ ask /   │      │ • History     │    │ • Manual ⌘↩        │
+   │ inline  │      │ • Threaded    │    │                    │
+   │ edit /  │      │   Q&A         │    │ Pass types:        │
+   │ doc-op  │      │ • Side by     │    │ • typeset          │
+   │         │      │   side w/     │    │ • structure        │
+   │ ❌ NO    │      │   source      │    │ • link             │
+   │ feature │      │               │    │ • cite             │
+   │ pile    │      │               │    │                    │
+   │ (≤7     │      │               │    │ ❌ NEVER generative │
+   │ actions)│      │               │    │ (only structural / │
+   │         │      │               │    │  referential)      │
+   └────────┘      └──────────────┘    └──────────────────┘
+       │                  │                  │
+       └──────────────────┼──────────────────┘
+                          ▼
+                  callAiPrompt
+                  (5 providers + custom + off)
+
+External AI:
+                  ┌──────────────────┐
+                  │  Loom CLI (M6)    │
+                  │  ──────────────   │
+                  │  • capture        │
+                  │  • search         │
+                  │  • open           │
+                  │  • related        │
+                  │  • render         │
+                  │  • write          │
+                  │                   │
+                  │  MCP server       │
+                  │  v4.2+ deferred   │
+                  └──────────────────┘
 ```
 
-**Internal AI** = Loom invokes API (OpenAI / Anthropic / etc.) as background passes that organize the document. Subtle margin marks indicate AI-touched content; hover shows diff + revert.
+### The 3 AI surfaces by ROLE (not by mode)
 
-**External AI** = Codex / Claude Code / any agent reads/writes Loom files via the file system + CLI. No proprietary integration needed; standard markdown + Unix-style tools.
+**(1) ⌘K Palette** (NEW, M6 spec, M7 ship)
+- **Role**: quick generative invocation (one-shot)
+- **Triggers on**: keystroke ⌘K
+- **Cover**: selection-based edit (rewrite/expand/translate) + document operations (distill/restructure)
+- **Output**: in-place at cursor / margin-marked / popover for ask
+- **Hard cap**: ≤7 actions to prevent feature-pile drift
+- **Replaces**: distill panel + LoomAIBar functionality
 
-**No internal AI UI panel exists.** No askPassage, no distill button, no /ai inline command, no chat box, no co-edit affordance toolbar. The document is everything.
+**(2) AskAIWindow** (KEPT — `macos-app/Loom/Sources/AskAIWindow.swift` 957 lines)
+- **Role**: threaded conversation (deep, persistent)
+- **Triggers on**: ⌘⇧E or "Ask AI" menu item
+- **Cover**: long Q&A sessions, multi-turn brainstorm, source-passage grounded chat
+- **Output**: chat history persists across opens
+- **Why kept**: user explicitly confirmed "在阅读层面 Ask AI 我觉得是有用的" (reading mode AskAI is useful) 2026-05-02
+
+**(3) Background Passes** (NEW, M4.5)
+- **Role**: structural / referential plumbing (invisible)
+- **Triggers on**: idle 3-5s after edit, on document open, manual ⌘↩
+- **Cover**: typeset (structural reformat), structure (5 shapes detection), link (cross-reference), cite (external citation lookup)
+- **Output**: applied to document with subtle bronze margin marks; hover reveals diff + revert
+- **Hard rule**: NEVER generative work. Background AI may rearrange / link / lookup, but never write new content. Generative work goes through ⌘K palette (user-summoned).
+
+### Why split by role, not by mode (v4.1 design rationale)
+
+**v4.0 said**: "no panel anywhere" — over-推generalized.
+**Bimodal proposal said**: "reading mode has panels, writing mode doesn't" — adds mode-switch friction.
+**v4.1 (Option ε v2) says**: split by AI role, unimodal document, surfaces summoned by purpose.
+
+The user's actual workflow contains 3 distinct AI relationships:
+- **Quick ask** ("what is X" / "rewrite this") → ⌘K
+- **Threaded deep** (long conversation about source) → AskAIWindow
+- **Invisible plumbing** (typeset / link in background) → passes
+
+These are different roles, not different modes. A user might do all 3 in one minute on the same document.
+
+### Substrate purity test (Option ε v2 passes)
+
+**Word**: spell-check (background) + thesaurus (summoned via menu) + no always-visible AI bar = substrate.
+**Excel**: auto-calc (background) + formula bar (summoned by typing `=`) + no always-visible AI bar = substrate.
+**Loom v4.1**: background passes + ⌘K palette + AskAIWindow (summoned via shortcut) + no always-visible AI bar = substrate. ✓
+
+LoomAIBar (right-edge, always-visible) violated this test. Hence deletion in M7 (after ⌘K palette M6 ships replacement functionality).
 
 ### What this means for incumbents
 
 | Tool | Position | Loom's relationship |
 |---|---|---|
-| Word / PPT / Excel | Universal substrate, basic typography, no AI native | Loom is the same tier but with paper canon + AI plumbing |
+| Word / PPT / Excel | Universal substrate, basic typography, no AI native | Loom matches substrate purity + adds paper canon + adds AI surfaces by role |
 | LaTeX / Prism / Typst | Frozen high-quality output | Loom delivers similar typography but editable, not frozen |
-| Notion / Apple Notes | Editable, basic typography, bolt-on AI | Loom is the substrate they wanted to be — typography + edit + AI integration |
-| Cursor / Codex | Vertical AI app for code | Loom is the substrate Cursor would call from outside |
-| Obsidian | Substrate + plugin ecosystem, basic typography | Loom is more opinionated on typography, less on plugins |
+| Notion / Apple Notes | Editable, basic typography, bolt-on AI panel | Loom has paper-canon typography + AI by role (not always-visible) |
+| Cursor / Claude Code | Vertical AI for code; ⌘K + chat + background lint pattern | **Loom is Cursor for prose**, with paper canon as the rendering layer. Same affordance map, different domain. |
+| Obsidian | Substrate + plugin ecosystem | Loom is opinionated on typography + AI roles; less plugin sprawl |
 
-Loom is closest to **Word/PPT/Excel-tier** (substrate-pure) **plus** modern AI plumbing — a position no incumbent occupies cleanly.
+**v4.1 framing**: Loom = Cursor's IDE-pattern translated to prose / knowledge work, with Word-tier substrate purity and academic-grade typography (paper canon).
 
-### What Loom is NOT (per v4.0)
+### What Loom is NOT (per v4.1)
 
-- ❌ NOT a Cursor for knowledge — no agent loop, no inline /ai commands
-- ❌ NOT a Notion AI competitor — no chat panel, no /ai slash menu
-- ❌ NOT a thinking partner — Loom doesn't initiate, suggest unprompted, or argue
+- ❌ NOT a Cursor for knowledge that mimics ALL Cursor features — no autocomplete (prose doesn't suit), no agent loop in Loom (external CLI handles)
+- ❌ NOT a Notion AI competitor — no /ai slash menu, no always-visible AI sidebar
+- ❌ NOT a thinking partner that initiates — AI responds to summons (⌘K, ⌘⇧E) or runs structural background. Never proactive content suggestion.
 - ❌ NOT a 3D / specialized design tool — text + academic models (math, citations, structured prose, tables) only
-- ❌ NOT an LLM wrapper — AI is plumbing, not the product
+- ❌ NOT an LLM wrapper that calls AI for everything — AI is one of many surfaces; substrate quality (paper canon, source folder, file integrity) is the foundation
 
 ### Validation status (honest, 2026-05-02)
 
-- **Substrate / 织机 thesis** = user-confirmed 2026-05-02. 50-word version logged in correction log entry-007.
-- **Single-document AI passes** = M2 milestone work; un-shipped. M2 must validate that idle-triggered organize-passes are useful without being distracting.
-- **External AI via CLI + files** = Loom CLI is to-be-built; spec in `plans/loom-cli.md`.
-- **Multi-document wiki-scale stringing** (auto-link / auto-cluster / library assembly across N docs) = explicitly DEFERRED to v4.1+ per user 2026-05-02. Not in v4.0 scope.
+- **Option ε v2 thesis** = user-confirmed 2026-05-02 with explicit role-scope. 50-word version above.
+- **⌘K palette** = M6 work, un-shipped. Spec in `plans/loom-cmd-k-palette.md`.
+- **Camp C editable rendering** = M2 prototype (a)+(b) only, gated on user GO. M4 full MVP gated on M2 data.
+- **Background passes** = M4.5 work, un-shipped. Spec in `plans/loom-ai-passes.md` (with v4.1 update: non-generative hard rule).
+- **External AI via CLI** = M6 work, un-shipped. Spec in `plans/loom-cli.md`.
+- **Multi-document wiki-scale stringing** = DEFERRED to v4.2+ per user 2026-05-02 ("这个是后话").
+- **Reading-mode AskAIWindow** = KEPT as-is; no migration needed for user.
 
 See:
-- `tmp/loom-correction-log.md` entry-007 — full reframe history (3 wrong attempts before this one)
-- `plans/loom-ai-passes.md` — internal AI passes engineering spec
+- `tmp/loom-correction-log.md` entry-007/009/010/011 — full reframe history + meta-lessons
+- `plans/loom-ai-passes.md` — background passes engineering spec
+- `plans/loom-cmd-k-palette.md` — ⌘K palette engineering spec (NEW v4.1)
 - `plans/loom-cli.md` — external AI integration spec
-- `LOOM_RULES.md` §7.5 — operating rules + bans
+- `docs/design/LOOM_AI_SURFACE_PATTERN_2026-05-02.md` — full Option ε v2 design rationale (NEW v4.1)
+- `LOOM_RULES.md` §7.5 — operating rules including generative-vs-non-generative boundary
 
 ---
 
