@@ -1934,6 +1934,12 @@ function ArticleRender({
   });
   const [selToolbar, setSelToolbar] = useState<{ x: number; y: number; text: string } | null>(null);
   const [noteDraft, setNoteDraft] = useState<{ x: number; y: number; text: string } | null>(null);
+  // Transient: a single in-memory mark that follows the current
+  // selection. Replaced (not appended) on each new selection — only
+  // ONE active highlight exists at a time. Click on it to dismiss.
+  // Click "Highlight" in the toolbar to promote it to the permanent
+  // `highlights` list (persisted to localStorage).
+  const [activeHighlight, setActiveHighlight] = useState<{ id: string; text: string } | null>(null);
   const persistHighlights = (next: Highlight[]) => {
     setHighlights(next);
     try {
@@ -1976,27 +1982,19 @@ function ArticleRender({
       isDragging = false;
       requestAnimationFrame(() => {
         computeToolbar();
-        // Auto-save: every committed selection becomes a persistent
-        // highlight. User cancels by clicking the mark. Idempotent on
-        // text — re-selecting the same span does not duplicate.
+        // Auto-create a TRANSIENT highlight on the current selection.
+        // Single only — replaces previous transient. To save it
+        // permanently, click the "Highlight" button in the toolbar.
         const sel = window.getSelection();
-        if (!sel || sel.isCollapsed) return;
+        if (!sel || sel.isCollapsed) { setActiveHighlight(null); return; }
         const text = sel.toString().trim();
-        if (text.length < 3) return;
+        if (text.length < 3) { setActiveHighlight(null); return; }
         const node = sel.anchorNode;
         const article = document.querySelector('.loom-capture-article');
-        if (!node || !article || !article.contains(node)) return;
-        setHighlights((prev) => {
-          if (prev.some((h) => h.text === text)) return prev;
-          const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-          const next = [...prev, { id, text, ts: Date.now() }];
-          try {
-            window.localStorage.setItem(
-              `loom:highlights:${stableKey}`,
-              JSON.stringify(next),
-            );
-          } catch {}
-          return next;
+        if (!node || !article || !article.contains(node)) { setActiveHighlight(null); return; }
+        setActiveHighlight({
+          id: `__active-${Date.now()}`,
+          text,
         });
       });
     };
@@ -2033,7 +2031,17 @@ function ArticleRender({
     const textNodes: Text[] = [];
     let n: Node | null;
     while ((n = walker.nextNode())) textNodes.push(n as Text);
-    for (const h of highlights) {
+    // Render permanent highlights + the single transient activeHighlight
+    // (if any). Transient marks get a different className so CSS can
+    // optionally render them softer; click semantics differ (transient
+    // → clear active state; permanent → remove from list).
+    const allHighlights: Array<{ id: string; text: string; note?: string; transient: boolean }> = [
+      ...highlights.map((h) => ({ id: h.id, text: h.text, note: h.note, transient: false })),
+    ];
+    if (activeHighlight && !highlights.some((h) => h.text === activeHighlight.text)) {
+      allHighlights.push({ id: activeHighlight.id, text: activeHighlight.text, transient: true });
+    }
+    for (const h of allHighlights) {
       if (!h.text) continue;
       for (const tn of textNodes) {
         const data = tn.data;
@@ -2042,7 +2050,7 @@ function ArticleRender({
         const before = data.slice(0, idx);
         const after = data.slice(idx + h.text.length);
         const mark = document.createElement('mark');
-        mark.className = 'loom-hl';
+        mark.className = h.transient ? 'loom-hl loom-hl-active' : 'loom-hl';
         mark.dataset.hlId = h.id;
         mark.title = h.note || 'Click to remove highlight';
         mark.textContent = h.text;
@@ -2051,8 +2059,13 @@ function ArticleRender({
         // coords as mousedown — drag has different coords, so click
         // never fires.
         const hid = h.id;
+        const isTransient = h.transient;
         mark.addEventListener('click', (e) => {
           e.stopPropagation();
+          if (isTransient) {
+            setActiveHighlight(null);
+            return;
+          }
           setHighlights((prev) => {
             const next = prev.filter((x) => x.id !== hid);
             try {
@@ -2073,12 +2086,24 @@ function ArticleRender({
         break;
       }
     }
-  }, [highlights, transformedBody]);
+  }, [highlights, activeHighlight, transformedBody]);
   const onHighlight = () => {
     if (!selToolbar) return;
+    // Promote: if there's an active transient highlight, save it as
+    // permanent. If somehow not (e.g. selection was made via keyboard),
+    // fall back to selToolbar.text.
+    const text = activeHighlight?.text ?? selToolbar.text;
+    if (highlights.some((h) => h.text === text)) {
+      // Already permanent — clear transient + dismiss toolbar.
+      setActiveHighlight(null);
+      setSelToolbar(null);
+      if (typeof window !== 'undefined') window.getSelection()?.removeAllRanges();
+      return;
+    }
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const next = [...highlights, { id, text: selToolbar.text, ts: Date.now() }];
+    const next = [...highlights, { id, text, ts: Date.now() }];
     persistHighlights(next);
+    setActiveHighlight(null);
     setSelToolbar(null);
     if (typeof window !== 'undefined') window.getSelection()?.removeAllRanges();
   };
@@ -3306,6 +3331,18 @@ function ArticleRender({
         }
         .loom-capture-article mark.loom-hl:hover {
           background: color-mix(in srgb, var(--thread) 28%, transparent);
+        }
+        /* Transient (active) variant — only-the-current-selection. No
+           background fill, just the bronze underline, so it reads as
+           "currently focused" not "saved". Click to dismiss; click
+           Highlight in the toolbar to promote into the permanent
+           background-fill version above. */
+        .loom-capture-article mark.loom-hl.loom-hl-active {
+          background: transparent;
+          box-shadow: 0 1px 0 0 color-mix(in srgb, var(--thread) 60%, transparent);
+        }
+        .loom-capture-article mark.loom-hl.loom-hl-active:hover {
+          background: color-mix(in srgb, var(--thread) 10%, transparent);
         }
         /* Selection floating toolbar — small bronze chip-row that
            appears above the user's current text selection. Centered
