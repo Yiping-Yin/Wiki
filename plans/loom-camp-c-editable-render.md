@@ -39,7 +39,9 @@ Knowledge tools have always forced a choice: Camp A (LaTeX/Prism — frozen-beau
 
 ---
 
-## M2 — Single-shape contenteditable prototype
+## M2 — Single-shape contenteditable prototype (v4.1 scope cut)
+
+> **v4.1 update 2026-05-02**: M2 scope cut from "4 modules in 10-12 days" to "modules (a)+(b) only in ~5 days". Modules (d) invariant guard + (e) versioning deferred to M4 (gated on M2 user data showing they're needed). AI co-edit is **DELETED entirely** per LOOM_RULES §7.5 v4.1 — not deferred. Generative AI invocation lives in ⌘K palette (M6), not in editable render layer.
 
 **Scope:**
 - Pick the **Article shape** (most common in Loom captures, simplest visual structure)
@@ -48,11 +50,12 @@ Knowledge tools have always forced a choice: Camp A (LaTeX/Prism — frozen-beau
   - User edits DOM → on debounced blur, serialize back to markdown via existing marked-style transform reversed
   - On save, write to existing `LoomFileStore` path (sandbox)
 - DO NOT ship in this milestone:
-  - AI co-edit affordances (deferred to M4)
-  - Block versioning (deferred to M4)
-  - Structural invariant guard (deferred to M4 — accept that user CAN break things in M2)
-  - Other shapes (List / Passage / Conversation / Syllabus — deferred to M5)
-- Add a NOTE in the reader UI (small banner) saying "Editable preview — break things, give feedback. Block versioning + AI co-edit coming in next phase."
+  - **(d) Structural invariant guard** — DEFERRED to M4. Accept that user CAN break things in M2; rely on undo (⌘Z). Surface in correction log if breakage is frequent.
+  - **(e) Block versioning** — DEFERRED to M4. Accept that user has only ⌘Z in M2.
+  - **AI co-edit affordances** — DELETED in v4.1 (not deferred). Per LOOM_RULES §7.5: generative AI work goes through ⌘K palette (M6), not via selection-based affordance toolbar.
+  - **Background AI passes** — DEFERRED to M4.5 (after M4 hardening).
+  - **Other shapes** (List / Passage / Conversation / Syllabus) — DEFERRED to M5.
+- Add a NOTE in the reader UI (small banner) saying "Editable preview — break things, give feedback. Use ⌘Z to undo. Versioning + invariant guard coming in M4 if needed."
 
 **Coordination:**
 - Reader page (`app/loom-render/capture/page.tsx`) is shared with Codex (capture work). HOT-FILE coordination via peer-chat before starting.
