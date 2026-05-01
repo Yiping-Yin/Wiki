@@ -129,7 +129,7 @@ It is the discreteness that lets the picture be seen.
 - `npm run app`, `npm run app:user`, and `npm run app:system` build and install the macOS shell.
 - `npm run app:where` prints the currently installed *Loom.app* location.
 - `npm run app:preflight` is the App Store submission preflight check.
-- GitHub Actions runs `build -> typecheck -> smoke` and intentionally skips the chat-specific smoke path.
+- GitHub Actions runs `build -> typecheck -> smoke`.
 - Generated knowledge bodies, manifests, and derived indexes live in `knowledge/.cache/` rather than tracked `public/` or `lib/` files.
 - [docs/README.md](docs/README.md) indexes current design and process docs.
 - [DESIGN_ONBOARDING.md](docs/design/DESIGN_ONBOARDING.md) is the fastest collaborator-facing intro to the current product/design model.
