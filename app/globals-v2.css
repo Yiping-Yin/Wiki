@@ -1,0 +1,212 @@
+/*
+ * Loom Design System v1.0 — CSS Mirror
+ * =====================================
+ *
+ * Mirror of `lib/loom-design-system.ts`. Re-declares every token as a CSS
+ * custom property so non-React surfaces (server-rendered HTML, snapshot
+ * iframes, dangerouslySetInnerHTML content) can also reach the system.
+ *
+ * Light and dark both live here. The native shell injects `.light` /
+ * `.dark` into WKWebView documents, so this file must not force every
+ * v2 surface back to the night palette.
+ *
+ * Imported AFTER `globals.css` in `app/layout.tsx` so its tokens win during
+ * the migration. `globals.css` stays in place for backward compat through
+ * nights 2–4 and is then swept.
+ */
+
+:root,
+.dark {
+  /* Paper — deep to surface, layered */
+  --paper-deep:    #1A1815;
+  --paper:         #221E18;
+  --paper-up:      #2B2620;
+  --paper-card:    #332E27;
+
+  /* Ink — text + iconography */
+  --ink-1:         #E8E0CE;
+  --ink-2:         #B9AE93;
+  --ink-3:         #8F8571;
+
+  /* Lines */
+  --hair:          rgba(232, 224, 206, 0.10);
+  --hair-faint:    rgba(232, 224, 206, 0.05);
+
+  /* Accent — single bronze, no variations */
+  --thread:        #C4A468;
+  --thread-muted:  rgba(196, 164, 104, 0.55);
+
+  /* Semantic state colors — destructive / success / info / caution.
+     Added 2026-04-27. Mirror of `lib/loom-design-system.ts`. Pick one
+     of these four for state surfaces — don't re-introduce ad-hoc
+     `#c44` / `Color.red` / `#b04030` etc. */
+  --alert:          #C44743;
+  --alert-muted:    rgba(196, 71, 67, 0.55);
+  --success:        #6A8C5A;
+  --success-muted:  rgba(106, 140, 90, 0.55);
+  --info:           #5A7A9A;
+  --info-muted:     rgba(90, 122, 154, 0.55);
+  --warning:        #B98E3F;
+  --warning-muted:  rgba(185, 142, 63, 0.55);
+
+  /* Typography families */
+  --font-serif:    "Charter", "Iowan Old Style", "Source Serif", Georgia, serif;
+  --font-display:  "EB Garamond", "Cormorant Garamond", "Charter", serif;
+  --font-mono:     "IBM Plex Mono", "JetBrains Mono", "SF Mono", monospace;
+
+  /* Typography sizes — type ladder (mirrored from .t-* utilities)
+     Surfaces use these vars when they need an inline override. The
+     migration sweeps in nights 2-3 reference these directly. */
+  --font-display-1:    32px;
+  --font-display-2:    22px;
+  --font-display-3:    16px;
+  --font-body:         16px;
+  --font-caption:      13px;
+  --font-eyebrow:      11px;
+  --font-eyebrow-section: 11px;
+  --font-eyebrow-chip:    9px;
+  --font-eyebrow-caption: 10px;
+
+  /* Line heights mirroring the same scale */
+  --lh-display-1: 1.15;
+  --lh-display-2: 1.20;
+  --lh-display-3: 1.30;
+  --lh-body:      1.62;
+  --lh-caption:   1.45;
+  --lh-eyebrow:   1.00;
+  --lh-mono:      1.55;
+
+  /* Letter-spacing for smallcaps eyebrows */
+  --track-eyebrow:         0.16em;
+  --track-eyebrow-chip:    0.14em;
+  --track-eyebrow-caption: 0.10em;
+
+  /* Spacing — 8pt grid */
+  --space-xs:      0.25rem;
+  --space-sm:      0.5rem;
+  --space-md:      1rem;
+  --space-lg:      1.5rem;
+  --space-xl:      2.5rem;
+  --space-2xl:     4rem;
+
+  /* Motion — 3 durations, 1 easing */
+  --motion-fast:   140ms ease-out;
+  --motion-normal: 220ms ease-out;
+  --motion-slow:   400ms ease-out;
+
+  /* Radius */
+  --radius-sm:     4px;
+  --radius-md:     8px;
+  --radius-lg:     12px;
+
+  /* Shadow — paper-aware */
+  --shadow-sm:     0 1px 2px color-mix(in srgb, var(--paper-deep) 60%, transparent);
+  --shadow-md:     0 6px 22px color-mix(in srgb, var(--paper-deep) 40%, transparent);
+}
+
+.light {
+  /* Paper — daylight vellum, aligned with LoomTokens.ds* light values. */
+  --paper-deep:    #F4F0E4;
+  --paper:         #F4F0E4;
+  --paper-up:      #FAF7EC;
+  --paper-card:    #EADFC9;
+
+  /* Ink — long-session readable on paper. */
+  --ink-1:         #2A2520;
+  --ink-2:         #4A4339;
+  --ink-3:         #8A8373;
+
+  /* Lines */
+  --hair:          rgba(26, 23, 18, 0.08);
+  --hair-faint:    rgba(26, 23, 18, 0.04);
+
+  /* Accent — deepen on light paper so links remain legible. */
+  --thread:        #7A5E2E;
+  --thread-muted:  rgba(122, 94, 46, 0.55);
+
+  --shadow-sm:     0 1px 2px rgba(26, 23, 18, 0.08);
+  --shadow-md:     0 6px 22px rgba(26, 23, 18, 0.10);
+}
+
+/* ---------------------------------------------------------------------------
+ * Resets + prose-side defaults
+ * ------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-serif);
+  color: var(--ink-1);
+  background: var(--paper-deep);
+  font-feature-settings: "onum" 1, "pnum" 1;
+  hanging-punctuation: first last;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------------------------------------------------------------------------
+ * Type ladder utility classes — 7 levels
+ *
+ * Naming: `.t-<level>` (the `t-` prefix avoids colliding with any legacy
+ * `.eyebrow` / `.body` rules in globals.css until the night 2-4 sweep).
+ * ------------------------------------------------------------------------- */
+
+.t-display-1 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.t-display-2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.20;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.t-display-3 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.30;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.t-body {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.62;
+  font-weight: 400;
+  font-style: normal;
+  font-feature-settings: "onum" 1, "pnum" 1;
+}
+
+.t-caption {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.t-eyebrow {
+  font-family: var(--font-serif);
+  font-size: 11px;
+  line-height: 1.00;
+  font-weight: 500;
+  font-style: normal;
+  font-variant: small-caps;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+}
+
+.t-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 400;
+  font-feature-settings: "tnum" 1;
+}
