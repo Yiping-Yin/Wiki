@@ -45,8 +45,8 @@ type NavPayload = {
   knowledgeCategories: KnowledgeCategory[];
 };
 
-const NAV_URL = 'loom://content/knowledge/.cache/manifest/knowledge-nav.json';
-const MANIFEST_URL = 'loom://content/knowledge/.cache/manifest/knowledge-manifest.json';
+const NAV_URL = 'loom://derived/knowledge/.cache/manifest/knowledge-nav.json';
+const MANIFEST_URL = 'loom://derived/knowledge/.cache/manifest/knowledge-manifest.json';
 
 function slugForPathPart(value: string) {
   return value

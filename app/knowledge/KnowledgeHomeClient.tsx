@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { KnowledgeHomeStatic } from './KnowledgeHomeStatic';
 import { isNativeMode } from '../../lib/is-native-mode';
+import { loadRecentRecords, type LoomRecentRecord } from '../../lib/loom-recent-records';
+import { subscribeLoomMirror } from '../../lib/loom-mirror-store';
 import { mutateSourceLibrary } from '../../lib/source-library-client';
 import { refreshKnowledgeNav } from '../../lib/use-knowledge-nav';
 
@@ -15,7 +17,22 @@ type KnowledgeHomeGroup = {
     label: string;
     count: number;
     groupId?: string;
+    href?: string;
+    extractedCount?: number;
+    pendingCount?: number;
+    latestDocTitle?: string;
+    latestDocHref?: string;
   }>;
+};
+
+type SourceWritingEntry = {
+  id: string;
+  title: string;
+  href: string;
+  categoryLabel?: string;
+  updatedAt?: number;
+  hasTidyDraft?: boolean;
+  materialCount?: number;
 };
 
 type SourceLibraryGroupRoutePayload = {
@@ -40,6 +57,9 @@ function groupsFromNav(sourceLibraryGroups: SourceLibraryGroupsFromNav): Knowled
       label: category.label,
       count: category.count,
       groupId: group.id,
+      href: `#${category.slug}`,
+      extractedCount: category.count,
+      pendingCount: 0,
     })),
   }));
 }
@@ -49,11 +69,13 @@ export function KnowledgeHomeClient({
   groups,
   totalCollections,
   totalDocs,
+  writingEntries = [],
 }: {
   sourceLibraryGroups?: KnowledgeHomeGroup[];
   groups?: KnowledgeHomeGroup[];
   totalCollections: number;
   totalDocs: number;
+  writingEntries?: SourceWritingEntry[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -65,6 +87,7 @@ export function KnowledgeHomeClient({
   const [editingGroupLabel, setEditingGroupLabel] = useState('');
   const [confirmingDeleteGroupId, setConfirmingDeleteGroupId] = useState<string | null>(null);
   const [confirmingHideCategorySlug, setConfirmingHideCategorySlug] = useState<string | null>(null);
+  const [recentReading, setRecentReading] = useState<LoomRecentRecord[]>([]);
 
   const resolvedGroups = useMemo(
     () =>
@@ -121,6 +144,7 @@ export function KnowledgeHomeClient({
         items: group.categories.map((slug) => {
           const existing = itemsBySlug.get(slug);
           return {
+            ...existing,
             slug,
             label: existing?.label ?? slug,
             count: existing?.count ?? 0,
@@ -258,11 +282,29 @@ export function KnowledgeHomeClient({
     });
   }
 
+  useEffect(() => {
+    let cancelled = false;
+    const refreshRecents = async () => {
+      const next = await loadRecentRecords();
+      if (!cancelled) setRecentReading(next.slice(0, 8));
+    };
+    void refreshRecents();
+    const dispose = subscribeLoomMirror('loom.sidebar.recentRecords.v2', 'loom-recents-updated', () => {
+      void refreshRecents();
+    });
+    return () => {
+      cancelled = true;
+      dispose();
+    };
+  }, []);
+
   return (
     <KnowledgeHomeStatic
       sourceLibraryGroups={currentGroups}
       totalCollections={totalCollections}
       totalDocs={totalDocs}
+      recentReading={recentReading}
+      writingEntries={writingEntries}
       isAddingGroup={isAddingGroup}
       newGroupLabel={newGroupLabel}
       onStartAddGroup={onStartAddGroup}

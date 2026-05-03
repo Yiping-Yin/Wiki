@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { resolveContentRoot } from '../../lib/runtime-roots';
+import { knowledgeUploadRoot } from '../../lib/paths';
 import { UploadsClient, type UploadListItem } from './UploadsClient';
 
 export const metadata = { title: 'Intake · Loom' };
@@ -19,14 +20,26 @@ export default async function UploadsPage() {
     return <UploadsClient items={[]} />;
   }
 
-  const dir = path.join(resolveContentRoot(), 'knowledge', 'uploads');
+  const dir = knowledgeUploadRoot();
+  const legacyDir = path.join(resolveContentRoot(), 'knowledge', 'uploads');
   let items: UploadListItem[] = [];
   try {
     await fs.mkdir(dir, { recursive: true });
-    const entries = await fs.readdir(dir);
+    const dirs = dir === legacyDir ? [dir] : [dir, legacyDir];
+    const names = new Set<string>();
+    for (const candidate of dirs) {
+      try {
+        const entries = await fs.readdir(candidate);
+        for (const name of entries) {
+          if (!name.startsWith('.')) names.add(name);
+        }
+      } catch {}
+    }
     items = await Promise.all(
-      entries.filter((n) => !n.startsWith('.')).map(async (name) => {
-        const fullPath = path.join(dir, name);
+      Array.from(names).map(async (name) => {
+        const primary = path.join(dir, name);
+        const legacy = path.join(legacyDir, name);
+        const fullPath = await fs.stat(primary).then(() => primary).catch(() => legacy);
         const stat = await fs.stat(fullPath);
         const ext = path.extname(name).toLowerCase();
         let preview = '';
