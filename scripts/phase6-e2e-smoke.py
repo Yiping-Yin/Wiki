@@ -14,7 +14,7 @@ not runnable outside the Xcode test bundle). Instead the harness:
   2. Consults ExtractorRegistry match() logic (Python mirror) to resolve
      the winning extractor + score. Verified against registry-mode
      rules in Swift ExtractorRegistry.swift.
-  3. Calls a configurable AI CLI command (default: `claude -p`) with the
+  3. Calls a configurable AI CLI command (default: `codex exec`) with the
      EXACT production prompt copied verbatim from SyllabusPDFExtractor.swift
      `buildPrompt()`.
   4. Runs the full verifySpans + demoteIfFilenameQuote + pageForSpan
@@ -63,7 +63,7 @@ OUT_ROOT = Path("/tmp/phase6-e2e")
 HARNESS_LOG = OUT_ROOT / "harness.log"
 TARGETS_ENV = "LOOM_PHASE6_E2E_TARGETS"
 AI_COMMAND_ENV = "LOOM_PHASE6_AI_COMMAND"
-DEFAULT_AI_COMMAND = "claude -p"
+DEFAULT_AI_COMMAND = "codex exec --skip-git-repo-check --ephemeral --color never"
 
 # ---------------------------------------------------------------------------
 # State-machine mirror (see IngestionView.swift lines 420-445)

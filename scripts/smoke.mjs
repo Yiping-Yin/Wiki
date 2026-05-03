@@ -11,8 +11,11 @@ const middlewareManifestPath = path.join(root, '.next-build', 'server', 'middlew
 const port = Number(process.env.LOOM_SMOKE_PORT || 3100);
 const base = `http://127.0.0.1:${port}`;
 const runChat = process.env.LOOM_SMOKE_CHAT === '1';
+const smokeDerivedDataRoot = process.env.LOOM_SMOKE_DERIVED_DATA_ROOT
+  || process.env.LOOM_DERIVED_DATA_ROOT
+  || root;
 const manifestPaths = [
-  path.join(root, 'knowledge', '.cache', 'manifest', 'knowledge-manifest.json'),
+  path.join(smokeDerivedDataRoot, 'knowledge', '.cache', 'manifest', 'knowledge-manifest.json'),
 ];
 let docs = [];
 for (const candidate of manifestPaths) {
@@ -95,7 +98,7 @@ async function checkChat() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      cli: 'claude',
+      cli: 'codex',
       messages: [{ role: 'user', content: 'Reply with exactly: hi' }],
     }),
   }, 30000);
@@ -109,7 +112,7 @@ async function checkChat() {
 
 const child = spawn(process.execPath, [nextBin, 'start', '-p', String(port), '-H', '127.0.0.1'], {
   cwd: root,
-  env: { ...process.env, LOOM_DIST_DIR: '.next-build' },
+  env: { ...process.env, LOOM_DIST_DIR: '.next-build', LOOM_DERIVED_DATA_ROOT: smokeDerivedDataRoot },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 

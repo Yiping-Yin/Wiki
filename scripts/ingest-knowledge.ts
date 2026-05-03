@@ -6,13 +6,13 @@
  *
  * Source files are NEVER modified. We only READ them.
  *
- * Outputs (all inside the runtime cache):
+ * Outputs (all inside Loom's derived cache, never inside the source folder):
  *   - knowledge/.cache/manifest/knowledge-nav.json
  *   - knowledge/.cache/manifest/knowledge-manifest.json
  *   - knowledge/.cache/docs/<id>.json
  *
  * Architecture:
- *   - Skip claude-code-source-main, node_modules, hidden, temp files
+ *   - Skip generated AI-code source mirrors, node_modules, hidden, temp files
  *   - PDFs / binaries are ALWAYS the canonical doc — sourcePath points to the original
  *   - Sidecar `*.pdf.txt` (or `*.csv.txt`, etc.) is consumed only as extracted body for
  *     search/preview/RAG, never registered as its own doc
@@ -555,7 +555,7 @@ async function main() {
     if (sidecarSet.has(p)) continue;                      // never register sidecar as a doc
     if (path.basename(p).startsWith('~$')) continue;
     if (p.includes('/node_modules/')) continue;
-    if (p.includes('claude-code-source-main')) continue;
+    if (/\/[^/]*code-source-main(?:\/|$)/.test(p)) continue;
 
     const ext = path.extname(p).toLowerCase();
     const isPlainText = ['.txt', '.md', '.mdx'].includes(ext);
