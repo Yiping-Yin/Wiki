@@ -10,8 +10,12 @@ const buildIdPath = path.join(root, '.next-build', 'BUILD_ID');
 const middlewareManifestPath = path.join(root, '.next-build', 'server', 'middleware-manifest.json');
 const port = Number(process.env.LOOM_SMOKE_PORT || 3100);
 const base = `http://127.0.0.1:${port}`;
+const runChat = process.env.LOOM_SMOKE_CHAT === '1';
+const smokeDerivedDataRoot = process.env.LOOM_SMOKE_DERIVED_DATA_ROOT
+  || process.env.LOOM_DERIVED_DATA_ROOT
+  || root;
 const manifestPaths = [
-  path.join(root, 'knowledge', '.cache', 'manifest', 'knowledge-manifest.json'),
+  path.join(smokeDerivedDataRoot, 'knowledge', '.cache', 'manifest', 'knowledge-manifest.json'),
 ];
 let docs = [];
 for (const candidate of manifestPaths) {
@@ -89,9 +93,26 @@ async function checkKnowledgeDoc() {
   console.log('/api/doc-body ok');
 }
 
+async function checkChat() {
+  const res = await fetchWithTimeout(`${base}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cli: 'codex',
+      messages: [{ role: 'user', content: 'Reply with exactly: hi' }],
+    }),
+  }, 30000);
+  assert(res.ok, `/api/chat returned ${res.status}`);
+  assert((res.headers.get('content-type') || '').includes('text/event-stream'), '/api/chat did not return SSE');
+  const text = await res.text();
+  assert(text.includes('data: {"delta":"hi"}'), '/api/chat missing expected delta');
+  assert(text.includes('data: [DONE]'), '/api/chat missing [DONE]');
+  console.log('/api/chat ok');
+}
+
 const child = spawn(process.execPath, [nextBin, 'start', '-p', String(port), '-H', '127.0.0.1'], {
   cwd: root,
-  env: { ...process.env, LOOM_DIST_DIR: '.next-build' },
+  env: { ...process.env, LOOM_DIST_DIR: '.next-build', LOOM_DERIVED_DATA_ROOT: smokeDerivedDataRoot },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 
@@ -113,6 +134,11 @@ try {
   await checkPage('/', '<title>Loom</title>');
   await checkPage('/offline', 'Offline');
   await checkKnowledgeDoc();
+  if (runChat) {
+    await checkChat();
+  } else {
+    console.log('/api/chat skipped (set LOOM_SMOKE_CHAT=1 to enable)');
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   if (stdout.trim()) console.error('\nstdout:\n' + stdout.trim());
