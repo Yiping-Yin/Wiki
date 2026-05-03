@@ -2,7 +2,14 @@ name: Loom
 options:
   bundleIdPrefix: com.yinyiping
   deploymentTarget:
-    macOS: "14.0"
+    # macOS 15.0 — required by `LoomApp.swift:.restorationBehavior(.disabled)`
+    # (macOS 15 API used to suppress "blank window on relaunch" for App
+    # Store) and by the chrome-tint playbook's window+toolbar tint stack
+    # (`feedback_loom_chrome_tint_playbook.md`). Was 14.0 in the project
+    # file but the source code already depended on macOS 15 features —
+    # bumped during Phase 7.3 build verification when the mismatch
+    # surfaced as a hard compile error.
+    macOS: "15.0"
   xcodeVersion: "16.0"
   minimumXcodeGenVersion: "2.30"
 
@@ -33,6 +40,7 @@ targets:
       - Assets.xcassets
       - Resources
     dependencies:
+      - target: LoomWebExtension
       - package: CoreXLSX
       - package: ZIPFoundation
     settings:
@@ -45,7 +53,7 @@ targets:
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
-        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_HARDENED_RUNTIME: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Education/Reference per the trademark-check memo (2026-04-21) —
@@ -67,6 +75,10 @@ targets:
         CFBundleDisplayName: Loom
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleURLTypes:
+          - CFBundleURLName: com.yinyiping.loom
+            CFBundleURLSchemes:
+              - loom
         LSApplicationCategoryType: "public.app-category.education"
     preBuildScripts:
       - name: Stage Next.js static export into bundle Resources
@@ -123,6 +135,32 @@ targets:
         # any server, but keeping it off-by-default is fine — no listener
         # is created at runtime.
         com.apple.security.files.user-selected.read-write: true
+
+  LoomWebExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: LoomWebExtension/SafariWebExtensionHandler.swift
+      - path: LoomWebExtension/Resources
+    dependencies:
+      - sdk: SafariServices.framework
+    settings:
+      base:
+        PRODUCT_NAME: LoomWebExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.yinyiping.loom.LoomWebExtension
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: LoomWebExtension/Info.plist
+    entitlements:
+      path: LoomWebExtension/LoomWebExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
 
   LoomTests:
     type: bundle.unit-test
