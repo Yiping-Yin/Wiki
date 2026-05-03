@@ -129,7 +129,7 @@ It is the discreteness that lets the picture be seen.
 - `npm run app`, `npm run app:user`, and `npm run app:system` build and install the macOS shell.
 - `npm run app:where` prints the currently installed *Loom.app* location.
 - `npm run app:preflight` is the App Store submission preflight check.
-- GitHub Actions runs `build -> typecheck -> smoke`.
+- GitHub Actions runs `build -> typecheck -> smoke` and intentionally skips the chat-specific smoke path.
 - Generated knowledge bodies, manifests, and derived indexes live in `knowledge/.cache/` rather than tracked `public/` or `lib/` files.
 - [docs/README.md](docs/README.md) indexes current design and process docs.
 - [DESIGN_ONBOARDING.md](docs/design/DESIGN_ONBOARDING.md) is the fastest collaborator-facing intro to the current product/design model.
@@ -143,9 +143,9 @@ Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
 shape of the project and the PR checklist. For security issues, see
 [SECURITY.md](SECURITY.md) — please don't file those as public issues.
 
-Loom is built with substantial help from AI coding collaborators
-(OpenAI Codex, Anthropic Claude). See [AUTHORS.md](AUTHORS.md) for
-how each collaborator's commits are tagged in the history.
+Loom is built with substantial help from OpenAI Codex. See
+[AUTHORS.md](AUTHORS.md) for how Codex-assisted commits are tagged in
+the history.
 
 ## License
 

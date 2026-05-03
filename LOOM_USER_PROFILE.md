@@ -2,7 +2,7 @@
 
 > **Purpose**: A living record of who the user is, how they work, learn, and think. Maintained by AI assistants over time so that future sessions — and Loom's own AI features — can act *as the user would*, not just *as told*.
 >
-> **Audience**: Any AI model (Claude, GPT, Codex, Gemini, etc.) working with the user, or any feature inside Loom that personalizes behavior.
+> **Audience**: Any AI model (Codex, GPT, Gemini, etc.) working with the user, or any feature inside Loom that personalizes behavior.
 >
 > **The user has consented to this record** and intends for it to grow. The user may read and edit this file directly. Write factually and respectfully, as if the user is reading.
 >
@@ -89,6 +89,32 @@
 - Prefers options ranked with a clear recommendation over neutral "you choose"
 - Will reverse a decision when shown evidence it was wrong; doesn't double down
 
+### Reframe-heavy strategic sessions (added 2026-05-02)
+- During architectural-level work the user **iteratively descends** through abstractions to find the right level. Single session may produce 3-5 reframes:
+  - Initial attempt: generic feature framing
+  - User correction: "no, more like X"
+  - AI re-attempt: closer
+  - User correction: "still wrong; the deepest thing is Y"
+  - Eventually: 50-word thesis that captures the right level
+- This is a **feature, not a bug** — the user uses the dialog itself to think. Don't resist the iteration.
+- BUT: the AI must NOT ship long architectural docs between reframes. Each ship-then-correct propagates wrong framing into permanent record.
+- **Rule established 2026-05-01 (correction log entry-007)**: any architectural-level doc requires user-confirmed 50-word thesis BEFORE the long-doc ship. See memory `feedback_pre_ship_thesis_check.md`.
+
+### Voice + dictation workflow (added 2026-05-02)
+- User has Codex dictation mapped to Left ⌥ (anywhere on desktop). Voice → text → terminal AI input → file system writes.
+- Implication: user's input bandwidth is high (~150 wpm via voice vs ~50 wpm typing). AI absorption + structuring becomes the bottleneck.
+- Loom v4.0 designed to receive this stream natively (document IS the AI input; AI runs background passes; no chat box needed).
+
+### Tool ecosystem awareness
+- Uses Codex (terminal AI app) actively for non-Loom work; Codex IS an app that calls terminal under the hood, NOT a raw CLI
+- Aware that Apple Notes / Notion / Word are different tiers (substrate vs vertical AI) and uses each for different purposes
+- Articulated 2026-05-02 that Loom's positioning should be **substrate-tier (Word/PPT/Excel)**, not vertical-AI-tier (Cursor/Notion AI)
+
+### Image bandwidth asymmetry
+- User can send Codex multiple images per message; Claude (web/CLI interface) accepts only ONE image per turn
+- Implication: visual evidence (UI bug reports, before/after screenshots) should route user → Codex → Claude (via peer-chat references), not user → Claude direct
+- Documented in `tmp/peer-chat-protocol.md` capability-asymmetry section + correction log entry-004
+
 ---
 
 ## 5. Aesthetic & Interaction Preferences
@@ -131,7 +157,7 @@
 - **Chan Karunamuni's "with behavior, not animation"** — interfaces respond to user actions, not play preset animations
 
 ### Tools the user uses for AI
-- Claude (this assistant)
+- Codex (this assistant)
 - Has expressed openness to "other AI models" reading the same protocol docs (so they should be model-agnostic)
 
 ---
@@ -156,7 +182,7 @@ These are observed — not stated as rules — but recur enough to inform future
 The user has expressed interest in Loom evolving so that:
 
 1. **AI can act on the user's accumulated record** — not just answer ad-hoc questions, but use the user's notes, patterns, and decisions to complete tasks autonomously ("AI can complete the same kind of task by reading Loom's info").
-2. **Personalization across models** — whatever AI is being used (Claude, GPT, etc.) reads the same profile and behaves consistently.
+2. **Personalization across models** — whatever AI is being used (Codex, GPT, etc.) reads the same profile and behaves consistently.
 3. **Habits as data** — usage patterns, learning rhythms, and work flow themselves become inputs that future Loom features can use.
 
 **Implication for current architecture**: keep the data layer (Markdown in `LoomFileStore` + this profile) clean and accessible. Future personalization features will read from these substrates.

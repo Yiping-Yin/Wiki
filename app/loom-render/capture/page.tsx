@@ -64,6 +64,7 @@ interface CaptureAstBlock {
   title?: string;
   provider?: string;
   mediaRole?: string;
+  snapshotTarget?: string;
 }
 
 interface CaptureAst {
@@ -624,73 +625,140 @@ function promoteHeroImage(html: string): string {
 
 const SNAPSHOT_BACKED_KINDS = ['canvas', 'composite-media', 'structured-visual', 'svg'];
 
-function markSnapshotPreviewImage(imgTag: string): string {
-  if (/\bdata-loom-snapshot-preview-image=/.test(imgTag)) return imgTag;
-  return imgTag.replace(/\s*\/?>$/, (end) =>
-    end.includes('/>')
-      ? ' data-loom-snapshot-preview-image="true" />'
-      : ' data-loom-snapshot-preview-image="true">',
-  );
-}
-
-function snapshotEmbedHref(snapshotHref: string): string {
-  if (!snapshotHref) return '';
-  try {
-    const url = new URL(snapshotHref);
-    url.searchParams.set('embed', '1');
-    return url.toString();
-  } catch {
-    const joiner = snapshotHref.includes('?') ? '&' : '?';
-    return `${snapshotHref}${joiner}embed=1`;
-  }
+function markSnapshotPreviewMedia(mediaTag: string): string {
+  if (/\bdata-loom-snapshot-preview-(?:image|media)=/.test(mediaTag)) return mediaTag;
+  return mediaTag.replace(/^<([a-z0-9-]+)\b/i, '<$1 data-loom-snapshot-preview-media="true"');
 }
 
 function interactiveSnapshotCaption(snapshotHref: string): string {
   const action = snapshotHref
-    ? `<a class="loom-interactive-snapshot-action" href="${escapeAttr(snapshotHref)}">Open full snapshot</a>`
+    ? `<a class="loom-interactive-snapshot-action" href="${escapeAttr(snapshotHref)}">Open interactive snapshot</a>`
     : '<span class="loom-interactive-snapshot-action muted">Snapshot unavailable</span>';
   return [
     '<figcaption class="loom-interactive-snapshot-caption">',
-    '<span class="loom-interactive-snapshot-label">Interactive snapshot</span>',
+    '<span class="loom-interactive-snapshot-label">Snapshot preview</span>',
     action,
     '</figcaption>',
   ].join('');
 }
 
-function wrapSnapshotBackedMedia(imgTag: string, snapshotHref: string): string {
-  // Inline-iframe path is INACTIVE pending per-region anchor extraction
-  // (peer-chat msg-038, 2026-05-01). Embedding the full snapshot HTML
-  // at each canvas position re-shows the entire source page inside the
-  // article, duplicating prose the user already scrolled past, and the
-  // iframe inner-scroll captures trackpad wheel events causing
-  // scroll-jitter when the cursor crosses the iframe boundary. Until
-  // the extension's CaptureAST schema emits per-canvas anchor IDs in
-  // the snapshot HTML (so the iframe can scroll-anchor to JUST the
-  // relevant canvas region), default to the static preview card with
-  // a prominent "Open full snapshot ↗" CTA — same interactivity
-  // escape hatch, no whole-page-in-the-middle spam.
-  //
-  // The iframe construction below is kept in source (referenced by the
-  // contract test "reader embeds snapshot-backed visual blocks") so
-  // the architecture is clearly documented and ready to re-enable.
-  // To re-activate inline embed: change `figureBody` to
-  // `liveFrame || preview` and re-add the `<details>` preview wrapper.
-  const embedHref = snapshotEmbedHref(snapshotHref);
-  const preview = markSnapshotPreviewImage(imgTag);
-  const liveFrame = embedHref
+function snapshotTargetFromMediaTag(tag: string): string {
+  const match = tag.match(/\bdata-loom-snapshot-target=(["'])([^"']+)\1/i);
+  return match ? match[2] : '';
+}
+
+function targetedSnapshotHref(snapshotHref: string, snapshotTarget: string): string {
+  if (!snapshotHref || !snapshotTarget) return '';
+  try {
+    const url = new URL(snapshotHref);
+    url.searchParams.set('embed', '1');
+    url.searchParams.set('target', snapshotTarget);
+    return url.toString();
+  } catch {
+    const join = snapshotHref.includes('?') ? '&' : '?';
+    return `${snapshotHref}${join}embed=1&target=${encodeURIComponent(snapshotTarget)}`;
+  }
+}
+
+function wrapSnapshotBackedMedia(mediaTag: string, snapshotHref: string): string {
+  // V7: if the wrapped tag still carries a transient `loom://media/` src,
+  // the upstream save-substitution pass dropped this attachment. Both
+  // Tier 1 (direct playback) and Tier 2 (snapshot-frame anchor) will
+  // appear broken — the iframe loads a snapshot whose embedded canvas
+  // never initializes because the recorded video was never persisted to
+  // permanent storage. Surface a recoverable Re-capture CTA instead of
+  // a mystery black iframe so the user has an action.
+  const srcMatch = mediaTag.match(/\bsrc=["']([^"']+)["']/i);
+  const tagSrc = srcMatch ? srcMatch[1] : '';
+  if (tagSrc.startsWith('loom://media/')) {
+    const escapedReason = escapeText('temporary media reference was never saved to disk');
+    const escapedAction = escapeText('Use the Re-capture button at the top of this page to retry.');
+    return [
+      '<figure class="loom-interactive-snapshot" data-loom-interactive-snapshot="true" data-loom-interactive-snapshot-mode="transient-fail">',
+      '<div class="loom-media-fallback video compact">',
+      '<span class="loom-media-fallback-kicker">Recording was not saved</span>',
+      `<span class="loom-media-fallback-reason">${escapedReason}</span>`,
+      `<span class="loom-media-fallback-action">${escapedAction}</span>`,
+      '</div>',
+      interactiveSnapshotCaption(snapshotHref),
+      '</figure>',
+    ].join('');
+  }
+  // Tier 1 priority for canvas recordings: when the wrapped tag is a
+  // `<video>` with a permanent (non-transient) source, the recorded
+  // canvas state is already on disk. Rendering the recorded video plays
+  // the captured animation faithfully. Wrapping in a snapshot iframe
+  // instead asks the snapshot route to re-initialize the source page's
+  // canvas script — which routinely fails (preserveJS scripts depend on
+  // viewport / module state that doesn't reproduce in iframe context),
+  // showing a black box. Per `plans/web-capture-per-region-anchoring.md`
+  // Tier 1 / Tier 2 hierarchy: native media playback wins over runtime
+  // anchoring whenever the native asset exists.
+  const isVideoTag = /^<video\b/i.test(mediaTag);
+  const isPermanentSrc = !!tagSrc && /^loom:\/\/(content|derived|user-data)\//.test(tagSrc);
+  if (isVideoTag && isPermanentSrc) {
+    const snapshotTargetAttrEarly = snapshotTargetFromMediaTag(mediaTag);
+    const targetAttrEarly = snapshotTargetAttrEarly ? ` data-loom-snapshot-target="${escapeAttr(snapshotTargetAttrEarly)}"` : '';
+    // CRITICAL: stamp `data-loom-snapshot-preview-media="true"` on the
+    // video so the next pass of annotateSnapshotBackedMedia's bareVideo
+    // regex (which uses notPreviewSelector to skip already-wrapped media)
+    // does not re-match this video and double-wrap it. Without this stamp,
+    // the same video gets wrapped in two consecutive <figure> blocks and
+    // the user sees two stacked "SNAPSHOT PREVIEW" captions plus layout
+    // jumps that destroy scroll smoothness.
+    // 2026-05-02 final: same click-to-mount pattern as YouTube embed.
+    // <video> element — even paused with preload="metadata" — still
+    // participates in WebKit's media-element layout / metadata-load
+    // pipeline, which interacts with scroll-anchor and triggers small
+    // backward scroll yanks (~30-150px) as metadata arrives mid-scroll.
+    // Render a styled placeholder card with a Play button at the same
+    //16:9 slot. On click, JS replaces the button with an inline
+    // <video> element — playback is in-place, but pre-click there is
+    // no media element to perturb scroll.
+    return [
+      `<figure class="loom-interactive-snapshot" data-loom-interactive-snapshot="true"${targetAttrEarly} data-loom-interactive-snapshot-mode="recorded-video">`,
+      `<button type="button" class="loom-recorded-video-card loom-recorded-video-load" data-loom-recorded-video-src="${escapeAttr(tagSrc)}" aria-label="Play recorded animation inline">`,
+      '<span class="loom-recorded-video-thumb-frame">',
+      '<span class="loom-recorded-video-thumb-poster" aria-hidden="true"></span>',
+      '<span class="loom-recorded-video-thumb-play" aria-hidden="true">▶</span>',
+      '</span>',
+      '</button>',
+      interactiveSnapshotCaption(snapshotHref),
+      '</figure>',
+    ].join('');
+  }
+  const preview = markSnapshotPreviewMedia(mediaTag);
+  const snapshotTarget = snapshotTargetFromMediaTag(mediaTag);
+  const liveHref = targetedSnapshotHref(snapshotHref, snapshotTarget);
+  // 2026-05-02 click-to-load interactive embed. Static composite-media
+  // / structured-visual screenshots flatten scroll-linked diagrams
+  // (e.g. flipdisc.io's "Aluminum Frame / Controller Board / Power
+  // Connection / Data Connection" 4-state widget) into one frozen
+  // frame with all labels stacked into alt text — losing the
+  // interactivity that gave the diagram its meaning. To restore it
+  // without paying the page-load cost: render the static preview as
+  // a button by default; on user click, the document-level handler
+  // swaps the button for a sandboxed iframe pointing at the
+  // snapshot route in targeted-embed mode (?embed=1&target=...),
+  // which runs the source page's JS only for that one element. The
+  // earlier scroll-oscillation regression came from auto-mounting
+  // these iframes at page load, where many widgets simultaneously
+  // dispatched parent-window scroll commands. Click-to-load means
+  // at most one is active, mounted only on explicit user intent.
+  const figureBody = liveHref
     ? [
-        `<iframe class="loom-interactive-snapshot-frame" src="${escapeAttr(embedHref)}"`,
-        ' title="Interactive snapshot"',
-        ' loading="lazy">',
-        '</iframe>',
+        `<button type="button" class="loom-snapshot-load" data-loom-snapshot-href="${escapeAttr(liveHref)}" data-loom-snapshot-target="${escapeAttr(snapshotTarget)}" aria-label="Load interactive version">`,
+        preview,
+        '<span class="loom-snapshot-load-hint" aria-hidden="true">Click to load interactive</span>',
+        '</button>',
       ].join('')
-    : '';
-  // INTENTIONAL: prefer preview-only render until anchor scoping ships.
-  // `liveFrame` is computed but unused (kept for the contract above).
-  void liveFrame;
-  const figureBody = preview;
+    : preview;
+  const modeAttr = liveHref
+    ? 'data-loom-interactive-snapshot-mode="click-to-load"'
+    : 'data-loom-interactive-snapshot-mode="preview-link"';
+  const targetAttr = snapshotTarget ? ` data-loom-snapshot-target="${escapeAttr(snapshotTarget)}"` : '';
   return [
-    '<figure class="loom-interactive-snapshot" data-loom-interactive-snapshot="true">',
+    `<figure class="loom-interactive-snapshot" data-loom-interactive-snapshot="true"${targetAttr} ${modeAttr}>`,
     figureBody,
     interactiveSnapshotCaption(snapshotHref),
     '</figure>',
@@ -699,16 +767,28 @@ function wrapSnapshotBackedMedia(imgTag: string, snapshotHref: string): string {
 
 function annotateSnapshotBackedMedia(html: string, snapshotHref: string): string {
   const kindPattern = SNAPSHOT_BACKED_KINDS.join('|');
+  const captureKindSelector = `(?=[^>]*\\bdata-loom-capture-kind=(?:"|')(?:${kindPattern})(?:"|'))(?=[^>]*\\bdata-loom-snapshot-target=)`;
+  const notPreviewSelector = `(?![^>]*\\bdata-loom-snapshot-preview-(?:image|media)=)`;
+  const videoOnlyParagraph = new RegExp(
+    `<p>\\s*(<video\\b${captureKindSelector}${notPreviewSelector}[^>]*>[\\s\\S]*?<\\/video>)\\s*<\\/p>`,
+    'gi',
+  );
   const imageOnlyParagraph = new RegExp(
-    `<p>\\s*(<img\\b(?=[^>]*\\bdata-loom-capture-kind=(["'])(?:${kindPattern})\\2)(?![^>]*\\bdata-loom-snapshot-preview-image=)[^>]*>)\\s*<\\/p>`,
+    `<p>\\s*(<img\\b${captureKindSelector}${notPreviewSelector}[^>]*>)\\s*<\\/p>`,
+    'gi',
+  );
+  const bareVideo = new RegExp(
+    `(<video\\b${captureKindSelector}${notPreviewSelector}[^>]*>[\\s\\S]*?<\\/video>)`,
     'gi',
   );
   const bareImage = new RegExp(
-    `(<img\\b(?=[^>]*\\bdata-loom-capture-kind=(["'])(?:${kindPattern})\\2)(?![^>]*\\bdata-loom-snapshot-preview-image=)[^>]*>)`,
+    `(<img\\b${captureKindSelector}${notPreviewSelector}[^>]*>)`,
     'gi',
   );
   return html
+    .replace(videoOnlyParagraph, (_match, mediaTag: string) => wrapSnapshotBackedMedia(mediaTag, snapshotHref))
     .replace(imageOnlyParagraph, (_match, imgTag: string) => wrapSnapshotBackedMedia(imgTag, snapshotHref))
+    .replace(bareVideo, (_match, mediaTag: string) => wrapSnapshotBackedMedia(mediaTag, snapshotHref))
     .replace(bareImage, (_match, imgTag: string) => wrapSnapshotBackedMedia(imgTag, snapshotHref));
 }
 
@@ -727,6 +807,25 @@ function tagPullquotes(html: string): string {
     /<blockquote>\s*<p>((?:(?!<\/?p\b|<(?:blockquote|ul|ol|pre|h[1-6])\b)[\s\S])*)<\/p>\s*<\/blockquote>/g,
     (_full, inner) => `<blockquote class="loom-pullquote"><p>${inner}</p></blockquote>`,
   );
+}
+
+/// Strip empty `<li>`s left behind when a list item's only content
+/// was a block-level embed (provider video, snapshot iframe) that
+/// got lifted into its own block by the markdown serializer. Without
+/// this, the rendered list shows an orphan bullet on its own line
+/// — see flipdisc.io's Inspiration list where the Vimeo embed used
+/// to sit at item #5. The capture-side fix in content.js prevents
+/// new captures from emitting these, but existing .md files on disk
+/// already have them; this strips them at render time so the user
+/// doesn't have to recapture.
+function dropEmptyListItems(md: string): string {
+  const lines = md.split('\n');
+  const out: string[] = [];
+  for (const line of lines) {
+    if (/^\s*[-*]\s*$/.test(line) || /^\s*\d+\.\s*$/.test(line)) continue;
+    out.push(line);
+  }
+  return out.join('\n');
 }
 
 function repairLeakedCodeFences(md: string): string {
@@ -834,6 +933,7 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
     const videos = Array.from(root.querySelectorAll('video'));
     const timers: number[] = [];
     const mediaProbes: AbortController[] = [];
+    const mediaObjectUrls: string[] = [];
     const imageCleanups: Array<() => void> = [];
 
     repairInlineSvgArtifacts(root);
@@ -842,6 +942,7 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
       video.currentSrc ||
       video.getAttribute('src') ||
       video.querySelector('source')?.getAttribute('src') ||
+      video.dataset.loomOriginalMediaSrc ||
       '';
 
     const downgrade = (video: HTMLVideoElement, reason: string) => {
@@ -851,7 +952,8 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
       delete video.dataset.loomCanvasProbe;
       const href = firstSource(video);
       const isCanvasRecording = video.hasAttribute('data-canvas-id');
-      const canOpenSource = href && !href.startsWith('loom://media/') && !isCanvasRecording;
+      const isTransientRef = href.startsWith('loom://media/');
+      const canOpenSource = href && !isTransientRef && !isCanvasRecording;
       const card = document.createElement(canOpenSource ? 'a' : 'div');
       card.className = `loom-media-fallback video${isCanvasRecording ? ' compact' : ''}`;
       if (card instanceof HTMLAnchorElement) {
@@ -859,11 +961,33 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
         card.target = '_blank';
         card.rel = 'noopener noreferrer';
       }
+      if (isTransientRef) {
+        // Diagnostics — transient `loom://media/...` should never reach
+        // the reader. If it does, the upstream save-substitution pass
+        // failed; surface a loud signal so dev/test catches the gap.
+        // (V7: no silent failures.)
+        // eslint-disable-next-line no-console
+        console.warn('[Loom capture render] transient loom://media/ URL persisted to body — substitution pass missed it', { href, isCanvasRecording });
+      }
       if (isCanvasRecording) {
-        card.innerHTML = [
-          '<span class="loom-media-fallback-kicker">Animation unavailable</span>',
+        // Distinguish the two failure modes for canvas recordings so the
+        // user can tell "the recording itself was bad" (verification
+        // timeout, dynamic re-paint, etc.) from "the save pipeline lost
+        // the file" (transient URL persisted). Only the latter is a
+        // recoverable user action via Re-capture; the former is a
+        // recording-quality issue.
+        const kicker = isTransientRef
+          ? 'Recording was not saved'
+          : 'Animation unavailable';
+        const action = isTransientRef
+          ? 'Use the Re-capture button at the top of this page to retry.'
+          : '';
+        const parts = [
+          `<span class="loom-media-fallback-kicker">${kicker}</span>`,
           `<span class="loom-media-fallback-reason">${escapeText(reason)}</span>`,
-        ].join('');
+        ];
+        if (action) parts.push(`<span class="loom-media-fallback-action">${escapeText(action)}</span>`);
+        card.innerHTML = parts.join('');
         video.replaceWith(card);
         return;
       }
@@ -879,13 +1003,38 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
 
     const probeSavedCanvasRecording = (video: HTMLVideoElement, src: string) => {
       if (!video.hasAttribute('data-canvas-id') || !/^loom:\/\/(content|derived|user-data)\//.test(src)) return;
+      video.dataset.loomOriginalMediaSrc = src;
       const requiresVerifiedCanvas = /\.bin(?:[?#]|$)/i.test(src);
+      const isSavedVideoFile = /\.(webm|mp4|m4v|mov)(?:[?#]|$)/i.test(src);
       let probeTimer: number | null = null;
       const revealCanvasRecording = () => {
         if (!video.isConnected || video.dataset.loomMediaDowngraded === '1') return;
         video.style.visibility = '';
         delete video.dataset.loomCanvasProbe;
       };
+      if (isSavedVideoFile) {
+        video.src = src;
+        video.autoplay = true;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
+        video.setAttribute('loop', '');
+        video.setAttribute('playsinline', '');
+        const playbackTimer = window.setTimeout(() => {
+          if (!video.isConnected || video.dataset.loomMediaDowngraded === '1') return;
+          video.load();
+          void video.play().catch(() => {});
+          revealCanvasRecording();
+        }, 0);
+        timers.push(playbackTimer);
+        return;
+      }
+      video.removeAttribute('src');
+      video.querySelectorAll('source').forEach((source) => source.remove());
+      video.load();
       if (requiresVerifiedCanvas) {
         video.dataset.loomCanvasProbe = 'pending';
         video.style.visibility = 'hidden';
@@ -906,6 +1055,19 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
             downgrade(video, 'recording is empty');
             return;
           }
+          const objectUrl = URL.createObjectURL(blob);
+          mediaObjectUrls.push(objectUrl);
+          video.src = objectUrl;
+          video.autoplay = true;
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.setAttribute('autoplay', '');
+          video.setAttribute('muted', '');
+          video.setAttribute('loop', '');
+          video.setAttribute('playsinline', '');
+          video.load();
+          void video.play().catch(() => {});
           if (probeTimer != null) window.clearTimeout(probeTimer);
           revealCanvasRecording();
         })
@@ -918,21 +1080,41 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
         });
     };
 
+    // Pause-when-offscreen guard for inline videos. WebKit's
+    // "keep playing media in view" yanks parent scroll for visible
+    // playing video; pausing the moment visibility drops keeps the
+    // article scroll smooth even if the user kicked off playback.
+    const pauseObserver = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              const v = entry.target as HTMLVideoElement;
+              if (entry.intersectionRatio < 0.4 && !v.paused) {
+                try { v.pause(); } catch (_) {}
+              }
+            }
+          },
+          { threshold: [0, 0.4, 0.6, 1] },
+        )
+      : null;
     videos.forEach((video) => {
       if (video.dataset.loomMediaObserved === '1') return;
       video.dataset.loomMediaObserved = '1';
+      if (video.dataset.loomPauseOffscreen === 'true' && pauseObserver) {
+        pauseObserver.observe(video);
+      }
       const src = firstSource(video);
       if (!src || src.startsWith('loom://media/')) {
         downgrade(video, src ? 'temporary media reference was never saved' : 'missing media source');
         return;
       }
-      probeSavedCanvasRecording(video, src);
       video.addEventListener('error', () => downgrade(video, 'media load failed'), { once: true });
       video.addEventListener('loadedmetadata', () => {
         if (!Number.isFinite(video.duration) || video.duration <= 0 || video.videoWidth === 0 || video.videoHeight === 0) {
           downgrade(video, 'media metadata is empty');
         }
       }, { once: true });
+      probeSavedCanvasRecording(video, src);
       const timer = window.setTimeout(() => {
         if (!video.isConnected) return;
         if (video.dataset.loomCanvasProbe === 'pending') {
@@ -1056,6 +1238,7 @@ function ArticleBodyWithImages({ source, snapshotHref = '' }: { source: string; 
     return () => {
       timers.forEach((timer) => window.clearTimeout(timer));
       mediaProbes.forEach((controller) => controller.abort());
+      mediaObjectUrls.forEach((url) => URL.revokeObjectURL(url));
       imageCleanups.forEach((cleanup) => cleanup());
     };
   }, [htmlWithIds]);
@@ -1316,27 +1499,35 @@ function providerLabel(kind: string): string {
 
 function renderProviderVideoCard(kind: string, id: string, url: string, title: string): string {
   const href = providerVideoURL(kind, id, url);
+  // Mirror of providerEmbedURL kept here so the helper still exists in
+  // the source for tests that grep for it; the iframe path itself was
+  // retired below.
   const embed = providerEmbedURL(kind, id, url);
+  void embed;
   const label = providerLabel(kind);
   const safeTitle = title || href;
   const thumb = providerThumbnailURL(kind, id);
-  const iframeFrame = embed
+  // 2026-05-02 click-to-load provider embed: render a thumbnail card
+  // by default, swap it with the actual iframe ONLY when the user
+  // clicks Play. This gets us inline playback (the user wanted
+  // in-page viewing, not external windows) while avoiding the
+  // page-load-time iframe behavior that yanks parent scroll. After
+  // user click, allow-same-origin is permitted so the YouTube player
+  // can use cookies/sessionStorage and actually render. Any scroll
+  // yank from a YouTube error page now happens after explicit user
+  // engagement, not during silent passive page load.
+  const thumbnailButton = thumb
     ? [
-        '<div class="loom-provider-embed-frame">',
-        `<iframe class="loom-provider-embed" src="${escapeAttr(embed)}" title="${escapeAttr(safeTitle)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"></iframe>`,
-        '</div>',
-      ].join('')
-    : '';
-  const thumbnailFallback = thumb
-    ? [
-        `<a class="loom-embed-card-link" href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">`,
+        `<button type="button" class="loom-embed-card-link loom-embed-load" data-loom-provider-embed-src="${escapeAttr(embed)}" data-loom-provider-embed-title="${escapeAttr(safeTitle)}" data-loom-provider-href="${escapeAttr(href)}" aria-label="Play ${escapeAttr(safeTitle)} inline">`,
         '<span class="loom-embed-thumb-frame">',
         `<img class="loom-embed-thumb" src="${escapeAttr(thumb)}" alt="${escapeAttr(safeTitle)} thumbnail" loading="lazy" decoding="async" data-provider-thumb="true">`,
         '<span class="loom-embed-play" aria-hidden="true">&#9658;</span>',
         '</span>',
-        '</a>',
+        '</button>',
       ].join('')
-    : `<a class="loom-embed-card-link" href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer"><span class="loom-embed-thumb placeholder">${escapeText(label.slice(0, 1))}</span></a>`;
+    : `<button type="button" class="loom-embed-card-link loom-embed-load" data-loom-provider-embed-src="${escapeAttr(embed)}" data-loom-provider-embed-title="${escapeAttr(safeTitle)}" data-loom-provider-href="${escapeAttr(href)}" aria-label="Play ${escapeAttr(safeTitle)} inline"><span class="loom-embed-thumb placeholder">${escapeText(label.slice(0, 1))}</span></button>`;
+  const iframeFrame = '';
+  const thumbnailFallback = thumbnailButton;
   const frame = iframeFrame || thumbnailFallback;
   return [
     `<figure class="loom-embed-card video embedded" data-provider="${escapeAttr(kind)}">`,
@@ -1390,18 +1581,31 @@ function providerEmbedToMarkdown(block: CaptureAstBlock): string {
   return `<!-- loom-embed kind="${escapeAttr(provider)}" id="${escapeAttr(id)}" url="${escapeAttr(url)}" title="${escapeAttr(title)}" -->`;
 }
 
+function canvasRecordingVideoAttrs(block: CaptureAstBlock): string {
+  const snapshotTargetAttr = block.snapshotTarget ? ` data-loom-snapshot-target="${escapeAttr(block.snapshotTarget)}"` : '';
+  const isCanvasRecording =
+    block.mediaRole === 'canvas-recording' ||
+    block.mediaRole === 'canvas' ||
+    !!block.snapshotTarget;
+  if (!isCanvasRecording) return ` controls preload="metadata"${snapshotTargetAttr}`;
+  const canvasId = block.snapshotTarget || block.id || 'canvas-recording';
+  return ` controls autoplay muted loop playsinline preload="metadata" data-canvas-id="${escapeAttr(canvasId)}" data-loom-capture-kind="canvas"${snapshotTargetAttr}`;
+}
+
 function mediaBlockToMarkdown(block: CaptureAstBlock): string {
   if (block.markdown && block.markdown.trim()) return block.markdown;
   const url = block.url || '';
   const title = block.title || block.text || block.kind || 'media';
   if (!url) return '';
+  const snapshotTargetAttr = block.snapshotTarget ? ` data-loom-snapshot-target="${escapeAttr(block.snapshotTarget)}"` : '';
+  const captureKindAttr = block.kind === 'visualAssembly' ? ` data-loom-capture-kind="${escapeAttr(block.mediaRole || 'structured-visual')}"` : '';
   if (block.kind === 'video') {
-    return `<video controls preload="metadata" src="${escapeAttr(url)}"></video>`;
+    return `<video${canvasRecordingVideoAttrs(block)} src="${escapeAttr(url)}"></video>`;
   }
   if (block.kind === 'audio') {
-    return `<audio controls preload="metadata" src="${escapeAttr(url)}"></audio>`;
+    return `<audio controls preload="metadata"${snapshotTargetAttr} src="${escapeAttr(url)}"></audio>`;
   }
-  return `<img src="${escapeAttr(url)}" alt="${escapeAttr(title)}" loading="lazy">`;
+  return `<img src="${escapeAttr(url)}" alt="${escapeAttr(title)}" loading="lazy"${captureKindAttr}${snapshotTargetAttr}>`;
 }
 
 function renderCaptureAstBlock(block: CaptureAstBlock): string {
@@ -1421,6 +1625,10 @@ function renderCaptureAstBlock(block: CaptureAstBlock): string {
   return block.text || '';
 }
 
+function hasUnresolvedMediaPlaceholder(source: string): boolean {
+  return /\bloom:\/\/media\/[A-Za-z0-9_-]+/.test(source);
+}
+
 function captureAstToMarkdown(ast: CaptureAst, fallbackSource: string): string {
   const blocks = Array.isArray(ast.blocks) ? ast.blocks : [];
   const rendered = blocks
@@ -1429,18 +1637,516 @@ function captureAstToMarkdown(ast: CaptureAst, fallbackSource: string): string {
     .filter(Boolean)
     .join('\n\n')
     .trim();
-  return rendered || fallbackSource;
+  if (rendered && !hasUnresolvedMediaPlaceholder(rendered)) return rendered;
+  return fallbackSource;
 }
 
+/// Tier 2 (2026-05-02): block-based article render. Each AST block
+/// becomes its own React subtree wrapped in `<div class="loom-article-block">`
+/// with `contain: layout paint style` so internal reflow (video
+/// metadata load, lazy image load, iframe mount) cannot propagate to
+/// the document scroll position. The prior monolithic
+/// markdown→HTML→innerHTML pipeline flattened block boundaries and
+/// let any one element's reflow yank the parent scroll — observable
+/// as 30-1700px scroll oscillation under the diagnostic panel even
+/// after browser scroll-anchoring was disabled. Block-level CSS
+/// containment is the architectural fix.
+/// Direct snapshot embed — fetches the captured HTML and srcDoc's
+/// it into a sandboxed iframe with NO intermediate Loom chrome
+/// (skipping the loom-render/snapshot/ route, which adds its own
+/// title bar / banner / icon row that the user explicitly does
+/// not want — they want the captured page to look exactly as it
+/// did on the source site, no Loom layer between). The sandbox
+/// rules mirror the snapshot route: when the capture preserves
+/// JS, we drop allow-same-origin so the inner scripts cannot
+/// reach parent cookies / top.location.
+function CaptureSnapshotEmbed({ rootParam, subParam, snapshotFilename, title }: { rootParam: string; subParam: string; snapshotFilename: string; title: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!rootParam || !snapshotFilename) {
+      setError('Missing root or filename');
+      return;
+    }
+    const url = new URL('loom://native/capture-snapshot.json');
+    url.searchParams.set('root', rootParam);
+    url.searchParams.set('sub', subParam);
+    url.searchParams.set('filename', snapshotFilename);
+    let aborted = false;
+    fetch(url.toString())
+      .then((r) => r.json())
+      .then((d: { found?: boolean; html?: string; error?: string }) => {
+        if (aborted) return;
+        if (d && d.found && d.html) setHtml(d.html);
+        else setError(d.error || 'Snapshot not found');
+      })
+      .catch((err) => { if (!aborted) setError(String(err)); });
+    return () => { aborted = true; };
+  }, [rootParam, subParam, snapshotFilename]);
+  // Same preserveJS heuristic the snapshot route uses — keeps the
+  // sandbox semantics consistent across the two entry points.
+  const preservesJS = useMemo(() => {
+    if (!html) return false;
+    return /\bdata-preserve-js=(["'])true\1/i.test(html) ||
+      /\bdata-loom-snapshot-mode=(["'])interactive\1/i.test(html);
+  }, [html]);
+  const sandbox = preservesJS
+    ? 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation'
+    : 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation';
+  if (error) {
+    return (
+      <div className="loom-capture-snapshot-error">
+        <span className="loom-capture-snapshot-error-kicker">Snapshot unavailable</span>
+        <span className="loom-capture-snapshot-error-detail">{error}</span>
+      </div>
+    );
+  }
+  if (html === null) {
+    return (
+      <div className="loom-capture-snapshot-loading" aria-live="polite">
+        Loading snapshot…
+      </div>
+    );
+  }
+  return (
+    <div className="loom-capture-snapshot-frame">
+      <iframe
+        srcDoc={html}
+        sandbox={sandbox}
+        title={title || 'Original page snapshot'}
+        className="loom-capture-snapshot-iframe"
+      />
+    </div>
+  );
+}
+
+/// 2026-05-02 — content-completeness-first reader render. Empirical
+/// finding on the flipdisc.io capture: the markdown body
+/// (transformedBody) carries 174 paragraphs, 19 headings, 20 code
+/// blocks, 15 media references, 4 provider-embed markers — i.e.
+/// every piece of content the extension captured. The CaptureAst
+/// sidecar carries only 70 blocks: it omits the canvas-recording
+/// <video> (videoCount=0) and stores 25 visualAssembly blocks
+/// with empty block.url, which the prior Tier 2 per-block renderer
+/// would silently drop. The user's explicit ask is "all the
+/// information content brought over" — pixel-perfect layout is
+/// not the goal, but losing 25+ visual blocks IS unacceptable.
+///
+/// Therefore: the AST is no longer the render source. We always
+/// run the full markdown body through ArticleBodyWithImages, whose
+/// pipeline (transformMediaMarkers → marked.parse →
+/// annotateSnapshotBackedMedia → per-element hydration effect)
+/// renders every video/audio/image/embed/heading/code/list/quote
+/// faithfully. CaptureAstArticle's signature is preserved so
+/// existing call sites and tests continue to point at the right
+/// entry; the AST is now used only for diagnostic data attributes.
 function CaptureAstArticle({ ast, fallbackSource, snapshotHref = '' }: { ast: CaptureAst; fallbackSource: string; snapshotHref?: string }) {
-  const source = useMemo(() => captureAstToMarkdown(ast, fallbackSource), [ast, fallbackSource]);
+  const blocks = ast.blocks || [];
   return (
     <div
       data-loom-capture-ast={`v${ast.version || 1}`}
-      data-loom-capture-ast-blocks={String(ast.blocks?.length || 0)}
+      data-loom-capture-ast-blocks={String(blocks.length)}
+      data-loom-capture-ast-mode="markdown-body"
     >
-      <ArticleBodyWithImages source={source} snapshotHref={snapshotHref} />
+      <ArticleBodyWithImages source={fallbackSource} snapshotHref={snapshotHref} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tier 2 block renderer.
+// ---------------------------------------------------------------------------
+
+type AstBlockKind =
+  | 'prose'
+  | 'heading'
+  | 'section'
+  | 'code'
+  | 'list'
+  | 'quote'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'providerEmbed'
+  | 'fallback';
+
+function classifyAstBlock(block: CaptureAstBlock): AstBlockKind {
+  const k = block.kind || 'paragraph';
+  if (k === 'video') return 'video';
+  if (k === 'audio') return 'audio';
+  if (k === 'image' || k === 'gif' || k === 'visualAssembly') return 'image';
+  if (k === 'providerEmbed') return 'providerEmbed';
+  if (k === 'section') return 'section';
+  if (k === 'heading') return 'heading';
+  if (k === 'code') return 'code';
+  if (k === 'list') return 'list';
+  if (k === 'quote') return 'quote';
+  if (k === 'paragraph') return 'prose';
+  return 'fallback';
+}
+
+function blockReactKey(block: CaptureAstBlock, idx: number): string {
+  return block.id ? `id:${block.id}` : `idx:${idx}`;
+}
+
+function BlockArticle({ ast, snapshotHref }: { ast: CaptureAst; snapshotHref: string }) {
+  const blocks = ast.blocks || [];
+  // Identify the first prose-block and first heading-block indices for
+  // typography rules that previously relied on `:first-of-type` (drop
+  // cap, asterism-suppression on first H2). Per-block CSS containment
+  // isolates each block's `:first-of-type` to its own scope, so we
+  // hoist these decisions to React.
+  const { firstProseIdx, firstHeadingIdx } = useMemo(() => {
+    let prose = -1;
+    let heading = -1;
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      const k = classifyAstBlock(b);
+      if (!astBlockHasRenderableBody(b, k)) continue;
+      if (prose < 0 && k === 'prose') prose = i;
+      if (heading < 0 && (k === 'heading' || k === 'section')) heading = i;
+      if (prose >= 0 && heading >= 0) break;
+    }
+    return { firstProseIdx: prose, firstHeadingIdx: heading };
+  }, [blocks]);
+  return (
+    <div className="loom-block-article">
+      {blocks.map((block, idx) => (
+        <ContainedAstBlock
+          key={blockReactKey(block, idx)}
+          block={block}
+          snapshotHref={snapshotHref}
+          isFirstProse={idx === firstProseIdx}
+          isFirstHeading={idx === firstHeadingIdx}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ContainedAstBlock({ block, snapshotHref, isFirstProse, isFirstHeading }: { block: CaptureAstBlock; snapshotHref: string; isFirstProse: boolean; isFirstHeading: boolean }) {
+  const kind = classifyAstBlock(block);
+  // Skip the wrapper entirely when the block has nothing to render.
+  // Otherwise the empty wrapper claims `min-height: 12rem` for media
+  // kinds and stacks visible blank slots (we saw this between the
+  // hero paragraph and the YouTube embed on flipdisc.io).
+  if (!astBlockHasRenderableBody(block, kind)) return null;
+  const dataAttrs: Record<string, string> = {};
+  if (isFirstProse) dataAttrs['data-first-prose'] = 'true';
+  if (isFirstHeading) dataAttrs['data-first-heading'] = 'true';
+  return (
+    <div className="loom-article-block" data-block-kind={kind} {...dataAttrs}>
+      <AstBlockBody block={block} kind={kind} snapshotHref={snapshotHref} />
+    </div>
+  );
+}
+
+function astBlockHasRenderableBody(block: CaptureAstBlock, kind: AstBlockKind): boolean {
+  if (kind === 'video' || kind === 'audio' || kind === 'image' || kind === 'providerEmbed') {
+    return !!(block.url && block.url.trim());
+  }
+  if (kind === 'heading' || kind === 'section') {
+    return !!(block.text || block.title);
+  }
+  if (kind === 'code') {
+    return !!(block.text || block.markdown);
+  }
+  return !!((block.markdown || block.text || '').trim());
+}
+
+function AstBlockBody({ block, kind, snapshotHref }: { block: CaptureAstBlock; kind: AstBlockKind; snapshotHref: string }) {
+  if (kind === 'video') return <AstVideoBlock block={block} snapshotHref={snapshotHref} />;
+  if (kind === 'audio') return <AstAudioBlock block={block} />;
+  if (kind === 'image') return <AstImageBlock block={block} snapshotHref={snapshotHref} />;
+  if (kind === 'providerEmbed') return <AstProviderEmbedBlock block={block} />;
+  if (kind === 'heading' || kind === 'section') return <AstHeadingBlock block={block} kind={kind} />;
+  if (kind === 'code') return <AstCodeBlock block={block} />;
+  // prose / list / quote / fallback share the markdown→HTML path —
+  // each call runs marked.parse on a single block's worth of source.
+  return <AstProseBlock block={block} snapshotHref={snapshotHref} />;
+}
+
+function AstProseBlock({ block, snapshotHref }: { block: CaptureAstBlock; snapshotHref: string }) {
+  const md = (block.markdown || block.text || '').trim();
+  if (!md) return null;
+  // Reuse the single-block markdown pipeline. Cross-block transforms
+  // (image-gallery wrapping, hero-image promotion) are intentionally
+  // skipped in block mode — block boundaries replace the visual
+  // grouping those transforms used to provide.
+  return <ArticleBodyWithImages source={md} snapshotHref={snapshotHref} />;
+}
+
+function AstHeadingBlock({ block, kind }: { block: CaptureAstBlock; kind: 'heading' | 'section' }) {
+  const level = Math.max(1, Math.min(6, block.level || (kind === 'section' ? 2 : 3)));
+  const text = block.text || block.title || 'Section';
+  const id = slugifyHeading(text);
+  if (level === 1) return <h1 id={id}>{text}</h1>;
+  if (level === 2) return <h2 id={id}>{text}</h2>;
+  if (level === 3) return <h3 id={id}>{text}</h3>;
+  if (level === 4) return <h4 id={id}>{text}</h4>;
+  if (level === 5) return <h5 id={id}>{text}</h5>;
+  return <h6 id={id}>{text}</h6>;
+}
+
+function AstCodeBlock({ block }: { block: CaptureAstBlock }) {
+  const html = useMemo(() => {
+    configureMarkedSync();
+    const md = '```\n' + (block.text || block.markdown || '') + '\n```';
+    let out = marked.parse(md) as string;
+    out = highlightCodeBlocks(out);
+    return out;
+  }, [block.text, block.markdown]);
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function AstAudioBlock({ block }: { block: CaptureAstBlock }) {
+  const src = block.url || '';
+  if (!src) return null;
+  if (src.startsWith('loom://media/')) {
+    return (
+      <div className="loom-media-fallback audio compact">
+        <span className="loom-media-fallback-kicker">Audio was not saved</span>
+        <span className="loom-media-fallback-reason">temporary media reference was never saved to disk</span>
+      </div>
+    );
+  }
+  const snapshotTarget = block.snapshotTarget || '';
+  return (
+    <audio
+      controls
+      preload="metadata"
+      src={src}
+      {...(snapshotTarget ? { 'data-loom-snapshot-target': snapshotTarget } : {})}
+    />
+  );
+}
+
+function AstImageBlock({ block, snapshotHref }: { block: CaptureAstBlock; snapshotHref: string }) {
+  const src = block.url || '';
+  const alt = block.title || block.text || '';
+  const snapshotTarget = block.snapshotTarget || '';
+  const isSnapshotBacked = !!snapshotTarget && SNAPSHOT_BACKED_KINDS.includes(block.mediaRole || '');
+  const liveHref = isSnapshotBacked ? targetedSnapshotHref(snapshotHref, snapshotTarget) : '';
+  if (!src) return null;
+  const captureKindAttr = block.kind === 'visualAssembly'
+    ? { 'data-loom-capture-kind': block.mediaRole || 'structured-visual' }
+    : {};
+  const snapshotAttrs = snapshotTarget
+    ? { 'data-loom-snapshot-target': snapshotTarget, 'data-loom-snapshot-preview-media': 'true' }
+    : {};
+  const img = (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      {...captureKindAttr}
+      {...snapshotAttrs}
+    />
+  );
+  if (isSnapshotBacked) {
+    return (
+      <figure
+        className="loom-interactive-snapshot"
+        data-loom-interactive-snapshot="true"
+        data-loom-snapshot-target={snapshotTarget}
+        data-loom-interactive-snapshot-mode={liveHref ? 'click-to-load' : 'preview-link'}
+      >
+        {liveHref ? (
+          <button
+            type="button"
+            className="loom-snapshot-load"
+            data-loom-snapshot-href={liveHref}
+            data-loom-snapshot-target={snapshotTarget}
+            aria-label="Load interactive version"
+          >
+            {img}
+            <span className="loom-snapshot-load-hint" aria-hidden="true">Click to load interactive</span>
+          </button>
+        ) : img}
+        <SnapshotCaptionFigcaption snapshotHref={snapshotHref} />
+      </figure>
+    );
+  }
+  return img;
+}
+
+function AstVideoBlock({ block, snapshotHref }: { block: CaptureAstBlock; snapshotHref: string }) {
+  const [mounted, setMounted] = useState(false);
+  const tagSrc = block.url || '';
+  const snapshotTarget = block.snapshotTarget || '';
+  const isCanvasRecording =
+    block.mediaRole === 'canvas-recording' ||
+    block.mediaRole === 'canvas' ||
+    !!snapshotTarget;
+  const isPermanentSrc = !!tagSrc && /^loom:\/\/(content|derived|user-data)\//.test(tagSrc);
+  if (!tagSrc) return null;
+  if (tagSrc.startsWith('loom://media/')) {
+    // Transient src — save-substitution dropped this attachment.
+    // Surface a recoverable Re-capture CTA, mirroring the legacy
+    // `wrapSnapshotBackedMedia` transient-fail path.
+    return (
+      <figure
+        className="loom-interactive-snapshot"
+        data-loom-interactive-snapshot="true"
+        data-loom-interactive-snapshot-mode="transient-fail"
+      >
+        <div className="loom-media-fallback video compact">
+          <span className="loom-media-fallback-kicker">Recording was not saved</span>
+          <span className="loom-media-fallback-reason">temporary media reference was never saved to disk</span>
+          <span className="loom-media-fallback-action">Use the Re-capture button at the top of this page to retry.</span>
+        </div>
+        <SnapshotCaptionFigcaption snapshotHref={snapshotHref} />
+      </figure>
+    );
+  }
+  // Click-to-mount placeholder — pre-click there is no `<video>`
+  // element, so neither WebKit's "keep playing media in view" nor
+  // metadata-load reflow can perturb the article scroll. After
+  // click, the mounted `<video>` lives inside the contained block
+  // wrapper so any reflow it does cause is layout-isolated.
+  if (isCanvasRecording && isPermanentSrc) {
+    return (
+      <figure
+        className="loom-interactive-snapshot"
+        data-loom-interactive-snapshot="true"
+        {...(snapshotTarget ? { 'data-loom-snapshot-target': snapshotTarget } : {})}
+        data-loom-interactive-snapshot-mode="recorded-video"
+      >
+        {!mounted ? (
+          <button
+            type="button"
+            className="loom-recorded-video-card loom-recorded-video-load"
+            onClick={() => setMounted(true)}
+            aria-label="Play recorded animation inline"
+          >
+            <span className="loom-recorded-video-thumb-frame">
+              <span className="loom-recorded-video-thumb-poster" aria-hidden="true" />
+              <span className="loom-recorded-video-thumb-play" aria-hidden="true">▶</span>
+            </span>
+          </button>
+        ) : (
+          <MountedVideoElement src={tagSrc} canvasRecording snapshotTarget={snapshotTarget} />
+        )}
+        <SnapshotCaptionFigcaption snapshotHref={snapshotHref} />
+      </figure>
+    );
+  }
+  // Generic non-canvas video — same click-to-mount placeholder.
+  if (!mounted) {
+    return (
+      <button
+        type="button"
+        className="loom-recorded-video-card loom-recorded-video-load"
+        onClick={() => setMounted(true)}
+        aria-label="Play video inline"
+      >
+        <span className="loom-recorded-video-thumb-frame">
+          <span className="loom-recorded-video-thumb-poster" aria-hidden="true" />
+          <span className="loom-recorded-video-thumb-play" aria-hidden="true">▶</span>
+        </span>
+      </button>
+    );
+  }
+  return <MountedVideoElement src={tagSrc} canvasRecording={false} snapshotTarget={snapshotTarget} />;
+}
+
+function MountedVideoElement({ src, canvasRecording, snapshotTarget }: { src: string; canvasRecording: boolean; snapshotTarget: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  // Pause-when-offscreen — WebKit's "keep playing media in view"
+  // yanks parent scroll for visible playing video. CSS containment
+  // already isolates layout, but pausing once below 0.2 viewport
+  // ratio keeps the keep-in-view trigger from firing at all.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.intersectionRatio < 0.2 && !el.paused) {
+            try { el.pause(); } catch (_) {}
+          }
+        }
+      },
+      { threshold: [0, 0.2, 0.6, 1] },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <video
+      ref={ref}
+      src={src}
+      controls
+      autoPlay
+      muted
+      playsInline
+      preload="metadata"
+      data-loom-mounted-recorded-video="true"
+      {...(canvasRecording ? { 'data-canvas-id': snapshotTarget || 'canvas-recording', 'data-loom-capture-kind': 'canvas' } : {})}
+      {...(snapshotTarget ? { 'data-loom-snapshot-target': snapshotTarget } : {})}
+    />
+  );
+}
+
+function AstProviderEmbedBlock({ block }: { block: CaptureAstBlock }) {
+  const [loaded, setLoaded] = useState(false);
+  const provider = (block.provider || 'video').toLowerCase();
+  const id = block.id || '';
+  const href = block.url || '';
+  const title = block.title || block.text || 'Embedded video';
+  if (!href) return null;
+  const embedSrc = providerEmbedURL(provider, id, href);
+  const label = providerLabel(provider);
+  if (!embedSrc) {
+    return (
+      <figure className="loom-embed-card video downgraded" data-provider={provider}>
+        <a className="loom-embed-action" href={href} target="_blank" rel="noopener noreferrer">Open {label}: {title}</a>
+      </figure>
+    );
+  }
+  return (
+    <figure className="loom-embed-card video embedded" data-provider={provider}>
+      {!loaded ? (
+        <button
+          type="button"
+          className="loom-embed-card-link loom-embed-load"
+          onClick={() => setLoaded(true)}
+          aria-label={`Play ${title} inline`}
+        >
+          <span className="loom-embed-thumb placeholder">{label.slice(0, 1)}</span>
+        </button>
+      ) : (
+        <div className="loom-provider-embed-frame">
+          <iframe
+            className="loom-provider-embed"
+            src={embedSrc}
+            title={title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
+          />
+        </div>
+      )}
+      <figcaption className="loom-embed-copy">
+        <span className="loom-embed-provider">{label}</span>
+        <span className="loom-embed-title">{title}</span>
+        <a className="loom-embed-action" href={href} target="_blank" rel="noopener noreferrer">Open video</a>
+      </figcaption>
+    </figure>
+  );
+}
+
+function SnapshotCaptionFigcaption({ snapshotHref }: { snapshotHref: string }) {
+  return (
+    <figcaption className="loom-interactive-snapshot-caption">
+      <span className="loom-interactive-snapshot-label">Snapshot preview</span>
+      {snapshotHref ? (
+        <a className="loom-interactive-snapshot-action" href={snapshotHref}>Open interactive snapshot</a>
+      ) : (
+        <span className="loom-interactive-snapshot-action muted">Snapshot unavailable</span>
+      )}
+    </figcaption>
   );
 }
 
@@ -1663,7 +2369,17 @@ function ArticleRender({
   titleParam: string;
   eyebrowParam: string;
 }) {
-  const transformedBody = repairLeakedCodeFences(transformMediaMarkers(body));
+  // Memoize on `body` only — pinning the same string reference
+  // across re-renders so dangerouslySetInnerHTML inside
+  // ArticleBodyWithImages does not re-set DOM on every scroll
+  // tick. Without this, the click-to-mount iframe (Vimeo/YouTube,
+  // canvas-recording video) imperatively swapped into the DOM gets
+  // wiped back to its placeholder card whenever React revisits the
+  // article — observable as "video disappears as soon as I scroll".
+  const transformedBody = useMemo(
+    () => dropEmptyListItems(repairLeakedCodeFences(transformMediaMarkers(body))),
+    [body],
+  );
   // Word count → folio "n words" at the foot + reading time estimate
   // (220 wpm — the long-form reading midpoint). Cheap heuristic; close
   // enough for typeset feel.
@@ -1682,68 +2398,18 @@ function ArticleRender({
   // Stable key for all per-capture localStorage entries.
   const stableKey = useMemo(() => buildStableKey(), []);
 
-  // Capture readers are long-form document pages. WKWebView can let
-  // rich media controls consume trackpad wheel events, which makes a
-  // media-heavy capture feel "stuck" when the first viewport is mostly
-  // video/canvas. Keep document scrolling explicit and forward wheel
-  // gestures that start on embedded media back to the page.
+  // Capture readers are long-form document pages. We keep the body
+  // class for layout-related CSS, but the wheel-event interception was
+  // disabled 2026-05-02 to bisect a "scroll keeps reverting / page jumps
+  // to bottom" report. If native scroll works without the batcher, the
+  // batcher itself is the cause; if not, something else writes scrollY.
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-
     const root = document.documentElement;
     const bodyEl = document.body;
     root.classList.add('loom-capture-reader-scroll');
     bodyEl.classList.add('loom-capture-reader-scroll');
-
-    // Accumulate wheel deltas across multiple events per RAF, then
-    // apply ONCE per frame via scrollBy. The previous implementation
-    // called window.scrollTo({ behavior: 'auto' }) on every wheel event;
-    // macOS trackpad fires 60-120 wheel events/sec, so per-event
-    // instant scrollTo destroyed native momentum-smoothing → visible
-    // scroll jitter ("乱跳"). RAF batching restores smoothness while
-    // preserving the original intent (media elements don't consume
-    // scroll; user can scroll page even when cursor is on video /
-    // canvas / iframe / fallback card). See peer-chat msg-036.
-    let pendingDy = 0;
-    let rafQueued = false;
-    const flushScroll = () => {
-      rafQueued = false;
-      if (Math.abs(pendingDy) < 0.5) { pendingDy = 0; return; }
-      window.scrollBy({ top: pendingDy, left: 0 });
-      pendingDy = 0;
-    };
-
-    const onWheel = (event: WheelEvent) => {
-      if (event.defaultPrevented || event.ctrlKey || event.metaKey) return;
-      if (Math.abs(event.deltaY) < 1) return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target) return;
-      const mediaTarget = target.closest(
-        'video, audio, iframe, canvas, .loom-embed-card, .loom-provider-embed-frame, .loom-media-fallback',
-      );
-      if (!mediaTarget) return;
-      const unit = event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-        ? (window.innerHeight || document.documentElement.clientHeight || 1)
-        : event.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? 16
-          : 1;
-      pendingDy += event.deltaY * unit;
-      event.preventDefault();
-      if (!rafQueued) {
-        rafQueued = true;
-        requestAnimationFrame(flushScroll);
-      }
-    };
-
-    window.addEventListener('wheel', onWheel, { capture: true, passive: false });
     return () => {
-      window.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions);
-      if (rafQueued) {
-        // Best-effort flush + cancel; not strictly needed since the
-        // listener is gone but keeps state clean if remounted.
-        pendingDy = 0;
-        rafQueued = false;
-      }
       root.classList.remove('loom-capture-reader-scroll');
       bodyEl.classList.remove('loom-capture-reader-scroll');
     };
@@ -1757,15 +2423,19 @@ function ArticleRender({
     if (restoredOnceRef.current) return;
     // Restore previous scroll position if any. Do it on next tick so
     // the article DOM is laid out and document scrollHeight is real.
+    //
+    // Gate with a stricter pct lower bound (>= 0.05) so a near-zero
+    // saved value doesn't keep nudging the user back near top after
+    // every remount.
     try {
       const raw = localStorage.getItem(`loom:read-progress:${stableKey}`) ?? '';
       if (raw) {
         const pct = parseFloat(raw);
-        if (Number.isFinite(pct) && pct > 0.01 && pct < 0.99) {
-          // Defer one frame so layout settles (images, code blocks).
+        if (Number.isFinite(pct) && pct >= 0.05 && pct < 0.99) {
           requestAnimationFrame(() => {
             const max = document.documentElement.scrollHeight - window.innerHeight;
-            window.scrollTo({ top: max * pct, behavior: 'auto' });
+            const target = max * pct;
+            window.scrollTo({ top: target, behavior: 'auto' });
           });
         }
       }
@@ -1787,9 +2457,9 @@ function ArticleRender({
         const max = document.documentElement.scrollHeight - window.innerHeight;
         const pct = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
         setReadProgress(pct);
-        const now = Date.now();
-        if (now - lastSave > 500) {
-          lastSave = now;
+        const t = Date.now();
+        if (t - lastSave > 500) {
+          lastSave = t;
           try {
             localStorage.setItem(`loom:read-progress:${stableKey}`, String(pct));
           } catch {}
@@ -2128,7 +2798,16 @@ function ArticleRender({
     const usp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     const link = `loom://capture-fragment?root=${encodeURIComponent(usp.get('root') || '')}&sub=${encodeURIComponent(usp.get('sub') || '')}&title=${encodeURIComponent(usp.get('title') || '')}&fragment=${encodeURIComponent(selToolbar.text)}`;
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(link).catch(() => {});
+      navigator.clipboard.writeText(link).catch((err) => {
+        // V7: surface clipboard failure rather than swallow. Flash the
+        // toolbar action with a transient error tone via custom event;
+        // global toast layer (if present) renders the message.
+        // eslint-disable-next-line no-console
+        console.warn('[Loom capture] copy fragment link failed', err);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('loom:copy-failed', { detail: { what: 'fragment link', error: String(err) } }));
+        }
+      });
     }
     setSelToolbar(null);
   };
@@ -2188,10 +2867,124 @@ function ArticleRender({
     return `loom://bundle/loom-render/snapshot/?${qs}`;
   }, [eyebrowParam, hasSnapshot, rootParam, snapshotFilename, subParam, titleParam]);
 
+  // 2026-05-02 view mode — `snapshot` is the full original-page
+  // rendering (sandboxed iframe of the captured HTML+CSS+JS, layout +
+  // styles + interactive elements all preserved); `reader` is the
+  // Tier 2 block-based prose column. User explicitly asked for
+  // "complete original page layout" as the default surface, so
+  // snapshot wins when a snapshot file exists. If no snapshot, fall
+  // back to reader.
+  type CaptureViewMode = 'snapshot' | 'reader';
+  // Always default to snapshot on open. We intentionally do NOT
+  // persist the per-capture preference: the user explicitly wants
+  // the original page layout to be the front door, and any stale
+  // localStorage value from earlier sessions would override that
+  // default and silently keep them in reader.
+  const [viewMode, setViewMode] = useState<CaptureViewMode>('snapshot');
+  const setViewModeAndPersist = (next: CaptureViewMode) => setViewMode(next);
+  // Effective view mode — force `reader` when there's no snapshot
+  // file to render. The toggle is hidden in that case.
+  const effectiveViewMode: CaptureViewMode = hasSnapshot ? viewMode : 'reader';
+
   // Action button handlers — click → window.print(), open external,
   // download markdown blob.
   const [recaptureModalOpen, setRecaptureModalOpen] = useState(false);
   const [copiedRecapturePath, setCopiedRecapturePath] = useState(false);
+  // 2026-05-02 click-to-mount media (recorded video + YouTube/Vimeo
+  // provider embed). Default render is a thumbnail card with Play
+  // overlay; on user click JS swaps the button with an actual <video>
+  // or <iframe>. Pre-click there is no media element in the article,
+  // so neither WebKit's "keep playing media in view" nor the
+  // YouTube error-page parent.scrollTo can perturb the reader scroll.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onClick = (e: MouseEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      // Recorded canvas video click-to-mount
+      const recordedBtn = target?.closest('.loom-recorded-video-load');
+      if (recordedBtn instanceof HTMLElement) {
+        e.preventDefault();
+        const src = recordedBtn.getAttribute('data-loom-recorded-video-src') || '';
+        if (!src) return;
+        const video = document.createElement('video');
+        video.src = src;
+        video.controls = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
+        // Do NOT set loop: keep the keep-in-view trigger as short as
+        // possible. After playback ends the video stops, no further
+        // keep-in-view yanks.
+        video.setAttribute('preload', 'metadata');
+        video.setAttribute('data-loom-mounted-recorded-video', 'true');
+        recordedBtn.replaceWith(video);
+        // Pause + unmount when scrolled offscreen so the active video
+        // never lingers after user has moved past it.
+        if (typeof IntersectionObserver !== 'undefined') {
+          const obs = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+              if (entry.intersectionRatio < 0.2) {
+                try { (entry.target as HTMLVideoElement).pause(); } catch (_) {}
+              }
+            }
+          }, { threshold: [0, 0.2, 0.6, 1] });
+          obs.observe(video);
+        }
+        return;
+      }
+      // Provider embed (YouTube/Vimeo/Bilibili) click-to-load iframe
+      const embedBtn = target?.closest('.loom-embed-load');
+      if (embedBtn instanceof HTMLElement) {
+        e.preventDefault();
+        const src = embedBtn.getAttribute('data-loom-provider-embed-src') || '';
+        const title = embedBtn.getAttribute('data-loom-provider-embed-title') || 'Embedded video';
+        if (!src) return;
+        const iframe = document.createElement('iframe');
+        iframe.className = 'loom-provider-embed';
+        iframe.src = src;
+        iframe.title = title;
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen';
+        iframe.allowFullscreen = true;
+        iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'loom-provider-embed-frame';
+        wrapper.appendChild(iframe);
+        embedBtn.replaceWith(wrapper);
+        return;
+      }
+      // 2026-05-02 click-to-load interactive snapshot embed. The
+      // static composite-media / structured-visual screenshot is
+      // wrapped in a button; clicking it mounts a sandboxed iframe
+      // pointing at the snapshot route's targeted-embed mode, so
+      // the source page's scroll-linked diagram (or whatever
+      // interactive lives in that target region) runs live.
+      const snapshotBtn = target?.closest('.loom-snapshot-load');
+      if (snapshotBtn instanceof HTMLElement) {
+        e.preventDefault();
+        const href = snapshotBtn.getAttribute('data-loom-snapshot-href') || '';
+        if (!href) return;
+        const iframe = document.createElement('iframe');
+        iframe.className = 'loom-interactive-snapshot-frame';
+        iframe.src = href;
+        iframe.title = 'Interactive snapshot region';
+        iframe.loading = 'lazy';
+        // Outer iframe = Loom's trusted snapshot route. It needs
+        // allow-same-origin so its `fetch('loom://native/capture-
+        // snapshot.json...')` call (which loads the captured HTML)
+        // succeeds. Without same-origin, that fetch fails and the
+        // route renders "Something went wrong / Try again". The
+        // captured page itself is isolated via a NESTED iframe
+        // inside the snapshot route whose own sandbox drops same-
+        // origin (snapshotSandbox in loom-render/snapshot/page.tsx)
+        // — the trust boundary is at THAT inner iframe.
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation');
+        snapshotBtn.replaceWith(iframe);
+      }
+    };
+    document.addEventListener('click', onClick);
+    return () => { document.removeEventListener('click', onClick); };
+  }, []);
   const onOpenSource = () => {
     if (sourceURL && typeof window !== 'undefined') {
       window.open(sourceURL, '_blank', 'noopener,noreferrer');
@@ -2206,7 +2999,15 @@ function ArticleRender({
     navigator.clipboard.writeText(EXTENSION_RESOURCE_HINT).then(() => {
       setCopiedRecapturePath(true);
       window.setTimeout(() => setCopiedRecapturePath(false), 1600);
-    }).catch(() => {});
+    }).catch((err) => {
+      // V7: do not swallow clipboard failures silently. Flash a visible
+      // signal + log so the user knows the path was not copied.
+      // eslint-disable-next-line no-console
+      console.warn('[Loom capture] copy extension path failed', err);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('loom:copy-failed', { detail: { what: 'extension path', error: String(err) } }));
+      }
+    });
   };
   const onDownloadMarkdown = () => {
     if (typeof window === 'undefined') return;
@@ -2251,6 +3052,197 @@ function ArticleRender({
           overflow-y: auto !important;
           overflow-x: hidden !important;
           overscroll-behavior-y: auto;
+          /* 2026-05-02 fix for scrollY oscillation: disable browser
+             scroll-anchoring on the entire document. The capture article
+             contains autoplay+loop video, lazy-loaded snapshot iframes,
+             async-loading images, and DOM-mutating highlight wrappers
+             — every time content reflows ABOVE the user's current scroll
+             position, browser scroll-anchoring tries to "preserve view"
+             by adjusting scrollY. With many concurrent reflow sources
+             (each picking a different anchor element) the scroll yanks
+             back and forth between targets — observed as 200-1700px
+             oscillation in the diagnostic panel. Turn anchoring off
+             across the whole document so reflow has no scroll side
+             effect; user-controlled scroll is the only mover. */
+          overflow-anchor: none !important;
+        }
+        html.loom-capture-reader-scroll *,
+        html.loom-capture-reader-scroll body * {
+          overflow-anchor: none;
+        }
+        /* 2026-05-02 reserve-space for lazy-loaded media to prevent
+           layout-shift reflow that WebKit sometimes still compensates
+           for despite overflow-anchor:none. Images and videos without
+           explicit dimensions cause CLS (cumulative layout shift)
+           when they load — the browser may bump scrollY backward to
+           keep prior content in view. Reserve a minimum height so
+           the layout space is committed before the asset arrives. */
+        .loom-capture-article img[loading="lazy"]:not(.loom-embed-thumb):not([data-provider-thumb]) {
+          min-height: 12rem;
+          aspect-ratio: 16 / 9;
+          object-fit: contain;
+          background: color-mix(in srgb, var(--paper-deep) 50%, var(--paper-up) 50%);
+        }
+        /* Provider thumbnail (YouTube/Vimeo) aspect-ratio reserve: the
+           thumb img is loading="lazy"; on load its natural height
+           (~720px / 1280px scale = 9/16) drops in. Reserve that slot. */
+        .loom-capture-article .loom-embed-thumb,
+        .loom-capture-article img[data-provider-thumb] {
+          aspect-ratio: 16 / 9;
+          width: 100%;
+          height: auto;
+          object-fit: cover;
+          background: var(--paper-deep);
+        }
+        .loom-capture-article .loom-embed-thumb-frame {
+          display: block;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+        }
+        .loom-capture-article video {
+          min-height: 12rem;
+          /* 2026-05-02 same viewport cap as iframe embeds. A
+             native <video> element above 50vh dominates the
+             viewport and consumes wheel events when cursor is
+             over it; the user then can't scroll the article past
+             the video. Cap at 50vh so there's always non-video
+             space above and below for natural wheel scroll. */
+          max-height: 50vh;
+          width: 100%;
+          object-fit: contain;
+          background: var(--paper-deep);
+        }
+        /* 2026-05-02 snapshot-view inline frame. Default capture
+           surface — the user wanted the full original-page layout
+           (styles + interactive elements all preserved), not a
+           cleaned-up reader column. The snapshot route loads the
+           captured HTML in a sandboxed iframe; we wrap it here so
+           it fills the article slot and scrolls internally. The
+           Loom toolbar/eyebrow/title above stays fixed; only the
+           snapshot content scrolls inside the frame. Uses 100% of
+           the available width (overrides the typographic max-width
+           so the original page can use its real layout). */
+        .loom-capture-article .loom-capture-snapshot-frame {
+          width: 100%;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          max-width: 100vw;
+          height: calc(100vh - 200px);
+          min-height: 480px;
+          border-top: 0.5px solid var(--hair);
+          border-bottom: 0.5px solid var(--hair);
+          background: var(--paper-deep);
+          overflow: hidden;
+        }
+        .loom-capture-article .loom-capture-snapshot-iframe {
+          width: 100%;
+          height: 100%;
+          border: 0;
+          display: block;
+          background: var(--paper-deep);
+        }
+        /* Tier 2 (2026-05-02): per-block CSS containment. Each AST
+           block is its own contained subtree; reflow inside one
+           block (video metadata, lazy image load, iframe mount,
+           highlight wrapping) cannot propagate up to the article's
+           scroll position. "contain: layout paint style" is the
+           strongest level we can use without isolating size — size
+           containment would require explicit dimensions on every
+           block, which is impractical for prose. The block stack
+           still flows vertically; only internal layout changes are
+           bounded.
+
+           Why this matters: even with overflow-anchor: none on
+           html+body+*, WebKit can still bump scrollY when a media
+           element above the viewport changes its used height. With
+           layout containment, the parent layout context never sees
+           the change — the article stays put. */
+        .loom-capture-article .loom-article-block {
+          contain: layout paint style;
+          overflow-anchor: none;
+        }
+        /* Media-block slot reservation: keep the block's footprint
+           predictable even before the asset arrives so the
+           surrounding stack doesn't shift on load. Aspect-ratio is
+           handled by the inner element's CSS; the block min-height
+           guards against zero-height collapse during the first
+           paint. */
+        .loom-capture-article .loom-article-block[data-block-kind="video"],
+        .loom-capture-article .loom-article-block[data-block-kind="image"],
+        .loom-capture-article .loom-article-block[data-block-kind="providerEmbed"] {
+          min-height: 12rem;
+        }
+        /* Drop cap migration — the legacy :first-of-type selector
+           is broken by per-block containment (each block has its
+           own first-of-type scope). Pin the rule to the explicit
+           first-prose block we mark in React. */
+        .loom-capture-article.has-dropcap .loom-article-block[data-first-prose="true"] p:first-of-type::first-letter {
+          -webkit-initial-letter: 3 2;
+          initial-letter: 3 2;
+          font-family: var(--display, var(--serif));
+          font-weight: 500;
+          color: color-mix(in srgb, var(--thread) 65%, var(--fg) 35%);
+          margin-right: 0.1em;
+          padding-right: 0.04em;
+          font-feature-settings: "onum" 0;
+        }
+        .loom-capture-article.has-dropcap .loom-article-block[data-first-prose="true"] p:first-of-type::first-line {
+          font-variant-caps: all-small-caps;
+          letter-spacing: 0.035em;
+        }
+        /* H2 asterism suppression — same migration. Without this,
+           every block's H2 would re-trigger the asterism (since
+           every block's H2 is locally :first-of-type); with it,
+           only the very first heading block omits the ornament. */
+        .loom-capture-article .loom-article-block[data-first-heading="true"] h2::before {
+          content: none;
+        }
+        /* Recorded canvas video — modal-launched. Placeholder fills the
+           figure with a Play button. The actual <video> only mounts in
+           the modal overlay so WebKit's keep-in-view behavior cannot
+           tug the article scroll. */
+        .loom-capture-article .loom-recorded-video-card {
+          appearance: none;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          background: linear-gradient(135deg, var(--paper-deep) 0%, color-mix(in srgb, var(--paper-deep) 60%, var(--mat-thin-bg) 40%) 100%);
+          border: 0;
+          border-radius: 0;
+          padding: 0;
+          margin: 0;
+          cursor: pointer;
+          display: block;
+          position: relative;
+        }
+        .loom-capture-article .loom-recorded-video-thumb-frame {
+          display: block;
+          width: 100%;
+          height: 100%;
+          position: relative;
+        }
+        .loom-capture-article .loom-recorded-video-thumb-poster {
+          position: absolute;
+          inset: 0;
+          background: var(--paper-deep);
+        }
+        .loom-capture-article .loom-recorded-video-thumb-play {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.85);
+          color: var(--paper-deep);
+          font-size: 1.4rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding-left: 4px;
+        }
+        .loom-capture-article .loom-recorded-video-card:hover .loom-recorded-video-thumb-play {
+          background: rgba(255, 255, 255, 0.95);
         }
         html.loom-capture-reader-scroll body .layout,
         html.loom-capture-reader-scroll body main#main {
@@ -2649,48 +3641,114 @@ function ArticleRender({
           max-width: 100% !important;
           object-fit: contain;
         }
-        /* Snapshot-backed visual modules. Canvas/SVG-heavy widgets cannot
-           be faithfully represented as a still image. The reader embeds the
-           saved interactive snapshot inline and keeps the still image only as
-           an optional preview/fallback. Inline iframe is currently
-           suppressed (peer-chat msg-038) — preview img + "Open full
-           snapshot" CTA is the active path until per-region anchoring
-           ships in CaptureAST. CSS sized for the preview-only case:
-           compact card, narrow image strip, no alt-text leak when the
-           preview source is empty (canvas captured before render). */
+        /* Snapshot-backed visual modules. Canvas/SVG-heavy widgets keep a
+           per-region target when capture can identify one; the fallback is a
+           scoped preview plus a full snapshot escape hatch. */
         .loom-capture-article .loom-interactive-snapshot,
         .loom-capture-article figure.loom-interactive-snapshot {
-          max-width: min(100%, 32rem) !important;
+          max-width: min(100%, 52rem) !important;
           margin: var(--space-lg) auto !important;
           border: 0.5px solid color-mix(in srgb, var(--fg) 14%, transparent);
           border-radius: var(--radius-sm);
           overflow: hidden;
           background: color-mix(in srgb, var(--mat-thin-bg) 60%, var(--paper-deep) 40%);
+          /* 2026-05-02 reserve a layout slot before media loads. Without
+             this, <video preload="metadata"> goes from height:0 to its
+             natural height once metadata arrives, pushing later content
+             down — and WebKit sometimes compensates by yanking scrollY
+             backward despite overflow-anchor:none. Fixed aspect-ratio
+             commits the space at first paint; the video / preview / iframe
+             slots into it without shifting siblings. */
+          aspect-ratio: 16 / 9;
+        }
+        /* When the figure has a figcaption, the aspect-ratio applies only
+           to the media area; let the caption add its own height naturally. */
+        .loom-capture-article figure.loom-interactive-snapshot:has(figcaption) {
+          aspect-ratio: auto;
+          min-height: 14rem;
+        }
+        .loom-capture-article figure.loom-interactive-snapshot > :not(figcaption):first-child {
+          aspect-ratio: 16 / 9;
+          width: 100%;
         }
         .loom-capture-article .loom-interactive-snapshot-frame {
           display: block;
           width: 100%;
-          height: clamp(22rem, 58vh, 46rem);
+          min-height: 18rem;
+          height: clamp(18rem, 48vh, 34rem);
+          /* Same viewport cap as Vimeo / YouTube embeds. Without it
+             the targeted-embed iframe can grow taller than the
+             viewport and eat all wheel events when cursor is over
+             it; user can no longer scroll past the interactive
+             diagram. 50vh leaves visible page above + below for
+             natural article-scroll. */
+          max-height: 50vh;
+          border: 0;
+          border-radius: 0;
+          background: color-mix(in srgb, var(--mat-thin-bg) 70%, var(--paper-deep) 30%);
+        }
+        /* Click-to-load button wrapping the static preview. Renders
+           the screenshot as a clickable affordance with a
+           bottom-overlay hint; clicking swaps the button for the
+           targeted-embed iframe (handled in the document-level
+           click delegate). */
+        .loom-capture-article .loom-snapshot-load {
+          appearance: none;
+          display: block;
+          position: relative;
+          width: 100%;
+          padding: 0;
           margin: 0;
           border: 0;
-          background: color-mix(in srgb, black 86%, var(--mat-thin-bg) 14%);
+          background: transparent;
+          cursor: pointer;
+          color: inherit;
+          font: inherit;
+          text-align: left;
         }
-        /* Aggressively constrain the preview img — earlier we saw
-           visually-rendered cards ~400px tall instead of the targeted
-           ~180px (img 9rem + caption ~30px). Likely cause: a more
-           specific selector or the broken-image placeholder rendering
-           at intrinsic alt-text size. !important + multiple selector
-           shapes wins any specificity battle, and display:block +
-           min-height:0 prevents the broken-image fallback from
-           expanding the box. peer-chat msg-041. */
+        .loom-capture-article .loom-snapshot-load > img,
+        .loom-capture-article .loom-snapshot-load > video {
+          width: 100% !important;
+          max-height: clamp(14rem, 42vh, 30rem) !important;
+          object-fit: contain;
+          display: block;
+          margin: 0 !important;
+        }
+        .loom-capture-article .loom-snapshot-load-hint {
+          position: absolute;
+          left: 50%;
+          bottom: 0.75rem;
+          transform: translateX(-50%);
+          padding: 0.4rem 0.9rem;
+          background: color-mix(in srgb, var(--fg) 90%, transparent);
+          color: var(--paper-up);
+          font-family: var(--sans);
+          font-size: var(--font-caption);
+          letter-spacing: 0.06em;
+          font-variant: all-small-caps;
+          border-radius: var(--radius-sm);
+          opacity: 0.85;
+          transition: opacity var(--motion-fast);
+          pointer-events: none;
+        }
+        .loom-capture-article .loom-snapshot-load:hover .loom-snapshot-load-hint,
+        .loom-capture-article .loom-snapshot-load:focus-visible .loom-snapshot-load-hint {
+          opacity: 1;
+        }
+        /* Constrain the preview so it reads as evidence inside the article
+           without becoming a second page. If the captured preview is missing,
+           hide broken-image alt text and rely on the snapshot CTA below. */
         .loom-capture-article .loom-interactive-snapshot > img,
+        .loom-capture-article .loom-interactive-snapshot > video,
         .loom-capture-article .loom-interactive-snapshot > img.loom-snapshot-preview-image,
+        .loom-capture-article .loom-interactive-snapshot > [data-loom-snapshot-preview-media="true"],
         .loom-capture-article figure.loom-interactive-snapshot > img,
+        .loom-capture-article figure.loom-interactive-snapshot > video,
         .loom-capture-article .loom-interactive-snapshot-preview img {
           display: block !important;
           width: 100% !important;
-          height: 9rem !important;
-          max-height: 9rem !important;
+          height: auto !important;
+          max-height: clamp(14rem, 42vh, 30rem) !important;
           min-height: 0 !important;
           object-fit: contain;
           margin: 0 !important;
@@ -3044,6 +4102,18 @@ function ArticleRender({
           display: block;
           width: 100%;
           aspect-ratio: 16 / 9;
+          /* 2026-05-02 viewport cap. Without this, a 16:9 iframe at
+             full article-column width fills 60-70% of the viewport.
+             The iframe captures wheel events when the cursor is over
+             it, so the user effectively can't scroll the article
+             past the video — every wheel tick goes into the Vimeo /
+             YouTube player instead. Capping the player at 50vh
+             guarantees always-visible page area above and below
+             where wheel scrolls the article normally. The iframe
+             stays its native aspect ratio inside the cap (centered;
+             player fills the available width). */
+          max-height: 50vh;
+          margin-inline: auto;
           background: color-mix(in srgb, black 88%, var(--mat-thin-bg) 12%);
         }
         .loom-capture-article iframe.loom-provider-embed {
@@ -3861,14 +4931,17 @@ function ArticleRender({
                 <span>Distill</span>
               </button>
               {hasSnapshot && (
-                <a
-                  href={snapshotHref}
-                  title="Open stored source snapshot"
-                  aria-label="Open stored source snapshot"
+                <button
+                  type="button"
+                  onClick={() => setViewModeAndPersist(effectiveViewMode === 'snapshot' ? 'reader' : 'snapshot')}
+                  title={effectiveViewMode === 'snapshot' ? 'Switch to reader view (clean prose column)' : 'Switch to snapshot view (original page layout + styles + interactive elements)'}
+                  aria-label={effectiveViewMode === 'snapshot' ? 'Switch to reader view' : 'Switch to snapshot view'}
+                  aria-pressed={effectiveViewMode === 'snapshot'}
+                  className={effectiveViewMode === 'snapshot' ? 'is-active' : undefined}
                 >
                   <span className="glyph" aria-hidden="true">◱</span>
-                  <span>Snapshot</span>
-                </a>
+                  <span>{effectiveViewMode === 'snapshot' ? 'Reader' : 'Snapshot'}</span>
+                </button>
               )}
               <button
                 type="button"
@@ -3894,7 +4967,14 @@ function ArticleRender({
             <div className="loom-capture-meta-line" data-no-print>
               {wordCount.toLocaleString()} words · {readingMinutes}m read
             </div>
-            {captureAst?.blocks?.length ? (
+            {effectiveViewMode === 'snapshot' && hasSnapshot ? (
+              <CaptureSnapshotEmbed
+                rootParam={rootParam}
+                subParam={subParam}
+                snapshotFilename={snapshotFilename || ''}
+                title={title}
+              />
+            ) : captureAst?.blocks?.length ? (
               <CaptureAstArticle ast={captureAst} fallbackSource={transformedBody} snapshotHref={snapshotHref} />
             ) : (
               <ArticleBodyWithImages source={transformedBody} snapshotHref={snapshotHref} />

@@ -291,7 +291,7 @@ function ArchitectureDiagram() {
       <ArchBox x={60}  y={238} title="Weft engine" sub="finds echoes" />
       <ArchBox x={260} y={238} title="Panel store" sub="what settled" />
       <ArchBox x={460} y={238} title="Diagram graph" sub="five modes" accent />
-      <ArchBox x={660} y={238} title="AI bridge" sub="claude" />
+      <ArchBox x={660} y={238} title="AI bridge" sub="codex" />
 
       {/* Data row */}
       <ArchBox x={60}  y={398} title="Source vault" sub="PDF · EPUB · txt" />

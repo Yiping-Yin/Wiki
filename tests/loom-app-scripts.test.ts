@@ -7,8 +7,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   buildInstallFailure,
+  installLoomApp,
   installRuntimeMetadata,
   isPermissionFallbackError,
+  maybePruneInstalledSourceArtifact,
 } from '../scripts/install-loom-app.mjs';
 import { runInstalledAppSmoke } from '../scripts/installed-app-smoke.mjs';
 import { assertNoStaleBuildArtifacts, findStaleBuildArtifacts, removeDuplicateArtifacts } from '../scripts/next-build-lock.mjs';
@@ -70,6 +72,93 @@ test('install script initializes content root only when no user selection exists
     ) as { contentRoot?: string };
     assert.equal(persisted.contentRoot, '/repo/Wiki');
   } finally {
+    fs.rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
+test('install script removes the DerivedData source app after a successful install', async () => {
+  const tempRoot = fs.mkdtempSync(path.join(tmpdir(), 'loom-install-source-prune-'));
+
+  try {
+    const derivedDataRoot = path.join(tempRoot, 'DerivedData');
+    const sourceApp = path.join(derivedDataRoot, 'Loom-test', 'Build', 'Products', 'Release', 'Loom.app');
+    const installedApp = path.join(tempRoot, 'Applications', 'Loom.app');
+
+    fs.mkdirSync(path.join(sourceApp, 'Contents'), { recursive: true });
+    fs.mkdirSync(path.join(installedApp, 'Contents'), { recursive: true });
+
+    await maybePruneInstalledSourceArtifact({
+      source: sourceApp,
+      target: installedApp,
+      installSucceeded: true,
+      derivedDataRootOverride: derivedDataRoot,
+    });
+
+    assert.equal(fs.existsSync(sourceApp), false);
+    assert.equal(fs.existsSync(installedApp), true);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test('install script does not prune non-DerivedData app bundles', async () => {
+  const tempRoot = fs.mkdtempSync(path.join(tmpdir(), 'loom-install-source-keep-'));
+
+  try {
+    const derivedDataRoot = path.join(tempRoot, 'DerivedData');
+    const archiveApp = path.join(tempRoot, 'archive', 'Loom.xcarchive', 'Products', 'Applications', 'Loom.app');
+    const installedApp = path.join(tempRoot, 'Applications', 'Loom.app');
+
+    fs.mkdirSync(path.join(archiveApp, 'Contents'), { recursive: true });
+    fs.mkdirSync(path.join(installedApp, 'Contents'), { recursive: true });
+
+    await maybePruneInstalledSourceArtifact({
+      source: archiveApp,
+      target: installedApp,
+      installSucceeded: true,
+      derivedDataRootOverride: derivedDataRoot,
+    });
+
+    assert.equal(fs.existsSync(archiveApp), true);
+    assert.equal(fs.existsSync(installedApp), true);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test('install script still prunes the source app when repo cache cleanup fails', async () => {
+  const homeRoot = fs.mkdtempSync(path.join(tmpdir(), 'loom-install-cleanup-order-'));
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+
+  try {
+    let sourceCleanupCalled = false;
+    console.warn = (message?: unknown) => {
+      warnings.push(String(message ?? ''));
+    };
+
+    await installLoomApp({
+      mode: 'user',
+      repoRoot: path.join(homeRoot, 'repo'),
+      homeOverride: homeRoot,
+      sourceAppPath: path.join(homeRoot, 'DerivedData', 'Loom-test', 'Build', 'Products', 'Release', 'Loom.app'),
+      dependencies: {
+        installTo: async () => {},
+        stageRuntimeBundle: async () => path.join(homeRoot, 'runtime'),
+        installRuntimeMetadata: async () => {},
+        maybePruneRepoBuildArtifacts: async () => {
+          throw new Error('repo cleanup failed');
+        },
+        maybePruneInstalledSourceArtifact: async () => {
+          sourceCleanupCalled = true;
+        },
+      },
+    });
+
+    assert.equal(sourceCleanupCalled, true);
+    assert.match(warnings.join('\n'), /repo cleanup failed/);
+  } finally {
+    console.warn = originalWarn;
     fs.rmSync(homeRoot, { recursive: true, force: true });
   }
 });
@@ -314,7 +403,16 @@ test('installed app smoke is sandbox-compatible and does not call CLI AI', () =>
   assert.match(source, /PrivacyInfo\.xcprivacy/);
   assert.match(source, /com\.apple\.security\.app-sandbox/);
   assert.match(source, /codesign/);
-  assert.doesNotMatch(source, /CODEX_BIN|CLAUDE_BIN|\/api\/chat|server\.js/);
+  assert.doesNotMatch(source, /CODEX_BIN|\/api\/chat|server\.js/);
+});
+
+test('web smoke samples the same derived knowledge fixture that the server reads', () => {
+  const repoRoot = path.resolve(__dirname, '..');
+  const source = fs.readFileSync(path.join(repoRoot, 'scripts', 'smoke.mjs'), 'utf8');
+
+  assert.match(source, /const smokeDerivedDataRoot = process\.env\.LOOM_SMOKE_DERIVED_DATA_ROOT/);
+  assert.match(source, /path\.join\(smokeDerivedDataRoot, 'knowledge', '\.cache', 'manifest', 'knowledge-manifest\.json'\)/);
+  assert.match(source, /LOOM_DERIVED_DATA_ROOT: smokeDerivedDataRoot/);
 });
 
 test('Release Xcode bundle staging fails when the static export is missing', () => {
