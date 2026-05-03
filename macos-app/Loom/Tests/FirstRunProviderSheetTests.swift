@@ -9,7 +9,7 @@ final class FirstRunProviderSheetTests: XCTestCase {
 
     func testLocalProviderDoesNotRequireAnthropicKeyOnFirstRun() {
         let defaults = suite()
-        defaults.set(AIProviderKind.claudeCli.rawValue, forKey: "loom.ai.provider")
+        defaults.set(AIProviderKind.codexCli.rawValue, forKey: "loom.ai.provider")
 
         XCTAssertFalse(
             AIProviderKind.shouldShowFirstRunPrompt(

@@ -5,6 +5,13 @@ private let lastLocalPathDefaultsKey = "loom.lastLocalPath"
 
 final class WebDebugState: ObservableObject {
     @Published var currentURL: String = ""
+    /// URL of the last committed navigation. Updated only on
+    /// `didCommit` / `didFinish` — NOT on `didStartProvisionalNavigation`.
+    /// Used by the sidebar's currentHref so active-link state doesn't
+    /// flip mid-press during provisional navigation (which was eating
+    /// first clicks on Weaves / Reference). The chrome no longer reads
+    /// any URL state — see ContentView.chromeColorScheme.
+    @Published var committedURL: String = ""
     @Published var pageTitle: String = ""
     @Published var isLoading: Bool = false
     @Published var lastError: String = ""
@@ -74,6 +81,37 @@ struct ContentView: View {
     // NSViewRepresentable rebuilds with the freshly-activated host root
     // without requiring an app relaunch.
     @State private var webviewEpoch: Int = 0
+    /// Drives the app-wide auto theme. Auto means Loom's day/night
+    /// rhythm, not the current macOS appearance: day is paper, night is
+    /// night, everywhere.
+    @State private var themeClock: Date = Date()
+
+    /// Source-file viewer state. When non-nil, the detail column shows
+    /// a native `SourceFileView` (PDFKit / QuickLook) instead of the
+    /// webview. Set by `.loomOpenSourceFile` notification (sidebar PDF
+    /// click). Cleared when user clicks the back chevron in the viewer.
+    @State private var activeSourceFileURL: URL? = nil
+
+    /// Folder-home viewer state. When non-nil, the detail column shows
+    /// a native `LoomFolderHomeView` (Loom.md + file listing) instead of
+    /// the webview. Set by `.loomShowFolderHome` notification when the
+    /// user clicks a root or sub-folder name in the sidebar. Mutually
+    /// exclusive with `activeSourceFileURL`.
+    @State private var activeFolderHomeURL: URL? = nil
+
+    /// True when the user clicked sidebar's "Sources" entry — main
+    /// pane shows `LoomLibraryView` (a list of all roots/pages).
+    /// Mutually exclusive with source-file / folder-home overlays.
+    @State private var showLibrary: Bool = false
+
+    /// AI bar state. Open/closed, conversation history, current draft,
+    /// in-flight flag. History persists across opens within the session
+    /// — collapsing the bar keeps the conversation alive so re-opening
+    /// continues the thread.
+    @State private var aiBarOpen: Bool = false
+    @State private var aiMessages: [LoomAIMessage] = []
+    @State private var aiDraft: String = ""
+    @State private var aiThinking: Bool = false
 
     // Native-sidebar visibility. M1 "source-sacred" default — sidebar
     // starts hidden so the doc fills the room on launch, matching the
@@ -140,43 +178,32 @@ struct ContentView: View {
         }
     }
 
-    /// Chrome background color that tracks the resolved app theme, with a
-    /// route-level night override for ink-wash pages. The resolved theme has
-    /// to drive the NSWindow appearance too; otherwise the sidebar text can
-    /// flip dark while the native sidebar material stays Aqua-light.
+    /// Chrome background color — single source of truth, follows the
+    /// resolved app theme (system or manual override). NO route-level
+    /// overrides. Per user 2026-04-25: "白天的时候,所有页面都是浅色主题,
+    /// 晚上都是深色主题。不搞特殊。" Day = paper everywhere, night = night
+    /// everywhere. The previous per-route forcedNightChromePaths machinery
+    /// (which flipped chrome on /weaves, /sources, /knowledge, etc.) was
+    /// the root cause of sidebar flicker AND first-click eating on
+    /// Weaves/Reference (the colorScheme env churn invalidated mid-press
+    /// Buttons). Killed.
     private var chromeBackground: Color {
         usesDarkChrome ? LoomTokens.night : LoomTokens.paper
     }
 
-    /// Whether the current active surface + page forces ink-wash night.
-    /// Source/archive routes are visually night-forward even when the
-    /// global theme has not caught up yet; the native sidebar must follow
-    /// the content background instead of staying Aqua-light beside it.
-    private var isNightChrome: Bool {
-        guard activeSurface == .web else { return false }
-        return Self.forcedNightChromePaths.contains { webState.currentURL.contains($0) }
-    }
-
-    private static let forcedNightChromePaths = [
-        "/weaves",
-        "/sources",
-        "/knowledge/",
-        "/llm-wiki",
-        "/wiki/",
-    ]
-
     private var usesDarkChrome: Bool {
-        sidebarColorScheme == .dark || isNightChrome
+        sidebarColorScheme == .dark
     }
 
     private var chromeColorScheme: ColorScheme {
-        usesDarkChrome ? .dark : sidebarColorScheme
+        sidebarColorScheme
     }
 
     private var sidebarColorScheme: ColorScheme {
         SidebarThemeResolution.resolvedColorScheme(
             theme: theme,
-            systemIsDark: NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            systemIsDark: NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua,
+            now: themeClock
         )
     }
 
@@ -194,13 +221,20 @@ struct ContentView: View {
                 // reads as the window's center of gravity instead of
                 // sharing it with the nav column.
                 .navigationSplitViewColumnWidth(min: 180, ideal: 208, max: 300)
-                // Scoped colorScheme — flip sidebar to dark when the
-                // resolved chrome is night so `.primary`, `.secondary`,
-                // `.tertiary`, and our own ink tokens render in candle.
-                // Doesn't cascade to other SwiftUI scenes, so the
-                // sticky-dark regression from `.preferredColorScheme`
-                // (#139) can't happen.
-                .environment(\.colorScheme, chromeColorScheme)
+                // Scoped colorScheme — pinned to the SYSTEM-following
+                // sidebar scheme, NOT the route-aware chromeColorScheme.
+                //
+                // Why pinned (2026-04-25): when this flipped on every
+                // committed nav into /weaves, SwiftUI invalidated the
+                // entire sidebar subtree at commit time. A user's first
+                // click on the Weaves link landed on a Button that was
+                // mid-rerender; the click was eaten and a second click
+                // was required to actually navigate. Decoupling the
+                // sidebar's colorScheme from chrome keeps the sidebar
+                // tree stable through navigation; the chrome (toolbar +
+                // window background) still flips via the toolbar
+                // modifiers below.
+                .environment(\.colorScheme, sidebarColorScheme)
         } detail: {
             surfaceContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -261,6 +295,9 @@ struct ContentView: View {
                 userInfo: ["mode": mode]
             )
         }
+        .onReceive(Timer.publish(every: 300, on: .main, in: .common).autoconnect()) { now in
+            themeClock = now
+        }
         // Dynamic chrome tint — paper on most surfaces, night on
         // Weaves / Constellation / Branching / Palimpsest / Evening.
         // Reacts to `webState.currentURL` so switching pages re-tints
@@ -315,6 +352,434 @@ struct ContentView: View {
         .animation(.easeOut(duration: 0.35), value: activeSurface)
     }
 
+    /// Handle a click on a `loom://anchor?...` link inside a rendered
+    /// note. Resolves the doc by name within the current root, opens
+    /// the source viewer, and asks the PDFViewHolder to scroll to the
+    /// saved page+rect once the view has mounted.
+    private func handleAnchorJump(_ note: Notification) {
+        guard let anchorURL = note.userInfo?["url"] as? URL,
+              let components = URLComponents(url: anchorURL, resolvingAgainstBaseURL: false),
+              let queryItems = components.queryItems else { return }
+        let docName = queryItems.first(where: { $0.name == "doc" })?.value ?? ""
+        let pageStr = queryItems.first(where: { $0.name == "page" })?.value ?? "0"
+        let rectStr = queryItems.first(where: { $0.name == "rect" })?.value ?? ""
+        guard let rootURL = currentAnchorRootURL() else { return }
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(at: rootURL, includingPropertiesForKeys: nil) else { return }
+        var match: URL? = nil
+        for case let url as URL in enumerator {
+            if url.lastPathComponent == docName { match = url; break }
+        }
+        guard let docURL = match else { return }
+        guard let rootID = ContentRootStore.allActiveURLs.first(where: { $0.value == rootURL })?.key else { return }
+        let rootPath = rootURL.standardizedFileURL.path
+        let docPath = docURL.standardizedFileURL.path
+        guard docPath.hasPrefix(rootPath + "/") else { return }
+        let relative = String(docPath.dropFirst(rootPath.count + 1))
+        let encoded = relative
+            .split(separator: "/")
+            .map { $0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? String($0) }
+            .joined(separator: "/")
+        guard let target = URL(string: "loom://content/\(rootID.uuidString.lowercased())/\(encoded)") else { return }
+        activeSourceFileURL = target
+        activeFolderHomeURL = nil
+        let pageIndex = Int(pageStr) ?? 0
+        let rectFields = rectStr.split(separator: ",").compactMap { Double($0) }
+        guard rectFields.count == 4 else { return }
+        let rect = CGRect(x: rectFields[0], y: rectFields[1], width: rectFields[2], height: rectFields[3])
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NotificationCenter.default.post(
+                name: .loomApplyPDFAnchor,
+                object: nil,
+                userInfo: ["page": pageIndex, "rect": NSValue(rect: rect)]
+            )
+        }
+    }
+
+    /// Returns true when a `loom://content/<uuid>/...` URL still points
+    /// at a root that's currently active. Lets us preserve folder-home
+    /// / source-file overlays across additive content-root changes
+    /// (add a sibling root) while still clearing them on destructive
+    /// changes (remove the root that the overlay referenced).
+    static func urlPointsToActiveRoot(_ url: URL) -> Bool {
+        guard url.scheme == LoomURLSchemeHandler.scheme, url.host == "content" else { return false }
+        let path = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let firstSeg = path.split(separator: "/").first else { return false }
+        guard let id = UUID(uuidString: String(firstSeg)) else { return false }
+        return ContentRootStore.allActiveURLs[id] != nil
+    }
+
+    private func currentAnchorRootURL() -> URL? {
+        if let folderHome = activeFolderHomeURL,
+           let info = Self.resolveFolderHomeURL(folderHome),
+           let id = info.rootID {
+            return ContentRootStore.activeURL(for: id)
+        }
+        return ContentRootStore.allActiveURLs.values.first
+    }
+
+    /// Build a snapshot of the user's current location for the AI bar's
+    /// breadcrumb display and (Phase B4) ancestor-Loom.md context
+    /// injection. Source files override folder home, which overrides
+    /// the webview's URL.
+    private var currentAIContext: LoomAIContext {
+        if let url = activeSourceFileURL {
+            return resolveContext(for: url)
+        }
+        if let url = activeFolderHomeURL {
+            return resolveContext(for: url)
+        }
+        return LoomAIContext(breadcrumb: "Loom", contentURL: nil, resolvedFileURL: nil)
+    }
+
+    private func resolveContext(for loomURL: URL) -> LoomAIContext {
+        let hostRoots = LoomRuntimePaths.resolveHostRoots()
+        let resolved = LoomURLSchemeHandler.resolve(loomURL, hostRoots: hostRoots, contentRoots: ContentRootStore.allActiveURLs)
+        // Build breadcrumb from path segments, plus root display name when
+        // the URL identifies a multi-root entry.
+        let path = loomURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let segments = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        var crumbs: [String] = []
+        if let firstSeg = segments.first, let rootID = UUID(uuidString: firstSeg),
+           let storedRoot = ContentRootStore.loadAll().first(where: { $0.id == rootID }) {
+            crumbs.append(storedRoot.displayName)
+            for seg in segments.dropFirst() {
+                crumbs.append(seg.removingPercentEncoding ?? seg)
+            }
+        } else {
+            for seg in segments {
+                crumbs.append(seg.removingPercentEncoding ?? seg)
+            }
+        }
+        let breadcrumb = crumbs.isEmpty ? "Loom" : crumbs.joined(separator: " › ")
+        return LoomAIContext(breadcrumb: breadcrumb, contentURL: loomURL, resolvedFileURL: resolved)
+    }
+
+    /// Resolve the Loom.md target file for the current context. Folder
+    /// home → that folder's Loom.md (mirrored under the file store).
+    /// Source file → that file's parent folder's Loom.md (mirrored).
+    /// Falls back to the first active root's Loom.md (file store).
+    ///
+    /// Source Fidelity rule (2026-04-27): never returns a URL inside
+    /// the user's external folder. All AI-generated Loom.md writes go
+    /// through `LoomFileStore`, keyed by `<rootID>/sub/<rel-path>`.
+    /// The user's picked folder stays untouched.
+    private func loomMDTarget(for context: LoomAIContext) -> URL? {
+        if let resolved = context.resolvedFileURL {
+            let folder = resolved.hasDirectoryPath ? resolved : resolved.deletingLastPathComponent()
+            if let mapped = Self.fileStoreMDPath(forExternalFolder: folder) {
+                return mapped
+            }
+        }
+        if let firstID = ContentRootStore.allActiveURLs.keys.first {
+            return LoomFileStore.loomMDURL(for: firstID)
+        }
+        return nil
+    }
+
+    /// Map an external folder URL back to its sandbox-stored Loom.md
+    /// equivalent. Walks active roots to find the one containing the
+    /// given folder, computes the relative sub-path, and routes through
+    /// `LoomFileStore.loomMDURL(for:subPath:)`. Returns nil when no
+    /// registered root contains the folder.
+    private static func fileStoreMDPath(forExternalFolder folder: URL) -> URL? {
+        let folderPath = folder.standardizedFileURL.path
+        for (rootID, rootURL) in ContentRootStore.allActiveURLs {
+            let rootPath = rootURL.standardizedFileURL.path
+            if folderPath == rootPath {
+                return LoomFileStore.loomMDURL(for: rootID)
+            }
+            if folderPath.hasPrefix(rootPath + "/") {
+                let rel = String(folderPath.dropFirst(rootPath.count + 1))
+                return LoomFileStore.loomMDURL(for: rootID, subPath: rel)
+            }
+        }
+        return nil
+    }
+
+    /// Append an AI message to the target Loom.md's `## Notes` section
+    /// as a timestamped entry. Creates the file + heading as needed.
+    private func saveAIMessageAsNote(_ msg: LoomAIMessage) {
+        let context = currentAIContext
+        guard let target = loomMDTarget(for: context) else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        let timestamp = formatter.string(from: Date())
+        let entry = "### AI — \(timestamp)\n\(msg.content)\n"
+        do {
+            let existing = (try? String(contentsOf: target, encoding: .utf8)) ?? ""
+            let updated = Self.appendNote(entry: entry, to: existing)
+            try updated.write(to: target, atomically: true, encoding: .utf8)
+        } catch {
+            aiMessages.append(LoomAIMessage(role: .ai, content: "[error] couldn't save note: \(error.localizedDescription)"))
+        }
+    }
+
+    /// Replace the description portion (everything before `## Notes`)
+    /// of the target Loom.md with the AI message content. Preserves
+    /// existing notes. Creates the file when missing.
+    private func saveAIMessageAsDescription(_ msg: LoomAIMessage) {
+        let context = currentAIContext
+        guard let target = loomMDTarget(for: context) else { return }
+        do {
+            let existing = (try? String(contentsOf: target, encoding: .utf8)) ?? ""
+            let split = LoomFolderHomeView.splitDescriptionAndNotes(existing)
+            let combined = LoomFolderHomeView.rebuildMarkdown(description: msg.content, notes: split.notes)
+            try combined.write(to: target, atomically: true, encoding: .utf8)
+        } catch {
+            aiMessages.append(LoomAIMessage(role: .ai, content: "[error] couldn't save description: \(error.localizedDescription)"))
+        }
+    }
+
+    private static func appendNote(entry: String, to source: String) -> String {
+        let needsLeadingNewline = !source.isEmpty && !source.hasSuffix("\n")
+        var working = source + (needsLeadingNewline ? "\n" : "")
+        if !source.contains("## Notes") {
+            if !working.isEmpty && !working.hasSuffix("\n\n") {
+                working += working.hasSuffix("\n") ? "\n" : "\n\n"
+            }
+            working += "## Notes\n\n"
+        } else if !working.hasSuffix("\n\n") {
+            working += working.hasSuffix("\n") ? "\n" : "\n\n"
+        }
+        working += entry
+        return working
+    }
+
+    /// Send the current draft to the active AI provider with system
+    /// prompt = ancestor Loom.md context (Phase B4). The response is
+    /// appended to the chat; user explicitly chooses to save it via
+    /// Save-as-note / Save-as-description buttons (Phase B3 — user is
+    /// the classifier, no intent guessing).
+    private func dispatchAIQuery() {
+        let trimmed = aiDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !aiThinking else { return }
+        aiMessages.append(LoomAIMessage(role: .user, content: trimmed))
+        aiDraft = ""
+        aiThinking = true
+        let context = currentAIContext
+        let prompt = trimmed
+        Task {
+            do {
+                let systemPrompt = Self.buildSystemPrompt(context: context)
+                let response = try await LoomAI.send(prompt: prompt, systemPrompt: systemPrompt)
+                await MainActor.run {
+                    aiMessages.append(LoomAIMessage(role: .ai, content: response))
+                    aiThinking = false
+                }
+            } catch {
+                await MainActor.run {
+                    aiMessages.append(LoomAIMessage(role: .ai, content: "[error] \(error.localizedDescription)"))
+                    aiThinking = false
+                }
+            }
+        }
+    }
+
+    /// Compose the system prompt by walking up the current location's
+    /// path and concatenating each ancestor folder's Loom.md description
+    /// (the part before `## Notes`). Phase B4 deepens this; Phase B1+B2
+    /// uses the most local description plus the breadcrumb.
+    private static func buildSystemPrompt(context: LoomAIContext) -> String {
+        var lines: [String] = []
+        lines.append("You are an AI study assistant inside Loom, a learning tool.")
+        lines.append("The user is working in: \(context.breadcrumb).")
+        if let descriptions = ancestorDescriptions(for: context), !descriptions.isEmpty {
+            lines.append("")
+            lines.append("Context from the user's own folder descriptions:")
+            for entry in descriptions {
+                lines.append("• [\(entry.label)] \(entry.text)")
+            }
+        }
+        lines.append("")
+        lines.append("Treat the user's input as the primary task. When asked to write or restructure content, output markdown only, no commentary.")
+        return lines.joined(separator: "\n")
+    }
+
+    private struct AncestorDescription {
+        let label: String
+        let text: String
+    }
+
+    private static func ancestorDescriptions(for context: LoomAIContext) -> [AncestorDescription]? {
+        guard let resolved = context.resolvedFileURL else { return nil }
+        // Walk up from `resolved` to its containing root.
+        let allRoots = ContentRootStore.allActiveURLs
+        guard let containingRoot = allRoots.first(where: { _, rootURL in
+            let rp = rootURL.standardizedFileURL.path
+            let fp = resolved.standardizedFileURL.path
+            return fp == rp || fp.hasPrefix(rp + "/")
+        }) else { return nil }
+        let rootURL = containingRoot.value
+        var collected: [AncestorDescription] = []
+        // Build the ancestor chain from root → ... → containing folder
+        var ancestors: [URL] = [rootURL]
+        let resolvedDir = resolved.hasDirectoryPath ? resolved : resolved.deletingLastPathComponent()
+        let rootPath = rootURL.standardizedFileURL.path
+        let resolvedPath = resolvedDir.standardizedFileURL.path
+        if resolvedPath.hasPrefix(rootPath + "/") {
+            let relative = String(resolvedPath.dropFirst(rootPath.count + 1))
+            var cumulative = rootURL
+            for segment in relative.split(separator: "/") {
+                cumulative = cumulative.appendingPathComponent(String(segment))
+                ancestors.append(cumulative)
+            }
+        }
+        let storedRoots = ContentRootStore.loadAll()
+        let rootID = containingRoot.key
+        for url in ancestors {
+            // Read order (Source Fidelity, 2026-04-27): prefer the
+            // sandbox-stored Loom.md (where new writes land); fall back
+            // to a legacy external Loom.md for ancestors that still
+            // hold pre-refactor user content. Never WRITE either side
+            // here — this is a read-only AI-context walk.
+            let urlPath = url.standardizedFileURL.path
+            let storeURL: URL = {
+                if urlPath == rootPath {
+                    return LoomFileStore.loomMDURL(for: rootID)
+                }
+                let rel = urlPath.hasPrefix(rootPath + "/")
+                    ? String(urlPath.dropFirst(rootPath.count + 1))
+                    : ""
+                return LoomFileStore.loomMDURL(for: rootID, subPath: rel)
+            }()
+            let externalURL = url.appendingPathComponent("Loom.md")
+            let raw: String? = (try? String(contentsOf: storeURL, encoding: .utf8))
+                ?? (try? String(contentsOf: externalURL, encoding: .utf8))
+            guard let raw = raw else { continue }
+            let descPart = LoomFolderHomeView.splitDescriptionAndNotes(raw).description
+            guard !descPart.isEmpty else { continue }
+            let label: String
+            if url.standardizedFileURL.path == rootURL.standardizedFileURL.path,
+               let storedRoot = storedRoots.first(where: { $0.id == containingRoot.key }) {
+                label = storedRoot.displayName
+            } else {
+                label = url.lastPathComponent
+            }
+            collected.append(AncestorDescription(label: label, text: descPart))
+        }
+        return collected
+    }
+
+    /// Handler for files dropped onto the main window. Stashes the URLs
+    /// in `IngestionContext` and pokes the ingestion sheet to consume.
+    /// Extracted from the body to keep the SwiftUI compiler happy.
+    private func handleDroppedFileURLs(_ providers: [NSItemProvider]) -> Bool {
+        var urls: [URL] = []
+        let group = DispatchGroup()
+        for provider in providers {
+            group.enter()
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                if let url = url { urls.append(url) }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) {
+            guard !urls.isEmpty else { return }
+            IngestionContext.shared.pendingFileURLs = urls
+            NotificationCenter.default.post(name: .loomIngestFileDropped, object: nil)
+        }
+        return true
+    }
+
+    /// One of three mutually-exclusive native overlays on top of the
+    /// webview: source file viewer, library overview, or folder home.
+    /// Extracted from the detail-column body so the type-checker has a
+    /// fighting chance against the rest of the long ContentView body.
+    @ViewBuilder
+    private var mainPaneOverlay: some View {
+        if let activeURL = activeSourceFileURL {
+            SourceFileView(loomURL: activeURL) {
+                activeSourceFileURL = nil
+            }
+            .ignoresSafeArea()
+            .transition(.opacity)
+        } else if showLibrary {
+            LoomLibraryView()
+                .ignoresSafeArea()
+                .transition(.opacity)
+        } else if let folderURL = activeFolderHomeURL {
+            folderHomeOverlay(for: folderURL)
+                .ignoresSafeArea()
+                .transition(.opacity)
+        }
+    }
+
+    /// Resolve a `loom://content/<root-id?>/<path?>` URL to a
+    /// (folderURL, displayName, rootID) triple for the folder-home
+    /// overlay. Falls back gracefully when the URL is malformed or the
+    /// referenced root has been removed.
+    @ViewBuilder
+    private func folderHomeOverlay(for loomURL: URL) -> some View {
+        let resolved = Self.resolveFolderHomeURL(loomURL)
+        if let resolved {
+            LoomFolderHomeView(
+                rootID: resolved.rootID,
+                externalFolderURL: resolved.externalFolder,
+                displayName: resolved.displayName
+            )
+        } else {
+            VStack(spacing: 6) {
+                Text("Couldn't open this folder.")
+                    .font(.system(size: 13))
+                Text(loomURL.absoluteString)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(NSColor.windowBackgroundColor))
+        }
+    }
+
+    private struct ResolvedFolderHome {
+        /// Sub-folder under the external root if the URL drilled into
+        /// one, else the external root itself, else nil for pure pages.
+        let externalFolder: URL?
+        let displayName: String?
+        let rootID: UUID?
+    }
+
+    private static func resolveFolderHomeURL(_ loomURL: URL) -> ResolvedFolderHome? {
+        guard loomURL.scheme == LoomURLSchemeHandler.scheme,
+              loomURL.host == "content" else { return nil }
+        let relative = loomURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let segments = relative.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        // Multi-root: <uuid>/<rest>. uuid identifies the page; rest
+        // (when present) drills into the page's external folder.
+        if let firstSeg = segments.first, let rootID = UUID(uuidString: firstSeg) {
+            let rest = segments.dropFirst().joined(separator: "/")
+            let storedRoot = ContentRootStore.loadAll().first { $0.id == rootID }
+            // External folder may not exist (pure `+ Page` root) — that's fine.
+            let externalRoot = ContentRootStore.activeURL(for: rootID)
+            let externalSubfolder: URL? = {
+                guard let externalRoot = externalRoot else { return nil }
+                if rest.isEmpty { return externalRoot }
+                return externalRoot.appendingPathComponent(rest).standardizedFileURL
+            }()
+            let displayName: String? = {
+                if rest.isEmpty { return storedRoot?.displayName }
+                return externalSubfolder?.lastPathComponent
+            }()
+            return ResolvedFolderHome(
+                externalFolder: externalSubfolder,
+                displayName: displayName,
+                rootID: rootID
+            )
+        }
+        // Legacy single-root fallback (URL without UUID prefix): use
+        // first active root verbatim. Rare path; modern code always
+        // emits UUID-prefixed URLs.
+        guard let firstRootURL = ContentRootStore.allActiveURLs.values.first else { return nil }
+        let folder = relative.isEmpty
+            ? firstRootURL
+            : firstRootURL.appendingPathComponent(relative).standardizedFileURL
+        return ResolvedFolderHome(
+            externalFolder: folder,
+            displayName: folder.lastPathComponent,
+            rootID: nil
+        )
+    }
+
     @ViewBuilder
     private var detailColumn: some View {
         ZStack {
@@ -324,6 +789,32 @@ struct ContentView: View {
                     LoomWebView(url: server.webviewURL, debugState: webState, forcedTheme: webThemeMode)
                         .id(webviewEpoch)
                         .ignoresSafeArea()
+                    // Source-file viewer overlays the webview when the user
+                    // clicks a PDF (or other source file) in the sidebar.
+                    // Sits on top so we never re-route the webview itself —
+                    // the webview keeps whatever route it was on (Home /
+                    // Sources / Desk) underneath.
+                    mainPaneOverlay
+
+                    // AI bar trailing overlay — bronze strip when closed,
+                    // 380pt panel when open. Sized to its content and
+                    // pinned to the trailing edge via .frame alignment so
+                    // the rest of the detail column stays click-through
+                    // (SourceFileView's PDFKit, folder-home buttons,
+                    // webview navigation are all underneath and must
+                    // remain hit-testable).
+                    LoomAIBar(
+                        isOpen: $aiBarOpen,
+                        context: currentAIContext,
+                        messages: $aiMessages,
+                        draft: $aiDraft,
+                        isThinking: $aiThinking,
+                        onSend: dispatchAIQuery,
+                        onSaveAsNote: saveAIMessageAsNote,
+                        onSaveAsDescription: saveAIMessageAsDescription
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                    .allowsHitTesting(true)
                     // Keep the warp-shimmer on top until the webview reports
                     // its first `didFinish`. Without this mask the webview
                     // flashes white (Chromium default bg) for ~200–400ms
@@ -400,9 +891,46 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .loomContentRootChanged)) { _ in
             webState.didFirstLoad = false
             webviewEpoch &+= 1
-            // New webview instance — web sidebar will re-mount with
-            // whatever localStorage says. Force-hide it again.
             forceHideWebSidebar()
+            activeSourceFileURL = nil
+            activeFolderHomeURL = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .loomContentRootsChanged)) { _ in
+            // Multi-root list changed (add / remove / rename). Force
+            // webview rebuild so its scheme handler picks up the new
+            // contentRoots map. Clear overlays ONLY when the active
+            // root they referenced is gone (removed). Adding a sibling
+            // root shouldn't drop the user out of their current page.
+            webState.didFirstLoad = false
+            webviewEpoch &+= 1
+            forceHideWebSidebar()
+            if let url = activeSourceFileURL, !Self.urlPointsToActiveRoot(url) {
+                activeSourceFileURL = nil
+            }
+            if let url = activeFolderHomeURL, !Self.urlPointsToActiveRoot(url) {
+                activeFolderHomeURL = nil
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .loomOpenSourceFile)) { note in
+            if let url = note.userInfo?["url"] as? URL {
+                activeSourceFileURL = url
+                activeFolderHomeURL = nil
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .loomShowFolderHome)) { note in
+            if let url = note.userInfo?["url"] as? URL {
+                activeFolderHomeURL = url
+                activeSourceFileURL = nil
+                showLibrary = false
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .loomShowLibrary)) { _ in
+            showLibrary = true
+            activeSourceFileURL = nil
+            activeFolderHomeURL = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .loomJumpToPDFAnchor)) { note in
+            handleAnchorJump(note)
         }
         .onReceive(NotificationCenter.default.publisher(for: .loomShowInspectorTab)) { note in
             // Legacy "inspector tab" notification — treat the tab name
@@ -419,32 +947,28 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .loomOpenSettings)) { _ in
             openSettings()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .loomShuttleNavigate)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .loomShuttleNavigate)) { note in
             // Any sidebar / Shuttle doc navigation returns to the
-            // webview surface automatically.
+            // webview surface automatically. CRITICAL: also clear any
+            // PDF / folder-home overlay — otherwise the overlay keeps
+            // painting on top of the freshly-navigated webview, and
+            // every subsequent click lands on the phantom layer.
+            // (User's "click has no effect" symptom from PDF flow.)
+            // EXCEPTION: if the navigation target is a content URL
+            // (loom://content/...) the overlay handlers will set the
+            // appropriate URL — let them; just reset surface to .web.
             activeSurface = .web
+            let path = (note.userInfo?["path"] as? String) ?? ""
+            if !path.hasPrefix("loom://content/") {
+                activeSourceFileURL = nil
+                activeFolderHomeURL = nil
+            }
         }
         // Drop-anywhere ingestion: files dropped onto the main window
         // stash into IngestionContext and open the native Ingestion
         // window, which auto-consumes on appear. Plain text only (the
         // underlying runner enforces the 200KB + UTF-8 filter).
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-            var urls: [URL] = []
-            let group = DispatchGroup()
-            for provider in providers {
-                group.enter()
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    if let url { urls.append(url) }
-                    group.leave()
-                }
-            }
-            group.notify(queue: .main) {
-                guard !urls.isEmpty else { return }
-                IngestionContext.shared.pendingFileURLs = urls
-                NotificationCenter.default.post(name: .loomIngestFileDropped, object: nil)
-            }
-            return true
-        }
+        .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDroppedFileURLs)
         // No `.toolbar { }` — every former toolbar action has a keyboard
         // shortcut (⌘[ / ⌘] / ⌘R / ⌘K) or is reachable via sidebar.
         // Mac-native chrome is the window title bar only; Arc / Xcode /
@@ -1006,6 +1530,10 @@ struct LoomWebView: NSViewRepresentable {
         let escaped = mode
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
+        // Palette literals derived from `LoomTokens.ds*Hex*` so the JS
+        // injection stays in lockstep with the Swift-side canonical
+        // tokens. Editing the hex requires editing it in LoomTokens
+        // only — never re-edit this string by hand.
         return """
         (() => {
           try {
@@ -1013,30 +1541,74 @@ struct LoomWebView: NSViewRepresentable {
             const root = document.documentElement;
             const palette = mode === 'dark'
               ? {
-                  bg: '#1A1815',
-                  fg: '#E8E0CE',
-                  fgSecondary: '#B9AE93',
-                  muted: '#6F6756',
-                  accent: '#C4A468',
-                  accentText: '#D4B478'
+                  bg: '\(LoomTokens.dsPaperDeepHexDark)',
+                  fg: '\(LoomTokens.dsInk1HexDark)',
+                  fgSecondary: '\(LoomTokens.dsInk2HexDark)',
+                  muted: '\(LoomTokens.dsMutedHexDark)',
+                  accent: '\(LoomTokens.dsThreadHex)',
+                  accentText: '\(LoomTokens.dsThreadTextHexDark)',
+                  paperDeep: '#1A1815',
+                  paper: '#221E18',
+                  paperUp: '#2B2620',
+                  paperCard: '#332E27',
+                  ink1: '#E8E0CE',
+                  ink2: '#B9AE93',
+                  ink3: '#8F8571',
+                  hair: 'rgba(232, 224, 206, 0.10)',
+                  hairFaint: 'rgba(232, 224, 206, 0.05)',
+                  thread: '\(LoomTokens.dsThreadHex)',
+                  threadMuted: 'rgba(196, 164, 104, 0.55)'
                 }
               : {
-                  bg: '#F4F0E4',
-                  fg: '#2A2520',
-                  fgSecondary: '#4A4339',
-                  muted: '#8A8373',
-                  accent: '#9E7C3E',
-                  accentText: '#7A5E2E'
+                  bg: '\(LoomTokens.dsPaperDeepHexLight)',
+                  fg: '\(LoomTokens.dsInk1HexLight)',
+                  fgSecondary: '\(LoomTokens.dsInk2HexLight)',
+                  muted: '\(LoomTokens.dsMutedHexLight)',
+                  accent: '\(LoomTokens.dsThreadHex)',
+                  accentText: '\(LoomTokens.dsThreadTextHexLight)',
+                  paperDeep: '#F4F0E4',
+                  paper: '#F4F0E4',
+                  paperUp: '#FAF7EC',
+                  paperCard: '#EADFC9',
+                  ink1: '#2A2520',
+                  ink2: '#4A4339',
+                  ink3: '#8A8373',
+                  hair: 'rgba(26, 23, 18, 0.08)',
+                  hairFaint: 'rgba(26, 23, 18, 0.04)',
+                  thread: '\(LoomTokens.dsThreadTextHexLight)',
+                  threadMuted: 'rgba(122, 94, 46, 0.55)'
                 };
-            try { localStorage.setItem('wiki:theme', mode); } catch (_) {}
-            root.classList.toggle('dark', mode === 'dark');
-            root.classList.toggle('light', mode === 'light');
-            root.style.setProperty('--bg', palette.bg);
-            root.style.setProperty('--fg', palette.fg);
-            root.style.setProperty('--fg-secondary', palette.fgSecondary);
-            root.style.setProperty('--muted', palette.muted);
-            root.style.setProperty('--accent', palette.accent);
-            root.style.setProperty('--accent-text', palette.accentText);
+            const apply = () => {
+              try { localStorage.setItem('wiki:theme', mode); } catch (_) {}
+              root.dataset.loomTheme = mode;
+              root.classList.toggle('dark', mode === 'dark');
+              root.classList.toggle('light', mode === 'light');
+              root.style.colorScheme = mode;
+              root.style.setProperty('--bg', palette.bg);
+              root.style.setProperty('--fg', palette.fg);
+              root.style.setProperty('--fg-secondary', palette.fgSecondary);
+              root.style.setProperty('--muted', palette.muted);
+              root.style.setProperty('--accent', palette.accent);
+              root.style.setProperty('--accent-text', palette.accentText);
+              root.style.setProperty('--paper-deep', palette.paperDeep);
+              root.style.setProperty('--paper', palette.paper);
+              root.style.setProperty('--paper-up', palette.paperUp);
+              root.style.setProperty('--paper-card', palette.paperCard);
+              root.style.setProperty('--ink-1', palette.ink1);
+              root.style.setProperty('--ink-2', palette.ink2);
+              root.style.setProperty('--ink-3', palette.ink3);
+              root.style.setProperty('--hair', palette.hair);
+              root.style.setProperty('--hair-faint', palette.hairFaint);
+              root.style.setProperty('--thread', palette.thread);
+              root.style.setProperty('--thread-muted', palette.threadMuted);
+            };
+            apply();
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', apply, { once: true });
+            }
+            requestAnimationFrame(apply);
+            setTimeout(apply, 80);
+            setTimeout(apply, 240);
           } catch (_) {}
         })();
         """
@@ -1094,18 +1666,19 @@ struct LoomWebView: NSViewRepresentable {
         config.websiteDataStore = .default()
 
         // Phase 1 of architecture inversion: register the `loom://` scheme
-        // handler on every webview. Two hosts supported:
-        //   loom://content/<path> → user's onboarded knowledge folder
-        //   loom://bundle/<path>  → app Resources (pre-rendered MDX lands here
-        //                           in Phase 5)
+        // handler on every webview. Hosts supported:
+        //   loom://content/<root-id>/<path> → user's picked study folder (multi-root)
+        //   loom://content/<path>           → legacy single-root fallback
+        //   loom://bundle/<path>            → app Resources (pre-rendered MDX)
         // Traffic still flows through localhost:3001 for now; registering the
         // handler means progressive migration is a per-surface load-URL change.
         var hostRoots: [String: URL] = [:]
-        // Prefer the security-scoped URL activated at app launch — under
-        // sandbox that's the only URL with read permission; under
-        // non-sandbox it's harmless and still correct.
-        if let activeURL = SecurityScopedFolderStore.currentActiveURL {
-            hostRoots["content"] = activeURL
+        // Multi-root content URLs: handler resolves loom://content/<uuid>/...
+        // by looking up the uuid in this map. Legacy URLs without a uuid
+        // still resolve via hostRoots["content"] (whichever root sorts first).
+        let contentRoots = ContentRootStore.allActiveURLs
+        if let firstRootURL = contentRoots.values.first {
+            hostRoots["content"] = firstRootURL
         } else if let contentRootPath = LoomRuntimePaths.resolveContentRoot() {
             hostRoots["content"] = URL(fileURLWithPath: contentRootPath)
         }
@@ -1129,8 +1702,10 @@ struct LoomWebView: NSViewRepresentable {
                 ? staged
                 : bundleResources
         }
-        if !hostRoots.isEmpty {
-            let handler = LoomURLSchemeHandler(hostRoots: hostRoots)
+        hostRoots["derived"] = URL(fileURLWithPath: LoomRuntimePaths.derivedDataRoot())
+        hostRoots["user-data"] = URL(fileURLWithPath: LoomRuntimePaths.userDataRoot())
+        if !hostRoots.isEmpty || !contentRoots.isEmpty {
+            let handler = LoomURLSchemeHandler(hostRoots: hostRoots, contentRoots: contentRoots)
             config.setURLSchemeHandler(handler, forURLScheme: LoomURLSchemeHandler.scheme)
             context.coordinator.loomSchemeHandler = handler
         }
@@ -1206,6 +1781,31 @@ struct LoomWebView: NSViewRepresentable {
             name: LoomSchemaCorrectionsBridgeHandler.name
         )
         context.coordinator.schemaCorrectionsBridge = schemaCorrectionsBridge
+
+        // Phase 7.2: per-pursuit hide writes. Same idiom as the schema-
+        // corrections bridge — the static native shell has no Next.js
+        // API server so the Pursuits room posts hide / restore through
+        // this reply bridge instead of `POST /api/pursuit-hide`.
+        let pursuitHideBridge = LoomPursuitHideBridgeHandler()
+        userContentController.addScriptMessageHandler(
+            pursuitHideBridge,
+            contentWorld: .page,
+            name: LoomPursuitHideBridgeHandler.name
+        )
+        context.coordinator.pursuitHideBridge = pursuitHideBridge
+
+        // Phase 7.3: extractor-anchor dismissal writes. Same idiom —
+        // reading-page provisional anchors post `dismiss` through this
+        // reply bridge instead of `POST /api/extractor-anchors-dismissed`.
+        // Confirmation flows do NOT route here (they write to IndexedDB
+        // via the existing capture path); only dismissal lands on disk.
+        let extractorAnchorsBridge = LoomExtractorAnchorsBridgeHandler()
+        userContentController.addScriptMessageHandler(
+            extractorAnchorsBridge,
+            contentWorld: .page,
+            name: LoomExtractorAnchorsBridgeHandler.name
+        )
+        context.coordinator.extractorAnchorsBridge = extractorAnchorsBridge
 
         #if DEBUG
         let debugScript = """
@@ -1497,6 +2097,8 @@ struct LoomWebView: NSViewRepresentable {
         var sourceLibraryBridge: SourceLibraryBridgeHandler?
         var embedBridge: EmbeddingBridgeHandler?
         var schemaCorrectionsBridge: LoomSchemaCorrectionsBridgeHandler?
+        var pursuitHideBridge: LoomPursuitHideBridgeHandler?
+        var extractorAnchorsBridge: LoomExtractorAnchorsBridgeHandler?
         var lastRequestedURL: URL?
         var fallbackURL: URL?
         let debugState: WebDebugState
@@ -1675,6 +2277,19 @@ struct LoomWebView: NSViewRepresentable {
         /// Kept as an ordered array so we can index deterministically from a
         /// source-URL hash. Do NOT reorder — every existing tile would
         /// silently change color next launch. Append-only.
+        ///
+        /// Token-sync note (Design System v1.0, 2026-04-28): these values
+        /// LOOK like duplicates of `LoomTokens.thread/rose/sage/indigo/
+        /// umber/plum/ochre`, and the first slot `#9E7C3E` was historically
+        /// the legacy `thread` bronze (retired in v1.0 to `#C4A468`). They
+        /// are deliberately NOT pointed at canonical tokens because:
+        /// (1) the index→hex mapping is part of persisted tile identity —
+        /// re-pointing slot 0 to the new bronze would silently re-color
+        /// every existing tile, breaking the "do not reorder" invariant;
+        /// (2) PatternsClient's web-side `PALETTE` mirrors this exact
+        /// ordered list and must not drift. Treat this as historical data,
+        /// not a theme palette. New panel-coloring features should consume
+        /// `LoomTokens.dsThread` directly.
         static let panelPalette: [String] = [
             "#9E7C3E", "#8F4646", "#5C6E4E", "#3A477A",
             "#5C3F2A", "#5E3D5C", "#A8783E",
@@ -1912,6 +2527,16 @@ struct LoomWebView: NSViewRepresentable {
                     ]
                 }
             }
+
+            // Phase 7.2: layer per-pursuit hide state + spawn metadata
+            // onto the projection. `hidden` is a quiet boolean flag —
+            // the web side filters by it (or surfaces hidden behind a
+            // disclosure). `spawn` carries the "from syllabus" eyebrow
+            // body so user-spawned vs. auto-spawned can be distinguished
+            // without changing the LoomPursuit schema (deliverable D).
+            let hiddenIds = PursuitHideStore.readAll()
+            let spawnEntriesById = PursuitSpawnMetaStore.readAllEntriesById()
+
             var out: [[String: Any]] = []
             for pursuit in pursuits {
                 let sourceItems = pursuit.decodedSourceDocIds.map { docId in
@@ -1929,7 +2554,7 @@ struct LoomWebView: NSViewRepresentable {
                 }
                 let sourceCount = sourceItems.count
                 let panelCount = panelItems.count
-                let entry: [String: Any] = [
+                var entry: [String: Any] = [
                     "id": pursuit.id,
                     "question": pursuit.question,
                     "weight": pursuit.weight,
@@ -1939,7 +2564,19 @@ struct LoomWebView: NSViewRepresentable {
                     "sourceItems": sourceItems,
                     "panelItems": panelItems,
                     "at": pursuit.updatedAt,
+                    "hidden": hiddenIds.contains(pursuit.id),
                 ]
+                if let spawn = spawnEntriesById[pursuit.id] {
+                    entry["spawn"] = [
+                        "extractorId": spawn.extractorId,
+                        "fieldPath": spawn.fieldPath,
+                        "sourceDocId": pursuit.decodedSourceDocIds.first ?? "",
+                        "sourceTraceId": spawn.sourceTraceId,
+                        "sourceTitle": spawn.sourceTitle,
+                        "body": spawn.body,
+                        "at": spawn.at,
+                    ] as [String: Any]
+                }
                 out.append(entry)
             }
             return out
@@ -2376,6 +3013,13 @@ struct LoomWebView: NSViewRepresentable {
                 }
             }
             updateDebugState(from: webView, errorMessage: "")
+            // didFinish is the second commit point — re-promote to
+            // committedURL in case the URL changed via redirect between
+            // didCommit and didFinish.
+            let committed = webView.url?.absoluteString ?? ""
+            if debugState.committedURL != committed {
+                debugState.committedURL = committed
+            }
             if !debugState.didFirstLoad {
                 revealFirstPaintIfNeeded(in: webView, reason: "didFinish")
             }
@@ -2411,6 +3055,12 @@ struct LoomWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             syncState(from: webView)
+            // Promote currentURL to committedURL — used by chrome
+            // predicates that need a stable cross-transition signal.
+            let committed = webView.url?.absoluteString ?? ""
+            if debugState.committedURL != committed {
+                debugState.committedURL = committed
+            }
             scheduleFirstPaintFallback(for: webView)
         }
 
@@ -2680,6 +3330,20 @@ struct LoomWebView: NSViewRepresentable {
         @objc func handleShuttleNavigate(_ notification: Notification) {
             guard let path = notification.userInfo?["path"] as? String,
                   let webView else { return }
+            // Disk-scan sidebar emits `loom://content/<encoded path>` hrefs
+            // for source files. Route them through the native source-file
+            // surface (PDFKit / QuickLook) by posting `.loomOpenSourceFile`
+            // — the main content area swaps to a SwiftUI viewer with the
+            // sidebar still visible. Webview chrome is bypassed entirely
+            // for source files. See `feedback_loom_view_not_ingest`.
+            if path.hasPrefix("loom://content/"), let url = URL(string: path) {
+                NotificationCenter.default.post(
+                    name: .loomOpenSourceFile,
+                    object: nil,
+                    userInfo: ["url": url]
+                )
+                return
+            }
             let useDevServer = ProcessInfo.processInfo.environment["LOOM_USE_DEV_SERVER"] == "1"
             let target: URL
             if useDevServer {

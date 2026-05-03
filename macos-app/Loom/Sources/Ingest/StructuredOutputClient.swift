@@ -117,13 +117,6 @@ enum StructuredOutputDispatch {
             return try await OllamaStructuredClient.send(prompt: prompt, schema: schema, options: options)
         case .customEndpoint:
             return try await CustomEndpointStructuredClient.send(prompt: prompt, schema: schema, options: options)
-        case .claudeCli:
-            return try await CLIRuntimeStructuredClient.send(
-                prompt: prompt,
-                schema: schema,
-                flavor: .claude,
-                options: options
-            )
         case .codexCli:
             return try await CLIRuntimeStructuredClient.send(
                 prompt: prompt,
@@ -131,6 +124,13 @@ enum StructuredOutputDispatch {
                 flavor: .codex,
                 options: options
             )
+        case .appleFoundation:
+            // Apple Foundation Models can return guided generation but
+            // our structured-output client doesn't yet wrap that path.
+            // Until wired, fall back to the Anthropic structured client
+            // when extraction needs JSON. User-facing chat (LoomAI) uses
+            // appleFoundation directly.
+            throw IngestError.aiDisabled
         case .disabled:
             throw IngestError.aiDisabled
         }
@@ -726,8 +726,8 @@ enum CustomEndpointStructuredClient: StructuredOutputClient {
 
 // MARK: - CLIRuntimeStructuredClient
 //
-// Strategy: the `claude` / `codex` CLIs don't accept a schema parameter
-// — they're plain text in / text out. We append the JSON-only
+// Strategy: the `codex` CLI doesn't accept a schema parameter — it is
+// plain text in / text out. We append the JSON-only
 // instruction to the prompt and re-use `CLIRuntimeClient.send` for the
 // actual spawn. One retry on parse failure with a correction preamble.
 //

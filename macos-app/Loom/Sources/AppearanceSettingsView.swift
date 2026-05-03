@@ -3,7 +3,8 @@ import SwiftUI
 /// Native Settings pane for theme + motion prefs.
 ///
 /// Only two controls after the 2026-04-23 cleanup:
-///   - `theme`: System / Light / Dark — the standard Mac triplet.
+///   - `theme`: Auto / Light / Dark. Auto follows Loom's local
+///     day/night rhythm, not the system appearance.
 ///     Consumed by the webview via the inline `<script>` in
 ///     `app/layout.tsx` that reads `localStorage['wiki:theme']`.
 ///   - `wiki:reduce-motion`: hides non-essential animations (page-
@@ -23,7 +24,7 @@ struct AppearanceSettingsView: View {
         Form {
             Section("Theme") {
                 Picker("Mode", selection: $theme) {
-                    Text("System").tag("auto")
+                    Text("Auto").tag("auto")
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
                 }

@@ -23,6 +23,11 @@ struct IngestExtractorResultView: View {
         case markdownNotes(MarkdownNotesSchema)
         case spreadsheet(SpreadsheetSchema)
         case generic(GenericSchema)
+        // Phase 7.4: paste fragment + the destination it landed at.
+        // Carried together so the rendered card can show the
+        // attachment chip without the renderer needing a separate
+        // lookup against the trace store.
+        case fragment(FragmentSchema, destination: FragmentDestination)
     }
 
     let schema: Schema
@@ -98,6 +103,8 @@ struct IngestExtractorResultView: View {
             SpreadsheetSchemaView(schema: s)
         case .generic(let s):
             GenericSchemaFallbackView(schema: s)
+        case .fragment(let s, let dest):
+            FragmentSchemaView(schema: s, destination: dest)
         }
     }
 
@@ -110,6 +117,7 @@ struct IngestExtractorResultView: View {
         case .markdownNotes: return "Markdown notes"
         case .spreadsheet: return "Spreadsheet"
         case .generic: return "Document"
+        case .fragment: return "Pasted fragment"
         }
     }
 
@@ -151,9 +159,10 @@ struct IngestExtractorResultView: View {
                 || anyVerified(s.author)
                 || s.sections.contains { anyVerified($0.title) || anyVerified($0.slideRange) }
                 || s.topics.contains { anyVerified($0) }
-        case .markdownNotes, .spreadsheet, .generic:
+        case .markdownNotes, .spreadsheet, .generic, .fragment:
             // Deterministic / freeform schemas don't carry SourceSpans —
             // the "verified" vocabulary doesn't apply. Suppress ribbon.
+            // Fragments are user quotes; nothing to verify against.
             return false
         }
     }
