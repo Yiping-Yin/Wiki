@@ -2,7 +2,7 @@ import Foundation
 
 /// Swift port of `lib/anthropic-http.ts` — makes HTTPS calls to Anthropic's
 /// Messages API without going through the Next.js server or a shell-out to
-/// the `claude` CLI. Phase 3 of the architecture inversion; eventually all
+/// a local CLI. Phase 3 of the architecture inversion; eventually all
 /// AI surfaces call this directly instead of POST-ing to `/api/chat`.
 ///
 /// Credential source: the user's ANTHROPIC_API_KEY in macOS Keychain under

@@ -1,9 +1,7 @@
 /**
- * Swift-bridge-only AI client. Phase 3 / 5 of architecture inversion:
- * the Mac app's Swift layer owns all Anthropic calls. The HTTP fallback
- * was deleted along with `app/api/chat` / `app/api/complete` /
- * `app/api/selection-edit/*` — if you're running the webview outside the
- * Loom shell, AI features are unavailable.
+ * Swift-bridge-first AI client. The Mac app's Swift layer owns the product
+ * webview path. `/api/chat` exists for server smoke / configured server AI
+ * validation, not as a browser-side generic-chat fallback.
  */
 
 type LoomAIBridge = {

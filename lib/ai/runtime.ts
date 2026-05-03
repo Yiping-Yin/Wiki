@@ -1,8 +1,8 @@
 'use client';
 /**
- * AI call entry point — Swift-bridge only. Phase 3 / 5 of architecture
- * inversion. `/api/chat` is deleted; the Mac app's Swift layer (via
- * `askAIStream`) is the single AI transport.
+ * AI call entry point for browser product surfaces. The Loom Mac app's Swift
+ * layer (via `askAIStream`) remains the product transport; `/api/chat` is a
+ * server smoke / configured server AI validation route.
  */
 
 import type { AiCliKind } from '../ai-cli';
