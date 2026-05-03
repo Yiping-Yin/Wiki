@@ -12,7 +12,7 @@ test('AiInlineHint renders an action button when a notice exposes one', () => {
 
   const html = renderToStaticMarkup(
     <AiInlineHint tone="error" actionLabel="Open Settings" onAction={() => {}}>
-      AI unavailable — Codex and Claude are not authenticated.
+      AI unavailable — Codex CLI is not authenticated.
     </AiInlineHint>,
   );
 

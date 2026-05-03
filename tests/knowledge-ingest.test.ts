@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -94,9 +94,11 @@ test('ingest writes a picked folder as one source collection with its folders un
   const previousKnowledgeRoot = process.env.LOOM_KNOWLEDGE_ROOT;
   const previousContentRoot = process.env.LOOM_CONTENT_ROOT;
   const previousUserDataRoot = process.env.LOOM_USER_DATA_ROOT;
+  const previousDerivedDataRoot = process.env.LOOM_DERIVED_DATA_ROOT;
   delete process.env.LOOM_KNOWLEDGE_ROOT;
   process.env.LOOM_CONTENT_ROOT = picked;
   process.env.LOOM_USER_DATA_ROOT = path.join(tempRoot, 'user-data');
+  process.env.LOOM_DERIVED_DATA_ROOT = path.join(tempRoot, 'derived');
   t.after(() => {
     if (previousKnowledgeRoot === undefined) delete process.env.LOOM_KNOWLEDGE_ROOT;
     else process.env.LOOM_KNOWLEDGE_ROOT = previousKnowledgeRoot;
@@ -104,12 +106,21 @@ test('ingest writes a picked folder as one source collection with its folders un
     else process.env.LOOM_CONTENT_ROOT = previousContentRoot;
     if (previousUserDataRoot === undefined) delete process.env.LOOM_USER_DATA_ROOT;
     else process.env.LOOM_USER_DATA_ROOT = previousUserDataRoot;
+    if (previousDerivedDataRoot === undefined) delete process.env.LOOM_DERIVED_DATA_ROOT;
+    else process.env.LOOM_DERIVED_DATA_ROOT = previousDerivedDataRoot;
   });
 
   const { runIngest } = await importIngestModule();
   await runIngest();
 
-  const navPath = path.join(picked, 'knowledge', '.cache', 'manifest', 'knowledge-nav.json');
+  const navPath = path.join(
+    tempRoot,
+    'derived',
+    'knowledge',
+    '.cache',
+    'manifest',
+    'knowledge-nav.json',
+  );
   const nav = JSON.parse(await readFile(navPath, 'utf8')) as {
     knowledgeCategories: Array<{
       slug: string;
@@ -119,6 +130,7 @@ test('ingest writes a picked folder as one source collection with its folders un
     }>;
     knowledgeTotal: number;
   };
+  await assert.rejects(stat(path.join(picked, 'knowledge')), /ENOENT/);
 
   assert.equal(nav.knowledgeTotal, 3);
   assert.deepEqual(

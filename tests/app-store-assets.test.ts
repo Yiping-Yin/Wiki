@@ -161,8 +161,23 @@ test('mac app launch scene presents the main window by default', () => {
     'utf8',
   );
 
-  assert.match(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
-  assert.doesNotMatch(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.match(source, /Window\("Loom",\s*id:\s*MainWindow\.id\)/);
+  assert.match(source, /\.restorationBehavior\(\.disabled\)/);
+  assert.match(source, /\.defaultLaunchBehavior\(\.presented\)/);
+  assert.match(source, /applicationShouldHandleReopen\(_ sender: NSApplication,\s*hasVisibleWindows flag: Bool\)/);
+  assert.match(source, /applicationShouldTerminateAfterLastWindowClosed\(_ sender: NSApplication\) -> Bool/);
+  assert.match(source, /false\s*\n\s*\}/);
+  assert.match(source, /private var fallbackMainWindow: NSWindow\?/);
+  assert.match(source, /private func ensureMainWindowVisible\(\)/);
+  assert.match(source, /existingMainWindow\(includeHidden: false\)/);
+  assert.match(source, /LoomMinimalRootView\(\)\.environmentObject\(server\)/);
+  assert.match(source, /NSHostingView\(rootView: rootView\)/);
+  assert.doesNotMatch(source, /NSHostingController\(\s*rootView:\s*ContentView\(\)/);
+  assert.match(source, /NotificationCenter\.default\.post\(name:\s*\.loomOpenMainWindow,\s*object:\s*nil\)/);
+  assert.match(source, /struct NewTopicMenuItem: View/);
+  assert.match(source, /@Environment\(\\\.openWindow\) private var openWindow/);
+  assert.match(source, /openWindow\(id:\s*MainWindow\.id\)/);
+  assert.doesNotMatch(source, /WindowGroup\("Loom",\s*id:\s*MainWindow\.id\)/);
 });
 
 test('first-run sheet is refreshed from current defaults instead of restored state', () => {

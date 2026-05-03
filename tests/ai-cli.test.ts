@@ -69,8 +69,8 @@ test.beforeEach(() => {
   });
 });
 
-test('readAiCliPreference migrates legacy claude selection to codex once', () => {
-  fakeWindow.localStorage.setItem(AI_CLI_STORAGE_KEY, 'claude');
+test('readAiCliPreference migrates legacy local CLI selections to codex', () => {
+  fakeWindow.localStorage.setItem(AI_CLI_STORAGE_KEY, 'legacy-local-cli');
 
   const cli = readAiCliPreference();
 
@@ -92,13 +92,14 @@ test('readAiCliPreference normalizes malformed stored values to codex', () => {
   assert.equal(readAiCliPreference(), 'codex');
 });
 
-test('writeAiCliPreference marks migration complete when switching runtimes', () => {
-  fakeWindow.localStorage.setItem(AI_CLI_STORAGE_KEY, 'claude');
+test('writeAiCliPreference pins the stored runtime to codex', () => {
+  fakeWindow.localStorage.setItem(AI_CLI_STORAGE_KEY, 'legacy-local-cli');
   readAiCliPreference();
   fakeWindow.localStorage.removeItem(AI_CLI_MIGRATION_KEY);
 
-  writeAiCliPreference('claude');
+  writeAiCliPreference();
 
+  assert.equal(fakeWindow.localStorage.getItem(AI_CLI_STORAGE_KEY), 'codex');
   assert.equal(fakeWindow.localStorage.getItem(AI_CLI_MIGRATION_KEY), '1');
 });
 
@@ -113,11 +114,11 @@ test('writeAiCliPreference dispatches the runtime change event', () => {
   assert.deepEqual(detail, { cli: 'codex' });
 });
 
-test('writeAiCliPreference still allows switching back to claude after migration', () => {
-  fakeWindow.localStorage.setItem(AI_CLI_STORAGE_KEY, 'claude');
+test('readAiCliPreference keeps codex even after a stale legacy value reappears', () => {
+  fakeWindow.localStorage.setItem(AI_CLI_STORAGE_KEY, 'legacy-local-cli');
   readAiCliPreference();
+  fakeWindow.localStorage.setItem(AI_CLI_STORAGE_KEY, 'legacy-local-cli');
 
-  writeAiCliPreference('claude');
-
-  assert.equal(readAiCliPreference(), 'claude');
+  assert.equal(readAiCliPreference(), 'codex');
+  assert.equal(fakeWindow.localStorage.getItem(AI_CLI_STORAGE_KEY), 'codex');
 });

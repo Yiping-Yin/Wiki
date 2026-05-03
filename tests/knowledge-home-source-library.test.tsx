@@ -128,7 +128,7 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.match(sourceText, /onCancelHideCategory = \(\) => \{\}/);
   assert.match(sourceText, /onConfirmHideCategory = \(\) => \{\}/);
   assert.match(sourceText, /onMoveCategory = \(\) => \{\}/);
-  assert.match(sourceText, /Re-shelving changes Loom\s+provenance only; original source files stay unchanged\./);
+  assert.match(sourceText, /Grouping changes Loom\s+provenance only; original source files stay unchanged\./);
   assert.doesNotMatch(sourceText, /buildSourceLibraryGroups/);
 
   const buttons = [] as ts.JsxElement[];
@@ -144,8 +144,8 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   });
 
   const buttonText = (element: ts.JsxElement) => normalizedJsxText(element, sourceFile);
-  const addGroupButton = buttons.find((element) => buttonText(element) === 'New shelf');
-  const createGroupButton = buttons.find((element) => buttonText(element) === 'Create shelf');
+  const addGroupButton = buttons.find((element) => buttonText(element) === 'New group');
+  const createGroupButton = buttons.find((element) => buttonText(element) === 'Create group');
   const renameGroupButton = buttons.find((element) => buttonText(element) === 'Relabel');
   const deleteGroupButton = buttons.find((element) => buttonText(element) === 'Remove');
   const hideCategoryButton = buttons.find((element) => buttonText(element) === 'Hide');
@@ -158,18 +158,18 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
     node.openingElement.tagName.text === 'select'
   ) as ts.JsxElement | undefined;
 
-  assert.ok(addGroupButton, 'New shelf button not found');
-  assert.ok(createGroupButton, 'Create shelf button not found');
-  assert.ok(renameGroupButton, 'Relabel shelf button not found');
-  assert.ok(deleteGroupButton, 'Remove shelf button not found');
+  assert.ok(addGroupButton, 'New group button not found');
+  assert.ok(createGroupButton, 'Create group button not found');
+  assert.ok(renameGroupButton, 'Relabel group button not found');
+  assert.ok(deleteGroupButton, 'Remove group button not found');
   assert.ok(hideCategoryButton, 'Hide category button not found');
   assert.ok(saveButton, 'Save button not found');
   assert.ok(deleteNowButton, 'Remove now button not found');
   assert.ok(cancelButtons.length >= 2, 'Cancel buttons not found');
-  assert.ok(selectElement, 'Re-shelve select not found');
-  assert.match(sourceText, /title="Drag to another shelf, or use the Re-shelve menu\."/);
-  assert.match(sourceText, /title="Hide from shelves \(original files stay read-only\)"/);
-  assert.match(sourceText, /loom-source-sample__move[\s\S]*pointer-events:\s*auto;/);
+  assert.ok(selectElement, 'Move group select not found');
+  assert.match(sourceText, /title="Move this collection to another group\."/);
+  assert.match(sourceText, /title="Hide from Source Index \(original files stay read-only\)"/);
+  assert.match(sourceText, /loom-source-row__move[\s\S]*pointer-events:\s*auto;/);
 
   assert.equal(jsxExpressionText(addGroupButton.openingElement, 'onClick', sourceFile), 'onStartAddGroup');
   assert.equal(
@@ -191,21 +191,25 @@ test('KnowledgeHomeStatic wires group controls to the supplied mutation callback
   assert.equal(jsxExpressionText(selectElement.openingElement, 'disabled', sourceFile), 'busy');
 });
 
-test('KnowledgeHomeStatic renders Atlas entry sections and collection tiles through the refreshed shell', () => {
+test('KnowledgeHomeStatic renders Source Index sections and writing-first work surface', () => {
   const { sourceText } = loadTsx('app/knowledge/KnowledgeHomeStatic.tsx');
 
   assert.match(sourceText, /<StageShell/);
   assert.match(sourceText, /<QuietScene tone="atlas"/);
   assert.match(sourceText, /var\(--archive-stage-width\)/);
   assert.match(sourceText, /<PageFrame/);
-  assert.match(sourceText, /<span>\s*\{formatCount\(totalCollections, 'shelf'\)\} \/ \{formatCount\(totalDocs, 'indexed source'\)\}\s*<\/span>/);
-  assert.match(sourceText, /archive shelves/);
-  assert.match(sourceText, /Re-shelving changes Loom\s+provenance only; original source files stay unchanged\./);
-  assert.match(sourceText, /loom-archive-shelf/);
-  assert.match(sourceText, /loom-source-sample/);
-  assert.match(sourceText, /materialForItem/);
-  assert.match(sourceText, /href=\{`\/knowledge\/\$\{item\.slug\}`\}/);
-  assert.match(sourceText, /aria-label=\{`Open shelf \$\{item\.label\}`\}/);
+  assert.match(sourceText, /eyebrow="Archive Work Surface"/);
+  assert.match(sourceText, /title="Source Index"/);
+  assert.match(sourceText, /<span>\s*\{formatCount\(totalCollections, 'collection'\)\} \/ \{formatCount\(totalDocs, 'indexed source'\)\}\s*<\/span>/);
+  assert.match(sourceText, /read → organize → write/);
+  assert.match(sourceText, /Recent reading/);
+  assert.match(sourceText, /Unorganized/);
+  assert.match(sourceText, /Continue writing/);
+  assert.match(sourceText, /extractedCount/);
+  assert.match(sourceText, /loom-source-index/);
+  assert.match(sourceText, /loom-source-worklist/);
+  assert.match(sourceText, /loom-source-row/);
+  assert.doesNotMatch(sourceText, /shelf|bookcloth|cabinet|book spine|bookshelf/i);
   assert.match(sourceText, /formatCount\(group\.items\.length, 'collection'\)/);
   assert.match(sourceText, /formatCount\(item\.count, 'source'\)/);
 });
@@ -218,11 +222,15 @@ test('knowledge top-level route is a compatibility alias to Sources', () => {
   assert.doesNotMatch(sourceText, /<KnowledgeHomeClient/);
 });
 
-test('knowledge category routes are constrained to source-library categories only', () => {
-  const { sourceText } = loadTsx('app/knowledge/[category]/page.tsx');
+test('minimal shell keeps legacy workspace entries out of the default Sources entry', () => {
+  const root = readText('macos-app/Loom/Sources/LoomMinimalRootView.swift');
+  const sourceSurface = readText('app/knowledge/KnowledgeHomeStatic.tsx');
 
-  assert.match(sourceText, /getSourceLibraryCategories/);
-  assert.doesNotMatch(sourceText, /getKnowledgeCategories/);
+  assert.match(root, /title:\s*"Sources"/);
+  for (const legacyTitle of ['Pages', 'Desk', 'Reference', 'Coworks', 'Patterns', 'Weaves']) {
+    assert.doesNotMatch(root, new RegExp(`title:\\s*"${legacyTitle}"`));
+  }
+  assert.doesNotMatch(sourceSurface, /href="\/(?:desk|reference|coworks|patterns|weaves)"/);
 });
 
 test('source-library group management uses inline controls instead of browser prompts', () => {
@@ -236,8 +244,8 @@ test('source-library group management uses inline controls instead of browser pr
   assert.match(client, /editingGroupLabel/);
   assert.match(client, /newGroupLabel/);
 
-  assert.match(staticText, /Create shelf/);
-  assert.match(staticText, /New shelf/);
+  assert.match(staticText, /Create group/);
+  assert.match(staticText, /New group/);
   assert.match(staticText, /Cancel/);
 
   const inputElement = visit(sourceFile, (node) =>
@@ -247,6 +255,24 @@ test('source-library group management uses inline controls instead of browser pr
   ) as ts.JsxSelfClosingElement | undefined;
 
   assert.ok(inputElement, 'Inline group-management input not found');
+});
+
+test('native minimal library opens as a Source Index work surface, not a bookish library', () => {
+  const library = readText('macos-app/Loom/Sources/LoomLibraryView.swift');
+  const minimal = readText('macos-app/Loom/Sources/LoomMinimalRootView.swift');
+
+  assert.match(library, /Source Index/);
+  assert.match(library, /Archive Work Surface/);
+  assert.match(library, /Recent reading/);
+  assert.match(library, /Unorganized/);
+  assert.match(library, /Extracted/);
+  assert.match(library, /Continue writing/);
+  assert.match(library, /original files stay untouched/);
+  assert.doesNotMatch(library, /Your pages|No pages yet|bookcase|bookshelf|shelf/i);
+
+  assert.match(minimal, /title: "Sources"/);
+  assert.doesNotMatch(minimal, /title: "Pages"/);
+  assert.doesNotMatch(minimal, /icon: "books\.vertical"/);
 });
 
 test('native Loom app routes source-library shelf edits through a reply bridge', () => {

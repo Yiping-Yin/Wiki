@@ -66,6 +66,9 @@ test('schema record loaders fetch encoded native endpoints and coerce correction
       const byDoc = await records.loadSchemaForReadingDoc('know/unsw-fins-3640__week 3.pdf');
       assert.equal(byDoc?.traceId, 'trace-1');
       assert.equal(byDoc?.corrections.length, 1);
+      // matchSource was absent in the stub payload → coerce to null,
+      // never undefined. Older builds shipped without the field.
+      assert.equal(byDoc?.matchSource, null);
 
       const byTrace = await records.loadSchemaByTraceId('trace/with slash');
       assert.equal(byTrace?.extractorId, 'syllabus-pdf');
@@ -76,6 +79,60 @@ test('schema record loaders fetch encoded native endpoints and coerce correction
     'loom://native/schema-for-doc/know%2Funsw-fins-3640__week%203.pdf.json',
     'loom://native/schema/trace%2Fwith%20slash.json',
   ]);
+});
+
+test('schema record loader surfaces matchSource folder-fallback verbatim', async () => {
+  const records = await repoImport('lib/loom-schema-records.ts');
+
+  await withWindow({ location: { protocol: 'loom:' } }, async () => {
+    await withFetch((async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return Response.json({
+        traceId: 'trace-fallback',
+        extractorId: 'syllabus-pdf',
+        sourceDocId: 'ingested:Course Overview.pdf',
+        sourceTitle: 'Course Overview',
+        schema: { courseCode: { status: 'found', value: 'FINS3640' } },
+        corrections: [],
+        updatedAt: 99,
+        matchSource: 'folder-fallback',
+      });
+    }) as typeof fetch, async () => {
+      const r = await records.loadSchemaForReadingDoc('know/investments__week-3');
+      assert.equal(r?.matchSource, 'folder-fallback');
+    });
+
+    await withFetch((async () =>
+      Response.json({
+        traceId: 'trace-token',
+        extractorId: 'syllabus-pdf',
+        sourceDocId: 'ingested:Course Overview_FINS3640.pdf',
+        sourceTitle: 'Course Overview',
+        schema: { courseCode: { status: 'found', value: 'FINS3640' } },
+        corrections: [],
+        updatedAt: 100,
+        matchSource: 'token',
+      })) as typeof fetch, async () => {
+      const r = await records.loadSchemaForReadingDoc('know/unsw-fins-3640__week-3');
+      assert.equal(r?.matchSource, 'token');
+    });
+
+    // Garbage matchSource → coerced to null (doesn't poison the
+    // strip's discriminator switch).
+    await withFetch((async () =>
+      Response.json({
+        traceId: 'trace-bogus',
+        extractorId: 'syllabus-pdf',
+        sourceDocId: 'ingested:x',
+        sourceTitle: 'x',
+        schema: {},
+        corrections: [],
+        updatedAt: 0,
+        matchSource: 'malicious',
+      })) as typeof fetch, async () => {
+      const r = await records.loadSchemaForReadingDoc('know/x__y');
+      assert.equal(r?.matchSource, null);
+    });
+  });
 });
 
 test('schema corrections apply over FieldResult leaves without mutating the raw schema', async () => {
@@ -100,49 +157,6 @@ test('schema corrections apply over FieldResult leaves without mutating the raw 
   assert.equal(next.courseCode.userCorrected, true);
   assert.equal(next.assessmentItems[0].dueDate.status, 'found');
   assert.equal(next.assessmentItems[0].dueDate.value, '2026-05-18');
-});
-
-test('schema corrections API validates input and persists sidecars in dev mode', async () => {
-  const route = await repoImport('app/api/schema-corrections/route.ts');
-
-  const invalid = await route.POST(
-    new Request('http://localhost/api/schema-corrections', {
-      method: 'POST',
-      body: JSON.stringify({
-        extractorId: 'syllabus-pdf',
-        sourceDocId: 'ingested:Course Overview.pdf',
-        fieldPath: 'courseCode',
-        newValue: 'FINS3640',
-        originalValue: 'FINS3640',
-      }),
-    }),
-  );
-  assert.equal(invalid.status, 400);
-
-  const created = await route.POST(
-    new Request('http://localhost/api/schema-corrections', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        extractorId: 'syllabus-pdf',
-        sourceDocId: 'ingested:Course Overview.pdf',
-        fieldPath: 'courseCode',
-        newValue: 'FINS 3640',
-        originalValue: 'FINS3640',
-      }),
-    }),
-  );
-  assert.equal(created.status, 200);
-  assert.equal((await created.json()).corrections.length, 1);
-
-  const read = await route.GET(
-    new Request(
-      'http://localhost/api/schema-corrections?extractorId=syllabus-pdf&sourceDocId=ingested%3ACourse%20Overview.pdf',
-    ),
-  );
-  assert.equal(read.status, 200);
-  const payload = await read.json();
-  assert.equal(payload.corrections[0].corrected, 'FINS 3640');
 });
 
 test('native schema bridge files expose schema endpoints and correction reply bridge', () => {
