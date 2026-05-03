@@ -2969,14 +2969,31 @@ function ArticleRender({
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onSnapshotMessage = (event: MessageEvent) => {
-      const data = event.data as { type?: string; height?: number } | null;
-      if (!data || data.type !== 'loom:snapshot-frame-size') return;
+      const data = event.data as {
+        type?: string;
+        height?: number;
+        deltaX?: number;
+        deltaY?: number;
+        deltaMode?: number;
+      } | null;
+      if (!data) return;
+      if (data.type === 'loom:snapshot-wheel') {
+        const mode = Number(data.deltaMode) || 0;
+        const unit = mode === 1 ? 16 : mode === 2 ? window.innerHeight : 1;
+        const left = (Number(data.deltaX) || 0) * unit;
+        const top = (Number(data.deltaY) || 0) * unit;
+        window.scrollBy({ left, top, behavior: 'auto' });
+        return;
+      }
+      if (data.type !== 'loom:snapshot-frame-size') return;
       const height = Number(data.height);
       if (!Number.isFinite(height) || height <= 0) return;
       const maxHeight = Math.max(520, Math.round(window.innerHeight * 0.76));
       const nextHeight = Math.max(360, Math.min(Math.ceil(height), maxHeight));
       document.querySelectorAll('iframe.loom-inline-snapshot-frame').forEach((frame) => {
         if (frame instanceof HTMLIFrameElement && frame.contentWindow === event.source) {
+          const currentHeight = Number.parseFloat(frame.style.height || '0');
+          if (Number.isFinite(currentHeight) && currentHeight > 0 && Math.abs(currentHeight - nextHeight) < 3) return;
           frame.style.height = `${nextHeight}px`;
         }
       });

@@ -240,6 +240,9 @@ test('reader embeds snapshot-backed visual blocks only when per-resource anchors
   assert.match(source, /data-loom-interactive-snapshot-mode="inline-target"/);
   assert.match(source, /loom-inline-snapshot-frame/);
   assert.match(source, /data-loom-snapshot-loaded="inline"/);
+  assert.match(source, /loom:snapshot-wheel/);
+  assert.match(source, /window\.scrollBy/);
+  assert.match(source, /mode === 1 \? 16/);
   assert.match(source, /data-loom-interactive-snapshot-mode="preview-link"/);
   assert.doesNotMatch(source, /class="loom-snapshot-load"/);
   assert.doesNotMatch(source, /data-loom-snapshot-href=/);
@@ -329,8 +332,17 @@ test('snapshot route supports targeted embed mode without rendering the whole pa
   assert.match(snapshotPage, /data-active/);
   assert.match(snapshotPage, /function isolateTargetDocument\(node\)/);
   assert.match(snapshotPage, /data-loom-target-stage/);
+  assert.match(snapshotPage, /data-loom-target-content/);
+  assert.match(snapshotPage, /position: absolute !important/);
   assert.match(snapshotPage, /closest\('astro-island'\)/);
   assert.match(snapshotPage, /function setRestorableHoverState\(root, className\)/);
+  assert.match(snapshotPage, /function alignTargetContent\(stage\)/);
+  assert.match(snapshotPage, /function installWheelProxy\(\)/);
+  assert.match(snapshotPage, /window\.addEventListener\('wheel'/);
+  assert.match(snapshotPage, /event\.preventDefault\(\)/);
+  assert.match(snapshotPage, /type: 'loom:snapshot-wheel'/);
+  assert.match(snapshotPage, /lastReportedHeight/);
+  assert.match(snapshotPage, /snapshotHeightRef/);
   assert.match(snapshotPage, /data-loom-state-controls/);
   assert.match(snapshotPage, /data-loom-snapshot-target-active/);
   assert.match(snapshotPage, /document\.documentElement\.classList\.add\('loom-target-mode'\)/);

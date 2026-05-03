@@ -100,6 +100,7 @@ function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
   html.loom-target-mode body {
     margin: 0 !important;
     background: #050403 !important;
+    overflow: hidden !important;
   }
   body.loom-target-mode [data-loom-snapshot-target-active="true"] {
     display: block !important;
@@ -107,16 +108,26 @@ function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
   }
   body.loom-target-mode [data-loom-target-stage] {
     box-sizing: border-box !important;
+    position: relative !important;
     width: min(100%, 1180px) !important;
     margin: 0 auto !important;
     padding: 18px 18px 22px !important;
     background: #050403 !important;
+    overflow: hidden !important;
+  }
+  body.loom-target-mode [data-loom-target-content] {
+    display: block !important;
+    will-change: transform !important;
   }
   body.loom-target-mode [data-loom-state-controls] {
     display: inline-flex !important;
     flex-wrap: wrap !important;
     gap: 6px !important;
-    margin: 0 0 12px !important;
+    position: absolute !important;
+    z-index: 20 !important;
+    top: 18px !important;
+    left: 18px !important;
+    margin: 0 !important;
     padding: 5px !important;
     border: 1px solid rgba(214, 174, 92, 0.65) !important;
     border-radius: 999px !important;
@@ -147,6 +158,9 @@ function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
 (function () {
   var target = ${targetJSON};
   var restorableStates = ${statesJSON};
+  var lastReportedWidth = 0;
+  var lastReportedHeight = 0;
+  var wheelProxyInstalled = false;
   function escapeTarget(value) {
     return window.CSS && CSS.escape ? CSS.escape(value) : String(value || '').replace(/["\\\\]/g, '\\\\$&');
   }
@@ -171,7 +185,7 @@ function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
         button.setAttribute('aria-pressed', button.getAttribute('data-loom-state-class') === className ? 'true' : 'false');
       });
     }
-    reportTargetSize();
+    window.requestAnimationFrame(reportTargetSize);
   }
   function installRestorableHoverControls(targetNode, stage) {
     if (!targetNode || !stage || stage.querySelector('[data-loom-state-controls]')) return;
@@ -195,6 +209,44 @@ function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
     stage.insertBefore(controls, stage.firstChild);
     setRestorableHoverState(root, active.className);
   }
+  function alignTargetContent(stage) {
+    if (!stage) return;
+    var content = stage.querySelector('[data-loom-target-content]');
+    if (!content) return;
+    window.requestAnimationFrame(function () {
+      var controls = stage.querySelector('[data-loom-state-controls]');
+      var anchor = content.querySelector('h1, h2, h3, [role="heading"]') || content.firstElementChild;
+      if (!anchor) return;
+      var stageRect = stage.getBoundingClientRect();
+      var anchorRect = anchor.getBoundingClientRect();
+      var controlsRect = controls ? controls.getBoundingClientRect() : null;
+      var desiredTop = controlsRect
+        ? Math.max(18, Math.ceil(controlsRect.bottom - stageRect.top + 18))
+        : 18;
+      var currentTop = Math.ceil(anchorRect.top - stageRect.top);
+      var offset = Math.min(0, desiredTop - currentTop);
+      offset = Math.max(offset, -220);
+      if (offset < -1) {
+        content.style.transform = 'translateY(' + offset + 'px)';
+        content.style.marginBottom = offset + 'px';
+      }
+      reportTargetSize();
+    });
+  }
+  function installWheelProxy() {
+    if (wheelProxyInstalled) return;
+    wheelProxyInstalled = true;
+    window.addEventListener('wheel', function (event) {
+      if (event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      window.parent.postMessage({
+        type: 'loom:snapshot-wheel',
+        deltaX: event.deltaX || 0,
+        deltaY: event.deltaY || 0,
+        deltaMode: event.deltaMode || 0
+      }, '*');
+    }, { passive: false });
+  }
   function interactiveHostFor(node) {
     if (!node || !node.closest) return node;
     return node.closest('astro-island') || node;
@@ -211,20 +263,27 @@ function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
         document.body ? document.body.scrollHeight || 0 : 0
       ));
       var width = Math.ceil(Math.max(rect.width || 0, stage.scrollWidth || 0));
+      if (Math.abs(width - lastReportedWidth) < 3 && Math.abs(height - lastReportedHeight) < 3) return;
+      lastReportedWidth = width;
+      lastReportedHeight = height;
       window.parent.postMessage({ type: 'loom:snapshot-target-size', width: width, height: height }, '*');
     });
   }
   function isolateTargetDocument(node) {
     if (!document.body || !node) return;
     if (document.body.getAttribute('data-loom-target-isolated') === target) {
-      reportTargetSize();
+      installWheelProxy();
+      alignTargetContent(document.querySelector('[data-loom-target-stage]'));
       return;
     }
     var host = interactiveHostFor(node);
     var selector = '[data-loom-snapshot-target="' + escapeTarget(target) + '"]';
     var stage = document.createElement('main');
+    var content = document.createElement('div');
     stage.setAttribute('data-loom-target-stage', 'true');
-    stage.appendChild(host);
+    content.setAttribute('data-loom-target-content', 'true');
+    content.appendChild(host);
+    stage.appendChild(content);
     while (document.body.firstChild) document.body.removeChild(document.body.firstChild);
     document.documentElement.classList.add('loom-target-mode');
     document.body.classList.add('loom-target-mode');
@@ -235,7 +294,8 @@ function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
       movedTarget.setAttribute('data-loom-snapshot-target-active', 'true');
     }
     installRestorableHoverControls(movedTarget, stage);
-    reportTargetSize();
+    installWheelProxy();
+    alignTargetContent(stage);
   }
   function applyTargetMode() {
     if (!document.body) return;
@@ -304,6 +364,7 @@ function SnapshotInner() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeResizeObserverRef = useRef<ResizeObserver | null>(null);
+  const snapshotHeightRef = useRef<number | null>(null);
 
   // URLSearchParams already decodes form spaces; literal plus signs arrive as
   // %2B and must remain plus signs for exact capture lookup.
@@ -316,6 +377,7 @@ function SnapshotInner() {
 
   useEffect(() => {
     setSnapshotHeight(null);
+    snapshotHeightRef.current = null;
     iframeResizeObserverRef.current?.disconnect();
     iframeResizeObserverRef.current = null;
   }, [filename]);
@@ -339,6 +401,9 @@ function SnapshotInner() {
       const height = Number(data.height);
       if (!Number.isFinite(height) || height <= 0) return;
       const nextHeight = Math.max(320, Math.ceil(height));
+      const currentHeight = snapshotHeightRef.current;
+      if (currentHeight !== null && Math.abs(currentHeight - nextHeight) < 3) return;
+      snapshotHeightRef.current = nextHeight;
       setSnapshotHeight(nextHeight);
       if (targetEmbedMode && typeof window !== 'undefined') {
         window.parent.postMessage({
