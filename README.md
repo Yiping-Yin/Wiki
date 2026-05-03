@@ -143,9 +143,9 @@ Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
 shape of the project and the PR checklist. For security issues, see
 [SECURITY.md](SECURITY.md) — please don't file those as public issues.
 
-Loom is built with substantial help from AI coding collaborators
-(OpenAI Codex, Anthropic Claude). See [AUTHORS.md](AUTHORS.md) for
-how each collaborator's commits are tagged in the history.
+Loom is built with substantial help from OpenAI Codex. See
+[AUTHORS.md](AUTHORS.md) for how Codex-assisted commits are tagged in
+the history.
 
 ## License
 

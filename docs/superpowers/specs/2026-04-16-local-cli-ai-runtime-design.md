@@ -10,10 +10,9 @@ Loom will use the user's **local machine AI CLIs** as its AI runtime for the cur
 The shipped contract is:
 
 - **Local CLI runtime**
-- **Supported providers:** `Codex CLI`, `Claude CLI`
+- **Supported provider:** `Codex CLI`
 - **Default priority:** `codex`
-- **Automatic fallback:** `claude` when `codex` is unavailable
-- **User can manually choose a preferred runtime in Settings**
+- **User can manually choose Codex CLI as the local runtime in Settings**
 - **No provider OAuth**
 - **No API key entry**
 - **No Loom-hosted AI account in this phase**
@@ -31,8 +30,7 @@ The user experience should be:
 
 1. User invokes an AI action.
 2. Loom uses the preferred runtime if available.
-3. If the preferred runtime is unavailable, Loom falls back automatically to the other allowed runtime.
-4. If neither runtime is usable, Loom presents a calm, actionable status.
+3. If the local runtime is unavailable, Loom presents a calm, actionable status.
 
 The user should not need to understand:
 
@@ -41,7 +39,7 @@ The user should not need to understand:
 - session file permission failures
 - provider-specific failure grammars at random points of the product
 
-They may still understand that Loom uses `Codex CLI` or `Claude CLI`, but Loom should mediate those states as a product-owned runtime layer.
+They may still understand that Loom uses `Codex CLI`, but Loom should mediate those states as a product-owned runtime layer.
 
 ## 3. Why This Model
 
@@ -70,7 +68,7 @@ Loom presents one concept:
 Internally this resolves to:
 
 - `codex`
-- `claude`
+- local HTTPS providers when selected outside the CLI path
 
 But the product should make those feel like runtime choices inside Loom, not like raw infrastructure leakage.
 
@@ -78,9 +76,8 @@ But the product should make those feel like runtime choices inside Loom, not lik
 
 The runtime policy is fixed:
 
-- first try `codex`
-- if `codex` is unavailable, automatically try `claude`
-- if both are unavailable, surface one calm failure state
+- use `codex` for the local CLI path
+- if `codex` is unavailable, surface one calm failure state
 
 This is the default even if the user has never opened Settings.
 
@@ -90,11 +87,9 @@ Settings may expose a minimal user preference:
 
 - `Preferred AI runtime`
   - `Codex CLI`
-  - `Claude CLI`
+  - `Codex CLI`
 
-This does **not** disable fallback.
-
-The user's chosen runtime becomes the first-choice runtime, but Loom still automatically falls back to the other runtime when needed.
+The user's chosen provider controls whether Loom uses Codex CLI or a non-CLI provider.
 
 ## 5. Settings Model
 
@@ -162,8 +157,7 @@ But product surfaces should not dump raw implementation details by default.
 Instead, they should express:
 
 - the preferred runtime is unavailable
-- Loom is using the fallback runtime
-- neither runtime is currently usable
+- the local runtime is currently unusable
 
 Detailed causes may still appear in Settings or a developer-facing path.
 
@@ -171,8 +165,8 @@ Detailed causes may still appear in Settings or a developer-facing path.
 
 Preferred product grammar:
 
-- `Codex CLI unavailable. Loom will use Claude CLI for now.`
-- `AI unavailable — Codex and Claude are not authenticated. Open Settings, sign in to one provider, then retry.`
+- `Codex CLI unavailable. Open Settings, choose another provider, or install/sign in to Codex.`
+- `AI unavailable — Codex CLI is not authenticated. Open Settings, sign in to Codex, then retry.`
 - `AI unavailable — Codex CLI cannot access ~/.codex session files. Fix permissions or switch runtime in Settings.`
 
 Avoid low-level surface wording like:
@@ -276,19 +270,18 @@ The next stabilization pass should formalize that into one product layer.
 
 - preferred runtime resolves correctly
 - `codex` is the default first-choice runtime
-- if preferred runtime fails with a recoverable issue, fallback runtime is attempted
-- if both runtimes fail, the broker returns one stable user-facing failure state
+- if Codex CLI fails, the broker returns one stable user-facing failure state
 
 ### Settings tests
 
-- user can set `Codex CLI` or `Claude CLI` as preferred runtime
+- user can select `Codex CLI` as the local CLI runtime
 - legacy preferences migrate cleanly to `codex` default where required
 - runtime status appears in Settings
 
 ### Surface tests
 
-- `ChatFocus` reflects fallback behavior correctly
-- `FreeInput` reflects fallback behavior correctly
+- `ChatFocus` reflects Codex runtime state correctly
+- `FreeInput` reflects Codex runtime state correctly
 - AI entry surfaces show inline notices before the user collides with a hard failure
 
 ### Regression tests
@@ -314,9 +307,8 @@ Proceed with:
 
 - local CLI runtime as the current product model
 - one shared Loom AI runtime broker
-- default-first `codex`
-- automatic fallback to `claude`
-- manual preferred-runtime switch in Settings
+- default `codex`
+- manual provider switch in Settings
 - fixed highest-reasoning / maximum-context policy
 
 This is the smallest design that matches the current product reality while still making Loom feel deliberate and stable.
