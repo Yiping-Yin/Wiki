@@ -130,6 +130,7 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
             "Access-Control-Allow-Methods": "GET, OPTIONS",
             "Access-Control-Allow-Headers": "*",
             "Cross-Origin-Resource-Policy": "cross-origin",
+            "Accept-Ranges": "bytes",
         ]
         // Permissive CSP for HTML — Loom pages embed user-captured
         // content that may include data: image URLs (canvas
@@ -148,6 +149,40 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
                 "font-src 'self' data: loom: https:",
                 "connect-src 'self' loom: data: https: http: ws: wss:",
             ].joined(separator: "; ")
+        }
+        switch Self.byteRange(from: urlSchemeTask.request.value(forHTTPHeaderField: "Range"), contentLength: data.count) {
+        case .unsatisfiable:
+            headers["Content-Length"] = "0"
+            headers["Content-Range"] = "bytes */\(data.count)"
+            let response = HTTPURLResponse(
+                url: requestURL,
+                statusCode: 416,
+                httpVersion: "HTTP/1.1",
+                headerFields: headers
+            )!
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didFinish()
+            markActive(urlSchemeTask, active: false)
+            return
+
+        case .partial(let range):
+            let responseData = data.subdata(in: range.start..<(range.end + 1))
+            headers["Content-Length"] = String(responseData.count)
+            headers["Content-Range"] = "bytes \(range.start)-\(range.end)/\(data.count)"
+            let response = HTTPURLResponse(
+                url: requestURL,
+                statusCode: 206,
+                httpVersion: "HTTP/1.1",
+                headerFields: headers
+            )!
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didReceive(responseData)
+            urlSchemeTask.didFinish()
+            markActive(urlSchemeTask, active: false)
+            return
+
+        case .full:
+            break
         }
         let response = HTTPURLResponse(
             url: requestURL,
@@ -310,6 +345,54 @@ final class LoomURLSchemeHandler: NSObject, WKURLSchemeHandler {
             return mime
         }
         return "application/octet-stream"
+    }
+
+    private struct ByteRange {
+        let start: Int
+        let end: Int
+    }
+
+    private enum ByteRangeResolution {
+        case full
+        case partial(ByteRange)
+        case unsatisfiable
+    }
+
+    private static func byteRange(from header: String?, contentLength: Int) -> ByteRangeResolution {
+        guard let header = header?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !header.isEmpty else {
+            return .full
+        }
+        guard contentLength > 0 else { return .unsatisfiable }
+        guard header.lowercased().hasPrefix("bytes=") else { return .full }
+
+        let spec = String(header.dropFirst("bytes=".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !spec.contains(",") else { return .unsatisfiable }
+        let parts = spec.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2 else { return .unsatisfiable }
+
+        let first = String(parts[0]).trimmingCharacters(in: .whitespaces)
+        let last = String(parts[1]).trimmingCharacters(in: .whitespaces)
+
+        if first.isEmpty {
+            guard let suffixLength = Int(last), suffixLength > 0 else { return .unsatisfiable }
+            let start = max(0, contentLength - suffixLength)
+            return .partial(ByteRange(start: start, end: contentLength - 1))
+        }
+
+        guard let start = Int(first), start >= 0, start < contentLength else {
+            return .unsatisfiable
+        }
+        let end: Int
+        if last.isEmpty {
+            end = contentLength - 1
+        } else {
+            guard let requestedEnd = Int(last), requestedEnd >= start else {
+                return .unsatisfiable
+            }
+            end = min(requestedEnd, contentLength - 1)
+        }
+        return .partial(ByteRange(start: start, end: end))
     }
 
     private static func sniffedMimeType(for url: URL) -> String? {
