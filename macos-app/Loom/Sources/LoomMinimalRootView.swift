@@ -2,13 +2,11 @@ import SwiftUI
 import AppKit
 
 /// Experimental "minimal Loom" root view. A clean rebuild of the main
-/// window without any of the legacy webview / overlay / Desk / Reference
-/// / Coworks / Patterns / Weaves / Pursuits / Recent surfaces.
+/// window without the previous multi-surface webview navigation.
 ///
-/// The premise: Loom = pages. Sidebar lists pages. Main pane shows the
-/// selected page (or a library overview when nothing's selected). New
-/// pages come from `+ Page` (blank) or `+ Folder` (imported). Clicks on
-/// files inside a page open a native source viewer.
+/// The premise: Loom = source index + writing work surface. The sidebar
+/// keeps routing minimal; the main pane opens the source index by default
+/// and native source views for imported files.
 ///
 /// Activated via UserDefaults `loom.minimal.enabled`. Defaults to ON for
 /// dogfooding; flip OFF to return to the legacy ContentView. Once
@@ -256,6 +254,11 @@ struct LoomMinimalRootView: View {
             guard let url = note.userInfo?["url"] as? URL,
                   let payload = CaptureWebPayload.from(url: url) else {
                 captureToast = "Couldn't decode capture payload."
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { captureToast = nil }
+                return
+            }
+            guard payload.hasSubstantiveCaptureContent else {
+                captureToast = "Capture payload was empty. Re-capture from the page."
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { captureToast = nil }
                 return
             }
@@ -518,7 +521,7 @@ struct LoomMinimalRootView: View {
 
                 let folderCount = topLevelRoots.count
                 // 18pt section gap = DSSpace.md (16) + breathing 2pt;
-                // matches the Vellum book-chrome rhythm in globals.css.
+                // matches the compact sidebar rhythm in globals.css.
                 sectionEyebrow("Folders · \(folderCount)", topPadding: DSSpace.md.value + 2)
                 folderList
 
@@ -536,7 +539,7 @@ struct LoomMinimalRootView: View {
     /// `EB Garamond` custom font + `.smallCaps()` so the bundled-font
     /// path renders crisp small-caps glyphs rather than synthetic
     /// scaling. Section gap = topPadding (default 12pt above, 4pt
-    /// below) to match the Vellum book-chrome rhythm used by
+    /// below) to match the compact sidebar rhythm used by
     /// `globals.css .t-caption2`.
     @ViewBuilder
     private func sectionEyebrow(_ title: String, topPadding: CGFloat = DSSpace.md.value - 4) -> some View {
@@ -682,15 +685,15 @@ struct LoomMinimalRootView: View {
     private var pagesRow: some View {
         sidebarButton(
             rowID: "__pages",
-            icon: "books.vertical",
-            title: "Pages",
+            icon: "folder",
+            title: "Sources",
             isSelected: selection == .library,
             action: { navigate(.library) }
         )
     }
 
     /// Phase A3 follow-up — sidebar entries for the captures browser
-    /// + bookmarklet setup. They sit beside Pages because they're
+    /// + bookmarklet setup. They sit beside Sources because they're
     /// cross-cutting (not tied to one ContentRoot).
     @ViewBuilder
     private var capturesRow: some View {

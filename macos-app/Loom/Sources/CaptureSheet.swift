@@ -514,6 +514,7 @@ struct CaptureASTBlock: Codable {
     var title: String?
     var provider: String?
     var mediaRole: String?
+    var snapshotTarget: String?
 }
 
 struct CaptureExtensionDiagnostics: Codable {
@@ -629,6 +630,16 @@ struct CaptureWebPayload: Decodable {
 
     init() {}
 
+    var hasSubstantiveCaptureContent: Bool {
+        if !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        if !selection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        if let snapshotHtml,
+           !snapshotHtml.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        if let mediaAttachments, !mediaAttachments.isEmpty { return true }
+        if let blocks = captureAst?.blocks, !blocks.isEmpty { return true }
+        return false
+    }
+
     /// Decode the `payload=<percent-encoded JSON>` query item from a
     /// `loom://capture?payload=…` URL. Returns nil for malformed input;
     /// caller surfaces a toast.
@@ -661,7 +672,8 @@ struct CaptureWebPayload: Decodable {
             if let payload = decodeJSON(json) {
                 return payload
             }
-            os_log_debug("Pasteboard handoff: decodeJSON failed; falling through to URL strategies")
+            os_log_debug("Pasteboard handoff: decodeJSON failed; refusing fallback for clipboard transport")
+            return nil
         }
 
         // Strategy 1 — URLComponents.
@@ -993,12 +1005,15 @@ enum CaptureWriter {
 
     enum Failure: LocalizedError {
         case missingTarget
+        case emptyCapture
         case writeFailed(Error)
         case duplicate(existingTimestamp: String)
         var errorDescription: String? {
             switch self {
             case .missingTarget:
                 return "Couldn't find a target Loom.md for this capture."
+            case .emptyCapture:
+                return "Capture payload was empty. Re-capture from the page."
             case .writeFailed(let e):
                 return e.localizedDescription
             case .duplicate(let ts):
@@ -1007,8 +1022,20 @@ enum CaptureWriter {
         }
     }
 
+    static func hasSubstantiveContent(_ payload: CapturePayload) -> Bool {
+        if !bodyText(payload).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        if let snapshotHtml = payload.snapshotHtml,
+           !snapshotHtml.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        if !payload.mediaAttachments.isEmpty { return true }
+        if let blocks = payload.captureAST?.blocks, !blocks.isEmpty { return true }
+        return false
+    }
+
     @discardableResult
     static func save(_ payload: CapturePayload, force: Bool = false) throws -> URL {
+        guard hasSubstantiveContent(payload) else {
+            throw Failure.emptyCapture
+        }
         let target = anchorTarget(for: payload.anchor)
         let existing = (try? String(contentsOf: target, encoding: .utf8)) ?? ""
         if !force, let conflict = detectDuplicate(payload: payload, in: existing) {
@@ -1038,6 +1065,9 @@ enum CaptureWriter {
             }
         }
         let entry = renderEntry(working)
+        guard !entry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw Failure.emptyCapture
+        }
         do {
             try FileManager.default.createDirectory(
                 at: target.deletingLastPathComponent(),
@@ -1160,6 +1190,7 @@ enum CaptureWriter {
                 return copy
             })
         }
+        payload.captureAST = applyMediaSubstitutions(to: payload.captureAST, map: substitutions)
     }
 
     /// Forward-slash path segments under the root for a given anchor.
@@ -1210,6 +1241,32 @@ enum CaptureWriter {
             )
         }
         return out
+    }
+
+    private static func applyMediaSubstitutions(
+        to ast: CaptureAST?,
+        map: [String: String]
+    ) -> CaptureAST? {
+        guard var ast else { return nil }
+        ast.sourceURL = ast.sourceURL.map { applyMediaSubstitutions($0, map: map) }
+        ast.title = ast.title.map { applyMediaSubstitutions($0, map: map) }
+        ast.blocks = ast.blocks?.map { block in
+            var copy = block
+            if let text = copy.text {
+                copy.text = applyMediaSubstitutions(text, map: map)
+            }
+            if let markdown = copy.markdown {
+                copy.markdown = applyMediaSubstitutions(markdown, map: map)
+            }
+            if let url = copy.url {
+                copy.url = applyMediaSubstitutions(url, map: map)
+            }
+            if let title = copy.title {
+                copy.title = applyMediaSubstitutions(title, map: map)
+            }
+            return copy
+        }
+        return ast
     }
 
     private static func writeCaptureAST(

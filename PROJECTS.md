@@ -27,7 +27,7 @@ The code layout stays conventional so Next.js, tests, scripts, and the macOS app
 
 - Web Product Surfaces - Home, Desk, Sources, Reading, Panels, Patterns, Weaves, Coworks.
 - macOS Native Shell - sidebar, window chrome, native settings, bridge handlers, packaged app.
-- AI Runtime - Claude/OpenAI/Ollama/custom transports, streaming, provider health, runtime policy.
+- AI Runtime - Codex CLI/OpenAI/Ollama/custom transports, streaming, provider health, runtime policy.
 - Knowledge Data Layer - source library, ingestion, search index, traces, panels, weaves, persistence.
 - Brand and Design - Loom visual grammar, material luxury research, typography, icons, App Store imagery.
 - Release and Quality - tests, smoke scripts, App Store preflight, export, packaging, CI.

@@ -19,12 +19,21 @@ import { stageRuntimeBundle } from './stage-loom-runtime.mjs';
  */
 
 /**
+ * @typedef {object} PruneInstalledSourceArtifactOptions
+ * @property {string} [source]
+ * @property {string} [target]
+ * @property {boolean} [installSucceeded]
+ * @property {string} [derivedDataRootOverride]
+ */
+
+/**
  * @typedef {object} InstallLoomAppDependencies
  * @property {() => Promise<string>} [findBuiltApp]
  * @property {(target: string, source: string) => Promise<void>} [installTo]
  * @property {(options?: { repoRoot?: string, homeOverride?: string }) => Promise<string>} [stageRuntimeBundle]
  * @property {(options?: InstallRuntimeMetadataOptions) => Promise<void>} [installRuntimeMetadata]
  * @property {(options?: PruneRepoBuildArtifactsOptions) => Promise<void>} [maybePruneRepoBuildArtifacts]
+ * @property {(options?: PruneInstalledSourceArtifactOptions) => Promise<void>} [maybePruneInstalledSourceArtifact]
  */
 
 /**
@@ -101,6 +110,27 @@ export async function installRuntimeMetadata({ repoRoot, homeOverride, env = pro
 export async function maybePruneRepoBuildArtifacts({ repoRoot, installSucceeded } = {}) {
   if (!installSucceeded) return;
   await fs.rm(path.join(repoRoot, '.next-build'), { recursive: true, force: true });
+}
+
+function isPathInside(child, parent) {
+  const relative = path.relative(path.resolve(parent), path.resolve(child));
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+/**
+ * @param {PruneInstalledSourceArtifactOptions} [options]
+ */
+export async function maybePruneInstalledSourceArtifact({
+  source,
+  target,
+  installSucceeded,
+  derivedDataRootOverride = derivedDataRoot,
+} = {}) {
+  if (!installSucceeded || !source || !target) return;
+  if (path.resolve(source) === path.resolve(target)) return;
+  if (!isPathInside(source, derivedDataRootOverride)) return;
+
+  await fs.rm(source, { recursive: true, force: true });
 }
 
 function appSupportRootFor(homeOverride) {
@@ -243,6 +273,7 @@ export async function installLoomApp({
   const stageRuntime = dependencies.stageRuntimeBundle ?? stageRuntimeBundle;
   const persistMetadata = dependencies.installRuntimeMetadata ?? installRuntimeMetadata;
   const pruneRepoBuildArtifacts = dependencies.maybePruneRepoBuildArtifacts ?? maybePruneRepoBuildArtifacts;
+  const pruneInstalledSourceArtifact = dependencies.maybePruneInstalledSourceArtifact ?? maybePruneInstalledSourceArtifact;
   const source = sourceAppPath ?? await resolveSource();
   const runtimeSnapshot = await snapshotRuntimeState(homeOverride);
   let stagedRuntimeRoot = null;
@@ -257,11 +288,20 @@ export async function installLoomApp({
     }
   };
 
-  const pruneAfterSuccess = async () => {
-    try {
-      await pruneRepoBuildArtifacts({ repoRoot, installSucceeded: true });
-    } catch (error) {
-      console.warn(`Skipping repo build cache prune: ${error instanceof Error ? error.message : String(error)}`);
+  const pruneAfterSuccess = async (target) => {
+    const failures = [];
+    for (const prune of [
+      () => pruneRepoBuildArtifacts({ repoRoot, installSucceeded: true }),
+      () => pruneInstalledSourceArtifact({ source, target, installSucceeded: true }),
+    ]) {
+      try {
+        await prune();
+      } catch (error) {
+        failures.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+    if (failures.length > 0) {
+      console.warn(`Skipping post-install cleanup:\n${failures.join('\n')}`);
     }
   };
 
@@ -273,7 +313,7 @@ export async function installLoomApp({
       await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
       throw error;
     }
-    await pruneAfterSuccess();
+    await pruneAfterSuccess(fallbackTarget);
     return { target: fallbackTarget, fallbackUsed: false };
   }
 
@@ -285,7 +325,7 @@ export async function installLoomApp({
       await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
       throw error;
     }
-    await pruneAfterSuccess();
+    await pruneAfterSuccess(primaryTarget);
     return { target: primaryTarget, fallbackUsed: false };
   }
 
@@ -293,7 +333,7 @@ export async function installLoomApp({
 
   try {
     await copyApp(primaryTarget, source);
-    await pruneAfterSuccess();
+    await pruneAfterSuccess(primaryTarget);
     return { target: primaryTarget, fallbackUsed: false };
   } catch (error) {
     if (!isPermissionFallbackError(error)) {
@@ -308,7 +348,7 @@ export async function installLoomApp({
     await restoreRuntimeState(runtimeSnapshot, stagedRuntimeRoot);
     throw error;
   }
-  await pruneAfterSuccess();
+  await pruneAfterSuccess(fallbackTarget);
   return { target: fallbackTarget, fallbackUsed: true };
 }
 

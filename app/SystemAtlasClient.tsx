@@ -45,7 +45,7 @@ const ROWS = [
   },
   {
     reader: { title: 'Shuttle ⌘K', meta: 'navigation' },
-    loom: { title: 'AI bridge', meta: 'claude · local CLI fallback' },
+    loom: { title: 'AI bridge', meta: 'codex · local CLI' },
     sanctuary: { title: 'Letter outbox', meta: 'correspondence · slow post' },
   },
 ] as const;
