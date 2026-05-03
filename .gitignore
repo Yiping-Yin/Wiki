@@ -42,11 +42,24 @@ macos-app/Loom/.build/
 .next-export-out/
 .next-acceptance/
 .playwright-cli/
+.playwright-mcp/
 .superpowers/
+.claude/
+tmp/
 tsconfig*.tsbuildinfo
+*.backup-*
+*.orig
+
+# Per-page debug capture artifacts (Codex hero-canvas investigation, 2026-04-30)
+/flipdisc-*.json
+
+# Nested worktrees (Claude harness sometimes places agent worktrees here)
+/LOOM/
 
 # Finder duplicates (generated, never commit)
 * 2.*
 * 3.*
 * [0-9].*
+* 2/
+* 3/
 .app-store/
