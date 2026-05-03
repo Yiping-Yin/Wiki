@@ -29,7 +29,7 @@ export const LOOM_AI_RULES = [
 /**
  * The maximum chars of doc body we'll inject into a prompt. Long PDFs
  * are too big to ship in full; we truncate at 24k which is a comfortable
- * fit for Claude's context window without dominating it.
+ * fit for the model context window without dominating it.
  */
 const MAX_DOC_BODY = 24_000;
 

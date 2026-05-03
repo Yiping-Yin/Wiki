@@ -1,8 +1,7 @@
 import path from 'node:path';
-import { CONTENT_ROOT } from './server-config';
+import { knowledgeDerivedCacheRoot } from './paths';
 
-const ROOT = CONTENT_ROOT;
-const INDEX_ROOT = path.join(ROOT, 'knowledge', '.cache', 'indexes');
+const INDEX_ROOT = path.join(knowledgeDerivedCacheRoot(), 'indexes');
 
 export function derivedIndexRoot() {
   return INDEX_ROOT;

@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { toKnowledgeRelativePath } from './server-config';
 import { resolveContentRoot } from './runtime-roots';
+import { knowledgeDerivedCacheRoot } from './paths';
 import {
   DEFAULT_SOURCE_LIBRARY_ORDER,
   FALLBACK_SOURCE_LIBRARY_GROUP_ID,
@@ -68,6 +69,10 @@ async function fileSignature(file: string): Promise<string> {
 }
 
 export function knowledgeManifestRoot() {
+  return path.join(knowledgeDerivedCacheRoot(), 'manifest');
+}
+
+function legacyKnowledgeManifestRoot() {
   return path.join(resolveContentRoot(), 'knowledge', '.cache', 'manifest');
 }
 
@@ -83,12 +88,28 @@ export function collectionMetadataPath() {
   return path.join(knowledgeManifestRoot(), 'collection-metadata.json');
 }
 
+function legacyKnowledgeManifestPath(filename: string) {
+  return path.join(legacyKnowledgeManifestRoot(), filename);
+}
+
+async function readableKnowledgeManifestPath(primary: string, filename: string): Promise<string> {
+  try {
+    await fs.access(primary);
+    return primary;
+  } catch {
+    return legacyKnowledgeManifestPath(filename);
+  }
+}
+
 let collectionMetaPromise: Promise<Map<string, CollectionMetadata>> | null = null;
 let collectionMetaCacheKey: string | null = null;
 let collectionMetaCacheSignature: string | null = null;
 
 export async function getCollectionMetadata(slug: string): Promise<CollectionMetadata | null> {
-  const file = collectionMetadataPath();
+  const file = await readableKnowledgeManifestPath(
+    collectionMetadataPath(),
+    'collection-metadata.json',
+  );
   const signature = await fileSignature(file);
   if (collectionMetaCacheKey !== file || collectionMetaCacheSignature !== signature) {
     collectionMetaPromise = null;
@@ -106,7 +127,10 @@ export async function getCollectionMetadata(slug: string): Promise<CollectionMet
 }
 
 export async function getAllDocs(): Promise<KnowledgeDoc[]> {
-  const manifestPath = knowledgeManifestPath();
+  const manifestPath = await readableKnowledgeManifestPath(
+    knowledgeManifestPath(),
+    'knowledge-manifest.json',
+  );
   const signature = await fileSignature(manifestPath);
   if (docsCacheKey !== manifestPath || docsCacheSignature !== signature) {
     docsPromise = null;
@@ -123,7 +147,10 @@ export async function getAllDocs(): Promise<KnowledgeDoc[]> {
 }
 
 export async function getKnowledgeNav(): Promise<NavPayload> {
-  const navPath = knowledgeNavPath();
+  const navPath = await readableKnowledgeManifestPath(
+    knowledgeNavPath(),
+    'knowledge-nav.json',
+  );
   const signature = await fileSignature(navPath);
   if (navCacheKey !== navPath || navCacheSignature !== signature) {
     navPromise = null;
