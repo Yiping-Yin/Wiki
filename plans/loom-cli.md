@@ -47,12 +47,12 @@ $ loom search "Test" --limit 3
 
 ## Why this plan exists
 
-v4.0 establishes that external AI (Codex / Claude Code / Cursor / future X) integrates with Loom via **files + CLI**, not via Loom-specific API or plugin system. This plan specs the CLI: command surface, conventions, error handling, distribution.
+v4.0/v4.1 establish that external AI (Codex / Claude Code / Cursor / future X) integrates with Loom via **files + CLI**, not via Loom-specific API or plugin system. This plan specs the CLI: command surface, conventions, error handling, distribution. **MVP shipped 2026-05-02 commit `f65cc67`.**
 
 ## What this plan does NOT do
 
 - Does NOT add a Loom plugin SDK / extension API. External AI uses standard Unix interfaces.
-- Does NOT add an MCP server in v4.0 (consider for v4.1+ if user demand).
+- Does NOT add an MCP server in v4.1 (consider for v4.2+ if user demand).
 - Does NOT modify how the Loom Mac app behaves; CLI is independent.
 - Does NOT touch editable render or AI passes; complementary surfaces.
 
@@ -70,7 +70,7 @@ v4.0 establishes that external AI (Codex / Claude Code / Cursor / future X) inte
 
 ---
 
-## Command surface (v4.0 — 6 commands)
+## Command surface (v4.0/v4.1 — 6 commands; MVP `f65cc67` ships open/search/write functional, render/related/capture stubbed)
 
 ### `loom capture <url>`
 
@@ -199,7 +199,7 @@ echo "# Today's thought\n\nContent..." | loom write drafts/2026-05-02-thought.md
 # → wrote LoomFileStore/drafts/2026-05-02-thought.md, Loom UI auto-refreshed
 ```
 
-### Future commands (v4.1+, NOT in v4.0)
+### Future commands (v4.2+, NOT in v4.0/v4.1 MVP)
 
 - `loom embed <file>` — return embedding vector for content (used by external AI for own indexing)
 - `loom diff <file-a> <file-b>` — semantic diff between two Loom docs
@@ -276,7 +276,7 @@ Claude Code:
   5. loom open drafts/flipdisc-summary.md
 ```
 
-### MCP server (v4.1+ consideration)
+### MCP server (v4.2+ consideration)
 If Codex/Claude Code adopt MCP for tool definition, `loom serve` could expose CLI commands as MCP tools. Defer until MCP adoption is clearer.
 
 ---
@@ -286,7 +286,7 @@ If Codex/Claude Code adopt MCP for tool definition, `loom serve` could expose CL
 ### Tech stack
 - Swift CLI binary (consistent with Loom Mac app)
 - Reuses existing Swift code: LoomFileStore, EmbeddingStore, capture pipeline, render pipeline
-- ~3-5 days engineering for v4.0 scope (6 commands)
+- ~3-5 days engineering for v4.0/v4.1 scope (6 commands; MVP shipped `f65cc67`)
 
 ### Code location
 ```
@@ -329,7 +329,7 @@ Exit 1, message to stderr. Doesn't write partial files.
 Each command is independent; LoomFileStore writes are atomic. Concurrent `loom capture` calls write to different files (timestamp-based naming).
 
 ### CLI vs Loom UI conflict
-If CLI writes a file while user is editing it in Loom UI: Loom's MD↔DOM watcher reconciles. If conflict, last-write-wins for now (better strategy is v4.1+ work).
+If CLI writes a file while user is editing it in Loom UI: Loom's MD↔DOM watcher reconciles. If conflict, last-write-wins for now (better strategy is v4.2+ work).
 
 ---
 
@@ -348,13 +348,13 @@ When triggered (any time after C.M1, doesn't depend on editable render):
 
 ---
 
-## Out of scope (defer to v4.1+ or later)
+## Out of scope (defer to v4.2+ or later)
 
 - ❌ MCP server (`loom serve`)
 - ❌ Wiki-scale operations (`loom merge`, `loom cluster`)
 - ❌ Plugin SDK / extension API
 - ❌ CLI-driven AI passes (those are internal to Loom UI; CLI exposes substrate ops only)
-- ❌ Cross-CLI synchronization protocols (single-machine only in v4.0)
+- ❌ Cross-CLI synchronization protocols (single-machine only in v4.0/v4.1)
 
 ---
 

@@ -444,9 +444,9 @@ When Loom adds video, audio, or notebook source support: these become new INGEST
 
 ---
 
-## 6.5. Editable Render Layer — The 9th Supporting Piece (revised v4.0)
+## 6.5. Editable Render Layer — The 9th Supporting Piece (revised v4.0; v4.1 M2 scope cut to modules (a)+(b))
 
-§1.5 (rewritten v4.0) positions Loom as a substrate. This section is the engineering decomposition for the editable rendering layer — Camp B's editability applied to paper canon. The v3.0 module list had **5 modules** including AI co-edit affordances; v4.0 deletes that 5th module per the substrate thesis (no AI feature surface inside Loom).
+§1.5 (rewritten v4.1) positions Loom as a substrate. This section is the engineering decomposition for the editable rendering layer — Camp B's editability applied to paper canon. The v3.0 module list had **5 modules** including AI co-edit affordances; v4.0 deletes that 5th module per the substrate thesis. **v4.1 further cuts M2 ship scope to modules (a)+(b) only**; (d) invariant guard + (e) versioning gate to M4 based on M2 user data.
 
 ### Why this is the 9th piece, not part of an existing one
 
@@ -468,7 +468,7 @@ Estimated: 2-3 days. Risk: users find a thousand ways to break invariants; cost 
 
 **(e) Block-level versioning + history** — Every edit auto-snapshotted, rollback at block granularity. Apple Notes has this natively; users rarely use it but its presence is reassurance. Estimated: 3-5 days.
 
-**Total engineering estimate (v4.0)**: ~10-12 days for the full editable render MVP. (v3.0 was 15-20 days; v4.0 is faster because module (c) is removed.)
+**Total engineering estimate**: ~10-12 days for full MVP. v4.1 splits as M2 (modules a+b, ~5 days) + M4 (modules d+e, ~5-7 days, gated on M3 PASS). v3.0 was 15-20 days; v4.0 cut to ~10-12 by removing module (c); v4.1 further phases the remainder.
 
 ### What this does NOT change
 
@@ -496,16 +496,19 @@ Eventually: user promotes draft to wiki location
 
 The reader page is a **continuously editable workshop surface** where content arrives (typed / dictated / AI-written), AI passes structure it, user refines, and finished artifacts emerge.
 
-### Phased rollout (updated v4.0)
+### Phased rollout (updated v4.0; v4.1 adds M6/M7/M8 + cuts M2 scope)
 
 See `plans/loom-camp-c-editable-render.md` for full milestone scope.
 
 - **M1 — Thesis filed (done 2026-05-02)**: this section + §6.7 + LOOM_RULES §7.5 + design doc + 2 plans + correction log entry-007.
-- **M2 — Single shape contenteditable prototype**: Article shape only, contenteditable + naïve markdown roundtrip. NO AI passes yet. User tests 1 week.
+- **M2 (v4.1 scope cut) — Single shape contenteditable prototype**: Article shape only, **modules (a) + (b) only** (contenteditable + naïve MD roundtrip). NO AI passes, NO invariant guard, NO versioning. User tests 1 week.
 - **M3 — Decision gate**: M2 data → continue, scope-down, or abort.
-- **M4 — Full editable render MVP (4 modules)**: all 4 modules, Article shape end-to-end.
-- **M4.5 — AI passes integration (§6.7 work)**: Add idle-triggered AI passes that operate on the document.
+- **M4 — Editable render hardening (modules (d) + (e) IF M2 data justifies)**: invariant guard + block-level versioning, Article shape end-to-end.
+- **M4.5 — AI passes integration (§6.7 work)**: Add idle-triggered AI passes that operate on the document. Background passes are **structural-only, never generative** (v4.1 hard rule).
 - **M5 — Multi-shape expansion**: List / Passage / Conversation / Syllabus + mobile + a11y.
+- **M6 (v4.1 NEW, parallelizable with M4) — ⌘K palette**: per `plans/loom-cmd-k-palette.md`, ≤7 actions hard-cap.
+- **M7 (v4.1 NEW, gated on M6 PASS) — delete LoomAIBar + distill panel**: NO delete-without-replace.
+- **M8 (v4.1 NEW, parallelizable with M6) — Loom CLI**: per `plans/loom-cli.md`. **MVP shipped 2026-05-02 commit `f65cc67`**.
 
 ### Honest unknowns (for §12)
 
@@ -518,9 +521,9 @@ These don't block thesis filing but block M3 → M4 promotion until M2 surfaces 
 
 ---
 
-## 6.7. Input Surface and AI Passes (added v4.0)
+## 6.7. Input Surface and AI Passes (added v4.0; **refined v4.1**)
 
-**The deepest design question** answered by v4.0: where does AI integration live in Loom? Answer: **the document IS the AI's input AND output**. There is no separate AI dialog box, no chat panel, no /ai inline command, no co-edit toolbar. The writing surface is everything.
+**The deepest design question** answered by v4.0/v4.1: where does AI integration live in Loom? Answer (v4.1, refined): **3 AI surfaces split by ROLE, not by mode**: (1) ⌘K palette (M6, summoned generative one-shot), (2) AskAIWindow (KEPT, ⌘⇧E, threaded conversation), (3) background passes (M4.5, structural-only, never generative). v4.0's "no panel anywhere" was over-推generalized same day — AskAIWindow restored. Neither v4.0 nor v4.1 allow always-visible AI chrome, /ai inline, or co-edit selection toolbars.
 
 ### Why no separate AI input
 
@@ -566,7 +569,7 @@ This is borrowed from Word's revision marks but redesigned for paper-canon aesth
 - **On document open** — re-runs typeset/structure passes to apply latest model improvements to old documents
 - **Manual ⌘↩** — user explicitly demands a pass right now (e.g., "I just dictated a paragraph; please typeset it now")
 
-NO continuous-while-typing trigger in v4.0. (Tested as "too distracting" in informal user research; deferred to v4.2+ as opt-in.)
+NO continuous-while-typing trigger in v4.1. (Tested as "too distracting" in informal user research; deferred to v4.2+ as opt-in.)
 
 ### What AI passes do NOT do
 
@@ -574,7 +577,7 @@ NO continuous-while-typing trigger in v4.0. (Tested as "too distracting" in info
 - ❌ Do not delete user content (additive only — AI can wrap, mark, link, but not remove)
 - ❌ Do not present a chat / command interface
 - ❌ Do not initiate unprompted (only respond to user's content stream)
-- ❌ Do not work across documents (single-document scope in v4.0; cross-document is v4.1+ wiki work)
+- ❌ Do not work across documents (single-document scope in v4.1; cross-document is v4.2+ wiki work)
 
 ### How external AI integrates (Loom CLI)
 
@@ -593,7 +596,7 @@ External AI doesn't need a Loom-specific API; CLI + files are the standard subst
 
 See `plans/loom-cli.md` for full CLI design and `plans/loom-ai-passes.md` for internal passes design.
 
-### Wiki-scale stringing (DEFERRED to v4.1+)
+### Wiki-scale stringing (DEFERRED to v4.2+)
 
 When Loom contains many documents (personal wiki / 维基百科库), additional AI work becomes valuable:
 - Auto-link concepts across documents
@@ -602,7 +605,7 @@ When Loom contains many documents (personal wiki / 维基百科库), additional 
 - Auto-detect contradictions across documents
 - Auto-suggest new wiki entries from accumulated captures
 
-User explicitly deferred this to v4.1+ on 2026-05-02 ("这个是后话"). v4.0 ships single-document AI passes only. Wiki-scale work scopes after v4.0 ships and yields data on real usage patterns.
+User explicitly deferred this to v4.2+ on 2026-05-02 ("这个是后话"). v4.1 ships single-document AI passes only. Wiki-scale work scopes after v4.1 ships and yields data on real usage patterns.
 
 ---
 
@@ -852,14 +855,16 @@ Each incumbent would have to fundamentally rebuild their data model + design sys
 | 4 | Cosmic canon v1.0 SEALED + brand surfaces (splash / about / empty) | 3-4 weeks | Net-new product work; cosmic canon doc TBD |
 | 5 | Connect surface (Echoes eyebrow) — AI cross-source detection + quiet eyebrow UI | ~6 weeks (includes detection R&D) | Net-new product work |
 | 6 | Return surface (Last-read eyebrow) + Compile Subtask C (visualizations + interactive elements) | ~3-4 weeks | Net-new product work |
-| **C.M1** | **v4.0 thesis filed — LOOM.md §1.5 + §6.5 + §6.7 + LOOM_RULES §7.5 + plans/loom-ai-passes.md + plans/loom-cli.md + design doc + correction-log entry-007** | now | **filed 2026-05-02 (this commit)** |
-| **C.M2** | **Single Article shape contenteditable prototype + naïve MD roundtrip (NO AI passes yet)** | 3-5 days | gated on user authorization |
+| **C.M1** | **v4.0 thesis filed → v4.1 reframe filed 2026-05-03 commit `63007cf` — LOOM.md §1.5 + §6.5 + §6.7 + LOOM_RULES §7.5 + plans/loom-ai-passes.md + plans/loom-cmd-k-palette.md + plans/loom-cli.md + design doc + correction-log entries 007/009/010/011** | now | **filed** |
+| **C.M2** | **Single Article shape contenteditable prototype — modules (a)+(b) only per v4.1 (contenteditable + naïve MD roundtrip; NO invariant guard, NO versioning, NO AI passes)** | ~5 days | gated on user authorization |
 | **C.M3** | **Decision gate after M2 user data (1 week test)** | review only | gated on M2 data |
-| **C.M4** | **Full editable render MVP (4 modules: contenteditable + DOM↔MD bind + invariant guard + versioning). NO AI co-edit affordances per v4.0.** | ~10-12 days | gated on M3 |
-| **C.M4.5** | **AI passes integration per §6.7 (idle-triggered typeset/structure/link/cite passes + margin-marking)** | ~5-7 days | gated on M4 |
+| **C.M4** | **Editable render hardening — modules (d) invariant guard + (e) block versioning IF M3 PASS justifies. v4.1 only ships (d)+(e) here, not all 4.** | ~5-7 days | gated on M3 |
+| **C.M4.5** | **AI passes integration per §6.7 (idle-triggered typeset/structure/link/cite passes + margin-marking). Structural-only, never generative — contract test enforces.** | ~5-7 days | gated on M4 |
 | **C.M5** | **Multi-shape expansion (List / Passage / Conversation / Syllabus) + mobile + a11y** | ~3-4 weeks | gated on M4.5 |
-| **C.M6** | **Loom CLI implementation per `plans/loom-cli.md`** | ~3-5 days | parallelizable with C.M4 |
-| **W.M1** | **(v4.1+) Wiki-scale AI: auto-link + auto-cluster + library indexing across N documents** | TBD | DEFERRED per user 2026-05-02 |
+| **C.M6** | **(v4.1 NEW) ⌘K Palette per `plans/loom-cmd-k-palette.md` — ≤7 actions hard-cap. Generative one-shot summoned invocation.** | ~5-7 days | parallelizable with C.M4 |
+| **C.M7** | **(v4.1 NEW) Delete LoomAIBar + distill panel — gated on M6 PASS (verify ⌘K covers their functionality). NO delete-without-replace.** | ~2-3 days | gated on M6 |
+| **C.M8** | **(v4.1 NEW) Loom CLI per `plans/loom-cli.md` — external AI integration**. MVP shipped commit `f65cc67`. | ~3-5 days | **MVP DONE 2026-05-02; full ship pending render/related/capture wiring** |
+| **W.M1** | **(v4.2+) Wiki-scale AI: auto-link + auto-cluster + library indexing across N documents** | TBD | DEFERRED per user 2026-05-02 |
 
 Approximate calendar: ~5-6 months from current state to full unified product, with Camp C work parallelizable to Tiers 3-6 once M3 gate passes.
 
