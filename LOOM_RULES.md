@@ -317,6 +317,35 @@ The file gradually heals itself; no destructive migration script needed.
 
 ---
 
+## 7.5.1. Surface scope of §7.5 — substrate vs reader (added 2026-05-04)
+
+§7.5 v4.1 rules apply to the **Loom canon substrate**: editable `.md` documents the user authors, rendered as paper canon. The bans (no markdown source UI exposure / no Edit mode toggle / no /ai inline / no always-visible AI chrome) protect the substrate's unimodal author surface.
+
+**Reader-side surfaces are out of scope of §7.5.** These render archived or derivative content the user did not author in Loom canon:
+
+- `app/loom-render/capture/page.tsx` — archived web page captures (Notion-style snapshots, articles, HN threads) — read-mostly with extractor-error correction
+- `app/loom-render/snapshot/page.tsx` — interactive snapshot embeds (targeted DOM regions from captures) — read-only
+- `app/loom-render/captures/page.tsx` — captures library landing — read-only
+- Future translation-output / compile-output / external-doc renders — same category
+
+### Reader-side conventions (separate from §7.5)
+
+1. **Markdown source MAY be exposed via summoned modal** (not always-visible chrome) for extractor-error correction. Rationale: capture renderers are not the user's authoring surface; users need a path to fix extractor mistakes (missed paragraphs, garbled formatting, missing media). The modal pattern (Edit button → textarea modal) is acceptable here because (a) modal is summoned not always-visible, (b) reader is not substrate, (c) v4.1 unimodal principle is about substrate not reader.
+2. **No always-visible AI chrome on reader surfaces** (this rule extends from §7.5). No LoomAIBar in capture page, no inline /ai command, etc.
+3. **Reader surfaces inherit paper canon visual rules** (§7) — vellum, hairlines, asymmetric inset, KaTeX, etc. — for visual consistency across substrate and reader.
+4. **Re-evaluate reader Edit modal at M2 contenteditable ship**: when canon substrate gets in-place editability via contenteditable (M2), capture renderers should evaluate adopting the same in-place edit model and retiring the source-modal. Decision deferred until M2 user data shows the in-place model is robust.
+
+### Concrete carve-out
+
+- `app/loom-render/capture/page.tsx:4889-4898` Edit button + `:2546` markdown source modal: **PERMITTED under §7.5.1**. Audit notes from 2026-05-04 ultrathink review flagged this as a §7.5 BAN double-violation; the carve-out resolves the flag. No code change required.
+- M7 deletion list (LoomAIBar + distill panel) does NOT include the capture-page Edit modal. Edit modal stays through M6/M7 and revisits at M2 ship.
+
+### Why this carve-out exists
+
+The 2026-05-04 audit revealed that v4.1 §7.5 was written assuming substrate-only scope but the bans were stated globally. Without §7.5.1, users would lose the ability to fix extractor errors on captured content (no other path exists). Carve-out preserves user capability while keeping substrate purity intact.
+
+---
+
 ## 8. Decision Log
 
 Reverse-chronological. Date in YYYY-MM-DD.
