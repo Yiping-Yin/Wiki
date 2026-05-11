@@ -1,5 +1,7 @@
 # Phase 3 — ServiceWorker Offline Rendering
 
+> **Status — historical session record (2026-05-08).** The `loom-snapshot://` custom-scheme approach prescribed in §3.1–3.5 was attempted on 2026-05-05 and **failed**: WKWebView silently blocks cross-scheme subresource access (no public API workaround that avoids App Store review risk). See the [2026-05-05 update](#2026-05-05-update--33b-investigation-outcome) at the bottom of this file. **The active path is the §3.4 pivot to `loom://content-frame/<token>/<asset-path>`** (same scheme, new host) — §3.1–3.5 and the effort/scope estimates at the end of this file describe the *abandoned* approach, kept for context only, not for execution.
+
 **Goal:** Eliminate the WKWebView "React hydration silently fails when iframe nested 3 levels deep" bug.
 
 **Root cause (re-confirmed 2026-05-05):**
@@ -79,7 +81,7 @@ Existing captures (one big snapshot HTML file) keep working via a fallback path 
 ## Risks & open questions
 
 1. **WKURLSchemeHandler quirk:** Some scheme tasks need `urlSchemeTask.didReceiveResponse` BEFORE `didReceiveData`. Off-thread serving needs careful ordering.
-2. **CORS in iframe at custom scheme:** Must register scheme with `WKWebView.handlesURLScheme(_:)` plus configure as a same-origin scheme via `WKWebViewConfiguration.setURLSchemeHandler(_:forURLScheme:)`.
+2. **CORS in iframe at custom scheme:** Register the handler via `WKWebViewConfiguration.setURLSchemeHandler(_:forURLScheme:)`. ⚠️ `WKWebView.handlesURLScheme(_:)` is a read-only **class method** that only reports whether WebKit natively supports a scheme — it does **NOT** register custom handlers; an earlier draft of this file conflated the two. (Moot under the §3.4 pivot which stays on the existing `loom://` scheme.)
 3. **Module imports inside HTML:** `<script type="module" src="...">` needs the scheme to support range requests — usually okay but worth testing with large bundles.
 4. **Cache invalidation:** When a capture is re-captured, the cache for that captureId must clear.
 
