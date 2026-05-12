@@ -23,6 +23,37 @@ struct CaptureSettingsView: View {
     @State private var storeLocation: String = ""
     @State private var storeIsCustom: Bool = false
     @State private var migrationStatus: String? = nil
+    @State private var stats: [LoomEmbeddingStore.RootStats] = []
+    @State private var enModelOK: Bool = false
+    @State private var zhModelOK: Bool = false
+    @State private var jaModelOK: Bool = false
+
+    private var totalCaptures: Int { stats.reduce(0) { $0 + $1.recordCount } }
+
+    private func refreshDiagnostics() {
+        stats = LoomEmbeddingStore.diagnosticStats()
+        enModelOK = LoomEmbeddingStore.modelAvailable(for: .english)
+        zhModelOK = LoomEmbeddingStore.modelAvailable(for: .simplifiedChinese)
+        jaModelOK = LoomEmbeddingStore.modelAvailable(for: .japanese)
+        refreshStoreLocation()
+    }
+
+    @ViewBuilder
+    private func statusGridRow(ok: Bool, label: String, detail: String) -> some View {
+        GridRow {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: ok ? "checkmark.circle.fill" : "xmark.octagon.fill")
+                    .foregroundStyle(ok ? Color.green : Color.red)
+                    .font(.system(size: 11))
+                Text(label)
+                    .font(.system(size: 11, design: .serif))
+            }
+            Text(detail)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .gridColumnAlignment(.trailing)
+        }
+    }
 
     private func refreshStoreLocation() {
         let url = LoomFileStore.rootURL
@@ -161,13 +192,68 @@ struct CaptureSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Section("Pipeline") {
-                Text("TODO: model status + indexed counts + Refresh — filled in Task 5")
+                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 4) {
+                    statusGridRow(
+                        ok: enModelOK,
+                        label: "Embedding model · English",
+                        detail: enModelOK ? "loaded" : "missing — embeddings disabled for English"
+                    )
+                    statusGridRow(
+                        ok: zhModelOK,
+                        label: "Embedding model · 中文",
+                        detail: zhModelOK ? "loaded" : "missing — Chinese captures fall back to English embedding"
+                    )
+                    statusGridRow(
+                        ok: jaModelOK,
+                        label: "Embedding model · 日本語",
+                        detail: jaModelOK ? "loaded" : "missing — Japanese captures fall back to English embedding"
+                    )
+                    statusGridRow(
+                        ok: !stats.isEmpty,
+                        label: "Active workspaces",
+                        detail: stats.isEmpty ? "none" : "\(stats.count)"
+                    )
+                    statusGridRow(
+                        ok: totalCaptures > 0,
+                        label: "Captures indexed",
+                        detail: totalCaptures == 0 ? "none yet" : "\(totalCaptures) total"
+                    )
+                }
+                if !stats.isEmpty {
+                    ForEach(stats) { s in
+                        HStack(spacing: 6) {
+                            Text("· \(s.label)")
+                                .font(.system(size: 10, design: .serif))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(s.recordCount)")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                            if !s.languageBreakdown.isEmpty {
+                                let breakdown = s.languageBreakdown
+                                    .sorted(by: { $0.value > $1.value })
+                                    .map { "\($0.key):\($0.value)" }
+                                    .joined(separator: " ")
+                                Text(breakdown)
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                }
+                HStack {
+                    Spacer()
+                    Button("Refresh") { refreshDiagnostics() }
+                }
+                Text("If a capture should be indexed but isn't shown here, click Refresh after a few seconds (indexing is async). Embedding-model gaps mean similarity matching is degraded but Loom still saves the capture.")
+                    .font(.system(size: 11, design: .serif))
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .formStyle(.grouped)
         .frame(minWidth: 480, minHeight: 440)
-        .onAppear { refreshStoreLocation() }
+        .onAppear { refreshDiagnostics() }
     }
 }
 
