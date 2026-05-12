@@ -3,6 +3,8 @@
 Status: active design / product doctrine  
 Updated: 2026-04-14
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** This file uses *kesi*-metaphor terms (`Panel / Weave / kesi`) as epistemic-object names. v1.1 §III.7 deprecates these for **user-visible UI copy** — labels, buttons, status text. The conceptual distinctions captured here (claim levels, advance / freeze / withdraw transitions) remain valid product doctrine; the *names* of the objects (`Panel` etc.) shift to literal alternatives in shipped UI per [`docs/loom.md`](../loom.md) Plate IV. Read this file for the epistemic grammar; cite `docs/loom.md` for the surface names.
+
 This file defines the **epistemic grammar** of Loom:
 
 - what kinds of thinking objects exist

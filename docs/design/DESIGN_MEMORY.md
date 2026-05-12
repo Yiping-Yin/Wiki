@@ -2,6 +2,8 @@
 
 Last updated: 2026-04-10 (rev 27)
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** This file is a **historical design-memory log** capturing reasoning from the v3 → v4.1 era. It contains 56+ references to *kesi*-metaphor vocabulary (`Shuttle / Weaves / Sōan / Pursuits / Patterns / weaver / panel`) that v1.1 §III.7 deprecates for user-visible UI copy. For **current surface naming**, see [`docs/loom.md`](../loom.md) Plate IV. This file is preserved as-is because (a) the reasoning is valid even where the labels are stale and (b) the kesi storytelling is itself part of the design memory. Do not cite this file as authority on what UI strings to ship.
+
 ---
 
 ## Part 0 · Product Core · 五条不可还原的定义

@@ -3,6 +3,8 @@
 Status: active implementation plan  
 Updated: 2026-04-14
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** This document's very name uses *kesi*-metaphor vocabulary (`Panel`) that v1.1 §III.7 deprecates for user-visible UI copy. The shipped UI uses literal action words (`Collect / Organize / Draft / Capture / Source / Question / Folder`); the surfaces this file describes as "Panels" have either been renamed or absorbed into the three-capability frame. For **current surface inventory and naming**, see [`docs/loom.md`](../loom.md) Plate IV. Architectural reasoning in this file remains useful as design history; only the labels and the "Panel" framing are stale. The doc is **not** the place to look up what to ship today — consult `docs/loom.md` first.
+
 This file turns Loom's product constitution into a build order.
 
 Use it when asking:
