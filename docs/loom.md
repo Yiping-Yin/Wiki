@@ -576,27 +576,24 @@ Loom 不是 chrome-style SaaS dashboard。它的视觉宪法在 `Material Audit.
   - Organize: "Captures get organized here once you have them." [Capture]
   - Draft: textarea 直接打开，无 helper text
 
-#### §VII.bis.4 Per-surface 迁移清单
+#### §VII.bis.4 Per-surface 迁移清单（codebase-grounded, 2026-05-13 投影）
 
-**Draft** — ✅ 已合规，无改动。
+**LoomLibraryView (Sources / Organize 类似面)** — 接近合规但需小修：
 
-**Collect** — 当前 6 cards 不符合 §VII.bis.1（无 foreground）+ §VII.bis.2（教学 + 状态 + 配置全部上桌）。
+- foreground = `rootGrid` list ✅
+- header 上的 "N page(s)" count → 删除（违 §VII.bis.2 count badge in chrome）
+- empty state 的纯文本 "Use the sidebar's + Page or + Folder" → 加 primary action 按钮（符 §VII.bis.3 empty-corpus = 1 prompt + 1 primary action）
 
-- foreground 改为 **captures inbox**（按时间逆序的 list）
-- 4 张教学卡 → Help menu "Set up captures"
-- Pipeline status → Settings > Pipeline
-- Storage card → Settings > Storage
-- Tips → Help menu
-- 扩展未装时：foreground 上方 inline 1-line install hint（非卡片），装完即消失
+**WebCaptureSetupView (Web Capture 设置面)** — 完全不合规，整体 **拆除**：
 
-**Organize** — 当前 5 stats + 5 columns 不符合 §VII.bis.1 + §VII.bis.2。
+- 6 张卡片全部是 教学/状态/配置 —— 没有 foreground 候选
+- 4 张教学卡 (extensionInstallCard / installCard / captureFlowCard / tipsCard) → `Help > Set up captures…` 菜单项打开 `CaptureHelpView` 窗口
+- 1 张配置卡 (storageCard) + 1 张状态卡 (pipelineStatusCard) → Settings 第 4 个 tab "Capture" (`CaptureSettingsView`)
+- WebCaptureSetupView 本体 struct + sidebar `Web Capture` entry 删除
 
-- foreground 改为 **unified inbox**（captures + reading + reader notes 混排，按时间 / pursuit 排序，不分 column）
-- 5 stats badges → 删除（或降级到右栏 meta strip，过 secondary 判定）
-- 空 panel（Local Files / Reader Notes / Question Containers）→ 不渲染
-- Recent Captures + Recent Reading 合并到 unified inbox
+**Draft surface** — 当前 codebase **不存在**。先前 spec (2026-05-13 早版) 误把概念稿截图当作 shipped 代码。该 surface 留待 Phase X 设计 + 实现，标记为 §VII.bis.7 待补章节。建成时按 §VII.bis.1 (single foreground = textarea) + §VII.bis.3 (cold-start = last draft) 设计，作为 Plate VII-bis 的样板。
 
-**其余 16 个 surface** — 单独 PR 审查，逐一对照本纪律 declare。
+**其余 16 个 Plate IV surface** — 每个 PR 单独按 §VII.bis.1–3 declare，本计划不覆盖。
 
 #### §VII.bis.5 审查规则（写给未来 PR）
 
