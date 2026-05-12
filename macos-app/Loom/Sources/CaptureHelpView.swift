@@ -39,8 +39,20 @@ struct CaptureHelpView: View {
     }
 
     private var captureFlowSection: some View {
-        Text("TODO: 4-step flow — filled in Task 8")
-            .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Use it")
+                .font(.custom("EB Garamond", size: 11).weight(.medium).smallCaps())
+                .tracking(11 * 0.16)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Open any web page and confirm the L capture button is visible.", systemImage: "1.circle")
+                Label("Click L for full capture; Shift+L for reader-only; Cmd+L for script-preserved snapshot.", systemImage: "2.circle")
+                Label("Loom comes to the foreground; the capture sheet pre-fills with title, URL, and content.", systemImage: "3.circle")
+                Label("Pick anchor (Web · domain, or Inbox), edit if needed, Save.", systemImage: "4.circle")
+            }
+            .font(.system(size: 13, design: .serif))
+            .labelStyle(.titleAndIcon)
+        }
     }
 
     private var tipsSection: some View {
