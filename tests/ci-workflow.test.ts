@@ -22,6 +22,12 @@ test('CI includes a dedicated macOS app build job', () => {
   assert.doesNotMatch(source, /CODEX_BIN:\s*\.\/scripts\/fake-codex-cli\.mjs/);
 });
 
+test('npm install skips optional onnxruntime CUDA provider download', () => {
+  const source = fs.readFileSync(path.join(repoRoot, '.npmrc'), 'utf8');
+
+  assert.match(source, /^onnxruntime_node_install=skip$/m);
+});
+
 test('macOS project checker supports nested Swift sources and path roots', () => {
   const source = fs.readFileSync(
     path.join(repoRoot, 'scripts', 'check-loom-macos-project-files.mjs'),
