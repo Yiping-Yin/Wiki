@@ -3,6 +3,8 @@
 Status: active design guidance  
 Updated: 2026-04-14
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** Where this file uses *kesi*-metaphor terms (`panel` etc.) as surface names, those names are stale — v1.1 §III.7 deprecates them for user-visible UI copy in favor of literal action words. Visual / typographic / chrome-density guidance in this file (the actual *grammar*) remains authoritative; surface labels referenced in examples should be mapped to current names via [`docs/loom.md`](../loom.md) Plate IV.
+
 This file defines the visual and structural grammar Loom should use going forward.
 
 It is not a moodboard.
