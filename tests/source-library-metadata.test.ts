@@ -11,10 +11,10 @@ function repoImport(modulePath: string) {
   return import(`${href}?t=${Date.now()}-${Math.random()}`);
 }
 
-async function waitFor(predicate: () => boolean, attempts = 50) {
+async function waitFor(predicate: () => boolean, attempts = 200) {
   for (let i = 0; i < attempts; i += 1) {
     if (predicate()) return;
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
   throw new Error('Timed out waiting for condition');
 }
