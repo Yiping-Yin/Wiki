@@ -20,6 +20,54 @@ struct CaptureSettingsView: View {
 
     @State private var extensionPathCopied: Bool = false
     @State private var bookmarkletCopied: Bool = false
+    @State private var storeLocation: String = ""
+    @State private var storeIsCustom: Bool = false
+    @State private var migrationStatus: String? = nil
+
+    private func refreshStoreLocation() {
+        let url = LoomFileStore.rootURL
+        storeLocation = url.path(percentEncoded: false)
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        let defaultPath = docs?.appendingPathComponent("Loom Data").path
+        storeIsCustom = (defaultPath != url.path)
+    }
+
+    private func revealStoreInFinder() {
+        NSWorkspace.shared.activateFileViewerSelecting([LoomFileStore.rootURL])
+    }
+
+    private func moveStoreToUserPicked() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Choose location"
+        panel.message = "Pick a parent folder. Loom will use / create a 'Loom Data' subfolder inside."
+        guard panel.runModal() == .OK, let parent = panel.url else { return }
+
+        let target = parent.appendingPathComponent("Loom Data", isDirectory: true)
+        let current = LoomFileStore.rootURL
+        let fm = FileManager.default
+
+        do {
+            try fm.createDirectory(at: target, withIntermediateDirectories: true)
+            let items = try fm.contentsOfDirectory(at: current, includingPropertiesForKeys: nil)
+            for item in items {
+                let dest = target.appendingPathComponent(item.lastPathComponent)
+                if !fm.fileExists(atPath: dest.path) {
+                    try fm.copyItem(at: item, to: dest)
+                }
+            }
+            let ok = LoomFileStore.setCustomLocation(target)
+            migrationStatus = ok
+                ? "Migrated · \(target.path(percentEncoded: false))"
+                : "Bookmark write failed — new path active for this session only, won't persist on relaunch"
+            refreshStoreLocation()
+        } catch {
+            migrationStatus = "Migration failed: \(error.localizedDescription)"
+        }
+    }
 
     private var extensionResourcesPath: String {
         let fm = FileManager.default
@@ -90,8 +138,27 @@ struct CaptureSettingsView: View {
                 }
             }
             Section("Storage") {
-                Text("TODO: path + Reveal + Move to — filled in Task 4")
+                LabeledContent(storeIsCustom ? "Custom location" : "Default · sandbox container") {
+                    Text(storeLocation.isEmpty ? "(loading…)" : storeLocation)
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+                HStack {
+                    Button("Reveal in Finder") { revealStoreInFinder() }
+                    Button("Move to…") { moveStoreToUserPicked() }
+                    Spacer()
+                }
+                if let status = migrationStatus {
+                    Text(status)
+                        .font(.system(size: 11))
+                        .foregroundStyle(status.hasPrefix("Migrated") ? .green : .red)
+                }
+                Text("Default lives in your Loom sandbox container — Finder doesn't browse there by default. Move to ~/Documents/Loom Data/ (or any folder you pick) to make captures inspectable, syncable to iCloud, and backed up by Time Machine.")
+                    .font(.system(size: 11, design: .serif))
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Section("Pipeline") {
                 Text("TODO: model status + indexed counts + Refresh — filled in Task 5")
@@ -100,6 +167,7 @@ struct CaptureSettingsView: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 480, minHeight: 440)
+        .onAppear { refreshStoreLocation() }
     }
 }
 
