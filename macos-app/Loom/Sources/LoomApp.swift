@@ -68,6 +68,13 @@ struct LoomApp: App {
         .windowResizability(.contentSize)
         .defaultSize(width: 460, height: 540)
 
+        Window("Set up captures", id: CaptureHelpWindow.id) {
+            CaptureHelpView()
+                .paperChrome()
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 560, height: 540)
+
         Window("About Loom", id: AboutWindow.id) {
             AboutView()
         }
