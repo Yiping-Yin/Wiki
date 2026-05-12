@@ -524,6 +524,103 @@ Loom 不是 chrome-style SaaS dashboard。它的视觉宪法在 `Material Audit.
 
 ---
 
+### Amendment 2026-05-13 — §VII.bis 默认形态纪律（Default Surface Discipline）
+
+**来源**：Yiping 2026-05-13 review 现场（在评估了几个候选 sidebar 样式之后）正式 ratify：
+
+> 「不能把页面摊开的到处都是。一个成熟的产品应该是简单使用，但是效果惊人。」
+
+这是 Plate VII 物质美学的**结构对应面**：物质美学讲"长什么样"，默认形态纪律讲"摆什么、不摆什么"。两条共同回答 Cursor for thought 的核心问题：**用户打开 Loom 那一刻看到的是工作面，不是 onboarding shell**。
+
+**作用范围**：Plate IV 全部 19 个 surface，无例外，无新老豁免。
+
+#### §VII.bis.1 正面规则 — Single Foreground
+
+每个 surface **MUST** 有恰好一个 foreground object。surface 内部 organize 成三层：
+
+| Tier | 角色 | 判定 |
+|---|---|---|
+| **Foreground** | 用户当前正在操作 / 阅读 / 写作的主对象 | 最大字号、ink1、占视觉中心 |
+| **Secondary** | 辅助 foreground 的面板 / 列表 / 工具 | **任一**：字号 -1 档 / 颜色 ≤ink2 / 视觉面积 ≤ foreground 40% |
+| **Chrome** | toolbar / breadcrumb / status strip | **全部**：字号 ≤ tertiary / 颜色 ≤ ink3 / 位置在顶或边缘 |
+
+**审查测试**：Reviewer 在 PR 评论里问「这个 surface 的 foreground 是什么？」—— 5 个字内回答不出来 → fail。
+
+参考样本：
+
+- ✅ Draft：foreground = textarea。右栏 Sources/Edit/Board = secondary。toolbar = chrome。
+- ❌ 当前 Collect：6 张同等视觉权重的卡片，foreground 答不出。
+- ❌ 当前 Organize：5 个 stats badges + 5 columns of cards，foreground 答不出。
+
+#### §VII.bis.2 反面规则 — Subtraction
+
+下列内容 **MUST NOT** 出现在任何 default surface（用户首次到达该 surface 时的状态），每类必须迁到指定降落点：
+
+| 内容类型 | 降落点 |
+|---|---|
+| 教学 copy（怎么装扩展、Capture flow 4 步说明、bookmarklet 使用提示） | Help menu **或** 一次性 first-run overlay |
+| Pipeline status（embedding 模型加载情况、indexed count、active workspace 数） | Settings > Pipeline |
+| Storage config（sandbox 路径、Reveal in Finder、Move to…） | Settings > Storage |
+| 空态占位（"No local files yet" / "No reader notes yet" / "No question containers yet"） | **panel 直接不渲染** —— 有内容才出现 |
+| 任何 configuration control（preference、provider 切换、theme） | Settings drawer |
+
+#### §VII.bis.3 Cold-start 与 First-run
+
+- **First-run**（用户第一次打开 Loom）：一次性 welcome overlay 覆盖主 pane，dismiss 后**永不再现**。
+- **Cold-start with non-empty corpus**：surface resume 到上次状态：
+  - Draft = last draft
+  - Collect = last viewed capture（或 inbox top）
+  - Organize = 当前 active Question（或最近一条 unorganized capture）
+- **Cold-start with empty corpus**：每个 surface 显示 1-line prompt + 1 primary action，不分卡片。例如：
+  - Collect: "Drop a file or click L on a webpage." [Add files]
+  - Organize: "Captures get organized here once you have them." [Capture]
+  - Draft: textarea 直接打开，无 helper text
+
+#### §VII.bis.4 Per-surface 迁移清单
+
+**Draft** — ✅ 已合规，无改动。
+
+**Collect** — 当前 6 cards 不符合 §VII.bis.1（无 foreground）+ §VII.bis.2（教学 + 状态 + 配置全部上桌）。
+
+- foreground 改为 **captures inbox**（按时间逆序的 list）
+- 4 张教学卡 → Help menu "Set up captures"
+- Pipeline status → Settings > Pipeline
+- Storage card → Settings > Storage
+- Tips → Help menu
+- 扩展未装时：foreground 上方 inline 1-line install hint（非卡片），装完即消失
+
+**Organize** — 当前 5 stats + 5 columns 不符合 §VII.bis.1 + §VII.bis.2。
+
+- foreground 改为 **unified inbox**（captures + reading + reader notes 混排，按时间 / pursuit 排序，不分 column）
+- 5 stats badges → 删除（或降级到右栏 meta strip，过 secondary 判定）
+- 空 panel（Local Files / Reader Notes / Question Containers）→ 不渲染
+- Recent Captures + Recent Reading 合并到 unified inbox
+
+**其余 16 个 surface** — 单独 PR 审查，逐一对照本纪律 declare。
+
+#### §VII.bis.5 审查规则（写给未来 PR）
+
+任何动 Plate IV surface 的 feature PR 必须在 description 中显式 declare：
+
+1. 该 surface 的 foreground object 是什么？
+2. secondary 元素有哪些，每个过的是哪一项 subordinate-check（字号 / 颜色 / 面积）？
+3. chrome 元素有哪些？
+4. 该 surface 默认状态下含 教学 / 状态 / 空态 / 配置 内容吗？含 → 直接 reject。
+
+不能 declare 即 PR 不合规，无论功能多正确。
+
+#### §VII.bis.6 与 Plate VII 物质美学的关系
+
+物质美学（Cormorant + 牛血红 + Vellum + 安静）讲 surface **长什么样**。默认形态纪律讲 surface **摆什么、不摆什么**。两条都满足才算"有态度的安静" —— 物质美学单独存在会变成"漂亮的 dashboard"；默认形态纪律单独存在会变成"裸露的工具"。
+
+**Cross-refs**：
+
+- Plate III Refusals（6 条 + §III.7 命名纪律）
+- Plate IV 19 surfaces + Plate IV addendum 2026-05-12 sidebar/list 交互语法
+- `docs/design/CURRENT_DESIGN_CANON.md` §3 Attention Contract（本 amendment 是它的 hard tightening：把"应当有一个 foreground"升格为"MUST 有 + 三层结构 + 反面禁令"）
+
+---
+
 ## Plate VIII — 当前状态 + 工程顺序
 
 ### 已经在跑的两条线
