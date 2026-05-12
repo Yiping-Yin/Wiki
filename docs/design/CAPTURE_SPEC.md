@@ -3,6 +3,8 @@
 Status: working spec for the canvas pivot landed 2026-04-11. `docs/design/CANVAS_SPEC.md`
 is now historical — do not implement from it.
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** References `crystallize` as a concept-name. v1.1 §III.7 deprecates *kesi*-metaphor vocabulary for user-visible UI copy; the term is acceptable in this file insofar as it names an internal concept/event, but new user-facing strings should follow [`docs/loom.md`](../loom.md) Plate IV naming. Capture-flow design in this file remains authoritative.
+
 ## The principle
 
 Externalizing a thought while reading must happen in **under 2 steps** and

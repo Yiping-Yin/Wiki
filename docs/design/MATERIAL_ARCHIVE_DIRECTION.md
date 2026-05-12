@@ -4,6 +4,8 @@ Status: operative product direction
 Scope: Sources, category detail, source detail, panels, weaves, and the macOS shell
 Private research archive: `/Users/yinyiping/Desktop/LOOM-Design-Resources`
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** Uses `panel / weave` as surface concepts. v1.1 §III.7 deprecates these for user-visible UI copy; current surface names live in [`docs/loom.md`](../loom.md) Plate IV. Material/typographic direction in this file remains authoritative — only the surface labels are stale.
+
 This document is the product-safe distillation of Loom's material archive
 research. It belongs in the product repository because it describes executable
 design rules. Raw references, moodboards, screenshots, case studies, and
