@@ -1,8 +1,8 @@
 /**
- * Auto-research a single chapter using a LOCAL CLI (claude or codex).
+ * Auto-research a single chapter using a LOCAL CLI (codex by default).
  *
  * Usage:
- *   npx tsx scripts/research.ts <slug> "<title>" "<hint>" [--cli claude|codex] [--model <id>]
+ *   npx tsx scripts/research.ts <slug> "<title>" "<hint>" [--cli codex] [--model <id>]
  *
  * Examples:
  *   npx tsx scripts/research.ts rope "RoPE — Rotary Position Embeddings" "rotary position embedding..."
@@ -12,36 +12,38 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-type CLI = 'claude' | 'codex';
+type CLI = 'codex';
 
 const args = process.argv.slice(2);
 if (args.length < 3) {
-  console.error('Usage: tsx scripts/research.ts <slug> "<title>" "<hint>" [--cli claude|codex] [--model <id>]');
+  console.error('Usage: tsx scripts/research.ts <slug> "<title>" "<hint>" [--cli codex] [--model <id>]');
   process.exit(1);
 }
 const [slug, title, hint, ...rest] = args;
-let cli: CLI = 'claude';
+let cli: CLI = 'codex';
 let model: string | undefined;
 for (let i = 0; i < rest.length; i++) {
-  if (rest[i] === '--cli') cli = rest[++i] as CLI;
-  else if (rest[i] === '--model') model = rest[++i];
+  if (rest[i] === '--cli') {
+    const requested = rest[++i];
+    if (requested && requested !== 'codex') {
+      console.error(`Unsupported CLI "${requested}". Loom research defaults to codex.`);
+      process.exit(1);
+    }
+    cli = 'codex';
+  } else if (rest[i] === '--model') model = rest[++i];
 }
 
 function runCLI(prompt: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let bin: string;
     let cliArgs: string[];
-    if (cli === 'claude') {
-      bin = 'claude';
-      cliArgs = ['-p', prompt, '--output-format', 'text'];
-      if (model) cliArgs.push('--model', model);
-    } else {
-      bin = 'codex';
-      cliArgs = ['exec', prompt];
-      if (model) cliArgs.push('--model', model);
-    }
-    const proc = spawn(bin, cliArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    bin = 'codex';
+    cliArgs = ['exec', '--skip-git-repo-check', '--ephemeral', '--color', 'never'];
+    if (model) cliArgs.push('--model', model);
+    const proc = spawn(bin, cliArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
     let out = '', err = '';
+    proc.stdin.write(prompt);
+    proc.stdin.end();
     proc.stdout.on('data', (d) => (out += d.toString()));
     proc.stderr.on('data', (d) => (err += d.toString()));
     proc.on('close', (code) => {

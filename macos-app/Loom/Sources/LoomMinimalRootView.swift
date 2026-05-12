@@ -58,8 +58,8 @@ struct LoomMinimalRootView: View {
     @State private var foldersExpanded: Bool = false
     /// Hover state for sidebar rows — keyed by a stable string id so
     /// each row's bronze-hint background can light up on cursor enter.
-    /// Pages / Captures / + Page / + Folder use literal keys; folder
-    /// rows use their UUID string.
+    /// Sources / Captures / + Page / + Folder use literal
+    /// keys; folder rows use their UUID string.
     @State private var hoveredSidebarRow: String? = nil
     /// Folders-section caret-collapse state — per docs/loom.md §IV.B
     /// (interaction-grammar addendum 2026-05-12): group header MAY be
@@ -279,9 +279,6 @@ struct LoomMinimalRootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .loomShowLibrary)) { _ in
             navigate(.library)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .loomBeginNewPage)) { _ in
-            startNewPage()
         }
         .onReceive(NotificationCenter.default.publisher(for: .loomOpenSourceFile)) { note in
             if let url = note.userInfo?["url"] as? URL {
@@ -865,9 +862,9 @@ struct LoomMinimalRootView: View {
         )
     }
 
-    /// Phase A3 follow-up — sidebar entries for the captures browser
-    /// + bookmarklet setup. They sit beside Sources because they're
-    /// cross-cutting (not tied to one ContentRoot).
+    /// Phase A3 follow-up — sidebar entry for the captures browser.
+    /// Capture setup now lives in Settings and Help per docs/loom.md
+    /// §VII.bis, so this section does not expose a setup row.
     @ViewBuilder
     private var capturesRow: some View {
         sidebarButton(

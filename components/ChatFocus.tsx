@@ -839,7 +839,7 @@ export function ChatFocus() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedPassIndex, setSelectedPassIndex] = useState<number | null>(null);
   const [viewModePreference, setViewModePreference] = useState<ClarificationViewMode | null>(null);
-  const waitingProviderLabel = effectiveCli === 'claude' ? 'Claude CLI' : 'Codex CLI';
+  const waitingProviderLabel = 'Codex CLI';
 
   useEffect(() => {
     if (!shouldShowClarificationHistory(turns.length)) {

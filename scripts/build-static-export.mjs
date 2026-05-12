@@ -77,6 +77,14 @@ async function resolveContentRootForStaticExport() {
   return repoRoot;
 }
 
+function resolveDerivedDataRootForStaticExport() {
+  const override = process.env.LOOM_DERIVED_DATA_ROOT?.trim();
+  if (override) return override;
+
+  const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || homedir();
+  return path.join(home, 'Library', 'Application Support', 'Loom', 'derived');
+}
+
 async function restoreStaleShelvedPaths() {
   for (const rel of SHELVED) {
     const original = path.join(repoRoot, rel);
@@ -151,9 +159,11 @@ function runBuildSearchIndex() {
 
 async function copySearchIndexIntoExport() {
   const contentRoot = await resolveContentRootForStaticExport();
+  const derivedDataRoot = resolveDerivedDataRootForStaticExport();
   const candidates = [
-    path.join(contentRoot, 'knowledge', '.cache', 'indexes', 'search-index.json'),
+    path.join(derivedDataRoot, 'knowledge', '.cache', 'indexes', 'search-index.json'),
     path.join(repoRoot, 'knowledge', '.cache', 'indexes', 'search-index.json'),
+    path.join(contentRoot, 'knowledge', '.cache', 'indexes', 'search-index.json'),
   ];
   const source = (await Promise.all(candidates.map(async (candidate) => ({
     candidate,

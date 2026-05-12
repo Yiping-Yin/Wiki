@@ -6,12 +6,12 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { CONTENT_ROOT } from '../../../lib/server-config';
+import { loomUserDataRoot } from '../../../lib/paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const UPLOAD_DIR = path.join(CONTENT_ROOT, 'knowledge', 'uploads');
+const UPLOAD_DIR = path.join(loomUserDataRoot(), 'knowledge', 'uploads');
 
 function isWithinDir(root: string, target: string) {
   const rel = path.relative(root, target);

@@ -50,7 +50,7 @@ The product now reads as one system:
 - Replaced the scene-driven Home with a quiet desktop start surface.
 - Added shared stage width and breakpoint contracts for working / archive / map surfaces.
 - Promoted desktop entry roles into the active canon and stabilization freeze docs.
-- Aligned help and process copy to the local CLI AI runtime model: Codex CLI as the default and Claude CLI as the fallback.
+- Aligned help and process copy to the local CLI AI runtime model: Codex CLI as the default local CLI.
 
 ## 4. Residual Non-Blocking Issues
 

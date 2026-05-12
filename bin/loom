@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Loom CLI wrapper — invokes the Node-based MVP via tsx.
+# v4.1 M8 MVP. Swift binary planned for v4.2+.
+#
+# Install (one-time): ln -s "$(pwd)/bin/loom" /usr/local/bin/loom
+# Or alias in shell:  alias loom='/Users/yinyiping/Desktop/LOOM/bin/loom'
+
+LOOM_REPO="$(cd "$(dirname "$0")/.." && pwd)"
+exec npx --quiet tsx "$LOOM_REPO/scripts/loom-cli.ts" "$@"

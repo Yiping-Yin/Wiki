@@ -8,8 +8,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { LOOM_CAPTURE_DOC_MARKER } from '../../../../lib/knowledge-doc-state';
-import { EXECUTION_ROOT, KNOWLEDGE_ROOT } from '../../../../lib/server-config';
-import { runKnowledgeIngest } from '../../../../lib/knowledge-ingest';
+import { knowledgeUploadRoot } from '../../../../lib/paths';
 
 export const runtime = 'nodejs';
 
@@ -23,6 +22,10 @@ function slugify(s: string): string {
     .slice(0, 80) || 'topic';
 }
 
+function safeName(name: string): string {
+  return name.replace(/[/\\]/g, '_').replace(/^\.+/, '').slice(0, 200);
+}
+
 export async function POST(req: Request) {
   try {
     const { name } = await req.json();
@@ -34,22 +37,24 @@ export async function POST(req: Request) {
     if (/[\/\\]|\.\./.test(trimmed)) {
       return Response.json({ error: 'Invalid category name' }, { status: 400 });
     }
-    const dirPath = path.join(KNOWLEDGE_ROOT, trimmed);
-
-    // Create directory with a placeholder so ingest registers it
-    await fs.mkdir(dirPath, { recursive: true });
-    const readmePath = path.join(dirPath, `${trimmed}.md`);
-    try { await fs.access(readmePath); } catch {
-      await fs.writeFile(readmePath, `${LOOM_CAPTURE_DOC_MARKER}\n# ${trimmed}\n`);
+    const uploadDir = knowledgeUploadRoot();
+    await fs.mkdir(uploadDir, { recursive: true });
+    const safeStem = safeName(trimmed);
+    let finalName = `${safeStem}.md`;
+    let counter = 1;
+    while (true) {
+      try {
+        await fs.access(path.join(uploadDir, finalName));
+        finalName = `${safeStem}-${counter}.md`;
+        counter++;
+      } catch { break; }
     }
-
-    // Re-run ingest to update navigation
-    await runKnowledgeIngest({ cwd: EXECUTION_ROOT });
+    await fs.writeFile(path.join(uploadDir, finalName), `${LOOM_CAPTURE_DOC_MARKER}\n# ${trimmed}\n`);
 
     const slug = slugify(trimmed);
     return Response.json({
       slug,
-      href: `/knowledge/${slug}/${slug}`,
+      href: `/uploads/${encodeURIComponent(finalName)}`,
       name: trimmed,
     });
   } catch (e: any) {

@@ -72,10 +72,8 @@ Use these runtime rules consistently:
 
 - `codex`
   The default local AI runtime
-- `claude`
-  The fallback local AI runtime when `codex` is unavailable
 - `Preferred AI runtime`
-  The Settings control for choosing which local runtime Loom tries first
+  The Settings control for choosing the local Codex runtime
 
 This means:
 
@@ -221,7 +219,7 @@ Remaining stabilization work:
 - continue deleting long-tail compatibility helpers
 - keep `graph` / `review` / `patterns` status labels aligned as relation editing grows
 - watch for scheduler explanation drift if target-state memory is added later
-- keep AI runtime copy aligned to the local machine model, with `codex` first and `claude` as fallback
+- keep AI runtime copy aligned to the local machine model, with `codex` as the default local CLI
 
 ## 5. What Should Not Happen Next
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,10 +11,10 @@ function repoImport(modulePath: string) {
   return import(`${href}?t=${Date.now()}-${Math.random()}`);
 }
 
-async function waitFor(predicate: () => boolean, attempts = 50) {
+async function waitFor(predicate: () => boolean, attempts = 200) {
   for (let i = 0; i < attempts; i += 1) {
     if (predicate()) return;
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
   throw new Error('Timed out waiting for condition');
 }
@@ -22,8 +22,11 @@ async function waitFor(predicate: () => boolean, attempts = 50) {
 async function withTempRepo(t: test.TestContext, fn: (root: string) => Promise<void>) {
   const previousCwd = process.cwd();
   const previousContentRoot = process.env.LOOM_CONTENT_ROOT;
+  const previousUserDataRoot = process.env.LOOM_USER_DATA_ROOT;
+  const previousDerivedDataRoot = process.env.LOOM_DERIVED_DATA_ROOT;
   const root = await mkdtemp(path.join(os.tmpdir(), 'source-library-metadata-'));
-  const manifestRoot = path.join(root, 'knowledge', '.cache', 'manifest');
+  const derivedRoot = path.join(root, 'derived');
+  const manifestRoot = path.join(derivedRoot, 'knowledge', '.cache', 'manifest');
 
   await mkdir(manifestRoot, { recursive: true });
   await writeFile(
@@ -45,12 +48,24 @@ async function withTempRepo(t: test.TestContext, fn: (root: string) => Promise<v
 
   process.chdir(root);
   process.env.LOOM_CONTENT_ROOT = root;
+  process.env.LOOM_USER_DATA_ROOT = path.join(root, 'user-data');
+  process.env.LOOM_DERIVED_DATA_ROOT = derivedRoot;
   t.after(() => {
     process.chdir(previousCwd);
     if (previousContentRoot === undefined) {
       delete process.env.LOOM_CONTENT_ROOT;
     } else {
       process.env.LOOM_CONTENT_ROOT = previousContentRoot;
+    }
+    if (previousUserDataRoot === undefined) {
+      delete process.env.LOOM_USER_DATA_ROOT;
+    } else {
+      process.env.LOOM_USER_DATA_ROOT = previousUserDataRoot;
+    }
+    if (previousDerivedDataRoot === undefined) {
+      delete process.env.LOOM_DERIVED_DATA_ROOT;
+    } else {
+      process.env.LOOM_DERIVED_DATA_ROOT = previousDerivedDataRoot;
     }
   });
 
@@ -86,12 +101,7 @@ test('source-library metadata persists groups, keeps Ungrouped fallback, and reh
     assert.deepEqual(deletedState.groups, [{ id: 'ungrouped', label: 'Ungrouped', order: 9999 }]);
     assert.deepEqual(deletedState.memberships, [{ categorySlug: 'alpha', groupId: 'ungrouped', order: 9999 }]);
 
-    const rawMetadata = JSON.parse(
-      await (await import('node:fs/promises')).readFile(
-        path.join(root, 'knowledge', '.cache', 'manifest', 'source-library-groups.json'),
-        'utf8',
-      ),
-    );
+    const rawMetadata = JSON.parse(await readFile(metadataModule.sourceLibraryMetadataPath(), 'utf8'));
     assert.deepEqual(rawMetadata, deletedState);
   });
 });
@@ -123,10 +133,10 @@ test('source-library metadata can hide a source without touching its underlying 
 
 test('source-library metadata rejects malformed files instead of treating them as empty', async (t) => {
   await withTempRepo(t, async (root) => {
-    const metadataPath = path.join(root, 'knowledge', '.cache', 'manifest', 'source-library-groups.json');
-    await writeFile(metadataPath, '{"groups":[', 'utf8');
-
     const metadataModule = await repoImport('lib/source-library-metadata.ts');
+    const metadataPath = metadataModule.sourceLibraryMetadataPath();
+    await mkdir(path.dirname(metadataPath), { recursive: true });
+    await writeFile(metadataPath, '{"groups":[', 'utf8');
 
     await assert.rejects(metadataModule.readSourceLibraryMetadata(), /source library metadata/i);
   });
@@ -145,6 +155,7 @@ test('source-library metadata writes never expose a truncated file to concurrent
       memberships: [],
     };
 
+    await mkdir(path.dirname(metadataPath), { recursive: true });
     await writeFile(metadataPath, JSON.stringify(initialMetadata, null, 2), 'utf8');
 
     let releaseWrite!: () => void;
@@ -243,7 +254,7 @@ test('knowledge-store returns grouped source-library categories only for raw sou
 test('knowledge-store refreshes nav and manifest reads after the underlying files are rewritten', async (t) => {
   await withTempRepo(t, async (root) => {
     const storeModule = await repoImport('lib/knowledge-store.ts');
-    const manifestRoot = path.join(root, 'knowledge', '.cache', 'manifest');
+    const manifestRoot = path.join(root, 'derived', 'knowledge', '.cache', 'manifest');
     const navPath = path.join(manifestRoot, 'knowledge-nav.json');
     const manifestPath = path.join(manifestRoot, 'knowledge-manifest.json');
 

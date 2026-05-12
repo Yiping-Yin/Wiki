@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CONTENT_ROOT } from './server-config';
+import { loomUserDataRoot } from './paths';
 
 /**
  * Phase 7.3 · Dismissal sidecar (web / dev mode).
@@ -13,7 +14,7 @@ import { CONTENT_ROOT } from './server-config';
  * converge on a single sidecar file per reading docId.
  *
  * Storage:
- *   <CONTENT_ROOT>/knowledge/.cache/extractor-anchors-dismissed/
+ *   <LOOM_USER_DATA_ROOT>/knowledge/.cache/extractor-anchors-dismissed/
  *       <slugified-docId>.json
  *
  * In native mode the same path is read by Swift's
@@ -23,6 +24,13 @@ import { CONTENT_ROOT } from './server-config';
  */
 
 const DISMISSED_DIR = path.join(
+  loomUserDataRoot(),
+  'knowledge',
+  '.cache',
+  'extractor-anchors-dismissed',
+);
+
+const LEGACY_DISMISSED_DIR = path.join(
   CONTENT_ROOT,
   'knowledge',
   '.cache',
@@ -50,21 +58,28 @@ function slugify(value: string): string {
   return out;
 }
 
-function pathFor(docId: string): string {
-  return path.join(DISMISSED_DIR, `${slugify(docId)}.json`);
+function pathFor(docId: string, root = DISMISSED_DIR): string {
+  return path.join(root, `${slugify(docId)}.json`);
+}
+
+function readPathsFor(docId: string): string[] {
+  const primary = pathFor(docId);
+  const legacy = pathFor(docId, LEGACY_DISMISSED_DIR);
+  return primary === legacy ? [primary] : [primary, legacy];
 }
 
 export async function readDismissedFingerprints(docId: string): Promise<string[]> {
-  try {
-    const raw = await fs.readFile(pathFor(docId), 'utf-8');
-    const parsed = JSON.parse(raw) as DismissedFile;
-    const list = Array.isArray(parsed.dismissedFingerprints)
-      ? parsed.dismissedFingerprints
-      : [];
-    return list.filter((s): s is string => typeof s === 'string' && s.length > 0);
-  } catch {
-    return [];
+  for (const candidate of readPathsFor(docId)) {
+    try {
+      const raw = await fs.readFile(candidate, 'utf-8');
+      const parsed = JSON.parse(raw) as DismissedFile;
+      const list = Array.isArray(parsed.dismissedFingerprints)
+        ? parsed.dismissedFingerprints
+        : [];
+      return list.filter((s): s is string => typeof s === 'string' && s.length > 0);
+    } catch {}
   }
+  return [];
 }
 
 export async function appendDismissedFingerprint(

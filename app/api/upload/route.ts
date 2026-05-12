@@ -7,13 +7,12 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { CONTENT_ROOT, EXECUTION_ROOT, KNOWLEDGE_ROOT } from '../../../lib/server-config';
-import { runKnowledgeIngest } from '../../../lib/knowledge-ingest';
+import { knowledgeUploadRoot } from '../../../lib/paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const UPLOAD_DIR = path.join(CONTENT_ROOT, 'knowledge', 'uploads');
+const UPLOAD_DIR = knowledgeUploadRoot();
 const ALLOWED = new Set(['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.mdx', '.csv', '.tsv', '.json', '.ipynb', '.xlsx', '.xls']);
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -56,55 +55,7 @@ export async function POST(req: Request) {
   const category = formData.get('category');
   const categoryName = typeof category === 'string' ? category.trim() : '';
 
-  if (categoryName) {
-    // Map category label back to directory path
-    // "UNSW · COMM 3030" → "UNSW/COMM 3030", "C++" → "C++"
-    if (/\.\./.test(categoryName)) {
-      return new Response('Invalid category', { status: 400 });
-    }
-    const dirName = categoryName.includes(' · ')
-      ? categoryName.replace(' · ', path.sep)
-      : categoryName;
-    const catDir = path.join(KNOWLEDGE_ROOT, dirName);
-    if (!catDir.startsWith(KNOWLEDGE_ROOT)) {
-      return new Response('Invalid category path', { status: 400 });
-    }
-    await fs.mkdir(catDir, { recursive: true });
-
-    const safe = safeName(file.name);
-    let finalName = safe;
-    let counter = 1;
-    while (true) {
-      try {
-        await fs.access(path.join(catDir, finalName));
-        const stem = safe.replace(/\.[^.]+$/, '');
-        finalName = `${stem}-${counter}${ext}`;
-        counter++;
-      } catch { break; }
-    }
-
-    const buf = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(path.join(catDir, finalName), buf);
-
-    // Re-run ingest so the nav updates
-    try {
-      await runKnowledgeIngest({ cwd: EXECUTION_ROOT });
-    } catch {}
-
-    const catSlug = slugify(categoryName);
-    return Response.json({
-      id: slugify(safe),
-      slug: slugify(safe),
-      name: finalName,
-      size: file.size,
-      href: `/knowledge/${catSlug}`,
-      docHref: `/knowledge/${catSlug}/${slugify(safe)}`,
-      category: categoryName,
-      textExtractable: isTextExtractable(ext),
-    });
-  }
-
-  // Default: flat uploads directory
+  // Flat uploads are user-authored data and must stay outside the selected source root.
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
 
   const safe = safeName(file.name);
@@ -129,6 +80,8 @@ export async function POST(req: Request) {
     name: finalName,
     size: file.size,
     href: `/uploads/${encodeURIComponent(finalName)}`,
+    ...(categoryName ? { category: categoryName } : {}),
+    textExtractable: isTextExtractable(ext),
   });
 }
 

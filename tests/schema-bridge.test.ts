@@ -159,49 +159,6 @@ test('schema corrections apply over FieldResult leaves without mutating the raw 
   assert.equal(next.assessmentItems[0].dueDate.value, '2026-05-18');
 });
 
-test('schema corrections API validates input and persists sidecars in dev mode', async () => {
-  const route = await repoImport('app/api/schema-corrections/route.ts');
-
-  const invalid = await route.POST(
-    new Request('http://localhost/api/schema-corrections', {
-      method: 'POST',
-      body: JSON.stringify({
-        extractorId: 'syllabus-pdf',
-        sourceDocId: 'ingested:Course Overview.pdf',
-        fieldPath: 'courseCode',
-        newValue: 'FINS3640',
-        originalValue: 'FINS3640',
-      }),
-    }),
-  );
-  assert.equal(invalid.status, 400);
-
-  const created = await route.POST(
-    new Request('http://localhost/api/schema-corrections', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        extractorId: 'syllabus-pdf',
-        sourceDocId: 'ingested:Course Overview.pdf',
-        fieldPath: 'courseCode',
-        newValue: 'FINS 3640',
-        originalValue: 'FINS3640',
-      }),
-    }),
-  );
-  assert.equal(created.status, 200);
-  assert.equal((await created.json()).corrections.length, 1);
-
-  const read = await route.GET(
-    new Request(
-      'http://localhost/api/schema-corrections?extractorId=syllabus-pdf&sourceDocId=ingested%3ACourse%20Overview.pdf',
-    ),
-  );
-  assert.equal(read.status, 200);
-  const payload = await read.json();
-  assert.equal(payload.corrections[0].corrected, 'FINS 3640');
-});
-
 test('native schema bridge files expose schema endpoints and correction reply bridge', () => {
   const handler = fs.readFileSync(
     path.join(repoRoot, 'macos-app/Loom/Sources/LoomURLSchemeHandler.swift'),

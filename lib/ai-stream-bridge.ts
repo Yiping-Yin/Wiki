@@ -1,9 +1,8 @@
 /**
- * Swift-bridge-only streaming client. Phase 3 / 5 of architecture
- * inversion — the HTTP SSE fallback at `/api/chat` was deleted along
- * with its non-streaming siblings. This module now only talks to
+ * Swift-bridge-first streaming client. Product webviews stream through
  * `AIStreamBridgeHandler` via `window.webkit.messageHandlers.loomAIStream`
- * with per-stream callbacks on `window.__loomAI`.
+ * with per-stream callbacks on `window.__loomAI`. The server `/api/chat`
+ * route is reserved for smoke / configured server AI validation.
  */
 
 type StreamCallbacks = {

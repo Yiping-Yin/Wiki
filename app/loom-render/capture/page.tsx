@@ -630,8 +630,10 @@ function markSnapshotPreviewMedia(mediaTag: string): string {
   return mediaTag.replace(/^<([a-z0-9-]+)\b/i, '<$1 data-loom-snapshot-preview-media="true"');
 }
 
-function interactiveSnapshotCaption(snapshotHref: string): string {
-  const action = snapshotHref
+function interactiveSnapshotCaption(snapshotHref: string, inlineLoaded = false): string {
+  const action = inlineLoaded
+    ? '<span class="loom-interactive-snapshot-action muted">Interactive snapshot</span>'
+    : snapshotHref
     ? `<a class="loom-interactive-snapshot-action" href="${escapeAttr(snapshotHref)}">Open interactive snapshot</a>`
     : '<span class="loom-interactive-snapshot-action muted">Snapshot unavailable</span>';
   return [
@@ -645,6 +647,27 @@ function interactiveSnapshotCaption(snapshotHref: string): string {
 function snapshotTargetFromMediaTag(tag: string): string {
   const match = tag.match(/\bdata-loom-snapshot-target=(["'])([^"']+)\1/i);
   return match ? match[2] : '';
+}
+
+function snapshotAttrFromMediaTag(tag: string, attrName: string): string {
+  const escapedAttr = attrName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = tag.match(new RegExp(`\\b${escapedAttr}=(["'])([^"']*)\\1`, 'i'));
+  return match ? match[2] : '';
+}
+
+function shouldInlineSnapshotRegionMeta(kind: string, label: string): boolean {
+  const mediaKind = (kind || '').toLowerCase();
+  const mediaLabel = label || '';
+  if (mediaKind === 'canvas') return false;
+  if (mediaKind === 'composite-media' || mediaKind === 'structured-visual') return true;
+  return /pixel font comparison|aluminum frame|controller board|power connection|data connection/i.test(mediaLabel);
+}
+
+function shouldInlineSnapshotRegion(mediaTag: string): boolean {
+  return shouldInlineSnapshotRegionMeta(
+    snapshotAttrFromMediaTag(mediaTag, 'data-loom-capture-kind'),
+    `${snapshotAttrFromMediaTag(mediaTag, 'alt')} ${snapshotAttrFromMediaTag(mediaTag, 'title')}`,
+  );
 }
 
 function targetedSnapshotHref(snapshotHref: string, snapshotTarget: string): string {
@@ -730,37 +753,18 @@ function wrapSnapshotBackedMedia(mediaTag: string, snapshotHref: string): string
   const preview = markSnapshotPreviewMedia(mediaTag);
   const snapshotTarget = snapshotTargetFromMediaTag(mediaTag);
   const liveHref = targetedSnapshotHref(snapshotHref, snapshotTarget);
-  // 2026-05-02 click-to-load interactive embed. Static composite-media
-  // / structured-visual screenshots flatten scroll-linked diagrams
-  // (e.g. flipdisc.io's "Aluminum Frame / Controller Board / Power
-  // Connection / Data Connection" 4-state widget) into one frozen
-  // frame with all labels stacked into alt text — losing the
-  // interactivity that gave the diagram its meaning. To restore it
-  // without paying the page-load cost: render the static preview as
-  // a button by default; on user click, the document-level handler
-  // swaps the button for a sandboxed iframe pointing at the
-  // snapshot route in targeted-embed mode (?embed=1&target=...),
-  // which runs the source page's JS only for that one element. The
-  // earlier scroll-oscillation regression came from auto-mounting
-  // these iframes at page load, where many widgets simultaneously
-  // dispatched parent-window scroll commands. Click-to-load means
-  // at most one is active, mounted only on explicit user intent.
-  const figureBody = liveHref
-    ? [
-        `<button type="button" class="loom-snapshot-load" data-loom-snapshot-href="${escapeAttr(liveHref)}" data-loom-snapshot-target="${escapeAttr(snapshotTarget)}" aria-label="Load interactive version">`,
-        preview,
-        '<span class="loom-snapshot-load-hint" aria-hidden="true">Click to load interactive</span>',
-        '</button>',
-      ].join('')
+  const inlineRegion = !!liveHref && shouldInlineSnapshotRegion(mediaTag);
+  const figureBody = inlineRegion
+    ? `<iframe class="loom-interactive-snapshot-frame loom-inline-snapshot-frame" src="${escapeAttr(liveHref)}" title="Interactive snapshot region" loading="lazy" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" data-loom-snapshot-loaded="inline"></iframe>`
     : preview;
-  const modeAttr = liveHref
-    ? 'data-loom-interactive-snapshot-mode="click-to-load"'
+  const modeAttr = inlineRegion
+    ? 'data-loom-interactive-snapshot-mode="inline-target"'
     : 'data-loom-interactive-snapshot-mode="preview-link"';
   const targetAttr = snapshotTarget ? ` data-loom-snapshot-target="${escapeAttr(snapshotTarget)}"` : '';
   return [
     `<figure class="loom-interactive-snapshot" data-loom-interactive-snapshot="true"${targetAttr} ${modeAttr}>`,
     figureBody,
-    interactiveSnapshotCaption(snapshotHref),
+    interactiveSnapshotCaption(snapshotHref, inlineRegion),
     '</figure>',
   ].join('');
 }
@@ -1925,8 +1929,12 @@ function AstImageBlock({ block, snapshotHref }: { block: CaptureAstBlock; snapsh
   const src = block.url || '';
   const alt = block.title || block.text || '';
   const snapshotTarget = block.snapshotTarget || '';
-  const isSnapshotBacked = !!snapshotTarget && SNAPSHOT_BACKED_KINDS.includes(block.mediaRole || '');
-  const liveHref = isSnapshotBacked ? targetedSnapshotHref(snapshotHref, snapshotTarget) : '';
+  const liveHref = targetedSnapshotHref(snapshotHref, snapshotTarget);
+  const inlineRegion = !!liveHref && shouldInlineSnapshotRegionMeta(block.mediaRole || '', alt);
+  const isSnapshotBacked = !!snapshotTarget && (
+    SNAPSHOT_BACKED_KINDS.includes(block.mediaRole || '') ||
+    inlineRegion
+  );
   if (!src) return null;
   const captureKindAttr = block.kind === 'visualAssembly'
     ? { 'data-loom-capture-kind': block.mediaRole || 'structured-visual' }
@@ -1949,21 +1957,19 @@ function AstImageBlock({ block, snapshotHref }: { block: CaptureAstBlock; snapsh
         className="loom-interactive-snapshot"
         data-loom-interactive-snapshot="true"
         data-loom-snapshot-target={snapshotTarget}
-        data-loom-interactive-snapshot-mode={liveHref ? 'click-to-load' : 'preview-link'}
+        data-loom-interactive-snapshot-mode={inlineRegion ? 'inline-target' : 'preview-link'}
       >
-        {liveHref ? (
-          <button
-            type="button"
-            className="loom-snapshot-load"
-            data-loom-snapshot-href={liveHref}
-            data-loom-snapshot-target={snapshotTarget}
-            aria-label="Load interactive version"
-          >
-            {img}
-            <span className="loom-snapshot-load-hint" aria-hidden="true">Click to load interactive</span>
-          </button>
+        {inlineRegion ? (
+          <iframe
+            className="loom-interactive-snapshot-frame loom-inline-snapshot-frame"
+            src={liveHref}
+            title="Interactive snapshot region"
+            loading="lazy"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
+            data-loom-snapshot-loaded="inline"
+          />
         ) : img}
-        <SnapshotCaptionFigcaption snapshotHref={snapshotHref} />
+        <SnapshotCaptionFigcaption snapshotHref={snapshotHref} inlineLoaded={inlineRegion} />
       </figure>
     );
   }
@@ -2137,11 +2143,13 @@ function AstProviderEmbedBlock({ block }: { block: CaptureAstBlock }) {
   );
 }
 
-function SnapshotCaptionFigcaption({ snapshotHref }: { snapshotHref: string }) {
+function SnapshotCaptionFigcaption({ snapshotHref, inlineLoaded = false }: { snapshotHref: string; inlineLoaded?: boolean }) {
   return (
     <figcaption className="loom-interactive-snapshot-caption">
       <span className="loom-interactive-snapshot-label">Snapshot preview</span>
-      {snapshotHref ? (
+      {inlineLoaded ? (
+        <span className="loom-interactive-snapshot-action muted">Interactive snapshot</span>
+      ) : snapshotHref ? (
         <a className="loom-interactive-snapshot-action" href={snapshotHref}>Open interactive snapshot</a>
       ) : (
         <span className="loom-interactive-snapshot-action muted">Snapshot unavailable</span>
@@ -2953,37 +2961,45 @@ function ArticleRender({
         embedBtn.replaceWith(wrapper);
         return;
       }
-      // 2026-05-02 click-to-load interactive snapshot embed. The
-      // static composite-media / structured-visual screenshot is
-      // wrapped in a button; clicking it mounts a sandboxed iframe
-      // pointing at the snapshot route's targeted-embed mode, so
-      // the source page's scroll-linked diagram (or whatever
-      // interactive lives in that target region) runs live.
-      const snapshotBtn = target?.closest('.loom-snapshot-load');
-      if (snapshotBtn instanceof HTMLElement) {
-        e.preventDefault();
-        const href = snapshotBtn.getAttribute('data-loom-snapshot-href') || '';
-        if (!href) return;
-        const iframe = document.createElement('iframe');
-        iframe.className = 'loom-interactive-snapshot-frame';
-        iframe.src = href;
-        iframe.title = 'Interactive snapshot region';
-        iframe.loading = 'lazy';
-        // Outer iframe = Loom's trusted snapshot route. It needs
-        // allow-same-origin so its `fetch('loom://native/capture-
-        // snapshot.json...')` call (which loads the captured HTML)
-        // succeeds. Without same-origin, that fetch fails and the
-        // route renders "Something went wrong / Try again". The
-        // captured page itself is isolated via a NESTED iframe
-        // inside the snapshot route whose own sandbox drops same-
-        // origin (snapshotSandbox in loom-render/snapshot/page.tsx)
-        // — the trust boundary is at THAT inner iframe.
-        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation');
-        snapshotBtn.replaceWith(iframe);
-      }
     };
     document.addEventListener('click', onClick);
     return () => { document.removeEventListener('click', onClick); };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSnapshotMessage = (event: MessageEvent) => {
+      const data = event.data as {
+        type?: string;
+        height?: number;
+        deltaX?: number;
+        deltaY?: number;
+        deltaMode?: number;
+      } | null;
+      if (!data) return;
+      if (data.type === 'loom:snapshot-wheel') {
+        const mode = Number(data.deltaMode) || 0;
+        const unit = mode === 1 ? 16 : mode === 2 ? window.innerHeight : 1;
+        const left = (Number(data.deltaX) || 0) * unit;
+        const top = (Number(data.deltaY) || 0) * unit;
+        window.scrollBy({ left, top, behavior: 'auto' });
+        return;
+      }
+      if (data.type !== 'loom:snapshot-frame-size') return;
+      const height = Number(data.height);
+      if (!Number.isFinite(height) || height <= 0) return;
+      const maxHeight = Math.max(520, Math.round(window.innerHeight * 0.76));
+      const nextHeight = Math.max(360, Math.min(Math.ceil(height), maxHeight));
+      document.querySelectorAll('iframe.loom-inline-snapshot-frame').forEach((frame) => {
+        if (frame instanceof HTMLIFrameElement && frame.contentWindow === event.source) {
+          const currentHeight = Number.parseFloat(frame.style.height || '0');
+          if (Number.isFinite(currentHeight) && currentHeight > 0 && Math.abs(currentHeight - nextHeight) < 3) return;
+          frame.style.height = `${nextHeight}px`;
+        }
+      });
+    };
+    window.addEventListener('message', onSnapshotMessage);
+    return () => window.removeEventListener('message', onSnapshotMessage);
   }, []);
   const onOpenSource = () => {
     if (sourceURL && typeof window !== 'undefined') {
@@ -3687,53 +3703,11 @@ function ArticleRender({
           border-radius: 0;
           background: color-mix(in srgb, var(--mat-thin-bg) 70%, var(--paper-deep) 30%);
         }
-        /* Click-to-load button wrapping the static preview. Renders
-           the screenshot as a clickable affordance with a
-           bottom-overlay hint; clicking swaps the button for the
-           targeted-embed iframe (handled in the document-level
-           click delegate). */
-        .loom-capture-article .loom-snapshot-load {
-          appearance: none;
-          display: block;
-          position: relative;
-          width: 100%;
-          padding: 0;
-          margin: 0;
-          border: 0;
-          background: transparent;
-          cursor: pointer;
-          color: inherit;
-          font: inherit;
-          text-align: left;
-        }
-        .loom-capture-article .loom-snapshot-load > img,
-        .loom-capture-article .loom-snapshot-load > video {
-          width: 100% !important;
-          max-height: clamp(14rem, 42vh, 30rem) !important;
-          object-fit: contain;
-          display: block;
-          margin: 0 !important;
-        }
-        .loom-capture-article .loom-snapshot-load-hint {
-          position: absolute;
-          left: 50%;
-          bottom: 0.75rem;
-          transform: translateX(-50%);
-          padding: 0.4rem 0.9rem;
-          background: color-mix(in srgb, var(--fg) 90%, transparent);
-          color: var(--paper-up);
-          font-family: var(--sans);
-          font-size: var(--font-caption);
-          letter-spacing: 0.06em;
-          font-variant: all-small-caps;
-          border-radius: var(--radius-sm);
-          opacity: 0.85;
-          transition: opacity var(--motion-fast);
-          pointer-events: none;
-        }
-        .loom-capture-article .loom-snapshot-load:hover .loom-snapshot-load-hint,
-        .loom-capture-article .loom-snapshot-load:focus-visible .loom-snapshot-load-hint {
-          opacity: 1;
+        .loom-capture-article .loom-inline-snapshot-frame {
+          height: clamp(22rem, 62vh, 46rem);
+          max-height: 76vh;
+          contain: layout paint;
+          isolation: isolate;
         }
         /* Constrain the preview so it reads as evidence inside the article
            without becoming a second page. If the captured preview is missing,

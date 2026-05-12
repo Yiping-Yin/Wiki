@@ -112,7 +112,7 @@ export method.
 - Loom stores user materials locally. The app never moves, rewrites, or uploads your source files.
 - API keys are stored in the macOS Keychain under `com.yinyiping.loom`. Nothing about those keys is transmitted to Loom's developer.
 - The Mac App Store build runs sandboxed under `com.apple.security.app-sandbox` with `files.user-selected.read-write` and `network.client`. There is no inbound `network.server` entitlement.
-- CLI AI providers (Claude CLI, Codex CLI) are disabled in sandboxed App Store builds. The picker surfaces them with a grey-out explanation; users can still pick Anthropic, OpenAI, Ollama (local loopback on `http://127.0.0.1:11434`), or a Custom HTTPS Endpoint.
+- Codex CLI is disabled in sandboxed App Store builds. The picker surfaces it with a grey-out explanation; users can still pick Anthropic, OpenAI, Ollama (local loopback on `http://127.0.0.1:11434`), or a Custom HTTPS Endpoint.
 - All AI calls are user-initiated. Only the text of the prompt the user chose is transmitted; Loom does not inject user, device, or telemetry identifiers into those requests.
 - There is no Loom analytics service, no account system, and no telemetry beyond Apple's standard install/crash channels.
 - Loom's Privacy Manifest (`macos-app/Loom/Resources/PrivacyInfo.xcprivacy`) declares `NSPrivacyAccessedAPICategoryUserDefaults` and `NSPrivacyAccessedAPICategoryFileTimestamp` with the appropriate reason codes, and one `NSPrivacyCollectedDataTypeOtherUserContent` purpose (AppFunctionality), matching the prompt-transmission behavior above.

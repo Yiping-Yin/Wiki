@@ -5,7 +5,8 @@
  *   npx tsx scripts/build-search-index.ts
  *
  * Output:
- *   knowledge/.cache/indexes/search-index.json
+ *   ~/Library/Application Support/Loom/derived/knowledge/.cache/indexes/search-index.json
+ *   (or LOOM_DERIVED_DATA_ROOT/knowledge/.cache/indexes/search-index.json)
  *
  * The SearchBox client component lazy-loads this and runs queries fully in-browser.
  */

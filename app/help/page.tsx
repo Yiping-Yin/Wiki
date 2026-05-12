@@ -218,8 +218,8 @@ export default function HelpPage() {
         </li>
         <li>
           <strong>AI calls go through local machine runtimes</strong> —
-          Codex CLI first, Claude CLI as fallback. Choose the preferred runtime
-          in Settings.
+          Codex CLI is the default local CLI runtime. Choose the provider in
+          Settings.
         </li>
         <li>
           <strong>No cloud sync</strong> — the single-machine experience is
@@ -244,7 +244,7 @@ export default function HelpPage() {
       />
       <Trouble
         symptom="AI is unavailable"
-        fix="Loom runs through local AI runtimes on this machine. Open Settings and check Preferred AI runtime. Loom tries Codex CLI first and falls back to Claude CLI when possible."
+        fix="Loom runs through the provider configured on this machine. Open Settings and check AI Provider. For local CLI use, Loom uses Codex CLI."
       />
       <Trouble
         symptom="Can't find a feature"

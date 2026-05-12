@@ -88,11 +88,53 @@ v4.1 establishes that Loom has 3 AI surfaces by role:
 
 ---
 
+## Keybinding decision (v4.1, filed 2026-05-04)
+
+**Decision: Pattern B — ⌘K = M6 AI palette; ShuttleView (navigation) rebinds to ⌘P.**
+
+### Why Pattern B over alternatives
+
+| Pattern | Approach | Verdict |
+|---|---|---|
+| **A. Universal palette** | Merge AI + Nav into one ⌘K palette, sections + filtering | Right long-term but requires substantial ShuttleView refactor (991 lines). Defer to polish phase. |
+| **B. Rebind Shuttle to ⌘P (chosen)** | M6 takes ⌘K (matches Cursor/ChatGPT muscle memory); Shuttle gets ⌘P (matches VS Code "Go to file") | Cleanest role split; minimal rebind cost; matches external genre conventions; bare ⌘P is currently FREE in `LoomApp.swift`. |
+| **C. Context-sensitive ⌘K** | doc-view → AI; nav-view → Shuttle | Invisible mode; rejected per v4.1 unimodal principle. |
+| **D. ⌘K + ⌘⌥K** | Add modifier for AI variant | Increases learning load; doesn't match external conventions. |
+
+### External convention support
+
+- **Cursor**: ⌘K = AI inline edit (matches our M6 use case exactly)
+- **ChatGPT desktop**: ⌘K = quick prompt
+- **Raycast Pro AI**: ⌘K = AI command
+- **VS Code**: ⌘P = "Go to file" (matches Shuttle's nav role exactly)
+
+The convention pattern says: ⌘K → AI, ⌘P → Navigation. Pattern B aligns Loom with these conventions instead of inventing.
+
+### Implementation plan
+
+1. **At M6 ship**: register native `keyboardShortcut("k", modifiers: .command)` for AI palette in `LoomApp.swift`. Verify NO existing native ⌘K conflict (current grep: clean).
+2. **At M6 ship**: rebind ShuttleView from web/JS ⌘K to native + web `keyboardShortcut("p", modifiers: .command)`. Update `ShuttleView.swift:4` comment, `NavigationBridgeHandler.swift` openShuttle dispatch, any web-side keyDown listener.
+3. **One-time migration toast**: first launch after M6, show "⌘K → AI palette / ⌘P → Navigation" notice (~3s, dismissable). Per LOOM_RULES V2 ("low-frequency operation shortcuts get visible UI not invisible bindings"), the rebind itself is fine but the change deserves a single launch announcement.
+4. **Update docs**: this plan, LOOM_RULES §6 ("Layout"), Settings keyboard shortcut surface, README/SETUP.
+
+### Risks + mitigations
+
+- **R: Existing ⌘K muscle memory in users.** Mitigation: launch toast + setting to revert to legacy bindings (defer; ship if user feedback warrants).
+- **R: Web/JS layer ⌘K still bound during transition window.** Mitigation: at M6 implementation, audit all web-side keyDown handlers; ensure precedence order (native ⌘K wins; legacy web ⌘K removed).
+- **R: ShuttleView's web-side glue references ⌘K in copy/help.** Mitigation: grep + sweep before M6 ships.
+
+### Out of scope (this plan)
+
+- Universal palette merge (Pattern A) — revisit at polish phase
+- Custom keybinding UI in Settings — defer
+
+---
+
 ## UX spec
 
 ### Invocation
 - Keystroke: ⌘K (default; configurable in Settings)
-- Conflict check: ⌘K is currently unused in Loom shortcuts. ⌘P, ⌘E, ⌘L are taken (capture / extension / etc.). ⌘K is clean.
+- Conflict check (corrected 2026-05-04 audit): ⌘K is **NOT clean** — `ShuttleView.swift:4` comment "opened by ⌘K" and `loomOpenShuttle` notification path indicate Shuttle (navigation palette, 991 lines) currently claims ⌘K. **However** `LoomApp.swift` does NOT register a native `keyboardShortcut("k", ...)` for Shuttle — the ⌘K binding lives in the web/JS bridge layer (Next.js webview side), which is being refactored under the architecture inversion. Bare ⌘P is FREE in `LoomApp.swift` (only `⌘⇧P` is taken at line 606). See "Keybinding decision (v4.1)" section below.
 
 ### Visual
 - Floating prompt anchored to:

@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CONTENT_ROOT } from './server-config';
+import { loomUserDataRoot } from './paths';
 
 /**
  * Source Correct · typo / mis-extraction fixes for source docs.
@@ -21,7 +22,8 @@ import { CONTENT_ROOT } from './server-config';
  *  - Apply order: oldest first (so later corrections layer on top).
  */
 
-const CORRECTIONS_DIR = path.join(CONTENT_ROOT, 'knowledge', '.cache', 'corrections');
+const CORRECTIONS_DIR = path.join(loomUserDataRoot(), 'knowledge', '.cache', 'corrections');
+const LEGACY_CORRECTIONS_DIR = path.join(CONTENT_ROOT, 'knowledge', '.cache', 'corrections');
 
 export type SourceCorrection = {
   /** literal substring to find in the extracted body */
@@ -37,9 +39,15 @@ export type SourceCorrection = {
   contextAfter?: string;
 };
 
-function pathFor(id: string): string {
+function pathFor(id: string, root = CORRECTIONS_DIR): string {
   const safe = id.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '_');
-  return path.join(CORRECTIONS_DIR, `${safe}.json`);
+  return path.join(root, `${safe}.json`);
+}
+
+function readPathsFor(id: string): string[] {
+  const primary = pathFor(id);
+  const legacy = pathFor(id, LEGACY_CORRECTIONS_DIR);
+  return primary === legacy ? [primary] : [primary, legacy];
 }
 
 async function ensureDir() {
@@ -47,23 +55,24 @@ async function ensureDir() {
 }
 
 export async function readCorrections(id: string): Promise<SourceCorrection[]> {
-  try {
-    const raw = await fs.readFile(pathFor(id), 'utf-8');
-    const parsed = JSON.parse(raw) as { corrections?: SourceCorrection[] } | SourceCorrection[];
-    const list = Array.isArray(parsed) ? parsed : parsed?.corrections;
-    if (!Array.isArray(list)) return [];
-    return list
-      .filter(
-        (c): c is SourceCorrection =>
-          typeof c === 'object' &&
-          c !== null &&
-          typeof (c as SourceCorrection).before === 'string' &&
-          typeof (c as SourceCorrection).after === 'string',
-      )
-      .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-  } catch {
-    return [];
+  for (const candidate of readPathsFor(id)) {
+    try {
+      const raw = await fs.readFile(candidate, 'utf-8');
+      const parsed = JSON.parse(raw) as { corrections?: SourceCorrection[] } | SourceCorrection[];
+      const list = Array.isArray(parsed) ? parsed : parsed?.corrections;
+      if (!Array.isArray(list)) return [];
+      return list
+        .filter(
+          (c): c is SourceCorrection =>
+            typeof c === 'object' &&
+            c !== null &&
+            typeof (c as SourceCorrection).before === 'string' &&
+            typeof (c as SourceCorrection).after === 'string',
+        )
+        .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+    } catch {}
   }
+  return [];
 }
 
 export async function addCorrection(id: string, correction: Omit<SourceCorrection, 'at'>): Promise<SourceCorrection[]> {
@@ -76,11 +85,8 @@ export async function addCorrection(id: string, correction: Omit<SourceCorrectio
 }
 
 export async function clearCorrections(id: string): Promise<void> {
-  try {
-    await fs.unlink(pathFor(id));
-  } catch {
-    /* no-op */
-  }
+  await ensureDir();
+  await fs.writeFile(pathFor(id), JSON.stringify({ corrections: [] }, null, 2), 'utf-8');
 }
 
 export function applyCorrections(body: string, corrections: SourceCorrection[]): string {

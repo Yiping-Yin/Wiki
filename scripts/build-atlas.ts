@@ -16,7 +16,7 @@
  *   3. UMAP → 2D
  *   4. K-means cluster (k=auto, ~sqrt(N))
  *   5. For each cluster: nearest doc to centroid → use its title as cluster label
- *      (optional: pipe to `claude -p` for a 2-word label)
+ *      (optional: pipe to `codex exec` for a 2-word label)
  */
 import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
@@ -193,20 +193,26 @@ function kmeans(points: [number, number][], k: number, iters = 50): number[] {
   return labels;
 }
 
-// ---------- 5. Cluster labels (optional: claude -p) ----------
+// ---------- 5. Cluster labels (optional: codex exec) ----------
 
-function runClaude(prompt: string, timeoutMs = 30000): Promise<string> {
+function runCodex(prompt: string, timeoutMs = 30000): Promise<string> {
   return new Promise((resolve) => {
-    const p = spawn('claude', ['-p', prompt, '--output-format', 'text'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const p = spawn(
+      'codex',
+      ['exec', '--skip-git-repo-check', '--ephemeral', '--color', 'never'],
+      { stdio: ['pipe', 'pipe', 'pipe'] },
+    );
     let out = '';
     const t = setTimeout(() => { p.kill(); resolve(''); }, timeoutMs);
+    p.stdin.write(prompt);
+    p.stdin.end();
     p.stdout.on('data', (d) => (out += d.toString()));
     p.on('close', () => { clearTimeout(t); resolve(out.trim()); });
     p.on('error', () => { clearTimeout(t); resolve(''); });
   });
 }
 
-async function labelClusters(docs: Doc[], coords: [number, number][], labels: number[], k: number, useClaude: boolean) {
+async function labelClusters(docs: Doc[], coords: [number, number][], labels: number[], k: number, useCodex: boolean) {
   const clusters: { id: number; label: string; x: number; y: number; size: number; samples: string[] }[] = [];
   for (let c = 0; c < k; c++) {
     const members = docs.map((d, i) => ({ d, i })).filter(({ i }) => labels[i] === c);
@@ -219,9 +225,9 @@ async function labelClusters(docs: Doc[], coords: [number, number][], labels: nu
       .sort((a, b) => a.dist - b.dist);
     const samples = closest.slice(0, 5).map((m) => m.d.title);
     let label = closest[0].d.title.split(/[—:·]/)[0].trim().slice(0, 28);
-    if (useClaude && samples.length >= 2) {
+    if (useCodex && samples.length >= 2) {
       const prompt = `Give a 2-3 word topic label for this cluster of LLM/ML wiki pages. Output ONLY the label, no quotes or punctuation.\n\nPages:\n- ${samples.join('\n- ')}`;
-      const r = await runClaude(prompt, 20000);
+      const r = await runCodex(prompt, 20000);
       if (r && r.length < 40) label = r.replace(/^["']|["']$/g, '').trim();
     }
     clusters.push({ id: c, label, x: cx, y: cy, size: members.length, samples });
@@ -232,7 +238,7 @@ async function labelClusters(docs: Doc[], coords: [number, number][], labels: nu
 // ---------- main ----------
 
 async function main() {
-  const useClaude = process.argv.includes('--labels');
+  const useCodex = process.argv.includes('--labels');
   const docs = await loadDocs();
   console.log(`📚 found ${docs.length} docs`);
   if (docs.length < 4) {
@@ -244,8 +250,8 @@ async function main() {
   const k = Math.min(12, Math.max(4, Math.round(Math.sqrt(docs.length / 2))));
   console.log(`🎯 k-means with k=${k}`);
   const labels = kmeans(coords, k);
-  console.log(`🏷  labelling clusters${useClaude ? ' (via claude -p)' : ''}...`);
-  const clusters = await labelClusters(docs, coords, labels, k, useClaude);
+  console.log(`🏷  labelling clusters${useCodex ? ' (via codex exec)' : ''}...`);
+  const clusters = await labelClusters(docs, coords, labels, k, useCodex);
 
   // normalize coordinates to [-100, 100] for stable rendering
   const xs = coords.map((p) => p[0]), ys = coords.map((p) => p[1]);

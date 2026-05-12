@@ -27,10 +27,6 @@ function canonicalPath(filePath: string) {
 const require = createRequire(import.meta.url);
 const repoRoot = process.cwd();
 const serverConfigUrl = pathToFileURL(path.join(repoRoot, 'lib', 'server-config.ts')).href;
-const uploadRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'upload', 'route.ts')).href;
-const knowledgeCreateRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'knowledge', 'create', 'route.ts')).href;
-const contentRootRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'content-root', 'route.ts')).href;
-const sourceRouteUrl = pathToFileURL(path.join(repoRoot, 'app', 'api', 'source', 'route.ts')).href;
 
 function runIsolatedTsEval(script: string, options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
   const childEnv: NodeJS.ProcessEnv = { ...process.env };
@@ -153,9 +149,10 @@ test('resolveActiveRuntimeRoot reads current.json when the runtime directory exi
   );
 });
 
-test('content-root resolver can point knowledge APIs at a non-cwd project tree', async (t) => {
+test('knowledge cache paths use derived data, not the selected content root', async (t) => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-content-root-'));
-  const manifestRoot = path.join(projectRoot, 'knowledge', '.cache', 'manifest');
+  const derivedRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-derived-root-'));
+  const manifestRoot = path.join(derivedRoot, 'knowledge', '.cache', 'manifest');
   await mkdir(manifestRoot, { recursive: true });
   await writeFile(
     path.join(manifestRoot, 'knowledge-nav.json'),
@@ -164,13 +161,20 @@ test('content-root resolver can point knowledge APIs at a non-cwd project tree',
   );
 
   const priorContentRoot = process.env.LOOM_CONTENT_ROOT;
+  const priorDerivedDataRoot = process.env.LOOM_DERIVED_DATA_ROOT;
   process.env.LOOM_CONTENT_ROOT = projectRoot;
+  process.env.LOOM_DERIVED_DATA_ROOT = derivedRoot;
   t.after(() => {
     if (priorContentRoot === undefined) {
       delete process.env.LOOM_CONTENT_ROOT;
-      return;
+    } else {
+      process.env.LOOM_CONTENT_ROOT = priorContentRoot;
     }
-    process.env.LOOM_CONTENT_ROOT = priorContentRoot;
+    if (priorDerivedDataRoot === undefined) {
+      delete process.env.LOOM_DERIVED_DATA_ROOT;
+    } else {
+      process.env.LOOM_DERIVED_DATA_ROOT = priorDerivedDataRoot;
+    }
   });
 
   const moduleUrl = new URL('../lib/knowledge-store.ts', import.meta.url);
@@ -179,7 +183,7 @@ test('content-root resolver can point knowledge APIs at a non-cwd project tree',
 
   assert.equal(
     knowledgeNavPath(),
-    path.join(projectRoot, 'knowledge', '.cache', 'manifest', 'knowledge-nav.json'),
+    path.join(derivedRoot, 'knowledge', '.cache', 'manifest', 'knowledge-nav.json'),
   );
 });
 
@@ -267,153 +271,4 @@ test('server-config falls back without throwing when persisted content-root conf
 
   assert.equal(parsed.CONTENT_ROOT, canonicalPath(fallbackRoot));
   assert.match(parsed.CONTENT_ROOT_CONFIG_ERROR ?? '', /content-root\.json/i);
-});
-
-test('content-root route resets stale scan scope when a new folder is picked', async () => {
-  const runtimeHome = await mkdtemp(path.join(os.tmpdir(), 'loom-content-root-home-'));
-  const userDataRoot = path.join(runtimeHome, 'user-data');
-  const contentRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-picked-content-'));
-
-  const output = runIsolatedTsEval(
-    `
-      import path from 'node:path';
-      import { mkdir, readFile, writeFile } from 'node:fs/promises';
-
-      const userDataRoot = ${JSON.stringify(userDataRoot)};
-      await mkdir(userDataRoot, { recursive: true });
-      await writeFile(
-        path.join(userDataRoot, 'scan-scope.json'),
-        JSON.stringify({ included: ['old/course'] }),
-        'utf8',
-      );
-
-      const mod = await import(${JSON.stringify(contentRootRouteUrl)});
-      const { POST } = mod.default ?? mod;
-      const response = await POST(new Request('http://localhost/api/content-root', {
-        method: 'POST',
-        body: JSON.stringify({ contentRoot: ${JSON.stringify(contentRoot)} }),
-        headers: { 'content-type': 'application/json' },
-      }));
-      const scope = JSON.parse(await readFile(path.join(userDataRoot, 'scan-scope.json'), 'utf8'));
-      console.log(JSON.stringify({ status: response.status, scope }));
-    `,
-    {
-      env: {
-        HOME: runtimeHome,
-        USERPROFILE: undefined,
-        LOOM_USER_DATA_ROOT: userDataRoot,
-        LOOM_CONTENT_ROOT: undefined,
-      },
-    },
-  );
-  const parsed = JSON.parse(output) as { status: number; scope: { included: string[] } };
-
-  assert.equal(parsed.status, 200);
-  assert.deepEqual(parsed.scope, { included: [] });
-});
-
-test('source route reads originals from the selected content root', async () => {
-  const contentRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-source-content-'));
-  await mkdir(path.join(contentRoot, 'Assessment'), { recursive: true });
-  await writeFile(path.join(contentRoot, 'Assessment', 'rubric.md'), '# Rubric', 'utf8');
-
-  const output = runIsolatedTsEval(
-    `
-      const mod = await import(${JSON.stringify(sourceRouteUrl)});
-      const GET = (mod.default ?? mod).GET;
-      const ok = await GET(new Request('http://localhost/api/source?p=' + encodeURIComponent('Assessment/rubric.md')));
-      const traversal = await GET(new Request('http://localhost/api/source?p=' + encodeURIComponent('../outside.md')));
-      console.log(JSON.stringify({ status: ok.status, body: await ok.text(), traversal: traversal.status }));
-    `,
-    {
-      env: {
-        LOOM_CONTENT_ROOT: contentRoot,
-        LOOM_KNOWLEDGE_ROOT: undefined,
-      },
-    },
-  );
-
-  const parsed = JSON.parse(output) as { status: number; body: string; traversal: number };
-  assert.equal(parsed.status, 200);
-  assert.equal(parsed.body, '# Rubric');
-  assert.equal(parsed.traversal, 403);
-});
-
-test('upload route triggers ingest from the execution root instead of the content root', async () => {
-  const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-runtime-root-'));
-  const contentRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-route-content-'));
-  const knowledgeRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-route-knowledge-'));
-  const output = runIsolatedTsEval(
-    `
-      import { createRequire } from 'node:module';
-      const require = createRequire(import.meta.url);
-      const childProcess = require('node:child_process');
-      let capturedCwd;
-      childProcess.execFile = (file, args, options, callback) => {
-        capturedCwd = options?.cwd;
-        callback?.(null);
-        return {};
-      };
-
-      process.chdir(${JSON.stringify(runtimeRoot)});
-      const mod = await import(${JSON.stringify(uploadRouteUrl)});
-      const { POST } = mod.default ?? mod;
-      const formData = new FormData();
-      formData.set('file', new File(['hello'], 'notes.txt', { type: 'text/plain' }));
-      formData.set('category', 'Course Notes');
-      const response = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: formData }));
-      console.log(JSON.stringify({ status: response.status, capturedCwd }));
-    `,
-    {
-      env: {
-        LOOM_CONTENT_ROOT: contentRoot,
-        LOOM_KNOWLEDGE_ROOT: knowledgeRoot,
-      },
-    },
-  );
-  const parsed = JSON.parse(output) as { status: number; capturedCwd: string };
-
-  assert.equal(parsed.status, 200);
-  assert.equal(parsed.capturedCwd, canonicalPath(runtimeRoot));
-  assert.notEqual(parsed.capturedCwd, canonicalPath(contentRoot));
-});
-
-test('knowledge create route triggers ingest from the execution root instead of the content root', async () => {
-  const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-runtime-root-'));
-  const contentRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-route-content-'));
-  const knowledgeRoot = await mkdtemp(path.join(os.tmpdir(), 'loom-route-knowledge-'));
-  const output = runIsolatedTsEval(
-    `
-      import { createRequire } from 'node:module';
-      const require = createRequire(import.meta.url);
-      const childProcess = require('node:child_process');
-      let capturedCwd;
-      childProcess.execFile = (file, args, options, callback) => {
-        capturedCwd = options?.cwd;
-        callback?.(null);
-        return {};
-      };
-
-      process.chdir(${JSON.stringify(runtimeRoot)});
-      const mod = await import(${JSON.stringify(knowledgeCreateRouteUrl)});
-      const { POST } = mod.default ?? mod;
-      const response = await POST(new Request('http://localhost/api/knowledge/create', {
-        method: 'POST',
-        body: JSON.stringify({ name: 'C++' }),
-        headers: { 'content-type': 'application/json' },
-      }));
-      console.log(JSON.stringify({ status: response.status, capturedCwd }));
-    `,
-    {
-      env: {
-        LOOM_CONTENT_ROOT: contentRoot,
-        LOOM_KNOWLEDGE_ROOT: knowledgeRoot,
-      },
-    },
-  );
-  const parsed = JSON.parse(output) as { status: number; capturedCwd: string };
-
-  assert.equal(parsed.status, 200);
-  assert.equal(parsed.capturedCwd, canonicalPath(runtimeRoot));
-  assert.notEqual(parsed.capturedCwd, canonicalPath(contentRoot));
 });

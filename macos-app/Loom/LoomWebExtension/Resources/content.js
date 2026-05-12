@@ -701,9 +701,11 @@
   /// handlers as a security guard.
   function handleSvg(node, out) {
     try {
+      const snapshotTarget = ensureSnapshotTarget(node, 'svg');
       const cloned = node.cloneNode(true);
       stripSvgReaderLayout(node, cloned);
       inlineSvgPresentationStyles(node, cloned);
+      if (snapshotTarget) cloned.setAttribute('data-loom-snapshot-target', snapshotTarget);
       [cloned, ...cloned.querySelectorAll('*')].forEach((child) => {
         for (const attr of [...child.attributes]) {
           const unsafeURLAttr = (attr.name === 'href' || attr.name.endsWith(':href')) && /javascript:/i.test(attr.value || '');
@@ -740,14 +742,16 @@
   /// placeholder wrapper entirely and just emit the static JPEG —
   /// preserving the v1.2.x behaviour exactly.
   function handleCanvas(node, out) {
-    if (canvasLooksVisuallyBlank(node)) {
+    const snapshotTarget = ensureSnapshotTarget(node, 'canvas');
+    const forceRecording = canvasShouldForceRecording(node);
+    if (!forceRecording && canvasLooksVisuallyBlank(node)) {
       const rect = visibleRectFor(node);
       if (rect && rect.width >= 240 && rect.height >= 80) {
         queueElementScreenshot(node, out, 'canvas', elementScreenshotAlt(node, 'canvas'));
       }
       return;
     }
-    if (canvasIsTooSmallToRecord(node)) {
+    if (!forceRecording && canvasIsTooSmallToRecord(node)) {
       captureElementScreenshot(node, out, 'canvas');
       return;
     }
@@ -766,7 +770,7 @@
     }
 
     const id = 'cnv_' + Math.random().toString(36).slice(2, 10);
-    pendingCanvasRecordings.set(id, node);
+    pendingCanvasRecordings.set(id, { node, snapshotTarget });
 
     // Emit the static fallback wrapped in begin/end markers so the
     // async pass can either swap it for a <video> or strip the
@@ -782,7 +786,7 @@
 
   // ----- Async canvas recording (Phase ANIM) -----
   //
-  // Map of id → canvas node, populated by handleCanvas during the
+  // Map of id → { node, snapshotTarget }, populated by handleCanvas during the
   // synchronous walk. After extractMainContent returns, we kick off
   // recordPendingCanvases() which records ~4s of each canvas in
   // parallel, encodes to webm+vp9 (or vp8/mp4 fallback), base64-data-URL
@@ -825,14 +829,10 @@
   const REMOTE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
   const REMOTE_VIDEO_MAX_BYTES = 12 * 1024 * 1024;
   const REMOTE_MEDIA_FETCH_TIMEOUT_MS = 8000;
-  // 800KB per clip — larger than this and the body cap (200K chars,
-  // base64 is ~4/3 of binary) starts crowding out prose. 600KB binary
-  // = ~800K base64 = 0.4× of the cap. Leave headroom for everything else.
-  // Cap at 400KB binary (~533KB base64) so a recording doesn't
-  // dominate the body cap. Earlier 800KB cap meant a single video
-  // could exceed the 200K body cap and silently truncate trailing
-  // prose / code blocks.
-  const RECORDING_MAX_BYTES = 400 * 1024;
+  // Canvas recordings are written as media sidecars, so they no longer
+  // compete with the markdown body cap. Keep the ceiling high enough
+  // for a real 4s WebGL clip while still rejecting runaway captures.
+  const RECORDING_MAX_BYTES = 2 * 1024 * 1024;
   // MediaRecorder can emit a valid-looking WebM header with no video
   // frames when the canvas never paints during the recording window.
   // Those files are usually ~100 bytes and fail in WKWebView. Treat
@@ -960,24 +960,88 @@
       stats.stddev <= BLANK_CANVAS_STDDEV;
   }
 
+  function canvasShouldForceRecording(canvas) {
+    if (!canvas || typeof canvas.getAttribute !== 'function') return false;
+    if (canvas.getAttribute('data-loom-force-recording') === 'true') return true;
+    try {
+      return !!(canvas.closest && canvas.closest('astro-island'));
+    } catch (_) {
+      return false;
+    }
+  }
+
   function canvasIsTooSmallToRecord(canvas) {
     const area = canvasArea(canvas);
     return area > 0 && area < RECORDING_MIN_CANVAS_AREA;
   }
 
-  function pickRecorderMime() {
-    const candidates = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
+  function canvasRecorderCandidates() {
+    return [
+      // Prefer H.264 MP4 for Loom Reader/WKWebView playback. Chromium can
+      // record VP9 WebM, but WKWebView playback is less reliable there,
+      // which turns otherwise valid canvas recordings into black/static
+      // cards in the saved capture.
+      'video/mp4;codecs=avc1.42E01E',
+      'video/mp4;codecs=h264',
       'video/mp4',
+      'video/webm;codecs=vp8',
+      'video/webm;codecs=vp9',
+      'video/webm',
     ];
-    for (const m of candidates) {
+  }
+
+  function createCanvasMediaRecorder(stream) {
+    for (const requestedMime of canvasRecorderCandidates()) {
       try {
-        if (MediaRecorder.isTypeSupported(m)) return m;
-      } catch (_) {}
+        if (
+          requestedMime &&
+          typeof MediaRecorder.isTypeSupported === 'function' &&
+          !MediaRecorder.isTypeSupported(requestedMime)
+        ) {
+          continue;
+        }
+      } catch (err) {
+        console.warn('[Loom] canvas recorder mime probe failed', requestedMime, err);
+        continue;
+      }
+
+      try {
+        const recorder = new MediaRecorder(stream, {
+          mimeType: requestedMime,
+          // Cap at ~1.2 Mbps so 4s ≈ 600KB binary. v1.4.0 — binary
+          // ships as a sidecar file (mediaAttachments), no longer
+          // counts against body cap, but keep the bitrate sane to
+          // avoid pathological multi-MB clips.
+          videoBitsPerSecond: 1_200_000,
+        });
+        const actualMime = recorder.mimeType || requestedMime;
+        console.log('[Loom] canvas recorder mime selected', { requestedMime, actualMime });
+        return { recorder, actualMime: recorder.mimeType || requestedMime };
+      } catch (err) {
+        console.warn('[Loom] canvas recorder mime rejected', requestedMime, err);
+      }
     }
-    return '';
+
+    try {
+      const recorder = new MediaRecorder(stream, {
+        videoBitsPerSecond: 1_200_000,
+      });
+      const actualMime = recorder.mimeType || '';
+      console.log('[Loom] canvas recorder using browser default MIME', { actualMime });
+      return { recorder, actualMime };
+    } catch (err) {
+      console.warn('[Loom] canvas recorder default MIME failed', err);
+    }
+
+    return null;
+  }
+
+  function stopMediaStream(stream) {
+    try {
+      stream.getTracks().forEach((t) => t.stop());
+    } catch (_) {
+      // Best-effort cleanup only.
+    }
   }
 
   /// Generate a short random alphanumeric id used as the temporary
@@ -993,6 +1057,22 @@
     return out;
   }
 
+  let snapshotTargetSeq = 0;
+
+  function ensureSnapshotTarget(node, kind) {
+    if (!node || typeof node.getAttribute !== 'function' || typeof node.setAttribute !== 'function') return '';
+    const existing = node.getAttribute('data-loom-snapshot-target');
+    if (existing) return existing;
+    snapshotTargetSeq += 1;
+    const safeKind = String(kind || 'visual')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'visual';
+    const target = `loom-${safeKind}-${String(snapshotTargetSeq).padStart(4, '0')}`;
+    node.setAttribute('data-loom-snapshot-target', target);
+    return target;
+  }
+
   /// Record a single canvas for ~4 seconds. Resolves with
   /// `{ blob, mime }` or null on any failure. Never rejects —
   /// failure is just "no video this time" and the static JPEG
@@ -1003,16 +1083,13 @@
       const settle = (v) => { if (!settled) { settled = true; resolve(v); } };
       try {
         const stream = canvas.captureStream(30);
-        const mime = pickRecorderMime();
-        if (!mime) return settle(null);
-        const recorder = new MediaRecorder(stream, {
-          mimeType: mime,
-          // Cap at ~1.2 Mbps so 4s ≈ 600KB binary. v1.4.0 — binary
-          // ships as a sidecar file (mediaAttachments), no longer
-          // counts against body cap, but keep the bitrate sane to
-          // avoid pathological multi-MB clips.
-          videoBitsPerSecond: 1_200_000,
-        });
+        const created = createCanvasMediaRecorder(stream);
+        if (!created) {
+          stopMediaStream(stream);
+          return settle(null);
+        }
+        const recorder = created.recorder;
+        let mime = created.actualMime || '';
         const chunks = [];
         recorder.ondataavailable = (e) => {
           if (e.data && e.data.size > 0) chunks.push(e.data);
@@ -1026,6 +1103,7 @@
             // v1.4.1 — if user hit Esc, drop the partial recording on
             // the floor regardless of size.
             if (ctrl && ctrl.cancelled) return settle(null);
+            mime = recorder.mimeType || mime || (chunks[0] && chunks[0].type) || 'video/webm';
             const blob = new Blob(chunks, { type: mime });
             if (blob.size < RECORDING_MIN_BYTES || blob.size > RECORDING_MAX_BYTES) {
               console.log('[Loom] canvas recording skipped — size', blob.size, 'range', RECORDING_MIN_BYTES, RECORDING_MAX_BYTES);
@@ -1037,7 +1115,7 @@
             settle(null);
           } finally {
             // Stop tracks so the canvas isn't held open.
-            try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+            stopMediaStream(stream);
           }
         };
 
@@ -1222,8 +1300,8 @@
   async function recordPendingCanvases(ctrl) {
     if (pendingCanvasRecordings.size === 0) return new Map();
     const tasks = [];
-    pendingCanvasRecordings.forEach((canvas, id) => {
-      tasks.push(recordCanvas(canvas, ctrl).then((rec) => ({ id, rec })));
+    pendingCanvasRecordings.forEach((entry, id) => {
+      tasks.push(recordCanvas(entry.node, ctrl).then((rec) => ({ id, rec, snapshotTarget: entry.snapshotTarget || '' })));
     });
     const results = await Promise.all(tasks);
     // v1.4.1 — short-circuit if cancelled at any point during the wait.
@@ -1232,7 +1310,7 @@
       return new Map();
     }
     const map = new Map();
-    for (const { id, rec } of results) {
+    for (const { id, rec, snapshotTarget } of results) {
       if (!rec || !rec.blob) continue;
       let base64;
       try {
@@ -1258,7 +1336,7 @@
       // `loom://content/{rootID}/sub/{path}/Loom-media-{stableID}.webm`
       // path after writing the sidecar file.
       const html =
-        `<video controls autoplay muted loop playsinline data-canvas-id="${id}" src="loom://media/${tmpId}"></video>`;
+        `<video controls autoplay muted loop playsinline data-canvas-id="${id}" data-loom-capture-kind="canvas" data-loom-snapshot-target="${escapeAttr(snapshotTarget)}" src="loom://media/${tmpId}"></video>`;
       map.set(id, html);
     }
     pendingCanvasRecordings.clear();
@@ -1339,8 +1417,20 @@
     if (!node || !node.querySelector) return false;
     const tag = (node.tagName || '').toLowerCase();
     if (tag === 'figure') return false;
-    const heading = node.querySelector('h1,h2,h3,h4,h5,h6');
-    if (!heading) return false;
+    const headings = node.querySelectorAll
+      ? Array.from(node.querySelectorAll('h1,h2,h3,h4,h5,h6'))
+      : [];
+    if (!headings.length) return false;
+    // Multi-heading guard (2026-05-02 fix): if a candidate region
+    // contains 2+ headings (e.g. Pixel Font Comparison's "3x3 /
+    // CG-3x5 / CG-4x5 / Pico-8 / Tom Thumb" subsections, or
+    // Floyd-Steinberg vs Bayer with "Floyd-Steinberg" + "Bayer"
+    // subsections), it is structurally a multi-section composition
+    // and must NEVER be collapsed into a single structured-visual
+    // screenshot — collapse erased the subheadings + per-subsection
+    // text on flipdisc.io. Treat it as load-bearing structure.
+    if (headings.length >= 2) return true;
+    const heading = headings[0];
     const headingText = readableNodeText(heading);
     if (!headingText) return false;
     if (heading.parentElement === node || tag === 'section') return true;
@@ -1451,10 +1541,36 @@
     const panelStylingCount =
       (node.matches && node.matches(panelSelector) ? 1 : 0) +
       node.querySelectorAll(panelSelector).length;
+    // 2026-05-02: byte/code-diagram signal. Tailwind sites use
+    // `font-mono` plus `divide-x|divide-y` together to render
+    // labeled wire-format diagrams (e.g. flipdisc.io's Frame Format
+    // showing `0x80 | 0x83 | 0x01 | imageData | 0x8F` as bordered
+    // cells with hatching). The visual structure IS the meaning —
+    // flattened to plain text it reads as nonsense. The previous
+    // heuristic required panelStylingCount >= 2 which missed this
+    // pattern (single flex container, no nested panel classes on
+    // the byte spans), and visualBlockLabel scopes inward so the
+    // sibling "FRAME FORMAT" eyebrow span isn't found from the
+    // diagram div. Treat the combo of monospace AND divider
+    // utilities as strong enough on its own — both together is
+    // very specific to "labeled cell row diagram"; they rarely
+    // co-occur on prose containers.
+    const hasMonoSignal = !!(
+      (node.matches && node.matches('[class*="font-mono"]')) ||
+      node.querySelector('[class*="font-mono"]')
+    );
+    const hasDividerSignal = !!(node.matches && node.matches('[class*="divide-"]'));
+    const looksLikeByteDiagram = hasMonoSignal && hasDividerSignal;
     const looksLikeFontSpec = /pixel\s+font\s+comparison|font\s+comparison/i.test(text);
     const looksLikeStructuredPanel = formControlCount >= 2 && panelStylingCount >= 3;
     const looksLikeLabeledPanel = !!label && panelStylingCount >= 2;
-    if (!looksLikeFontSpec && !looksLikeStructuredPanel && !looksLikeLabeledPanel && !looksLikeAstroCanvas) return false;
+    if (
+      !looksLikeFontSpec &&
+      !looksLikeStructuredPanel &&
+      !looksLikeLabeledPanel &&
+      !looksLikeByteDiagram &&
+      !looksLikeAstroCanvas
+    ) return false;
     if (text.length > 1400) return false;
 
     // Prefer the outermost compact structured module, but stop at
@@ -1493,9 +1609,10 @@
 
   function queueElementScreenshot(node, out, kind, alt) {
     const id = 'el_' + randomTmpId();
-    pendingElementScreenshots.set(id, { node, kind, alt: alt || elementScreenshotAlt(node, kind) });
+    const snapshotTarget = ensureSnapshotTarget(node, kind);
+    pendingElementScreenshots.set(id, { node, kind, alt: alt || elementScreenshotAlt(node, kind), snapshotTarget });
     pushBlankBlock(out, [
-      `<!-- loom-element-screenshot id="${id}" kind="${escapeAttr(kind)}" alt="${escapeAttr(alt || elementScreenshotAlt(node, kind))}" -->`,
+      `<!-- loom-element-screenshot id="${id}" kind="${escapeAttr(kind)}" alt="${escapeAttr(alt || elementScreenshotAlt(node, kind))}" snapshot-target="${escapeAttr(snapshotTarget)}" -->`,
     ]);
   }
 
@@ -1504,7 +1621,47 @@
     queueElementScreenshot(node, out, 'composite-media', elementScreenshotAlt(node, 'composite-media'));
   }
 
+  function primaryRecordableCanvasForVisual(node) {
+    if (!node) return null;
+    const canvases = [];
+    try {
+      if ((node.tagName || '').toLowerCase() === 'canvas') canvases.push(node);
+      if (node.querySelectorAll) canvases.push(...node.querySelectorAll('canvas'));
+    } catch (_) {
+      return null;
+    }
+    let best = null;
+    let bestArea = 0;
+    canvases.forEach((canvas) => {
+      if (!canvas || typeof canvas.getBoundingClientRect !== 'function') return;
+      const rect = canvas.getBoundingClientRect();
+      const area = Math.max(canvasArea(canvas), (rect && rect.width && rect.height) ? rect.width * rect.height : 0);
+      if (!rect || rect.width <= 0 || rect.height <= 0) return;
+      if (canvasIsTooSmallToRecord(canvas)) return;
+      if (area > bestArea) {
+        best = canvas;
+        bestArea = area;
+      }
+    });
+    return best;
+  }
+
+  function handleDynamicCanvasVisualBlock(node, out) {
+    const canvas = primaryRecordableCanvasForVisual(node);
+    if (!canvas) return false;
+    const snapshotTarget = ensureSnapshotTarget(node, 'structured-visual');
+    try {
+      canvas.setAttribute('data-loom-snapshot-target', snapshotTarget);
+      canvas.setAttribute('data-loom-force-recording', 'true');
+    } catch (_) {}
+    emitVisualBlockLabel(node, out);
+    handleCanvas(canvas, out);
+    return true;
+  }
+
   function handleStructuredVisualBlock(node, out) {
+    const tag = (node.tagName || '').toLowerCase();
+    if (tag === 'astro-island' && handleDynamicCanvasVisualBlock(node, out)) return;
     const captureNode = visualCaptureNode(node) || node;
     emitVisualBlockLabel(node, out);
     queueElementScreenshot(captureNode, out, 'structured-visual', elementScreenshotAlt(node, 'structured-visual'));
@@ -1570,10 +1727,12 @@
 
   function cloneElementForScreenshot(source) {
     const clone = source.cloneNode(true);
+    const snapshotTarget = source && source.getAttribute ? source.getAttribute('data-loom-snapshot-target') : '';
     inlineComputedStylesForScreenshot(source, clone);
     replaceCloneCanvasesWithImages(source, clone);
     clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     clone.setAttribute("data-loom-capture-kind", "composite-media");
+    if (snapshotTarget) clone.setAttribute('data-loom-snapshot-target', snapshotTarget);
     const rect = source.getBoundingClientRect();
     clone.style.margin = '0';
     clone.style.position = 'relative';
@@ -1606,6 +1765,7 @@
   }
 
   async function captureVisibleTabElementScreenshot(node, kind, alt, ctrl) {
+    const snapshotTarget = ensureSnapshotTarget(node, kind);
     if (!ext || !ext.runtime || typeof ext.runtime.sendMessage !== 'function') {
       throw new Error('runtime messaging unavailable');
     }
@@ -1667,10 +1827,11 @@
     }
     const stagedSrc = stageDataURLMedia(dataUrl, `${kind}-screenshot`, 'image/jpeg');
     const src = stagedSrc || dataUrl;
-    return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt || `${kind} capture`)}" loading="lazy" data-loom-capture-kind="${escapeAttr(kind)}" data-loom-capture-source="visible-tab">`;
+    return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt || `${kind} capture`)}" loading="lazy" data-loom-capture-kind="${escapeAttr(kind)}" data-loom-capture-source="visible-tab" data-loom-snapshot-target="${escapeAttr(snapshotTarget)}">`;
   }
 
   async function captureElementScreenshotAsync(node, kind, alt, ctrl) {
+    const snapshotTarget = ensureSnapshotTarget(node, kind);
     const rect = node && node.getBoundingClientRect ? node.getBoundingClientRect() : null;
     if (!rect || rect.width <= 0 || rect.height <= 0) {
       return `*[${kind} unavailable — source element had no visible size]*`;
@@ -1717,7 +1878,7 @@
       }
       const stagedSrc = stageDataURLMedia(dataUrl, `${kind}-screenshot`, 'image/jpeg');
       const src = stagedSrc || dataUrl;
-      return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt || `${kind} capture`)}" loading="lazy" data-loom-capture-kind="${escapeAttr(kind)}">`;
+      return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt || `${kind} capture`)}" loading="lazy" data-loom-capture-kind="${escapeAttr(kind)}" data-loom-snapshot-target="${escapeAttr(snapshotTarget)}">`;
     } catch (err) {
       console.warn('[Loom] element screenshot failed', kind, err);
       return `*[${kind} content not capturable]*`;
@@ -1750,7 +1911,7 @@
 
   function applyElementScreenshots(body, screenshots) {
     return body.replace(
-      /<!-- loom-element-screenshot id="([^"]+)" kind="([^"]+)" alt="([^"]*)" -->/g,
+      /<!-- loom-element-screenshot id="([^"]+)" kind="([^"]+)" alt="([^"]*)"(?: snapshot-target="[^"]*")? -->/g,
       (_, id, kind, alt) => screenshots.get(id) || `*[${kind || 'visual'} content unavailable]*`
     );
   }
@@ -1764,6 +1925,7 @@
       // recognizable at ~10-30KB. Cross-origin tainted canvases throw
       // SecurityError → caught + placeholder.
       if (node.tagName.toLowerCase() === 'canvas') {
+        const snapshotTarget = ensureSnapshotTarget(node, kind);
         const maxDim = 800;
         const w = node.width || node.clientWidth;
         const h = node.height || node.clientHeight;
@@ -1781,7 +1943,7 @@
         if (!dataUrl) return;
         const stagedSrc = stageDataURLMedia(dataUrl, `${kind}-screenshot`, 'image/jpeg');
         const src = stagedSrc || dataUrl;
-        pushBlankBlock(out, [`<img src="${escapeAttr(src)}" alt="${escapeAttr(`${kind} capture`)}" loading="lazy" data-loom-capture-kind="${escapeAttr(kind)}">`]);
+        pushBlankBlock(out, [`<img src="${escapeAttr(src)}" alt="${escapeAttr(`${kind} capture`)}" loading="lazy" data-loom-capture-kind="${escapeAttr(kind)}" data-loom-snapshot-target="${escapeAttr(snapshotTarget)}">`]);
         return;
       }
       queueElementScreenshot(node, out, kind, elementScreenshotAlt(node, kind));
@@ -1938,10 +2100,34 @@
       ctx.listIndex += 1;
       const indent = '  '.repeat(Math.max(0, ctx.listDepth - 1));
       const marker = ctx.listType === 'ol' ? `${ctx.listIndex}. ` : '- ';
-      out.push(indent + marker);
+      const bulletLine = indent + marker;
+      const beforeLen = out.length;
+      out.push(bulletLine);
       // Walk children in inline mode (they append to last line).
       walkChildren(node, out, { ...ctx, listType: null, listIndex: 0 });
       flushLine(out);
+      // Empty-bullet suppression (2026-05-02 fix): when an <li>
+      // contains only block-level content like a provider embed
+      // (e.g. flipdisc.io's Inspiration list has the Vimeo
+      // "Flipdigits Monitor: Algorithms" sitting inside an <li>
+      // with no surrounding text), the embed is emitted via
+      // pushBlankBlock as its own block — leaving the bullet line
+      // dangling with nothing appended. Render output then shows
+      // an orphan "- " on a line. Detect that exact shape and
+      // drop the marker line. We compare against bulletLine
+      // verbatim because appendInline would have grown it.
+      let bulletIdx = -1;
+      for (let i = beforeLen; i < out.length; i++) {
+        if (out[i] === bulletLine) { bulletIdx = i; break; }
+      }
+      if (bulletIdx >= 0) {
+        const after = out.slice(bulletIdx + 1);
+        const hasInlineContent = out[bulletIdx].length > bulletLine.length;
+        const hasNonEmptyAfter = after.some((line) => line && line.trim());
+        if (!hasInlineContent && hasNonEmptyAfter) {
+          out.splice(bulletIdx, 1);
+        }
+      }
       return;
     }
 
@@ -2706,26 +2892,38 @@
     };
   }
 
+  function snapshotTargetFromMarkup(text) {
+    const m = String(text || '').match(/\bdata-loom-snapshot-target=(["'])([^"']+)\1/i);
+    return m ? m[2] : '';
+  }
+
+  function withSnapshotTarget(block, snapshotTarget) {
+    if (snapshotTarget) block.snapshotTarget = snapshotTarget;
+    return block;
+  }
+
   function mediaBlockFromMarkdown(line) {
     const text = String(line || '').trim();
+    const snapshotTarget = snapshotTargetFromMarkup(text);
     const provider = parseProviderEmbedMarker(text);
-    if (provider) return provider;
+    if (provider) return withSnapshotTarget(provider, snapshotTarget);
     if (/^<video\b/i.test(text)) {
-      return { kind: 'video', markdown: line };
+      return withSnapshotTarget({ kind: 'video', markdown: line }, snapshotTarget);
     }
     if (/^<audio\b/i.test(text)) {
-      return { kind: 'audio', markdown: line };
+      return withSnapshotTarget({ kind: 'audio', markdown: line }, snapshotTarget);
+    }
+    const visualRoleMatch = text.match(/\bdata-loom-capture-kind=(["'])(structured-visual|composite-media|svg|canvas)\1/i);
+    if (visualRoleMatch) {
+      return withSnapshotTarget({ kind: 'visualAssembly', mediaRole: visualRoleMatch[2], markdown: line }, snapshotTarget);
     }
     const imgMatch = text.match(/^<img\b[^>]*\bsrc="([^"]+)"/i) || text.match(/^!\[[^\]]*\]\(([^)]+)\)/);
     const imgSrc = imgMatch ? imgMatch[1] : '';
     if (imgSrc) {
       if (/\.(gif|webp|apng)(\?|#|$)/i.test(imgSrc)) {
-        return { kind: 'gif', url: imgSrc, markdown: line };
+        return withSnapshotTarget({ kind: 'gif', url: imgSrc, markdown: line }, snapshotTarget);
       }
-      return { kind: 'image', url: imgSrc, markdown: line };
-    }
-    if (/data-loom-capture-kind="(structured-visual|composite-media|svg|canvas)"/i.test(text)) {
-      return { kind: 'visualAssembly', markdown: line };
+      return withSnapshotTarget({ kind: 'image', url: imgSrc, markdown: line }, snapshotTarget);
     }
     return null;
   }

@@ -5,8 +5,8 @@ import type { AiCliKind } from './ai-cli';
 
 /**
  * Legacy CLI-health probe, retired 2026-04-21 alongside the Phase 5
- * cutover to Swift-bridge AI. Pre-flight health checks against `claude` /
- * `codex` CLIs are meaningless now that every AI call routes through the
+ * cutover to Swift-bridge AI. Pre-flight health checks against the `codex`
+ * CLI are meaningless now that every AI call routes through the
  * Swift bridge + user's chosen provider.
  *
  * Runtime errors still surface at call-time via the `aiError` state each
@@ -23,12 +23,12 @@ import type { AiCliKind } from './ai-cli';
 export function useAiHealth(_enabled: boolean = true) {
   void _enabled;
   return {
-    preferredCli: 'anthropic' as AiCliKind,
+    preferredCli: 'codex' as AiCliKind,
     providers: null as CliHealth[] | null,
     availability: {
       selected: null,
       alternate: null,
-      effectiveCli: 'anthropic' as AiCliKind,
+      effectiveCli: 'codex' as AiCliKind,
       canSend: true,
       notice: null,
       tone: null,

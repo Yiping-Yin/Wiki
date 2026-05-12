@@ -6,6 +6,7 @@ import { DocViewer } from '../../../components/DocViewer';
 import { TrackView } from '../../../components/TrackView';
 import { DocBodyProvider } from '../../../components/DocBodyProvider';
 import { LiveArtifact } from '../../../components/LiveArtifact';
+import { knowledgeUploadRoot } from '../../../lib/paths';
 import { resolveContentRoot } from '../../../lib/runtime-roots';
 
 
@@ -20,12 +21,17 @@ export default async function UploadDocPage({ params }: { params: Promise<{ name
   // path traversal guard
   if (decoded.includes('/') || decoded.includes('..')) notFound();
 
-  const dir = path.join(resolveContentRoot(), 'knowledge', 'uploads');
-  const fullPath = path.join(dir, decoded);
+  const dir = knowledgeUploadRoot();
+  const legacyDir = path.join(resolveContentRoot(), 'knowledge', 'uploads');
+  let fullPath = path.join(dir, decoded);
 
   let stat;
   try { stat = await fs.stat(fullPath); }
-  catch { notFound(); }
+  catch {
+    fullPath = path.join(legacyDir, decoded);
+    try { stat = await fs.stat(fullPath); }
+    catch { notFound(); }
+  }
 
   const ext = path.extname(decoded).toLowerCase();
   const sourceUrl = `/api/source-upload?name=${encodeURIComponent(decoded)}`;

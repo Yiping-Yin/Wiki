@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CONTENT_ROOT } from './server-config';
+import { loomUserDataRoot } from './paths';
 
 /**
  * Phase 7.2 · Per-pursuit hide sidecar (web / dev mode).
@@ -12,7 +13,7 @@ import { CONTENT_ROOT } from './server-config';
  * that array.
  *
  * Storage:
- *   <CONTENT_ROOT>/knowledge/.cache/pursuit-hide/<slug>.json
+ *   <LOOM_USER_DATA_ROOT>/knowledge/.cache/pursuit-hide/<slug>.json
  *
  * In native mode the same path is read by Swift's `PursuitHideStore`
  * so both paths converge on one sidecar per source. Writes in native
@@ -21,6 +22,13 @@ import { CONTENT_ROOT } from './server-config';
  */
 
 const HIDE_DIR = path.join(
+  loomUserDataRoot(),
+  'knowledge',
+  '.cache',
+  'pursuit-hide',
+);
+
+const LEGACY_HIDE_DIR = path.join(
   CONTENT_ROOT,
   'knowledge',
   '.cache',
@@ -48,18 +56,25 @@ function slugify(value: string): string {
   return out;
 }
 
-function pathFor(sourceDocId: string): string {
-  return path.join(HIDE_DIR, `${slugify(sourceDocId)}.json`);
+function pathFor(sourceDocId: string, root = HIDE_DIR): string {
+  return path.join(root, `${slugify(sourceDocId)}.json`);
+}
+
+function readPathsFor(sourceDocId: string): string[] {
+  const primary = pathFor(sourceDocId);
+  const legacy = pathFor(sourceDocId, LEGACY_HIDE_DIR);
+  return primary === legacy ? [primary] : [primary, legacy];
 }
 
 export async function readPursuitHide(sourceDocId: string): Promise<string[]> {
-  try {
-    const raw = await fs.readFile(pathFor(sourceDocId), 'utf-8');
-    const parsed = JSON.parse(raw) as PursuitHideFile;
-    return Array.isArray(parsed.hiddenPursuitIds) ? parsed.hiddenPursuitIds : [];
-  } catch {
-    return [];
+  for (const candidate of readPathsFor(sourceDocId)) {
+    try {
+      const raw = await fs.readFile(candidate, 'utf-8');
+      const parsed = JSON.parse(raw) as PursuitHideFile;
+      return Array.isArray(parsed.hiddenPursuitIds) ? parsed.hiddenPursuitIds : [];
+    } catch {}
   }
+  return [];
 }
 
 export async function hidePursuit(

@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CONTENT_ROOT } from './server-config';
 import { resolveContentRoot } from './runtime-roots';
+import { knowledgeDerivedCacheRoot } from './paths';
 import { applyCorrections, readCorrections } from './source-corrections';
 
 export type KnowledgeDocBody = {
@@ -15,7 +16,7 @@ function contentRoot() {
 }
 
 export function knowledgeDocRuntimeDir() {
-  return path.join(contentRoot(), 'knowledge', '.cache', 'docs');
+  return path.join(knowledgeDerivedCacheRoot(), 'docs');
 }
 
 export function knowledgeDocRuntimePath(id: string) {
@@ -26,8 +27,16 @@ export function knowledgeDocLegacyPath(id: string) {
   return path.join(contentRoot(), 'public', 'knowledge', 'docs', `${id}.json`);
 }
 
+export function knowledgeDocLegacyRuntimePath(id: string) {
+  return path.join(contentRoot(), 'knowledge', '.cache', 'docs', `${id}.json`);
+}
+
 export async function readKnowledgeDocBody(id: string): Promise<KnowledgeDocBody | null> {
-  const paths = [knowledgeDocRuntimePath(id), knowledgeDocLegacyPath(id)];
+  const paths = [
+    knowledgeDocRuntimePath(id),
+    knowledgeDocLegacyRuntimePath(id),
+    knowledgeDocLegacyPath(id),
+  ];
   let doc: KnowledgeDocBody | null = null;
   for (const candidate of paths) {
     try {

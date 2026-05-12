@@ -20,7 +20,7 @@ const flag = (name: string, def?: string) => {
 const has = (name: string) => argv.includes(`--${name}`);
 
 const concurrency = parseInt(flag('concurrency', '2')!, 10);
-const cli = flag('cli', 'claude')!;
+const cli = flag('cli', 'codex')!;
 const onlyArg = flag('only');
 const only = onlyArg ? new Set(onlyArg.split(',').map((s) => s.trim())) : null;
 const skipExisting = has('skip-existing');

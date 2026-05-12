@@ -39,13 +39,11 @@ test('native source sidebar renders folder trees instead of a flat document dump
   assert.match(source, /struct SourceFolderTreeRow: View/);
   assert.match(source, /let subcategory: String\?/);
   assert.match(source, /let sourcePath: String\?/);
-  // TODO(loom-camp-c): the sidebar rewrite changed `sourceFolderTree`
-  // to return a `(folders, looseDocs)` tuple; the call site is now
-  // `let tree = sourceFolderTree(for: cat, docs: docs)` followed by
-  // `let folders = tree.folders`. Restore the strict pattern after the
-  // tree refactor stabilizes.
-  assert.match(source, /sourceFolderTree\(for: cat, docs: docs\)/);
-  assert.match(source, /ForEach\(.*folders.*\)/);
+  assert.match(source, /let tree = sourceFolderTree\(for: cat, docs: docs\)/);
+  assert.match(source, /let folders = tree\.folders/);
+  assert.match(source, /let looseDocs = tree\.looseDocs/);
+  assert.match(source, /ForEach\(SidebarSorting\.sort\(folders: folders, mode: sortMode\)\) \{ folder in/);
+  assert.match(source, /ForEach\(SidebarSorting\.sort\(docs: looseDocs, mode: sortMode\)\) \{ doc in/);
   assert.match(source, /private func sourceFolderPath\(for doc: Doc, in cat: UserCategory\) -> String/);
   assert.match(source, /sourceFolderPath\(fromSourcePath: sourcePath, in: cat\)/);
   assert.match(source, /private func sourceFolderPath\(fromSourcePath sourcePath: String, in cat: UserCategory\) -> String/);

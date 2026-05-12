@@ -139,7 +139,7 @@ a[class*="loom-"] {
   /* Accent — Thread (bronze). `--accent` at 3.8:1 is fine for icons
      / selection bg / focus rings; `--accent-text` passes WCAG AA for
      body-text links (4.8:1). Keep both. */
-  --accent: #9E7C3E;            /* thread — UI chips, selection, icons */
+  --accent: #C4A468;            /* thread — UI chips, selection, icons */
   --accent-soft: rgba(158, 124, 62, 0.18);
   --accent-text: #7A5E2E;       /* deeper bronze — body-text links */
   --accent-secondary: #A8783E;  /* ochre — second voice */

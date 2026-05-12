@@ -1,4 +1,5 @@
 import './globals.css';
+import './globals-v2.css';
 import type { ReactNode } from 'react';
 import { Cormorant_Garamond } from 'next/font/google';
 import { FocusLayerProvider } from '../lib/focus-layer';

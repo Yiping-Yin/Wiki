@@ -24,6 +24,12 @@ test('native shell explicitly syncs the resolved theme into the webview', () => 
   assert.match(source, /root\.style\.setProperty\('--fg', palette\.fg\)/);
   assert.match(source, /root\.style\.setProperty\('--fg-secondary', palette\.fgSecondary\)/);
   assert.match(source, /root\.style\.setProperty\('--muted', palette\.muted\)/);
+  assert.match(source, /root\.dataset\.loomTheme = mode/);
+  assert.match(source, /root\.style\.setProperty\('--paper-deep', palette\.paperDeep\)/);
+  assert.match(source, /root\.style\.setProperty\('--ink-1', palette\.ink1\)/);
+  assert.match(source, /root\.style\.setProperty\('--thread', palette\.thread\)/);
+  assert.match(source, /requestAnimationFrame\(apply\)/);
+  assert.match(source, /setTimeout\(apply, 80\)/);
   assert.match(source, /themeSyncScript\(mode: forcedTheme\)/);
   assert.match(source, /context\.coordinator\.applyTheme\(forcedTheme, to: nsView\)/);
 });

@@ -9,5 +9,5 @@ test('ChatFocus renders an explicit provider waiting message while no chunks hav
   const source = fs.readFileSync(path.join(repoRoot, 'components/ChatFocus.tsx'), 'utf8');
 
   assert.match(source, /Waiting on \{waitingProviderLabel\}/);
-  assert.match(source, /effectiveCli === 'claude' \? 'Claude CLI' : 'Codex CLI'/);
+  assert.match(source, /const waitingProviderLabel = 'Codex CLI';/);
 });

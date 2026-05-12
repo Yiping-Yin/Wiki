@@ -46,7 +46,7 @@ If a future feature seems to need background generative work, it should:
 ## What this plan does NOT do
 
 - Does NOT add AI UI features (panels, chat boxes, /ai commands, co-edit toolbars). Per `LOOM_RULES.md` §7.5 ban list.
-- Does NOT spec wiki-scale (multi-document) AI work. That's v4.1+ deferred.
+- Does NOT spec wiki-scale (multi-document) AI work. That's v4.2+ deferred.
 - Does NOT spec external AI integration. See `plans/loom-cli.md`.
 - Does NOT modify paper canon visual rules. Sealed v1.0.
 
@@ -54,7 +54,7 @@ If a future feature seems to need background generative work, it should:
 
 ## Trigger model
 
-Three triggers, no others in v4.0:
+Three triggers, no others in v4.0/v4.1:
 
 ### (1) Idle (~3-5s after last edit)
 
@@ -76,7 +76,7 @@ User explicitly requests an immediate pass on the current document/selection. Ru
 
 **Implementation:** keyboard handler in editor. Bypasses idle debounce.
 
-### NOT in v4.0
+### NOT in v4.0/v4.1
 
 - ❌ Continuous (every keystroke triggers pass) — too distracting; defer to v4.2+ as opt-in
 - ❌ On scroll (passes on visible region only) — premature optimization
@@ -140,7 +140,7 @@ Four pass types, ordered by triggering urgency (typeset first, cite last):
 
 **Margin marking:** small bronze chips in right margin at the referenced span level. Hover shows preview.
 
-**Wiki-scale boundary:** this pass operates on CURRENT document only. It LOOKS at other documents to find links, but doesn't MODIFY them. Multi-document modifying work is v4.1+.
+**Wiki-scale boundary:** this pass operates on CURRENT document only. It LOOKS at other documents to find links, but doesn't MODIFY them. Multi-document modifying work is v4.2+.
 
 ### Cite pass
 
@@ -282,7 +282,7 @@ When triggered (after M4 PASS):
 
 ---
 
-## Out of scope (defer to v4.1+ or later)
+## Out of scope (defer to v4.2+ or later)
 
 - ❌ Wiki-scale AI passes (cross-document auto-link, auto-cluster, library indexing)
 - ❌ Continuous-while-typing trigger

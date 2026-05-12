@@ -147,6 +147,48 @@ final class LoomURLSchemeHandlerTests: XCTestCase {
         )
     }
 
+    func testEndToEndServesByteRangeForMediaFiles() throws {
+        let root = try makeRoot()
+        let mediaURL = root.appendingPathComponent("clip.webm")
+        try Data("0123456789".utf8).write(to: mediaURL)
+
+        var request = URLRequest(url: URL(string: "loom://content/clip.webm")!)
+        request.setValue("bytes=2-5", forHTTPHeaderField: "Range")
+
+        let handler = LoomURLSchemeHandler(contentRoot: root)
+        let task = FakeSchemeTask(request: request)
+        handler.webView(WKWebView(), start: task)
+
+        let response = try XCTUnwrap(task.response as? HTTPURLResponse)
+        XCTAssertEqual(response.statusCode, 206)
+        XCTAssertEqual(task.receivedData, Data("2345".utf8))
+        XCTAssertTrue(task.finished)
+        XCTAssertEqual(response.value(forHTTPHeaderField: "Accept-Ranges"), "bytes")
+        XCTAssertEqual(response.value(forHTTPHeaderField: "Content-Range"), "bytes 2-5/10")
+        XCTAssertEqual(response.value(forHTTPHeaderField: "Content-Length"), "4")
+        XCTAssertEqual(response.value(forHTTPHeaderField: "Content-Type"), "video/webm")
+    }
+
+    func testEndToEndRejectsUnsatisfiableByteRange() throws {
+        let root = try makeRoot()
+        let mediaURL = root.appendingPathComponent("clip.webm")
+        try Data("0123456789".utf8).write(to: mediaURL)
+
+        var request = URLRequest(url: URL(string: "loom://content/clip.webm")!)
+        request.setValue("bytes=99-100", forHTTPHeaderField: "Range")
+
+        let handler = LoomURLSchemeHandler(contentRoot: root)
+        let task = FakeSchemeTask(request: request)
+        handler.webView(WKWebView(), start: task)
+
+        let response = try XCTUnwrap(task.response as? HTTPURLResponse)
+        XCTAssertEqual(response.statusCode, 416)
+        XCTAssertEqual(task.receivedData.count, 0)
+        XCTAssertTrue(task.finished)
+        XCTAssertEqual(response.value(forHTTPHeaderField: "Accept-Ranges"), "bytes")
+        XCTAssertEqual(response.value(forHTTPHeaderField: "Content-Range"), "bytes */10")
+    }
+
     func testEndToEndServesFromBundleHostWhenRegistered() throws {
         let contentRoot = try makeRoot()
         let bundleRoot = try makeRoot()
@@ -243,6 +285,10 @@ private final class FakeSchemeTask: NSObject, WKURLSchemeTask {
     private(set) var receivedData: Data = Data()
     private(set) var finished = false
     private(set) var failure: Error?
+
+    init(request: URLRequest) {
+        self.request = request
+    }
 
     init(requestURL: URL) {
         self.request = URLRequest(url: requestURL)

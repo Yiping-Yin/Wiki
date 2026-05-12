@@ -96,7 +96,7 @@ Alternatives considered and rejected:
 
 ## 4. Shutter pattern (entrance/exit animation)
 
-Canvas inherits Loom's existing mode-transition grammar. See `/Users/yinyiping/.claude/projects/-Users-yinyiping/memory/feedback_shutter_pattern.md` for the full pattern description.
+Canvas inherits Loom's existing mode-transition grammar. See the local design memory for the full pattern description.
 
 ### Doc recede (existing, unchanged)
 
@@ -154,7 +154,7 @@ Pure reverse. Canvas returns to scale 1.04 + blur 4 + opacity 0; doc unreceеdes
 
 ## 5. Leica-grade interaction quality
 
-See `/Users/yinyiping/.claude/projects/-Users-yinyiping/memory/feedback_leica_reassurance.md`.
+See the local design memory entry for the reassurance pattern.
 
 Every interaction must answer its own anxiety **during the action**, not with post-hoc labels. Stage 0 requires the following micro-animations:
 
