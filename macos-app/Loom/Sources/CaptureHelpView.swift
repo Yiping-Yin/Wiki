@@ -56,8 +56,31 @@ struct CaptureHelpView: View {
     }
 
     private var tipsSection: some View {
-        Text("TODO: tips — filled in Task 9")
-            .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Tips")
+                .font(.custom("EB Garamond", size: 11).weight(.medium).smallCaps())
+                .tracking(11 * 0.16)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                tip("Missing L means the extension is not running on that tab. Reload the extension and then refresh the source page; already-open tabs do not always receive a newly loaded content script.")
+                tip("Select first for the cleanest result. Selection still wins over auto-extraction when you only need a passage.")
+                tip("The bookmarklet is a fallback, not the rich-media path. Use the extension for SVG, canvas, iframe, video, and image-sidecar capture.")
+                tip("Web captures default to the Web/<domain>/Loom.md folder so domains pre-cluster naturally for similarity search.")
+                tip("Rich extension captures are not capped to the bookmarklet's 20K-character text fallback.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tip(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("·")
+                .foregroundStyle(.secondary)
+            Text(text)
+                .font(.system(size: 12, design: .serif))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
