@@ -56,6 +56,8 @@ struct LoomApp: App {
                     .tabItem { Label("AI", systemImage: "sparkles") }
                 DataSettingsView()
                     .tabItem { Label("Data", systemImage: "externaldrive") }
+                CaptureSettingsView()
+                    .tabItem { Label("Capture", systemImage: "tray.and.arrow.down") }
             }
         }
 
@@ -65,6 +67,13 @@ struct LoomApp: App {
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 460, height: 540)
+
+        Window("Set up captures", id: CaptureHelpWindow.id) {
+            CaptureHelpView()
+                .paperChrome()
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 560, height: 540)
 
         Window("About Loom", id: AboutWindow.id) {
             AboutView()
@@ -197,6 +206,7 @@ struct LoomApp: App {
             }
             CommandGroup(replacing: .help) {
                 KeyboardShortcutsMenuItem()
+                CaptureHelpMenuItem()
             }
             #if DEBUG
             CommandGroup(after: .help) {
@@ -786,6 +796,26 @@ struct WindowOpener: View {
             .onReceive(NotificationCenter.default.publisher(for: .loomImport)) { _ in
                 LoomExport.importFromFile()
             }
+    }
+}
+
+/// Help-menu item that opens the Capture setup window (CaptureHelpView).
+/// Per docs/loom.md §VII.bis the instructional content for setting up
+/// captures lives in this help window, not a sidebar surface.
+struct CaptureHelpMenuItem: View {
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+    var body: some View {
+        Button("Set Up Captures…") {
+            let existing = NSApp.windows.first {
+                $0.identifier?.rawValue == CaptureHelpWindow.id && $0.isVisible
+            }
+            if existing != nil {
+                dismissWindow(id: CaptureHelpWindow.id)
+            } else {
+                openWindow(id: CaptureHelpWindow.id)
+            }
+        }
     }
 }
 

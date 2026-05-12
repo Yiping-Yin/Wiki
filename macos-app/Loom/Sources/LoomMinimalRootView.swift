@@ -17,7 +17,6 @@ struct LoomMinimalRootView: View {
         case folderHome(URL)   // loom://content/<root-id>(/sub-path)
         case sourceFile(URL)   // loom://content/<root-id>/<file>
         case captures          // Phase A3 follow-up: browse all captures
-        case webCaptureSetup   // Phase A3 follow-up: bookmarklet display + copy
     }
 
     @State private var roots: [ContentRoot] = []
@@ -59,8 +58,8 @@ struct LoomMinimalRootView: View {
     @State private var foldersExpanded: Bool = false
     /// Hover state for sidebar rows — keyed by a stable string id so
     /// each row's bronze-hint background can light up on cursor enter.
-    /// Pages / Captures / Web Capture / + Page / + Folder use literal
-    /// keys; folder rows use their UUID string.
+    /// Pages / Captures / + Page / + Folder use literal keys; folder
+    /// rows use their UUID string.
     @State private var hoveredSidebarRow: String? = nil
     /// Folders-section caret-collapse state — per docs/loom.md §IV.B
     /// (interaction-grammar addendum 2026-05-12): group header MAY be
@@ -281,6 +280,9 @@ struct LoomMinimalRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .loomShowLibrary)) { _ in
             navigate(.library)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .loomBeginNewPage)) { _ in
+            startNewPage()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .loomOpenSourceFile)) { note in
             if let url = note.userInfo?["url"] as? URL {
                 navigate(.sourceFile(url))
@@ -394,13 +396,13 @@ struct LoomMinimalRootView: View {
     // ↑/↓ navigation with auto-scroll into viewport. The sidebar is one
     // such surface. We model the sidebar's navigable rows as an ordered
     // sequence:
-    //   __pages → __captures → __webcapture → folder rows (visible
+    //   __pages → __captures → folder rows (visible
     //   ones only — overflowed ones beyond the foldersExpanded threshold
     //   and the entire section when foldersSectionExpanded is false are
     //   excluded).
 
     private var orderedNavigableRowIDs: [String] {
-        var ids: [String] = ["__pages", "__captures", "__webcapture"]
+        var ids: [String] = ["__pages", "__captures"]
         guard foldersSectionExpanded else { return ids }
         let topLevels = topLevelRoots
         let threshold = 5
@@ -424,7 +426,6 @@ struct LoomMinimalRootView: View {
         switch selection {
         case .library: return "__pages"
         case .captures: return "__captures"
-        case .webCaptureSetup: return "__webcapture"
         case .folderHome(let url):
             let s = url.absoluteString
             let prefix = "loom://content/"
@@ -452,8 +453,6 @@ struct LoomMinimalRootView: View {
             navigate(.library)
         case "__captures":
             navigate(.captures)
-        case "__webcapture":
-            navigate(.webCaptureSetup)
         default:
             guard id.hasPrefix("__root_") else { return }
             let uuid = String(id.dropFirst("__root_".count))
@@ -509,7 +508,7 @@ struct LoomMinimalRootView: View {
             anchors = CaptureAnchorResolver.resolveForFolderHome(loomURL: url)
         case .sourceFile(let url):
             anchors = CaptureAnchorResolver.resolveForSourceFile(loomURL: url, selection: nil)
-        case .library, .captures, .webCaptureSetup:
+        case .library, .captures:
             anchors = CaptureAnchorResolver.resolveDefault()
         }
         guard let primary = anchors.first else {
@@ -558,7 +557,7 @@ struct LoomMinimalRootView: View {
         switch selection {
         case .folderHome(let url), .sourceFile(let url):
             return Self.rootID(from: url)
-        case .library, .captures, .webCaptureSetup:
+        case .library, .captures:
             return nil
         }
     }
@@ -625,7 +624,6 @@ struct LoomMinimalRootView: View {
                     sectionEyebrow("Workspaces", topPadding: DSSpace.xs.value)
                     pagesRow
                     capturesRow
-                    webCaptureSetupRow
 
                     // 18pt section gap = DSSpace.md (16) + breathing 2pt.
                     // §IV.B caret-collapse: the Folders eyebrow is the
@@ -881,17 +879,6 @@ struct LoomMinimalRootView: View {
         )
     }
 
-    @ViewBuilder
-    private var webCaptureSetupRow: some View {
-        sidebarButton(
-            rowID: "__webcapture",
-            icon: "globe",
-            title: "Web Capture",
-            isSelected: selection == .webCaptureSetup,
-            action: { navigate(.webCaptureSetup) }
-        )
-    }
-
     /// Top-level roots — roots with no parent. Sub-pages (parentID
     /// non-nil) are rendered nested under their parent via
     /// `descendants(of:)` so the sidebar reflects the page hierarchy.
@@ -1089,8 +1076,6 @@ struct LoomMinimalRootView: View {
             }
         case .captures:
             CapturesView(refreshToken: capturesRefreshToken, themeMode: webThemeMode)
-        case .webCaptureSetup:
-            WebCaptureSetupView()
         }
     }
 
