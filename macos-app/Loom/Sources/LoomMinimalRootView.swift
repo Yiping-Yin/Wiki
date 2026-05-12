@@ -519,10 +519,14 @@ struct LoomMinimalRootView: View {
                 capturesRow
                 webCaptureSetupRow
 
-                let folderCount = topLevelRoots.count
                 // 18pt section gap = DSSpace.md (16) + breathing 2pt;
                 // matches the compact sidebar rhythm in globals.css.
-                sectionEyebrow("Folders · \(folderCount)", topPadding: DSSpace.md.value + 2)
+                // No count badge per docs/loom.md §IV.B (interaction-grammar
+                // addendum 2026-05-12): counts in nav chrome violate
+                // Visual Grammar §7. If user needs the count, it appears
+                // in the detail view (Organize page top stats strip),
+                // not in the sidebar header.
+                sectionEyebrow("Folders", topPadding: DSSpace.md.value + 2)
                 folderList
 
                 sectionEyebrow("Tools", topPadding: DSSpace.md.value + 2)
