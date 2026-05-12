@@ -633,6 +633,8 @@ struct LoomMinimalRootView: View {
                     // becomes the clickable group header. Workspaces /
                     // Tools stay static (fixed-shape sections). Count
                     // badge intentionally absent per §IV.B MUST NOT.
+                    // (Supersedes the simpler eyebrow-with-no-count fix
+                    // from PR #26, which lives in main as squashed history.)
                     foldersHeader()
                     if foldersSectionExpanded {
                         folderList

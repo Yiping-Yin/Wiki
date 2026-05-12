@@ -338,6 +338,47 @@ Shipped vocab (2026-05-11 在 running app 现场验证):
 
 ---
 
+### Amendment 2026-05-12 — Sidebar / List 交互语法（Plate IV addendum）
+
+**来源**：2026-05-12 评估了一份 component-library showcase 风格 sidebar 原型（Unlumen UI Pro 风格）。整体视觉风格与 Plate VII（Cormorant + 牛血红 + Vellum）和 Visual Grammar §8（禁止 mechanism-calling 动画）系统性冲突，**不采纳整体风格**。但其中 4 条交互模式与产品视觉无关，作为通用 UX 抽出，落为所有 list-shaped Plate IV surface 的交互基线。
+
+**A. 键盘 ↑/↓ 在可见 item 间切换 + 自动滚动入视区**
+
+任何 list-shaped surface（sidebar 文件夹列表、Recent Captures、Recent Reading、Question Container 列表、Source Index 等）**MUST** 支持键盘 ↑/↓ 在 visible item 间切换 focus；焦点移出当前 viewport 时自动 scroll 该 item 入视。
+
+理由：a11y baseline + 鼠/键双模流畅。
+
+**B. 分组 header 折叠可选，但 count badge 禁止**
+
+当 sidebar / list 出现 group header（如 `FOLDERS` / `Today` / `Pinned`），header **MAY** 支持点击折叠，用 caret 90° 旋转 + body max-height 过渡。**MUST NOT** 在 header 旁边显示 count badge（例如 "Components 12 / Animations 24 / Hooks 8"）—— 这违反 Visual Grammar §7「Counts are almost always overused」。如果用户需要知道数量，让数量出现在 detail view 内，不进导航 chrome。
+
+**C. 选择切换允许细微 fade（≤150ms），禁止 mechanism-calling 动画**
+
+切换 selected item 时，content pane 的 title / description / preview **MAY** 用短 fade（opacity 0.6 → 1，≤150ms）。**MUST NOT** 使用：
+
+- 彩色渐变扫光（gradient text-reveal sweep）
+- 右侧滑动 indicator（sliding bar follows cursor）
+- 左侧 dash 生长 + 同步变色（width + color 双过渡）
+- bounce / slide choreography 任何形式
+
+这些都属于 Visual Grammar §8 明令禁止的 "calls attention to the mechanism"。
+
+**D. ⌘K 是唯一全局召唤层（重申，不重定义）**
+
+参考 Plate IV 已规划的 M6/M7 ⌘K palette。**复用此约束**：所有「快速跳到 / 快速创建 / 快速搜索 / 快速 invoke AI」收敛到 ⌘K 这一个入口，**不**在 sidebar 顶部、各 surface 顶端再放一个独立 search input。Sidebar 自己不需要 search box —— 列表本身已经是导航。
+
+---
+
+**总原则（写给未来 PR）**：评估任何「借鉴某产品 X 的 sidebar / nav 风格」提案时，按这三道闸：
+
+1. 这条 pattern 是 *visual / material*（字号、颜色、密度、字形）还是 *interaction*（keyboard、scroll、selection logic）？前者绝大多数与 Plate VII 冲突，跳过；后者可以单独抽出。
+2. 涉及的动画属于「settle / quiet fade」还是「showcase the mechanism」？后者一律 reject。
+3. chrome 是否显示 count / status badge / progress 这类不属于当前 task 的元信息？是 → reject。
+
+通过三道闸的 pattern 才是真正可借鉴的；其余是 Unlumen / Notion / 某 SaaS 截图的产品定位绑定的样式，不属于 Loom。
+
+---
+
 ## Plate V — flipdisc + Moodle 试金石
 
 Loom 是不是真做对了，**不看代码，看两个真实场景**。
