@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "Capture to Loom",
+    "description": "Toolbar button title and Mac App Store name."
+  },
+  "extensionDescription": {
+    "message": "One-click capture from any web page into Loom — your personal wiki that gets sharper over time.",
+    "description": "Short description shown in browser extension list."
+  }
+}

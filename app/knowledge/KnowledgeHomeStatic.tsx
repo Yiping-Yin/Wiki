@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { QuietScene, QuietSceneColumn } from '../../components/QuietScene';
 import { PageFrame } from '../../components/PageFrame';
@@ -11,6 +10,11 @@ type SourceLibraryItem = {
   label: string;
   count: number;
   groupId?: string;
+  href?: string;
+  extractedCount?: number;
+  pendingCount?: number;
+  latestDocTitle?: string;
+  latestDocHref?: string;
 };
 
 type SourceLibraryGroup = {
@@ -19,51 +23,42 @@ type SourceLibraryGroup = {
   items: SourceLibraryItem[];
 };
 
+type ResolvedSourceLibraryItem = SourceLibraryItem & {
+  groupId: string;
+  href: string;
+  extractedCount: number;
+  pendingCount: number;
+};
+
 type ResolvedSourceLibraryGroup = {
   id: string;
   label: string;
-  items: Array<SourceLibraryItem & { groupId: string }>;
+  items: ResolvedSourceLibraryItem[];
 };
 
-type MaterialProfile = {
-  className: string;
-  label: string;
-  kind: string;
-  origin: string;
+type SourceRecentItem = {
+  href: string;
+  title: string;
+  at?: number | string;
 };
 
-const MATERIAL_PROFILES: MaterialProfile[] = [
-  {
-    className: 'loom-source-sample--bookcloth',
-    label: 'bookcloth',
-    kind: 'bound source',
-    origin: 'library accession',
-  },
-  {
-    className: 'loom-source-sample--paper',
-    label: 'cotton paper',
-    kind: 'notes and leaves',
-    origin: 'working papers',
-  },
-  {
-    className: 'loom-source-sample--wool',
-    label: 'dark wool',
-    kind: 'technical wiki',
-    origin: 'deep reference',
-  },
-  {
-    className: 'loom-source-sample--leather',
-    label: 'leather edge',
-    kind: 'curated source',
-    origin: 'kept canon',
-  },
-];
+type SourceWritingEntry = {
+  id: string;
+  title: string;
+  href: string;
+  categoryLabel?: string;
+  updatedAt?: number;
+  hasTidyDraft?: boolean;
+  materialCount?: number;
+};
 
 export function KnowledgeHomeStatic({
   sourceLibraryGroups,
   groups,
   totalCollections,
   totalDocs,
+  recentReading = [],
+  writingEntries = [],
   isAddingGroup = false,
   newGroupLabel = '',
   onStartAddGroup = () => {},
@@ -93,6 +88,8 @@ export function KnowledgeHomeStatic({
   groups?: SourceLibraryGroup[];
   totalCollections: number;
   totalDocs: number;
+  recentReading?: SourceRecentItem[];
+  writingEntries?: SourceWritingEntry[];
   isAddingGroup?: boolean;
   newGroupLabel?: string;
   onStartAddGroup?: () => void;
@@ -131,13 +128,27 @@ export function KnowledgeHomeStatic({
       return {
         ...group,
         id,
-        items: group.items.map((item) => ({
-          ...item,
-          groupId: item.groupId ?? id,
-        })),
+        items: group.items.map((item) => {
+          const extractedCount = item.extractedCount ?? item.count;
+          return {
+            ...item,
+            groupId: item.groupId ?? id,
+            href: item.href ?? `#${item.slug}`,
+            extractedCount,
+            pendingCount: item.pendingCount ?? Math.max(0, item.count - extractedCount),
+          };
+        }),
       };
     },
   );
+
+  const unorganizedItems = resolvedGroups.find((group) => group.id === 'ungrouped')?.items ?? [];
+  const extractedTotal = resolvedGroups
+    .flatMap((group) => group.items)
+    .reduce((sum, item) => sum + item.extractedCount, 0);
+  const pendingTotal = resolvedGroups
+    .flatMap((group) => group.items)
+    .reduce((sum, item) => sum + item.pendingCount, 0);
 
   return (
     <StageShell
@@ -148,210 +159,207 @@ export function KnowledgeHomeStatic({
       <QuietScene tone="atlas">
         <QuietSceneColumn style={{ width: 'min(100%, var(--archive-stage-width))' }}>
           <PageFrame
-            eyebrow="Sources"
-            title="Sources"
+            eyebrow="Archive Work Surface"
+            title="Source Index"
             description={
               <>
                 <span>
-                  {formatCount(totalCollections, 'shelf')} / {formatCount(totalDocs, 'indexed source')}
+                  {formatCount(totalCollections, 'collection')} / {formatCount(totalDocs, 'indexed source')}
                 </span>
                 <br />
-                Arrange source-library categories as archive shelves. Re-shelving changes Loom
+                A working index for read → organize → write. Grouping changes Loom
                 provenance only; original source files stay unchanged.
               </>
             }
+            actions={<PrimaryWritingAction writingEntries={writingEntries} />}
           >
-            <div className="loom-source-cabinet" aria-label="Sources archive cabinet">
+            <div className="loom-source-index" aria-label="Source Index">
               {errorMessage && (
-                <div className="loom-source-cabinet__error" role="status">
+                <div className="loom-source-index__error" role="status">
                   {errorMessage}
                 </div>
               )}
 
-              {resolvedGroups.map((group, index) => {
-                const empty = group.items.length === 0;
-                const isEditing = editingGroupId === group.id;
-                const isDeleting = confirmingDeleteGroupId === group.id;
+              <section className="loom-source-index__status" aria-label="Source status">
+                <StatusCell label="Sources" value={formatCount(totalDocs, 'indexed source')} />
+                <StatusCell label="Extracted" value={formatCount(extractedTotal, 'source')} />
+                <StatusCell label="Needs review" value={formatCount(pendingTotal, 'source')} />
+                <StatusCell label="Unorganized" value={formatCount(unorganizedItems.length, 'collection')} />
+              </section>
 
-                return (
-                  <div
-                    key={group.id}
-                    className={
-                      empty ? 'loom-atlas-group loom-atlas-group-empty' : 'loom-atlas-group'
-                    }
-                    data-group-drop-target={group.id}
-                    onDragOver={(event) => {
-                      if (!event.dataTransfer.types.includes('application/x-loom-category-slug'))
-                        return;
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = 'move';
-                      event.currentTarget.setAttribute('data-drop-active', 'true');
-                    }}
-                    onDragLeave={(event) => {
-                      const related = event.relatedTarget as Node | null;
-                      if (related && event.currentTarget.contains(related)) return;
-                      event.currentTarget.removeAttribute('data-drop-active');
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      event.currentTarget.removeAttribute('data-drop-active');
-                      const slug = event.dataTransfer.getData('application/x-loom-category-slug');
-                      if (slug) onMoveCategory(slug, group.id);
-                    }}
-                  >
-                    <section
-                      className={
-                        empty ? 'loom-archive-shelf loom-archive-shelf--empty' : 'loom-archive-shelf'
-                      }
+              <section className="loom-source-worklist" aria-label="Current work">
+                <WorkPanel title="Recent reading" empty="No recent source opened yet.">
+                  {recentReading.slice(0, 5).map((item) => (
+                    <WorkLink
+                      key={`${item.href}:${item.at ?? ''}`}
+                      href={item.href}
+                      title={item.title}
+                      meta={relativeTime(item.at)}
+                    />
+                  ))}
+                </WorkPanel>
+
+                <WorkPanel title="Unorganized" empty="No loose collections.">
+                  {unorganizedItems.slice(0, 5).map((item) => (
+                    <WorkLink
+                      key={item.slug}
+                      href={item.href}
+                      title={item.label}
+                      meta={`${formatCount(item.count, 'source')} · ${extractionLabel(item)}`}
+                    />
+                  ))}
+                </WorkPanel>
+
+                <WorkPanel title="Continue writing" empty="No writing surface waiting.">
+                  {writingEntries.slice(0, 5).map((entry) => (
+                    <WorkLink
+                      key={entry.id}
+                      href={entry.href}
+                      title={entry.title}
+                      meta={writingMeta(entry)}
+                    />
+                  ))}
+                </WorkPanel>
+              </section>
+
+              <section className="loom-source-index__groups" aria-label="Source groups">
+                {resolvedGroups.map((group) => {
+                  const empty = group.items.length === 0;
+                  const isEditing = editingGroupId === group.id;
+                  const isDeleting = confirmingDeleteGroupId === group.id;
+
+                  return (
+                    <div
+                      key={group.id}
+                      className="loom-source-group"
+                      data-group-drop-target={group.id}
+                      onDragOver={(event) => {
+                        if (!event.dataTransfer.types.includes('application/x-loom-category-slug')) return;
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        event.currentTarget.setAttribute('data-drop-active', 'true');
+                      }}
+                      onDragLeave={(event) => {
+                        const related = event.relatedTarget as Node | null;
+                        if (related && event.currentTarget.contains(related)) return;
+                        event.currentTarget.removeAttribute('data-drop-active');
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        event.currentTarget.removeAttribute('data-drop-active');
+                        const slug = event.dataTransfer.getData('application/x-loom-category-slug');
+                        if (slug) onMoveCategory(slug, group.id);
+                      }}
                     >
-                      <div className="loom-archive-shelf__spine" aria-hidden="true" />
-                      <div className="loom-archive-shelf__body">
-                        <header className="loom-archive-shelf__header">
-                          <div className="loom-archive-shelf__identity">
-                            <div className="loom-archive-shelf__accession">
-                              <span>Shelf {formatOrdinal(index + 1)}</span>
-                              <span>{empty ? 'open drawer' : 'accessioned drawer'}</span>
-                            </div>
-
-                            {isEditing ? (
-                              <form
-                                className="loom-shelf-editor"
-                                onSubmit={(event) => {
-                                  event.preventDefault();
-                                  onSubmitRenameGroup(group.id, group.label);
-                                }}
-                              >
-                                <input
-                                  value={editingGroupLabel}
-                                  onChange={(event) =>
-                                    onChangeEditingGroupLabel(event.target.value)
-                                  }
-                                  aria-label={`Relabel ${group.label}`}
-                                  style={groupInputStyle}
-                                  autoFocus
-                                />
-                                <button
-                                  type="submit"
-                                  style={groupActionStyle}
-                                  aria-busy={busyKey === `group:rename:${group.id}` || isPending}
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={onCancelRenameGroup}
-                                  style={groupActionStyle}
-                                >
-                                  Cancel
-                                </button>
-                              </form>
-                            ) : (
-                              <>
-                                <h2>{group.label}</h2>
-                                <p>{shelfProvenance(group)}</p>
-                              </>
-                            )}
-                          </div>
-
-                          <div className="loom-archive-shelf__meta">
-                            <span className="loom-archive-shelf__count">
-                              {formatCount(group.items.length, 'collection')}
-                            </span>
-                            {group.id !== 'ungrouped' && !isEditing && (
-                              <div
-                                className={
-                                  isDeleting
-                                    ? 'loom-archive-shelf__actions loom-archive-shelf__actions--open'
-                                    : 'loom-archive-shelf__actions'
-                                }
-                              >
-                                {isDeleting ? (
-                                  <>
-                                    <span>Remove shelf? Items return to Ungrouped.</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => onConfirmDeleteGroup(group.id)}
-                                      style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-                                      aria-busy={
-                                        busyKey === `group:delete:${group.id}` || isPending
-                                      }
-                                    >
-                                      Remove now
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={onCancelDeleteGroup}
-                                      style={groupActionStyle}
-                                    >
-                                      Cancel
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => onStartRenameGroup(group.id, group.label)}
-                                      style={groupActionStyle}
-                                      aria-busy={
-                                        busyKey === `group:rename:${group.id}` || isPending
-                                      }
-                                    >
-                                      Relabel
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => onRequestDeleteGroup(group.id)}
-                                      style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-                                      aria-busy={
-                                        busyKey === `group:delete:${group.id}` || isPending
-                                      }
-                                    >
-                                      Remove
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </header>
-
-                        {empty ? (
-                          <div data-atlas-empty-group className="loom-archive-shelf__empty">
-                            <span className="loom-archive-shelf__empty-marker" aria-hidden />
-                            <span>Awaiting material</span>
-                            <span>Drop a sample strip here</span>
-                          </div>
-                        ) : (
-                          <div className="loom-archive-shelf__samples">
-                            {group.items.map((item, itemIndex) => (
-                              <CollectionCard
-                                key={item.slug}
-                                item={item}
-                                itemIndex={itemIndex}
-                                allGroups={resolvedGroups}
-                                onMoveCategory={onMoveCategory}
-                                confirmingHide={confirmingHideCategorySlug === item.slug}
-                                onRequestHideCategory={onRequestHideCategory}
-                                onCancelHideCategory={onCancelHideCategory}
-                                onConfirmHideCategory={onConfirmHideCategory}
-                                busy={
-                                  busyKey === `membership:${item.slug}` ||
-                                  busyKey === `category:hide:${item.slug}` ||
-                                  isPending
-                                }
+                      <header className="loom-source-group__header">
+                        <div className="loom-source-group__identity">
+                          {isEditing ? (
+                            <form
+                              className="loom-group-editor"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                onSubmitRenameGroup(group.id, group.label);
+                              }}
+                            >
+                              <input
+                                value={editingGroupLabel}
+                                onChange={(event) => onChangeEditingGroupLabel(event.target.value)}
+                                aria-label={`Relabel ${group.label}`}
+                                style={groupInputStyle}
+                                autoFocus
                               />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </section>
-                  </div>
-                );
-              })}
+                              <button
+                                type="submit"
+                                style={groupActionStyle}
+                                aria-busy={busyKey === `group:rename:${group.id}` || isPending}
+                              >
+                                Save
+                              </button>
+                              <button type="button" onClick={onCancelRenameGroup} style={groupActionStyle}>
+                                Cancel
+                              </button>
+                            </form>
+                          ) : (
+                            <>
+                              <h2>{group.label}</h2>
+                              <p>{groupProvenance(group)}</p>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="loom-source-group__meta">
+                          <span>{formatCount(group.items.length, 'collection')}</span>
+                          {group.id !== 'ungrouped' && !isEditing && (
+                            <div className="loom-source-group__actions">
+                              {isDeleting ? (
+                                <>
+                                  <span>Remove group? Collections return to Unorganized.</span>
+                                  <button
+                                    type="button"
+                                    style={groupActionStyle}
+                                    onClick={() => onConfirmDeleteGroup(group.id)}
+                                    aria-busy={busyKey === `group:delete:${group.id}` || isPending}
+                                  >
+                                    Remove now
+                                  </button>
+                                  <button type="button" style={groupActionStyle} onClick={onCancelDeleteGroup}>
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    style={groupActionStyle}
+                                    onClick={() => onStartRenameGroup(group.id, group.label)}
+                                  >
+                                    Relabel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    style={groupActionStyle}
+                                    onClick={() => onRequestDeleteGroup(group.id)}
+                                  >
+                                    Remove
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </header>
+
+                      {empty ? (
+                        <p className="loom-source-group__empty">No collections assigned here.</p>
+                      ) : (
+                        <div className="loom-source-group__rows">
+                          {group.items.map((item) => (
+                            <CollectionRow
+                              key={item.slug}
+                              item={item}
+                              allGroups={resolvedGroups}
+                              onMoveCategory={onMoveCategory}
+                              confirmingHide={confirmingHideCategorySlug === item.slug}
+                              onRequestHideCategory={onRequestHideCategory}
+                              onCancelHideCategory={onCancelHideCategory}
+                              onConfirmHideCategory={onConfirmHideCategory}
+                              busy={
+                                busyKey === `membership:${item.slug}` ||
+                                busyKey === `category:hide:${item.slug}` ||
+                                isPending
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
 
               {isAddingGroup ? (
                 <form
-                  className="loom-new-shelf"
+                  className="loom-new-group"
                   onSubmit={(event) => {
                     event.preventDefault();
                     onSubmitNewGroup();
@@ -360,8 +368,8 @@ export function KnowledgeHomeStatic({
                   <input
                     value={newGroupLabel}
                     onChange={(event) => onChangeNewGroupLabel(event.target.value)}
-                    placeholder="New shelf name"
-                    aria-label="New shelf name"
+                    placeholder="New group name"
+                    aria-label="New group name"
                     style={groupInputStyle}
                     autoFocus
                   />
@@ -370,7 +378,7 @@ export function KnowledgeHomeStatic({
                     style={groupActionStyle}
                     aria-busy={busyKey === 'group:add' || isPending}
                   >
-                    Create shelf
+                    Create group
                   </button>
                   <button type="button" onClick={onCancelAddGroup} style={groupActionStyle}>
                     Cancel
@@ -380,10 +388,10 @@ export function KnowledgeHomeStatic({
                 <button
                   type="button"
                   onClick={onStartAddGroup}
-                  className="loom-new-shelf-button"
+                  className="loom-new-group-button"
                   aria-busy={busyKey === 'group:add' || isPending}
                 >
-                  New shelf
+                  New group
                 </button>
               )}
             </div>
@@ -391,502 +399,378 @@ export function KnowledgeHomeStatic({
         </QuietSceneColumn>
       </QuietScene>
       <style>{`
-        .loom-source-cabinet {
-          --material-linen: #D8CEB8;
-          --material-bookcloth: #B9A98C;
-          --material-walnut: #6C432A;
-          --material-oak: #A7794E;
-          --material-brass: #B08A45;
-          --material-parchment-edge: #D2C39F;
-          --material-wool-shadow: rgba(58, 43, 31, 0.18);
-          --material-thread-red: #7D2F2B;
-          --material-horsehair: #2F2923;
+        .loom-source-index {
           display: flex;
           flex-direction: column;
-          gap: 14px;
-        }
-
-        .loom-source-cabinet__error {
-          border-left: 2px solid var(--tint-red);
-          color: var(--tint-red);
-          font-size: var(--fs-small);
-          padding: 0.4rem 0.7rem;
-          background: color-mix(in srgb, var(--tint-red) 8%, transparent);
-        }
-
-        .loom-archive-shelf {
-          position: relative;
-          display: grid;
-          grid-template-columns: 12px minmax(0, 1fr);
-          min-height: 118px;
-          border: 0.5px solid color-mix(in srgb, var(--mat-border) 82%, transparent);
-          border-radius: 8px;
-          overflow: hidden;
-          background:
-            linear-gradient(90deg, rgba(108, 67, 42, 0.12), transparent 18%),
-            linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 80%, var(--material-linen) 20%), color-mix(in srgb, var(--bg) 82%, var(--material-parchment-edge) 18%));
-          box-shadow:
-            inset 0 1px 0 rgba(255, 252, 238, 0.56),
-            inset 0 -1px 0 rgba(108, 67, 42, 0.08),
-            0 10px 28px rgba(42, 37, 32, 0.045);
-          transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
-        }
-
-        .loom-archive-shelf::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          opacity: 0.18;
-          background:
-            repeating-linear-gradient(90deg, rgba(42, 37, 32, 0.08) 0 1px, transparent 1px 8px),
-            repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 10px);
-          mix-blend-mode: multiply;
-        }
-
-        .loom-archive-shelf__spine {
-          position: relative;
-          z-index: 1;
-          background:
-            linear-gradient(180deg, var(--material-walnut), var(--material-oak) 48%, var(--material-walnut)),
-            repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 7px);
-          border-right: 0.5px solid rgba(42, 37, 32, 0.16);
-        }
-
-        .loom-archive-shelf__spine::after {
-          content: "";
-          position: absolute;
-          top: 16px;
-          bottom: 16px;
-          right: -1px;
-          width: 2px;
-          background: linear-gradient(180deg, transparent, var(--material-brass), transparent);
-          opacity: 0.72;
-        }
-
-        .loom-archive-shelf__body {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-          min-width: 0;
-          padding: 1rem 1rem 0.9rem;
-        }
-
-        .loom-archive-shelf__header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
           gap: 18px;
         }
 
-        .loom-archive-shelf__identity {
-          min-width: 0;
-          display: flex;
-          flex: 1;
-          flex-direction: column;
-          gap: 7px;
+        .loom-source-index__error {
+          border-left: 2px solid var(--tint-red);
+          color: var(--tint-red);
+          font-size: var(--fs-small);
+          padding: 0.45rem 0.75rem;
+          background: color-mix(in srgb, var(--tint-red) 8%, transparent);
         }
 
-        .loom-archive-shelf__accession {
-          display: flex;
-          align-items: center;
+        .loom-source-index__status,
+        .loom-source-worklist {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 10px;
-          flex-wrap: wrap;
-          color: var(--accent-text);
+        }
+
+        .loom-source-status-cell,
+        .loom-source-work-panel,
+        .loom-source-group {
+          border: 0.5px solid color-mix(in srgb, var(--mat-border) 78%, transparent);
+          border-radius: 8px;
+          background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+          box-shadow: 0 10px 28px rgba(42, 37, 32, 0.035);
+        }
+
+        .loom-source-status-cell {
+          min-height: 74px;
+          padding: 0.86rem 0.95rem;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .loom-source-status-cell span:first-child,
+        .loom-source-work-panel__title,
+        .loom-source-row__label,
+        .loom-source-row__move-label {
+          color: var(--muted);
           font-family: var(--mono);
-          font-size: 0.64rem;
+          font-size: 0.66rem;
           line-height: 1.2;
           text-transform: uppercase;
           letter-spacing: 0;
         }
 
-        .loom-archive-shelf__accession span + span {
-          color: var(--muted);
-        }
-
-        .loom-archive-shelf h2 {
-          margin: 0;
+        .loom-source-status-cell strong {
           color: var(--fg);
-          font-family: var(--display);
-          font-size: clamp(1.18rem, 2vw, 1.48rem);
+          font-family: var(--serif);
+          font-size: 1.08rem;
           font-style: italic;
           font-weight: 500;
-          line-height: 1.08;
-          letter-spacing: 0;
+          line-height: 1.15;
         }
 
-        .loom-archive-shelf p {
-          margin: 0;
-          max-width: 34rem;
-          color: var(--fg-secondary);
-          font-family: var(--serif);
-          font-size: 0.83rem;
-          font-style: italic;
-          line-height: 1.45;
+        .loom-source-worklist {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
-        .loom-archive-shelf__meta {
+        .loom-source-work-panel {
+          min-height: 176px;
+          padding: 1rem;
           display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          justify-content: flex-end;
-          flex-wrap: wrap;
-          flex-shrink: 0;
+          flex-direction: column;
+          gap: 12px;
         }
 
-        .loom-archive-shelf__count {
-          display: inline-flex;
-          align-items: center;
-          min-height: 24px;
-          border-top: 0.5px solid color-mix(in srgb, var(--material-brass) 48%, transparent);
-          color: var(--muted);
-          font-family: var(--serif);
-          font-size: 0.75rem;
-          font-style: italic;
-          line-height: 1;
-          white-space: nowrap;
-        }
-
-        .loom-archive-shelf__actions {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          flex-wrap: wrap;
-          opacity: 0;
-          transition: opacity var(--dur-2) var(--ease);
-        }
-
-        .loom-archive-shelf__actions span {
-          color: var(--muted);
-          font-size: var(--fs-caption);
-        }
-
-        .loom-atlas-group:hover .loom-archive-shelf__actions,
-        .loom-atlas-group:focus-within .loom-archive-shelf__actions,
-        .loom-archive-shelf__actions--open {
-          opacity: 1;
-        }
-
-        .loom-archive-shelf__samples {
+        .loom-source-work-panel__body {
           display: flex;
           flex-direction: column;
           gap: 7px;
         }
 
-        .loom-archive-shelf__empty {
-          display: flex;
-          align-items: center;
+        .loom-source-work-panel__empty {
+          margin: 0;
+          color: var(--fg-secondary);
+          font-family: var(--serif);
+          font-size: 0.9rem;
+          font-style: italic;
+          line-height: 1.45;
+        }
+
+        .loom-source-work-link {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
           gap: 10px;
-          min-height: 52px;
+          align-items: baseline;
+          color: inherit;
+          text-decoration: none;
+          padding: 0.38rem 0;
+          border-bottom: 0.5px solid color-mix(in srgb, var(--mat-border) 46%, transparent);
+        }
+
+        .loom-source-work-link strong {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          color: var(--fg);
+          font-family: var(--serif);
+          font-size: 0.96rem;
+          font-weight: 500;
+          line-height: 1.25;
+        }
+
+        .loom-source-work-link span {
           color: var(--muted);
           font-family: var(--serif);
-          font-size: 0.82rem;
+          font-size: 0.76rem;
           font-style: italic;
-          border-top: 0.5px solid color-mix(in srgb, var(--mat-border) 70%, transparent);
-          padding-top: 0.55rem;
-          flex-wrap: wrap;
+          line-height: 1.2;
+          white-space: nowrap;
         }
 
-        .loom-archive-shelf__empty-marker {
-          width: 26px;
-          height: 7px;
-          border-radius: 1px;
-          background: linear-gradient(90deg, var(--material-brass), var(--material-parchment-edge));
-          opacity: 0.72;
+        .loom-source-index__groups {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
         }
 
-        .loom-shelf-editor,
-        .loom-new-shelf {
+        .loom-source-group {
+          padding: 1rem;
+          transition:
+            border-color var(--dur-2) var(--ease),
+            background var(--dur-2) var(--ease);
+        }
+
+        .loom-source-group[data-drop-active="true"] {
+          border-color: color-mix(in srgb, var(--accent) 52%, var(--mat-border));
+          background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated));
+        }
+
+        .loom-source-group__header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 18px;
+          margin-bottom: 12px;
+        }
+
+        .loom-source-group__identity {
+          min-width: 0;
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .loom-source-group h2 {
+          margin: 0;
+          color: var(--fg);
+          font-family: var(--display);
+          font-size: clamp(1.12rem, 1.8vw, 1.36rem);
+          font-style: italic;
+          font-weight: 500;
+          line-height: 1.12;
+          letter-spacing: 0;
+        }
+
+        .loom-source-group p {
+          margin: 0;
+          max-width: 44rem;
+          color: var(--fg-secondary);
+          font-family: var(--serif);
+          font-size: 0.84rem;
+          font-style: italic;
+          line-height: 1.45;
+        }
+
+        .loom-source-group__meta,
+        .loom-source-group__actions,
+        .loom-group-editor,
+        .loom-new-group {
           display: flex;
           align-items: center;
+          justify-content: flex-end;
           gap: 8px;
           flex-wrap: wrap;
         }
 
-        .loom-source-sample-card {
-          position: relative;
+        .loom-source-group__meta > span {
+          color: var(--muted);
+          font-family: var(--serif);
+          font-size: 0.78rem;
+          font-style: italic;
+          white-space: nowrap;
+        }
+
+        .loom-source-group__actions span {
+          color: var(--muted);
+          font-size: var(--fs-caption);
+        }
+
+        .loom-source-group__rows {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+        }
+
+        .loom-source-group__empty {
+          padding: 0.7rem 0;
+        }
+
+        .loom-source-row {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
+          gap: 14px;
           align-items: stretch;
-          border: 0.5px solid rgba(42, 37, 32, 0.055);
-          border-radius: 6px;
-          overflow: hidden;
-          background:
-            linear-gradient(90deg, rgba(255, 255, 255, 0.42), transparent 30%),
-            color-mix(in srgb, var(--bg-elevated) 82%, var(--material-linen) 18%);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
-          transition:
-            border-color var(--dur-2) var(--ease),
-            transform var(--dur-2) var(--ease),
-            background var(--dur-2) var(--ease);
+          border-top: 0.5px solid color-mix(in srgb, var(--mat-border) 52%, transparent);
+          padding-top: 0.72rem;
+        }
+
+        .loom-source-row[draggable="true"] {
           cursor: grab;
         }
 
-        .loom-source-sample-card:hover,
-        .loom-source-sample-card:focus-within {
-          border-color: color-mix(in srgb, var(--material-brass) 38%, var(--mat-border));
-          transform: translateY(-1px);
-          background:
-            linear-gradient(90deg, rgba(255, 255, 255, 0.52), transparent 32%),
-            color-mix(in srgb, var(--bg-elevated) 72%, var(--material-linen) 28%);
-        }
-
-        .loom-source-sample {
-          position: relative;
-          display: grid;
-          grid-template-columns: 14px minmax(0, 1fr);
-          gap: 12px;
+        .loom-source-row__main {
           min-width: 0;
           color: inherit;
           text-decoration: none;
-          padding: 0.74rem 1rem 0.74rem 0.68rem;
-        }
-
-        .loom-source-sample__swatch {
-          position: relative;
-          width: 14px;
-          min-height: 52px;
-          border-radius: 2px;
-          background: var(--material-bookcloth);
-          box-shadow:
-            inset 0 0 0 0.5px rgba(42, 37, 32, 0.14),
-            inset -3px 0 rgba(42, 37, 32, 0.08);
-        }
-
-        .loom-source-sample__swatch::after {
-          content: "";
-          position: absolute;
-          inset: 4px 3px;
-          border-left: 0.5px solid rgba(255, 255, 255, 0.36);
-          border-right: 0.5px solid rgba(42, 37, 32, 0.14);
-        }
-
-        .loom-source-sample--paper .loom-source-sample__swatch {
-          background:
-            repeating-linear-gradient(0deg, rgba(42, 37, 32, 0.08) 0 1px, transparent 1px 8px),
-            var(--material-linen);
-        }
-
-        .loom-source-sample--wool .loom-source-sample__swatch {
-          background:
-            repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 5px),
-            var(--material-horsehair);
-        }
-
-        .loom-source-sample--leather .loom-source-sample__swatch {
-          background:
-            linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent),
-            var(--material-walnut);
-        }
-
-        .loom-source-sample__body {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
           align-items: center;
-          gap: 12px;
-          min-width: 0;
+          gap: 14px;
+          padding: 0.16rem 0;
         }
 
-        .loom-source-sample__title {
+        .loom-source-row__title {
           min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
         }
 
-        .loom-source-sample__title strong {
-          display: block;
+        .loom-source-row__title strong {
           overflow-wrap: anywhere;
           color: var(--fg);
-          font-family: var(--display);
-          font-size: 1.08rem;
-          font-style: italic;
+          font-family: var(--serif);
+          font-size: 1rem;
           font-weight: 500;
-          line-height: 1.14;
-          letter-spacing: 0;
+          line-height: 1.22;
         }
 
-        .loom-source-sample__title span {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          flex-wrap: wrap;
-          margin-top: 0.28rem;
-          color: var(--muted);
+        .loom-source-row__title span,
+        .loom-source-row__state,
+        .loom-source-row__confirm {
+          color: var(--fg-secondary);
           font-family: var(--serif);
-          font-size: 0.75rem;
+          font-size: 0.78rem;
           font-style: italic;
           line-height: 1.35;
         }
 
-        .loom-source-sample__count {
+        .loom-source-row__extract {
           justify-self: end;
-          color: var(--fg-secondary);
+          color: var(--muted);
           font-family: var(--mono);
           font-size: 0.66rem;
+          line-height: 1.2;
           text-transform: uppercase;
           letter-spacing: 0;
           white-space: nowrap;
         }
 
-        .loom-source-sample__tools {
-          position: relative;
+        .loom-source-row__tools {
           display: flex;
           align-items: center;
-          gap: 8px;
           justify-content: flex-end;
-          min-width: 170px;
-          padding: 0.7rem 0.7rem 0.7rem 0;
+          gap: 8px;
+          min-width: 178px;
         }
 
-        .loom-source-sample__remove {
+        .loom-source-row__move {
+          display: grid;
+          gap: 4px;
+          pointer-events: auto;
+        }
+
+        .loom-source-row__move select {
+          min-width: 138px;
+          border: 0.5px solid color-mix(in srgb, var(--mat-border) 82%, transparent);
+          border-radius: 6px;
+          background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+          color: var(--fg-secondary);
+          font-family: var(--serif);
+          font-size: 0.78rem;
+          font-style: italic;
+          padding: 0.28rem 0.48rem;
+        }
+
+        .loom-source-row__remove {
           appearance: none;
           border: 0.5px solid transparent;
           background: transparent;
           color: var(--muted);
-          width: 28px;
-          height: 28px;
-          border-radius: 999px;
+          width: 30px;
+          height: 30px;
+          border-radius: 6px;
           cursor: pointer;
-          font-size: 1rem;
-          line-height: 1;
-          opacity: 0;
+          font-family: var(--serif);
+          font-size: 0.76rem;
+          font-style: italic;
           transition:
-            opacity var(--dur-2) var(--ease),
             color var(--dur-2) var(--ease),
+            border-color var(--dur-2) var(--ease),
             background var(--dur-2) var(--ease);
         }
 
-        .loom-source-sample-card:hover .loom-source-sample__remove,
-        .loom-source-sample-card:focus-within .loom-source-sample__remove {
-          opacity: 1;
+        .loom-source-row__remove:hover,
+        .loom-source-row__remove:focus-visible {
+          color: var(--accent-text);
+          border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+          background: color-mix(in srgb, var(--accent) 6%, transparent);
         }
 
-        .loom-source-sample__remove:hover,
-        .loom-source-sample__remove:focus-visible {
-          color: var(--tint-red);
-          background: color-mix(in srgb, var(--tint-red) 10%, transparent);
-        }
-
-        .loom-source-sample__confirm {
+        .loom-source-row__confirm {
+          grid-column: 1 / -1;
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 7px;
+          gap: 8px;
           flex-wrap: wrap;
-          color: var(--muted);
-          font-size: var(--fs-caption);
         }
 
-        .loom-source-sample__move {
-          position: static;
-          max-width: 10.5rem;
-          border: 0.5px solid color-mix(in srgb, var(--material-brass) 26%, transparent);
-          border-radius: 999px;
-          background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
-          color: var(--muted);
-          font-family: var(--serif);
-          font-size: 0.72rem;
-          font-style: italic;
-          padding: 0.24rem 0.46rem;
-          opacity: 0.82;
-          pointer-events: auto;
-          transition: opacity var(--dur-2) var(--ease);
+        .loom-new-group,
+        .loom-new-group-button {
+          align-self: flex-start;
         }
 
-        .loom-source-sample-card:hover .loom-source-sample__move,
-        .loom-source-sample-card:focus-within .loom-source-sample__move {
-          opacity: 1;
-        }
-
-        .loom-new-shelf,
-        .loom-new-shelf-button {
-          width: 100%;
-          min-height: 44px;
-          border: 0.5px dashed color-mix(in srgb, var(--material-brass) 38%, var(--mat-border));
-          border-radius: 8px;
-          background:
-            linear-gradient(90deg, rgba(176, 138, 69, 0.07), transparent),
-            transparent;
-          color: var(--muted);
-          font-family: var(--serif);
-          font-size: 0.82rem;
-          font-style: italic;
-        }
-
-        .loom-new-shelf {
-          padding: 0.58rem 0.75rem;
-        }
-
-        .loom-new-shelf-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0.58rem 0.75rem;
-          cursor: pointer;
-          transition:
-            border-color var(--dur-2) var(--ease),
-            color var(--dur-2) var(--ease),
-            background var(--dur-2) var(--ease);
-        }
-
-        .loom-new-shelf-button:hover,
-        .loom-new-shelf-button:focus-visible {
+        .loom-new-group-button {
+          appearance: none;
+          border: 0.5px solid color-mix(in srgb, var(--mat-border) 78%, transparent);
+          border-radius: 7px;
+          background: transparent;
           color: var(--fg-secondary);
-          border-color: color-mix(in srgb, var(--material-brass) 72%, var(--mat-border));
-          background: color-mix(in srgb, var(--material-brass) 8%, transparent);
+          cursor: pointer;
+          font-family: var(--serif);
+          font-size: 0.88rem;
+          font-style: italic;
+          padding: 0.42rem 0.68rem;
         }
 
-        .loom-atlas-group[data-drop-active="true"] .loom-archive-shelf {
-          border-color: color-mix(in srgb, var(--material-brass) 72%, var(--mat-border));
-          box-shadow:
-            inset 0 1px 0 rgba(255, 252, 238, 0.62),
-            0 0 0 2px color-mix(in srgb, var(--material-brass) 18%, transparent),
-            0 16px 34px rgba(42, 37, 32, 0.075);
+        .loom-new-group-button:hover,
+        .loom-new-group-button:focus-visible {
+          color: var(--accent-text);
+          border-color: color-mix(in srgb, var(--accent) 42%, var(--mat-border));
         }
 
-        @media (max-width: 720px) {
-          .loom-archive-shelf {
-            grid-template-columns: 9px minmax(0, 1fr);
+        @media (max-width: 900px) {
+          .loom-source-index__status,
+          .loom-source-worklist {
+            grid-template-columns: 1fr;
           }
 
-          .loom-archive-shelf__body {
-            padding: 0.85rem 0.78rem;
+          .loom-source-row,
+          .loom-source-row__main,
+          .loom-source-group__header {
+            grid-template-columns: 1fr;
+            display: grid;
           }
 
-          .loom-archive-shelf__header,
-          .loom-source-sample__body {
-            flex-direction: column;
-            display: flex;
-            align-items: stretch;
-          }
-
-          .loom-archive-shelf__meta {
-            justify-content: flex-start;
-          }
-
-          .loom-source-sample-card {
-            grid-template-columns: minmax(0, 1fr);
-          }
-
-          .loom-source-sample {
-            grid-template-columns: 12px minmax(0, 1fr);
-            padding-right: 0.78rem;
-          }
-
-          .loom-source-sample__tools {
+          .loom-source-row__tools,
+          .loom-source-group__meta {
             justify-content: flex-start;
             min-width: 0;
-            padding: 0 0.78rem 0.7rem 2.45rem;
           }
 
-          .loom-source-sample__count {
+          .loom-source-row__extract {
             justify-self: start;
-          }
-
-          .loom-source-sample__move {
-            position: static;
-            opacity: 1;
-            pointer-events: auto;
           }
         }
       `}</style>
@@ -894,172 +778,201 @@ export function KnowledgeHomeStatic({
   );
 }
 
-const groupActionStyle = {
-  border: '0.5px solid var(--mat-border)',
-  background: 'color-mix(in srgb, var(--bg-elevated) 70%, transparent)',
-  color: 'var(--muted)',
-  borderRadius: 6,
-  padding: '0.34rem 0.62rem',
-  fontSize: '0.72rem',
-  fontWeight: 600,
-  letterSpacing: 0,
-  cursor: 'pointer',
-} satisfies CSSProperties;
-
-const groupInputStyle = {
-  minWidth: 220,
-  border: '0.5px solid var(--mat-border)',
-  background: 'color-mix(in srgb, var(--bg) 90%, transparent)',
-  color: 'var(--fg)',
-  borderRadius: 6,
-  padding: '0.42rem 0.62rem',
-  fontSize: '0.8rem',
-} satisfies CSSProperties;
-
-function CollectionCard({
-  item,
-  itemIndex,
-  allGroups,
-  confirmingHide,
-  onRequestHideCategory,
-  onCancelHideCategory,
-  onConfirmHideCategory,
-  onMoveCategory,
-  busy,
-}: {
-  item: SourceLibraryItem & { groupId: string };
-  itemIndex: number;
-  allGroups: Array<{
-    id: string;
-    label: string;
-  }>;
-  confirmingHide: boolean;
-  onRequestHideCategory: (categorySlug: string) => void;
-  onCancelHideCategory: () => void;
-  onConfirmHideCategory: (categorySlug: string) => void;
-  onMoveCategory: (categorySlug: string, groupId: string) => void;
-  busy: boolean;
-}) {
-  const material = materialForItem(item);
-
+function StatusCell({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className="loom-source-sample-card loom-atlas-card"
-      draggable
-      title="Drag to another shelf, or use the Re-shelve menu."
-      onDragStart={(e) => {
-        e.dataTransfer.setData('application/x-loom-category-slug', item.slug);
-        e.dataTransfer.setData('text/plain', item.label);
-        e.dataTransfer.effectAllowed = 'move';
-        (e.currentTarget as HTMLElement).style.opacity = '0.5';
-      }}
-      onDragEnd={(e) => {
-        (e.currentTarget as HTMLElement).style.opacity = '';
-      }}
-    >
-      <Link
-        href={`/knowledge/${item.slug}`}
-        className={`loom-source-sample ${material.className}`}
-        aria-label={`Open shelf ${item.label}`}
-      >
-        <span className="loom-source-sample__swatch" aria-label={`${material.label} sample`} />
-        <span className="loom-source-sample__body">
-          <span className="loom-source-sample__title">
-            <strong>{item.label}</strong>
-            <span>
-              <span>{material.origin}</span>
-              <span>{material.kind}</span>
-              <span>sample {formatOrdinal(itemIndex + 1)}</span>
-            </span>
-          </span>
-          <span className="loom-source-sample__count">{formatCount(item.count, 'source')}</span>
-        </span>
-      </Link>
-
-      <div className="loom-source-sample__tools">
-        {confirmingHide ? (
-          <div className="loom-source-sample__confirm">
-            <span>Hide from shelves?</span>
-            <button
-              type="button"
-              onClick={() => onConfirmHideCategory(item.slug)}
-              style={{ ...groupActionStyle, color: 'var(--tint-red)' }}
-              aria-busy={busy}
-            >
-              Hide
-            </button>
-            <button type="button" onClick={onCancelHideCategory} style={groupActionStyle}>
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="loom-source-sample__remove"
-            onClick={() => onRequestHideCategory(item.slug)}
-            aria-label={`Hide ${item.label} from shelves`}
-            title="Hide from shelves (original files stay read-only)"
-            aria-busy={busy}
-          >
-            x
-          </button>
-        )}
-
-        {allGroups.length > 1 && (
-          <select
-            className="loom-source-sample__move loom-atlas-card-move"
-            value={item.groupId ?? 'ungrouped'}
-            onChange={(event) => onMoveCategory(item.slug, event.target.value)}
-            disabled={busy}
-            aria-label="Re-shelve source"
-          >
-            {allGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                Re-shelve to {group.label}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
+    <div className="loom-source-status-cell">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
 
-function materialForItem(item: SourceLibraryItem): MaterialProfile {
-  const key = `${item.slug} ${item.label}`.toLowerCase();
-  if (/wiki|llm|model|transformer|attention|reason|react|tool|agent/.test(key)) {
-    return MATERIAL_PROFILES[2];
-  }
-  if (/pdf|book|paper|chapter|course|reading|reader/.test(key)) {
-    return MATERIAL_PROFILES[0];
-  }
-  if (/canon|brief|curated|manual|guide|spec|design/.test(key)) {
-    return MATERIAL_PROFILES[3];
-  }
-
-  return MATERIAL_PROFILES[stableHash(key) % MATERIAL_PROFILES.length];
+function WorkPanel({
+  title,
+  empty,
+  children,
+}: {
+  title: string;
+  empty: string;
+  children: React.ReactNode;
+}) {
+  const items = Array.isArray(children) ? children.filter(Boolean) : children ? [children] : [];
+  return (
+    <section className="loom-source-work-panel">
+      <div className="loom-source-work-panel__title">{title}</div>
+      <div className="loom-source-work-panel__body">
+        {items.length > 0 ? items : <p className="loom-source-work-panel__empty">{empty}</p>}
+      </div>
+    </section>
+  );
 }
 
-function shelfProvenance(group: ResolvedSourceLibraryGroup) {
-  if (group.items.length === 0) {
-    return 'No source category is shelved here yet. Original files remain in their source locations.';
-  }
-
-  return `${formatCount(group.items.length, 'category')} held as material samples. Counts stay trailing; provenance stays foreground.`;
+function WorkLink({ href, title, meta }: { href: string; title: string; meta: string }) {
+  return (
+    <a className="loom-source-work-link" href={href}>
+      <strong>{title}</strong>
+      <span>{meta}</span>
+    </a>
+  );
 }
 
-function stableHash(value: string) {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
-  }
-  return hash;
+function PrimaryWritingAction({ writingEntries }: { writingEntries: SourceWritingEntry[] }) {
+  const href = writingEntries[0]?.href ?? '/coworks';
+  return (
+    <a className="loom-link" href={href}>
+      Continue writing
+    </a>
+  );
 }
 
-function formatOrdinal(value: number) {
-  return value.toString().padStart(2, '0');
+function CollectionRow({
+  item,
+  allGroups,
+  onMoveCategory,
+  confirmingHide,
+  onRequestHideCategory,
+  onCancelHideCategory,
+  onConfirmHideCategory,
+  busy,
+}: {
+  item: ResolvedSourceLibraryItem;
+  allGroups: ResolvedSourceLibraryGroup[];
+  onMoveCategory: (categorySlug: string, groupId: string) => void;
+  confirmingHide: boolean;
+  onRequestHideCategory: (categorySlug: string) => void;
+  onCancelHideCategory: () => void;
+  onConfirmHideCategory: (categorySlug: string) => void;
+  busy: boolean;
+}) {
+  return (
+    <article
+      id={item.slug}
+      className="loom-source-row"
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData('application/x-loom-category-slug', item.slug);
+        event.dataTransfer.effectAllowed = 'move';
+      }}
+    >
+      <a className="loom-source-row__main" href={item.href} aria-label={`Open collection ${item.label}`}>
+        <span className="loom-source-row__title">
+          <strong>{item.label}</strong>
+          <span>{item.latestDocTitle ? `Recent: ${item.latestDocTitle}` : `${formatCount(item.count, 'source')} indexed`}</span>
+        </span>
+        <span className="loom-source-row__extract">
+          {item.extractedCount}/{item.count} Extracted
+        </span>
+      </a>
+
+      <div className="loom-source-row__tools">
+        <label className="loom-source-row__move">
+          <span className="loom-source-row__move-label">Move</span>
+          <select
+            value={item.groupId}
+            onChange={(event) => onMoveCategory(item.slug, event.target.value)}
+            disabled={busy}
+            title="Move this collection to another group."
+            aria-label={`Move ${item.label} to another group`}
+          >
+            {allGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="loom-source-row__remove"
+          onClick={() => onRequestHideCategory(item.slug)}
+          aria-busy={busy}
+          title="Hide from Source Index (original files stay read-only)"
+        >
+          Hide
+        </button>
+      </div>
+
+      {confirmingHide && (
+        <div className="loom-source-row__confirm">
+          <span>Hide this collection from the index? Original files stay untouched.</span>
+          <button
+            type="button"
+            style={groupActionStyle}
+            onClick={() => onConfirmHideCategory(item.slug)}
+            aria-busy={busy}
+          >
+            Remove now
+          </button>
+          <button type="button" style={groupActionStyle} onClick={onCancelHideCategory}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </article>
+  );
 }
 
 function formatCount(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
+
+function groupProvenance(group: ResolvedSourceLibraryGroup) {
+  const sourceCount = group.items.reduce((sum, item) => sum + item.count, 0);
+  if (group.items.length === 0) return 'Ready for collections that need a working context.';
+  return `${formatCount(sourceCount, 'source')} across ${formatCount(group.items.length, 'collection')}.`;
+}
+
+function extractionLabel(item: ResolvedSourceLibraryItem) {
+  if (item.count === 0) return 'empty';
+  if (item.pendingCount === 0) return 'extracted';
+  return `${formatCount(item.pendingCount, 'source')} needs extraction`;
+}
+
+function writingMeta(entry: SourceWritingEntry) {
+  const bits = [
+    entry.categoryLabel,
+    entry.hasTidyDraft ? 'draft ready' : 'scratch',
+    typeof entry.materialCount === 'number' ? formatCount(entry.materialCount, 'source') : null,
+    relativeTime(entry.updatedAt),
+  ].filter(Boolean);
+  return bits.join(' · ');
+}
+
+function relativeTime(at: number | string | undefined) {
+  if (at === undefined) return 'recent';
+  const t = typeof at === 'number' ? at : Date.parse(String(at));
+  if (!Number.isFinite(t)) return 'recent';
+  const diff = Math.max(0, Date.now() - t);
+  const minutes = Math.round(diff / 60_000);
+  if (minutes < 1) return 'now';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  return `${days}d`;
+}
+
+const groupInputStyle: CSSProperties = {
+  minWidth: '13rem',
+  border: '0.5px solid color-mix(in srgb, var(--mat-border) 82%, transparent)',
+  borderRadius: 6,
+  background: 'color-mix(in srgb, var(--bg-elevated) 88%, transparent)',
+  color: 'var(--fg)',
+  fontFamily: 'var(--serif)',
+  fontSize: '0.86rem',
+  fontStyle: 'italic',
+  padding: '0.42rem 0.56rem',
+};
+
+const groupActionStyle: CSSProperties = {
+  appearance: 'none',
+  border: '0.5px solid color-mix(in srgb, var(--mat-border) 78%, transparent)',
+  borderRadius: 6,
+  background: 'transparent',
+  color: 'var(--fg-secondary)',
+  cursor: 'pointer',
+  fontFamily: 'var(--serif)',
+  fontSize: '0.78rem',
+  fontStyle: 'italic',
+  padding: '0.28rem 0.5rem',
+};

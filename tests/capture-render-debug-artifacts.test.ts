@@ -23,7 +23,7 @@ test('capture renderer does not ship temporary scroll debug UI', () => {
   assert.match(source, /setReadProgress\(pct\);/);
 });
 
-test('capture reader owns document scroll and forwards media wheel gestures', () => {
+test('capture reader owns document scroll natively (Tier 2 retires the wheel batcher)', () => {
   const source = read('app/loom-render/capture/page.tsx');
 
   // Reader-scroll classes still mounted on root + body so the reader
@@ -31,30 +31,19 @@ test('capture reader owns document scroll and forwards media wheel gestures', ()
   assert.match(source, /loom-capture-reader-scroll/);
   assert.match(source, /classList\.add\('loom-capture-reader-scroll'\)/);
 
-  // Wheel listener still registered with capture+non-passive so we can
-  // preventDefault on media-targeted wheels.
-  assert.match(source, /window\.addEventListener\('wheel', onWheel, \{ capture: true, passive: false \}\)/);
-
-  // Listener still narrows to media elements only (so prose scroll is
-  // native; only video / iframe / canvas / fallback cards trigger the
-  // forwarding path).
-  assert.match(source, /target\.closest\(/);
-  assert.match(source, /video, audio, iframe, canvas, \.loom-embed-card, \.loom-provider-embed-frame, \.loom-media-fallback/);
-
-  // Wheel deltaMode normalization: page / line / pixel still distinguished.
-  assert.match(source, /event\.deltaMode === WheelEvent\.DOM_DELTA_PAGE/);
-  assert.match(source, /event\.deltaMode === WheelEvent\.DOM_DELTA_LINE/);
-
-  // Forwarding now uses RAF-batched scrollBy (per peer-chat msg-036
-  // fix to "scroll-jitter on macOS trackpad due to per-event instant
-  // scrollTo destroying native momentum smoothing"). Assertion shape
-  // matches the new implementation: deltas accumulate into pendingDy,
-  // a single requestAnimationFrame schedules a flushScroll that calls
-  // window.scrollBy once per frame.
-  assert.match(source, /pendingDy/);
-  assert.match(source, /requestAnimationFrame\(flushScroll\)/);
-  assert.match(source, /window\.scrollBy\(\{ top: pendingDy, left: 0 \}\)/);
-  assert.match(source, /event\.preventDefault\(\)/);
+  // Tier 2 (2026-05-02) retired the custom wheel batcher entirely.
+  // The wheel batcher existed to prevent inline media (video/audio)
+  // from eating wheel events; per-block CSS containment plus
+  // click-to-mount video make that wheel-eating problem moot at the
+  // architecture level. Re-introducing a custom wheel handler would
+  // recreate the very oscillation Tier 2 fixed. (We allow the
+  // diagnostic `onWheelTrace` passive logger to remain — it does
+  // not preventDefault and merely records first-N events for
+  // bisecting; the negation matches the active batcher only.)
+  assert.doesNotMatch(source, /const onWheel = \(event: WheelEvent\)/);
+  assert.doesNotMatch(source, /window\.addEventListener\('wheel', onWheel,\s*\{\s*capture:\s*true,\s*passive:\s*false/);
+  assert.doesNotMatch(source, /requestAnimationFrame\(flushScroll\)/);
+  assert.doesNotMatch(source, /window\.scrollBy\(\{ top: pendingDy/);
 
   // Reader-route layout glue + class plumbing unchanged.
   assert.match(source, /html\.loom-capture-reader-scroll body \.layout/);
@@ -94,12 +83,30 @@ test('snapshot renderer does not expose or persist side-by-side comparison UI', 
   assert.doesNotMatch(source, /setSplitSwapped/);
 });
 
-test('capture reader exposes stored snapshots as auxiliary evidence, not comparison mode', () => {
+test('capture reader offers a Reader/Snapshot toggle (snapshot is the default surface)', () => {
   const source = read('app/loom-render/capture/page.tsx');
 
-  assert.match(source, /title="Open stored source snapshot"/);
-  assert.match(source, /aria-label="Open stored source snapshot"/);
-  assert.match(source, /<span>Snapshot<\/span>/);
+  // 2026-05-02: snapshot view (full original-page layout in a
+  // sandboxed iframe) is now the primary capture surface. Reader
+  // (Tier 2 prose blocks) is the secondary view, accessed via the
+  // toolbar toggle. The legacy "Open stored source snapshot" link
+  // (which navigated away to the snapshot route) is gone — the
+  // toggle now switches the inline render in-place.
+  assert.match(source, /Switch to snapshot view/);
+  assert.match(source, /Switch to reader view/);
+  assert.match(source, /loom-capture-snapshot-frame/);
+  assert.match(source, /loom-capture-snapshot-iframe/);
+  assert.match(source, /effectiveViewMode === 'snapshot' && hasSnapshot/);
+  // Default view mode is `snapshot` — the user's explicit ask
+  // ("complete original page layout including styles + interactive
+  // elements"); reader is preserved as the secondary surface. The
+  // default does NOT read from localStorage because any stale value
+  // from earlier sessions would silently override the default and
+  // trap users in reader mode.
+  assert.match(source, /useState<CaptureViewMode>\('snapshot'\)/);
+  // Side-by-side comparison UI was previously removed and stays
+  // out — snapshot is one mode, reader is another, never both at
+  // once.
   assert.doesNotMatch(source, /Compare with stored snapshot/);
   assert.doesNotMatch(source, /Compare with snapshot/);
   assert.doesNotMatch(source, /<span>Compare<\/span>/);

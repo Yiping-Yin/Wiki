@@ -417,7 +417,7 @@ Gate (`python3 scripts/phase1-gate.py --skip-ai`, against 11 fixture syllabi + 4
 - Red-team rejection: **5/5 = 100%** (target 100%) ✅
 - **PASS**
 
-Live end-to-end via `claude` CLI on FINS 3640 with the **new hardened production prompt** (via Agent A's `/tmp/loom-phase1-verified.json`):
+Live end-to-end via `codex` CLI on FINS 3640 with the **new hardened production prompt** (via Agent A's `/tmp/loom-phase1-verified.json`):
 - Found fields: 23 populated `FieldResult.found`
 - NotFound fields: 3 (`courseCode`, `courseName`, `term` — filename-only in source; honestly reported with `tried: [...]`)
 - Total sourceSpans emitted: 46
@@ -457,7 +457,7 @@ Live end-to-end via `claude` CLI on FINS 3640 with the **new hardened production
 
 ## Appendix A — Reference files
 
-- **MVP script**: `/tmp/mvp-syllabus-compare.sh` — runs baseline + schema prompts via `claude -p`
+- **MVP script**: `/tmp/mvp-syllabus-compare.sh` — runs baseline + schema prompts via `codex exec`
 - **Verifier**: `/tmp/mvp-verify-spans.py` — Python reference impl of `verifySpans`
 - **Verified output**: `/tmp/mvp-out/schema-verified.json`
 - **Verify report**: `/tmp/mvp-out/verify-report.txt`

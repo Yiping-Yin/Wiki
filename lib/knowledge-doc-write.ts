@@ -1,9 +1,11 @@
 import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import { readKnowledgeDocBody } from './knowledge-doc-cache';
 import { getAllDocs } from './knowledge-store';
 import { isEligibleCaptureDoc } from './knowledge-doc-state';
 import { EXECUTION_ROOT, resolveKnowledgePath } from './server-config';
 import { runKnowledgeIngest } from './knowledge-ingest';
+import { loomUserDataRoot } from './paths';
 
 type WriteKnowledgeDocBodyOptions = {
   docId: string;
@@ -13,6 +15,11 @@ type WriteKnowledgeDocBodyOptions = {
   readBody?: typeof readKnowledgeDocBody;
   ingest?: typeof runKnowledgeIngest;
 };
+
+function isWithin(root: string, candidate: string) {
+  const rel = path.relative(path.resolve(root), path.resolve(candidate));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
 
 export async function writeKnowledgeDocBody({
   docId,
@@ -31,6 +38,9 @@ export async function writeKnowledgeDocBody({
   }
 
   const abs = resolveKnowledgePath(doc.sourcePath);
+  if (!isWithin(loomUserDataRoot(), abs)) {
+    throw new Error('Loom will not write into source library files.');
+  }
   await writeFile(abs, body, 'utf8');
   await ingest({ cwd: EXECUTION_ROOT });
 

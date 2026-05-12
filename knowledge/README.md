@@ -27,7 +27,7 @@ knowledge/
 # regenerate after adding/removing files
 npx tsx scripts/build-atlas.ts
 
-# skip the cluster-labelling step (faster, no claude CLI calls)
+# skip the cluster-labelling step (faster, no codex CLI calls)
 npx tsx scripts/build-atlas.ts --no-labels
 ```
 

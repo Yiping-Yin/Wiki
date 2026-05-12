@@ -50,7 +50,7 @@ export function bucketFor(path) {
     || path.startsWith('lib/derived-index-cache')
     || path.startsWith('lib/knowledge-store')
     || path.startsWith('lib/use-knowledge-nav')
-    || path.startsWith('lib/claude-cli')
+    || path.startsWith('lib/codex-cli')
     || path.startsWith('lib/wikilinks')
     || path === 'lib/knowledge.ts'
     || path === 'lib/knowledge-nav.ts'

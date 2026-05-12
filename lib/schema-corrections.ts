@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CONTENT_ROOT } from './server-config';
+import { loomUserDataRoot } from './paths';
 
 /**
  * Phase 7.1 · Schema corrections sidecar (web / dev mode).
@@ -11,7 +12,7 @@ import { CONTENT_ROOT } from './server-config';
  * in `LoomTrace.eventsJSON` — the corrections layer applies at read time.
  *
  * Storage:
- *   <CONTENT_ROOT>/knowledge/.cache/schema-corrections/
+ *   <LOOM_USER_DATA_ROOT>/knowledge/.cache/schema-corrections/
  *       <extractorId>/<slugified-sourceDocId>.json
  *
  * In native mode the same path is read by Swift's `SchemaCorrectionsStore`
@@ -22,6 +23,13 @@ import { CONTENT_ROOT } from './server-config';
  */
 
 const CORRECTIONS_DIR = path.join(
+  loomUserDataRoot(),
+  'knowledge',
+  '.cache',
+  'schema-corrections',
+);
+
+const LEGACY_CORRECTIONS_DIR = path.join(
   CONTENT_ROOT,
   'knowledge',
   '.cache',
@@ -59,36 +67,43 @@ function slugify(value: string): string {
   return out;
 }
 
-function pathFor(extractorId: string, sourceDocId: string): string {
+function pathFor(extractorId: string, sourceDocId: string, root = CORRECTIONS_DIR): string {
   return path.join(
-    CORRECTIONS_DIR,
+    root,
     slugify(extractorId),
     `${slugify(sourceDocId)}.json`,
   );
+}
+
+function readPathsFor(extractorId: string, sourceDocId: string): string[] {
+  const primary = pathFor(extractorId, sourceDocId);
+  const legacy = pathFor(extractorId, sourceDocId, LEGACY_CORRECTIONS_DIR);
+  return primary === legacy ? [primary] : [primary, legacy];
 }
 
 export async function readSchemaCorrections(
   extractorId: string,
   sourceDocId: string,
 ): Promise<SchemaCorrection[]> {
-  try {
-    const raw = await fs.readFile(pathFor(extractorId, sourceDocId), 'utf-8');
-    const parsed = JSON.parse(raw) as SchemaCorrectionsFile | { corrections?: SchemaCorrection[] };
-    const list = Array.isArray((parsed as SchemaCorrectionsFile).corrections)
-      ? (parsed as SchemaCorrectionsFile).corrections
-      : [];
-    return list
-      .filter(
-        (c): c is SchemaCorrection =>
-          !!c &&
-          typeof c === 'object' &&
-          typeof (c as SchemaCorrection).fieldPath === 'string' &&
-          typeof (c as SchemaCorrection).corrected === 'string',
-      )
-      .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-  } catch {
-    return [];
+  for (const candidate of readPathsFor(extractorId, sourceDocId)) {
+    try {
+      const raw = await fs.readFile(candidate, 'utf-8');
+      const parsed = JSON.parse(raw) as SchemaCorrectionsFile | { corrections?: SchemaCorrection[] };
+      const list = Array.isArray((parsed as SchemaCorrectionsFile).corrections)
+        ? (parsed as SchemaCorrectionsFile).corrections
+        : [];
+      return list
+        .filter(
+          (c): c is SchemaCorrection =>
+            !!c &&
+            typeof c === 'object' &&
+            typeof (c as SchemaCorrection).fieldPath === 'string' &&
+            typeof (c as SchemaCorrection).corrected === 'string',
+        )
+        .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+    } catch {}
   }
+  return [];
 }
 
 export async function appendSchemaCorrection(

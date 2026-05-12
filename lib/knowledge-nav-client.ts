@@ -1,7 +1,7 @@
 /**
  * Client-side equivalent of `/api/knowledge-nav`. Native ship builds have
  * no server, so we read the two manifest files directly from the
- * security-scoped content root via `loom://content/…`, then replicate the
+ * Loom derived cache via `loom://derived/…`, then replicate the
  * small amount of grouping + sort logic that the route performs server-side.
  *
  * Dev mode (localhost:3001) unchanged — falls through to `/api/knowledge-nav`.
@@ -32,11 +32,11 @@ const FALLBACK_GROUP_LABEL = 'Ungrouped';
 const FALLBACK_GROUP_ORDER = 9999;
 const DEFAULT_MEMBERSHIP_ORDER = 9999;
 
-// The nav manifest lives under the user's content-root; shelf metadata is
+// The nav manifest lives under Loom's derived cache; shelf metadata is
 // user data served by Swift from `loom://native/…`. Missing files → 404 →
 // graceful empty payload (same as the server's behavior when the cache
 // hasn't been built yet).
-const NAV_URL = 'loom://content/knowledge/.cache/manifest/knowledge-nav.json';
+const NAV_URL = 'loom://derived/knowledge/.cache/manifest/knowledge-nav.json';
 const GROUPS_URL = 'loom://native/source-library-groups.json';
 
 export async function fetchKnowledgeNav(): Promise<KnowledgeNavPayload> {

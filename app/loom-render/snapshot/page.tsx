@@ -79,88 +79,230 @@ function extractDomain(sub: string, eyebrow: string | undefined): string {
   return '';
 }
 
-function cssEscapeFallback(value: string): string {
-  return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
 function htmlSafeScriptString(value: string): string {
   return JSON.stringify(value || '').replace(/</g, '\\u003c');
 }
 
+const LOOM_RESTORABLE_HOVER_STATES = [
+  { label: 'Frame', className: 'frame-active' },
+  { label: 'Board', className: 'board-active' },
+  { label: 'Power', className: 'power-active' },
+  { label: 'Data', className: 'data-active' },
+];
+
 function buildTargetedSnapshotSrcDoc(html: string, target: string): string {
   if (!html || !target) return html || '';
-  const targetSelector = `[data-loom-snapshot-target="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(target) : cssEscapeFallback(target)}"]`;
   const targetJSON = htmlSafeScriptString(target);
+  const statesJSON = JSON.stringify(LOOM_RESTORABLE_HOVER_STATES).replace(/</g, '\\u003c');
   const style = `
 <style data-loom-target-snapshot-style>
-  html,
-  body {
+  html.loom-target-mode,
+  html.loom-target-mode body {
     margin: 0 !important;
+    background: #050403 !important;
     overflow: hidden !important;
-  }
-  body.loom-target-mode [data-loom-target-hidden-sibling="true"] {
-    display: none !important;
-  }
-  body.loom-target-mode * {
-    pointer-events: none !important;
-  }
-  body.loom-target-mode ${targetSelector},
-  body.loom-target-mode ${targetSelector} * {
-    pointer-events: auto !important;
   }
   body.loom-target-mode [data-loom-snapshot-target-active="true"] {
     display: block !important;
     visibility: visible !important;
+  }
+  body.loom-target-mode [data-loom-target-stage] {
+    box-sizing: border-box !important;
+    position: relative !important;
+    width: min(100%, 1180px) !important;
+    margin: 0 auto !important;
+    padding: 18px 18px 22px !important;
+    background: #050403 !important;
+    overflow: hidden !important;
+  }
+  body.loom-target-mode [data-loom-target-content] {
+    display: block !important;
+    will-change: transform !important;
+  }
+  body.loom-target-mode [data-loom-state-controls] {
+    display: inline-flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    position: absolute !important;
+    z-index: 20 !important;
+    top: 18px !important;
+    left: 18px !important;
+    margin: 0 !important;
+    padding: 5px !important;
+    border: 1px solid rgba(214, 174, 92, 0.65) !important;
+    border-radius: 999px !important;
+    background: rgba(4, 3, 2, 0.82) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32) !important;
+  }
+  body.loom-target-mode [data-loom-state-controls] button {
+    appearance: none !important;
+    min-width: 74px !important;
+    min-height: 38px !important;
+    padding: 0 18px !important;
+    border: 1px solid rgba(255, 255, 255, 0.32) !important;
+    border-radius: 999px !important;
+    background: rgba(8, 8, 8, 0.62) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+    font: 700 16px/1.1 system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+    cursor: pointer !important;
+  }
+  body.loom-target-mode [data-loom-state-controls] button[aria-pressed="true"] {
+    border-color: rgba(222, 184, 94, 0.95) !important;
+    color: #fff !important;
+    background: rgba(104, 76, 27, 0.45) !important;
+    box-shadow: inset 0 0 0 1px rgba(222, 184, 94, 0.45) !important;
   }
 </style>`;
   const script = `
 <script data-loom-target-snapshot-bootstrap>
 (function () {
   var target = ${targetJSON};
+  var restorableStates = ${statesJSON};
+  var lastReportedWidth = 0;
+  var lastReportedHeight = 0;
+  var wheelProxyInstalled = false;
   function escapeTarget(value) {
     return window.CSS && CSS.escape ? CSS.escape(value) : String(value || '').replace(/["\\\\]/g, '\\\\$&');
   }
-  function markSiblingsOnPath(node) {
+  function findRestorableStateRoot(node) {
     var current = node;
-    var parent = current && current.parentElement;
-    while (parent && parent !== document.documentElement) {
-      Array.prototype.forEach.call(parent.children || [], function (child) {
-        if (child !== current && !child.contains(current)) {
-          child.setAttribute('data-loom-target-hidden-sibling', 'true');
-        }
-      });
-      current = parent;
-      parent = current.parentElement;
+    while (current && current !== document.documentElement) {
+      if (current.classList && restorableStates.some(function (state) {
+        return current.classList.contains(state.className);
+      })) return current;
+      current = current.parentElement;
     }
+    return document.querySelector('.frame-active, .board-active, .power-active, .data-active');
+  }
+  function setRestorableHoverState(root, className) {
+    if (!root || !root.classList || !className) return;
+    restorableStates.forEach(function (state) {
+      root.classList.toggle(state.className, state.className === className);
+    });
+    var controls = document.querySelector('[data-loom-state-controls]');
+    if (controls) {
+      Array.prototype.forEach.call(controls.querySelectorAll('button[data-loom-state-class]'), function (button) {
+        button.setAttribute('aria-pressed', button.getAttribute('data-loom-state-class') === className ? 'true' : 'false');
+      });
+    }
+    window.requestAnimationFrame(reportTargetSize);
+  }
+  function installRestorableHoverControls(targetNode, stage) {
+    if (!targetNode || !stage || stage.querySelector('[data-loom-state-controls]')) return;
+    var root = findRestorableStateRoot(targetNode) || findRestorableStateRoot(stage);
+    if (!root) return;
+    var active = restorableStates.find(function (state) {
+      return root.classList.contains(state.className);
+    }) || restorableStates[0];
+    var controls = document.createElement('nav');
+    controls.setAttribute('data-loom-state-controls', 'true');
+    controls.setAttribute('aria-label', 'Snapshot states');
+    restorableStates.forEach(function (state) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = state.label;
+      button.setAttribute('data-loom-state-class', state.className);
+      button.setAttribute('aria-pressed', state.className === active.className ? 'true' : 'false');
+      button.addEventListener('click', function () { setRestorableHoverState(root, state.className); });
+      controls.appendChild(button);
+    });
+    stage.insertBefore(controls, stage.firstChild);
+    setRestorableHoverState(root, active.className);
+  }
+  function alignTargetContent(stage) {
+    if (!stage) return;
+    var content = stage.querySelector('[data-loom-target-content]');
+    if (!content) return;
+    window.requestAnimationFrame(function () {
+      var controls = stage.querySelector('[data-loom-state-controls]');
+      var anchor = content.querySelector('h1, h2, h3, [role="heading"]') || content.firstElementChild;
+      if (!anchor) return;
+      var stageRect = stage.getBoundingClientRect();
+      var anchorRect = anchor.getBoundingClientRect();
+      var controlsRect = controls ? controls.getBoundingClientRect() : null;
+      var desiredTop = controlsRect
+        ? Math.max(18, Math.ceil(controlsRect.bottom - stageRect.top + 18))
+        : 18;
+      var currentTop = Math.ceil(anchorRect.top - stageRect.top);
+      var offset = Math.min(0, desiredTop - currentTop);
+      offset = Math.max(offset, -220);
+      if (offset < -1) {
+        content.style.transform = 'translateY(' + offset + 'px)';
+        content.style.marginBottom = offset + 'px';
+      }
+      reportTargetSize();
+    });
+  }
+  function installWheelProxy() {
+    if (wheelProxyInstalled) return;
+    wheelProxyInstalled = true;
+    window.addEventListener('wheel', function (event) {
+      if (event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      window.parent.postMessage({
+        type: 'loom:snapshot-wheel',
+        deltaX: event.deltaX || 0,
+        deltaY: event.deltaY || 0,
+        deltaMode: event.deltaMode || 0
+      }, '*');
+    }, { passive: false });
+  }
+  function interactiveHostFor(node) {
+    if (!node || !node.closest) return node;
+    return node.closest('astro-island') || node;
+  }
+  function reportTargetSize() {
+    var stage = document.querySelector('[data-loom-target-stage]');
+    if (!stage) return;
+    window.requestAnimationFrame(function () {
+      var rect = stage.getBoundingClientRect();
+      var height = Math.ceil(Math.max(
+        rect.height || 0,
+        stage.scrollHeight || 0,
+        document.documentElement.scrollHeight || 0,
+        document.body ? document.body.scrollHeight || 0 : 0
+      ));
+      var width = Math.ceil(Math.max(rect.width || 0, stage.scrollWidth || 0));
+      if (Math.abs(width - lastReportedWidth) < 3 && Math.abs(height - lastReportedHeight) < 3) return;
+      lastReportedWidth = width;
+      lastReportedHeight = height;
+      window.parent.postMessage({ type: 'loom:snapshot-target-size', width: width, height: height }, '*');
+    });
+  }
+  function isolateTargetDocument(node) {
+    if (!document.body || !node) return;
+    if (document.body.getAttribute('data-loom-target-isolated') === target) {
+      installWheelProxy();
+      alignTargetContent(document.querySelector('[data-loom-target-stage]'));
+      return;
+    }
+    var host = interactiveHostFor(node);
+    var selector = '[data-loom-snapshot-target="' + escapeTarget(target) + '"]';
+    var stage = document.createElement('main');
+    var content = document.createElement('div');
+    stage.setAttribute('data-loom-target-stage', 'true');
+    content.setAttribute('data-loom-target-content', 'true');
+    content.appendChild(host);
+    stage.appendChild(content);
+    while (document.body.firstChild) document.body.removeChild(document.body.firstChild);
+    document.documentElement.classList.add('loom-target-mode');
+    document.body.classList.add('loom-target-mode');
+    document.body.setAttribute('data-loom-target-isolated', target);
+    document.body.appendChild(stage);
+    var movedTarget = stage.querySelector(selector) || host;
+    if (movedTarget && movedTarget.setAttribute) {
+      movedTarget.setAttribute('data-loom-snapshot-target-active', 'true');
+    }
+    installRestorableHoverControls(movedTarget, stage);
+    installWheelProxy();
+    alignTargetContent(stage);
   }
   function applyTargetMode() {
     if (!document.body) return;
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-    document.body.classList.add('loom-target-mode');
     var selector = '[data-loom-snapshot-target="' + escapeTarget(target) + '"]';
     var node = document.querySelector(selector);
     if (!node) return;
-    node.setAttribute('data-loom-snapshot-target-active', 'true');
-    markSiblingsOnPath(node);
-    // 2026-05-02 critical fix for parent-page scroll oscillation: when
-    // the iframe document is forced to overflow: hidden above AND the
-    // iframe has allow-same-origin (capture/page.tsx:wrapSnapshotBackedMedia
-    // wraps it that way for trusted-route fetches), scrollIntoView
-    // cannot find an internal scroll container and walks up the ancestor
-    // chain — yanking the PARENT WINDOW scroll to re-center the target.
-    // Every visualAssembly img on the reader spawns one such iframe, and
-    // each iframe fires applyTargetMode three times (load + 120ms + 700ms),
-    // so multiple iframes pull the parent in different directions and the
-    // user sees "scroll keeps bouncing, can't move past first screen."
-    //
-    // The body classList + sibling-hiding CSS already centers the target
-    // visually (display: none on siblings collapses everything else).
-    // The scrollIntoView call was insurance for snapshots taller than the
-    // iframe; with overflow: hidden it never had a useful effect anyway.
-    // Drop it entirely. If we need to recenter scroll inside the iframe
-    // in a future fix, do it via a contained docEl.scrollTop = ... write
-    // that cannot escape this document.
+    isolateTargetDocument(node);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyTargetMode, { once: true });
@@ -222,6 +364,7 @@ function SnapshotInner() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeResizeObserverRef = useRef<ResizeObserver | null>(null);
+  const snapshotHeightRef = useRef<number | null>(null);
 
   // URLSearchParams already decodes form spaces; literal plus signs arrive as
   // %2B and must remain plus signs for exact capture lookup.
@@ -234,6 +377,7 @@ function SnapshotInner() {
 
   useEffect(() => {
     setSnapshotHeight(null);
+    snapshotHeightRef.current = null;
     iframeResizeObserverRef.current?.disconnect();
     iframeResizeObserverRef.current = null;
   }, [filename]);
@@ -248,6 +392,30 @@ function SnapshotInner() {
       iframeResizeObserverRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!embedMode) return;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; width?: number; height?: number } | null;
+      if (!data || data.type !== 'loom:snapshot-target-size') return;
+      const height = Number(data.height);
+      if (!Number.isFinite(height) || height <= 0) return;
+      const nextHeight = Math.max(320, Math.ceil(height));
+      const currentHeight = snapshotHeightRef.current;
+      if (currentHeight !== null && Math.abs(currentHeight - nextHeight) < 3) return;
+      snapshotHeightRef.current = nextHeight;
+      setSnapshotHeight(nextHeight);
+      if (targetEmbedMode && typeof window !== 'undefined') {
+        window.parent.postMessage({
+          type: 'loom:snapshot-frame-size',
+          width: Number(data.width) || 0,
+          height: nextHeight,
+        }, '*');
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [embedMode, targetEmbedMode]);
 
   // Snapshot fetch.
   useEffect(() => {
@@ -775,8 +943,11 @@ function SnapshotInner() {
   }
 
   if (embedMode && payload) {
+    const embedTargetHeightStyle = targetEmbedMode && snapshotHeight
+      ? { height: `${snapshotHeight}px`, minHeight: `${snapshotHeight}px` }
+      : undefined;
     return (
-      <div className={`loom-snapshot-embed-shell${targetEmbedMode ? ' target-mode' : ''}`}>
+      <div className={`loom-snapshot-embed-shell${targetEmbedMode ? ' target-mode' : ''}`} style={embedTargetHeightStyle}>
         <Style />
         <iframe
           ref={iframeRef}
@@ -785,6 +956,7 @@ function SnapshotInner() {
           srcDoc={snapshotSrcDoc}
           sandbox={snapshotSandbox}
           onLoad={onIframeLoad}
+          style={embedTargetHeightStyle}
         />
       </div>
     );

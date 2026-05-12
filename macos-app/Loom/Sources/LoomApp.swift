@@ -806,7 +806,7 @@ struct CaptureHelpMenuItem: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
     var body: some View {
-        Button("Set Up Captures…") {
+        Button("Set Up Captures...") {
             let existing = NSApp.windows.first {
                 $0.identifier?.rawValue == CaptureHelpWindow.id && $0.isVisible
             }

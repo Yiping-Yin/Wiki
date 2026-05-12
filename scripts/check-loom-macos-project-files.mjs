@@ -16,6 +16,10 @@ function listSwiftFiles(relativeDir) {
   const root = path.join(repoRoot, relativeDir);
   const names = [];
 
+  if (!fs.existsSync(root)) {
+    return names;
+  }
+
   function walk(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const fullPath = path.join(dir, entry.name);
@@ -67,7 +71,10 @@ function gitStatus(paths) {
 const project = read('macos-app/Loom/Loom.xcodeproj/project.pbxproj');
 const spec = read('macos-app/Loom/project.yml');
 const entitlements = read('macos-app/Loom/Loom.entitlements');
-const sourceFiles = listSwiftFiles('macos-app/Loom/Sources');
+const sourceFiles = [
+  ...listSwiftFiles('macos-app/Loom/Sources'),
+  ...listSwiftFiles('macos-app/Loom/LoomWebExtension'),
+].sort();
 const testFiles = listSwiftFiles('macos-app/Loom/Tests');
 const projectSwiftNames = extractProjectSwiftNames(project);
 const diskSwiftNames = new Set([...sourceFiles, ...testFiles]);
@@ -161,6 +168,7 @@ const statusLines = gitStatus([
   'macos-app/Loom/Sources',
   'macos-app/Loom/Tests',
   'macos-app/Loom/Resources',
+  'macos-app/Loom/LoomWebExtension',
 ]);
 const untracked = statusLines.filter((line) => line.startsWith('?? '));
 

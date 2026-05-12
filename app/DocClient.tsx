@@ -76,13 +76,13 @@ type ResolvedDoc =
 
 function knowledgeManifestUrl() {
   return isNativeMode()
-    ? 'loom://content/knowledge/.cache/manifest/knowledge-manifest.json'
+    ? 'loom://derived/knowledge/.cache/manifest/knowledge-manifest.json'
     : null;
 }
 
 function knowledgeBodyUrl(id: string) {
   return isNativeMode()
-    ? `loom://content/knowledge/.cache/docs/${encodeURIComponent(id)}.json`
+    ? `loom://derived/knowledge/.cache/docs/${encodeURIComponent(id)}.json`
     : null;
 }
 
@@ -91,7 +91,7 @@ function nativeKnowledgeSourceUrl(sourcePath: string) {
 }
 
 function nativeUploadSourceUrl(name: string) {
-  return `loom://content/knowledge/uploads/${encodeURIComponent(name)}`;
+  return `loom://user-data/knowledge/uploads/${encodeURIComponent(name)}`;
 }
 
 function extOf(name: string): string {

@@ -479,6 +479,7 @@ enum CapturesIndex {
         return true
     }
 }
+
 // MARK: CapturesView
 
 struct CapturesView: View {

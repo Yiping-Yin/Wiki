@@ -9,7 +9,7 @@ runs two batteries of checks against the plan's §9 success criteria:
      For each `<slug>.input.txt` + `<slug>.expected.json`:
        - Build the hardened prompt (SyllabusPDFExtractor.buildPrompt) with
          filename deliberately omitted.
-       - Invoke `claude -p` to produce a SyllabusSchema JSON (--skip-ai
+       - Invoke `codex exec` to produce a SyllabusSchema JSON (--skip-ai
          skips this and reads cached `<slug>.schema.json` if present).
        - Run the Python mirror of `verifySpans` + filename-stem demote.
        - Diff against expected.json → per-field PASS/MISS/HALLUCINATION.
@@ -23,7 +23,7 @@ runs two batteries of checks against the plan's §9 success criteria:
          and one of the accepted verifyReasons.
 
 Usage:
-  # Full run (requires claude CLI + network, writes JSON per fixture)
+  # Full run (requires codex CLI + network, writes JSON per fixture)
   python3 scripts/phase1-gate.py
 
   # Dry-run against cached schemas only (no AI call; red-team still runs)
@@ -32,7 +32,7 @@ Usage:
   # Filter syllabus fixtures
   python3 scripts/phase1-gate.py --only fins-3640,fins-3635
 
-  # Use a different provider (forwarded to the `claude -p --model ...`)
+  # Use a different model (forwarded to `codex exec --model ...`)
   python3 scripts/phase1-gate.py --provider openai
   python3 scripts/phase1-gate.py --provider anthropic
 
@@ -575,16 +575,16 @@ Return the JSON now.
 """
 
 
-def call_claude(prompt: str, provider: str | None = None, timeout: int = 300) -> str:
-    cmd = ["claude", "-p"]
+def call_codex(prompt: str, provider: str | None = None, timeout: int = 300) -> str:
+    cmd = ["codex", "exec", "--skip-git-repo-check", "--ephemeral", "--color", "never"]
     if provider:
         cmd += ["--model", provider]
     try:
         r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=timeout)
     except FileNotFoundError as e:
-        raise RuntimeError(f"claude CLI not on PATH: {e}") from e
+        raise RuntimeError(f"codex CLI not on PATH: {e}") from e
     if r.returncode != 0:
-        raise RuntimeError(f"claude exited {r.returncode}: {r.stderr[:500]}")
+        raise RuntimeError(f"codex exited {r.returncode}: {r.stderr[:500]}")
     return r.stdout
 
 
@@ -664,7 +664,7 @@ def run_corpus_battery(slugs: list[str], skip_ai: bool, provider: str | None,
         else:
             prompt = PROMPT_TEMPLATE.format(source=source)
             try:
-                raw = call_claude(prompt, provider=provider)
+                raw = call_codex(prompt, provider=provider)
                 ai_schema = extract_json_from_output(raw)
                 schema_cache.write_text(json.dumps(ai_schema, indent=2))
             except Exception as e:
@@ -717,7 +717,7 @@ def run_parity(slugs: list[str], providers: list[str]) -> None:
                 continue
             prompt = PROMPT_TEMPLATE.format(source=source)
             try:
-                raw = call_claude(prompt, provider=p)
+                raw = call_codex(prompt, provider=p)
                 schema = extract_json_from_output(raw)
                 cache.write_text(json.dumps(schema, indent=2))
                 per_provider[p][slug] = _walk_verify(schema, source, filename, slug)
@@ -748,7 +748,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-ai", action="store_true", help="Skip AI call, read cached schema if present")
     ap.add_argument("--only", default="", help="Comma-separated slugs to include")
-    ap.add_argument("--provider", default=None, help="Pass to claude --model")
+    ap.add_argument("--provider", default=None, help="Pass to codex --model")
     ap.add_argument("--parity", default="", help="Comma-separated providers for parity run")
     ap.add_argument("--write-verified", action="store_true", help="Write .schema-verified.json per fixture")
     ap.add_argument("--redteam-only", action="store_true")
