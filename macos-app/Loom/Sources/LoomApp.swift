@@ -56,6 +56,8 @@ struct LoomApp: App {
                     .tabItem { Label("AI", systemImage: "sparkles") }
                 DataSettingsView()
                     .tabItem { Label("Data", systemImage: "externaldrive") }
+                CaptureSettingsView()
+                    .tabItem { Label("Capture", systemImage: "tray.and.arrow.down") }
             }
         }
 

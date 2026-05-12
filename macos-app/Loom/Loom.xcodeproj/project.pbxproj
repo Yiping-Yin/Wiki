@@ -63,6 +63,7 @@
 		3C5EC68034DF0EC5037DDC40 /* IngestExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAB4344A9D5FEA3F99BBE23D /* IngestExtractor.swift */; };
 		3D7B65147CE3A01D0A41F29A /* AppleFoundationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F2E342E50C5DBF4160D0E13 /* AppleFoundationClient.swift */; };
 		3EECABA79A64B9A46CF65579 /* CaptureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8234D9206138808EBC9AC554 /* CaptureSheet.swift */; };
+		5FB317A38F9C4BC789157DAB /* CaptureSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7242EA5713234EF7A9EC7A54 /* CaptureSettingsView.swift */; };
 		443B655CE7187FDB50AC1170 /* TextbookSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F8D677AFE0AD343FDE14DF /* TextbookSchema.swift */; };
 		45168E3D6172A47FC80C53CC /* infs-3822-rubrics.expected.json in Resources */ = {isa = PBXBuildFile; fileRef = BE451F85BA12431F9979562A /* infs-3822-rubrics.expected.json */; };
 		47A6F0F6C03783C94074B797 /* SpreadsheetSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD31DD11B35EEB5FFB663D67 /* SpreadsheetSchema.swift */; };
@@ -327,6 +328,7 @@
 		7D8E28F6BEDA4D19452C7ABA /* LoomAIBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoomAIBar.swift; sourceTree = "<group>"; };
 		809FC5C4D38AEE688A2FC8C5 /* fins-3666-group-project.meta.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "fins-3666-group-project.meta.json"; sourceTree = "<group>"; };
 		8234D9206138808EBC9AC554 /* CaptureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSheet.swift; sourceTree = "<group>"; };
+		7242EA5713234EF7A9EC7A54 /* CaptureSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSettingsView.swift; sourceTree = "<group>"; };
 		836EFEC359F06F01E235EA2B /* DataSettingsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSettingsRows.swift; sourceTree = "<group>"; };
 		851FFDE99CAC84D87F11ABA8 /* CustomEndpointClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEndpointClient.swift; sourceTree = "<group>"; };
 		86249B04CF088CB0AA74F360 /* MigrationBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationBridgeHandler.swift; sourceTree = "<group>"; };
@@ -520,6 +522,7 @@
 				4F2E342E50C5DBF4160D0E13 /* AppleFoundationClient.swift */,
 				2394997C8F0A3A3728DB182F /* AskAIWindow.swift */,
 				8234D9206138808EBC9AC554 /* CaptureSheet.swift */,
+				7242EA5713234EF7A9EC7A54 /* CaptureSettingsView.swift */,
 				2CDAB1D64CB1C96D15004FD6 /* CapturesView.swift */,
 				085FEAE4602A5839E938D237 /* CaptureWebView.swift */,
 				9991A8B46F80260F1654A940 /* CLIRuntimeClient.swift */,
@@ -960,6 +963,7 @@
 				73CB7FC5A01BBAE29816A792 /* AskAIWindow.swift in Sources */,
 				34A5AC9BDC88A4B84BFFC1FC /* CLIRuntimeClient.swift in Sources */,
 				3EECABA79A64B9A46CF65579 /* CaptureSheet.swift in Sources */,
+				5FB317A38F9C4BC789157DAB /* CaptureSettingsView.swift in Sources */,
 				C792C93824334400BA27B647 /* CaptureWebView.swift in Sources */,
 				7DA043AFA3F7D4D720FA7F3F /* CapturesView.swift in Sources */,
 				98B62DA0D0DA912A39BBCE04 /* CleanText.swift in Sources */,
