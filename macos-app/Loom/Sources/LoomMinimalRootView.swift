@@ -62,6 +62,19 @@ struct LoomMinimalRootView: View {
     /// Pages / Captures / Web Capture / + Page / + Folder use literal
     /// keys; folder rows use their UUID string.
     @State private var hoveredSidebarRow: String? = nil
+    /// Folders-section caret-collapse state — per docs/loom.md §IV.B
+    /// (interaction-grammar addendum 2026-05-12): group header MAY be
+    /// collapsible. Defaults open. Distinct from `foldersExpanded`
+    /// which is the threshold-overflow control (show-first-5 vs all).
+    @State private var foldersSectionExpanded: Bool = true
+    /// Sidebar keyboard focus — per §IV.A, ↑/↓ arrow navigation is
+    /// enabled when the sidebar holds focus.
+    @FocusState private var sidebarFocused: Bool
+    /// Detail pane opacity — per §IV.C: on selection change the new
+    /// content fades 0.6 → 1.0 over ≤150ms (settle-fade, not
+    /// mechanism-calling). Set by `fadeInDetail()` on every navigate/
+    /// goBack/goForward path.
+    @State private var detailOpacity: Double = 1.0
 
     private var resolvedColorScheme: ColorScheme {
         SidebarThemeResolution.resolvedColorScheme(theme: theme, now: themeClock)
@@ -84,6 +97,7 @@ struct LoomMinimalRootView: View {
                 .ignoresSafeArea(.container, edges: .top)
         } detail: {
             detail
+                .opacity(detailOpacity)
                 .background(LoomTokens.dsPaper)
                 // Detail pane respects the safe-area / toolbar inset so
                 // SwiftUI subviews (CapturesView, Pages, etc.) lay out
@@ -360,18 +374,111 @@ struct LoomMinimalRootView: View {
         history.append(selection)
         forwardStack.removeAll()
         selection = next
+        fadeInDetail()
+    }
+
+    /// §IV.C settle-fade: brief 0.6 → 1.0 fade on the detail pane
+    /// when its content swaps. Quiet, ≤150ms, easeOut — explicitly
+    /// the "settle" half of the Visual Grammar §8 dichotomy, NOT
+    /// the "showcase the mechanism" half.
+    private func fadeInDetail() {
+        detailOpacity = 0.6
+        withAnimation(.easeOut(duration: 0.15)) {
+            detailOpacity = 1.0
+        }
+    }
+
+    // MARK: - §IV.A keyboard navigation helpers
+    //
+    // Per docs/loom.md §IV.A: list-shaped surfaces MUST support keyboard
+    // ↑/↓ navigation with auto-scroll into viewport. The sidebar is one
+    // such surface. We model the sidebar's navigable rows as an ordered
+    // sequence:
+    //   __pages → __captures → __webcapture → folder rows (visible
+    //   ones only — overflowed ones beyond the foldersExpanded threshold
+    //   and the entire section when foldersSectionExpanded is false are
+    //   excluded).
+
+    private var orderedNavigableRowIDs: [String] {
+        var ids: [String] = ["__pages", "__captures", "__webcapture"]
+        guard foldersSectionExpanded else { return ids }
+        let topLevels = topLevelRoots
+        let threshold = 5
+        let needsCollapse = topLevels.count > threshold
+        let visible: [ContentRoot] = (needsCollapse && !foldersExpanded)
+            ? Array(topLevels.prefix(threshold))
+            : topLevels
+        for root in visible {
+            ids.append("__root_\(root.id.uuidString)")
+            for entry in descendants(of: root.id) {
+                ids.append("__root_\(entry.root.id.uuidString)")
+            }
+        }
+        return ids
+    }
+
+    /// Resolve current `selection` to a sidebar row ID, or nil if the
+    /// selection has no navigable-row peer (e.g. `.sourceFile` is opened
+    /// from a folderHome view, not directly from the sidebar).
+    private func currentNavigableRowID() -> String? {
+        switch selection {
+        case .library: return "__pages"
+        case .captures: return "__captures"
+        case .webCaptureSetup: return "__webcapture"
+        case .folderHome(let url):
+            let s = url.absoluteString
+            let prefix = "loom://content/"
+            guard s.hasPrefix(prefix) else { return nil }
+            let rest = String(s.dropFirst(prefix.count))
+            let uuid = rest.split(separator: "/", maxSplits: 1).first.map(String.init) ?? rest
+            return "__root_\(uuid)"
+        case .sourceFile: return nil
+        }
+    }
+
+    private func moveSidebarSelection(by delta: Int) {
+        let ids = orderedNavigableRowIDs
+        guard !ids.isEmpty else { return }
+        let currentID = currentNavigableRowID()
+        let currentIdx = ids.firstIndex(of: currentID ?? "") ?? 0
+        let newIdx = max(0, min(ids.count - 1, currentIdx + delta))
+        guard newIdx != currentIdx else { return }
+        activateSidebarRow(byID: ids[newIdx])
+    }
+
+    private func activateSidebarRow(byID id: String) {
+        switch id {
+        case "__pages":
+            navigate(.library)
+        case "__captures":
+            navigate(.captures)
+        case "__webcapture":
+            navigate(.webCaptureSetup)
+        default:
+            guard id.hasPrefix("__root_") else { return }
+            let uuid = String(id.dropFirst("__root_".count))
+            // UUIDs are stored as uppercase in the rowID (matches
+            // ContentRoot.id.uuidString default). The loom://content
+            // URL elsewhere lowercases; preserve that contract.
+            let urlString = "loom://content/\(uuid.lowercased())"
+            if let url = URL(string: urlString) {
+                navigate(.folderHome(url))
+            }
+        }
     }
 
     private func goBack() {
         guard let previous = history.popLast() else { return }
         forwardStack.append(selection)
         selection = previous
+        fadeInDetail()
     }
 
     private func goForward() {
         guard let next = forwardStack.popLast() else { return }
         history.append(selection)
         selection = next
+        fadeInDetail()
     }
 
     /// Trigger a refresh: reload the sidebar's content roots (so newly
@@ -502,40 +609,99 @@ struct LoomMinimalRootView: View {
 
     @ViewBuilder
     private var sidebar: some View {
-        ScrollView {
-            // Sidebar starts directly with content — the brand mark
-            // lives in the detail toolbar's principal slot now (see
-            // `detailTitleLabel`). The previous sans-uppercase "LOOM"
-            // eyebrow doubled the wordmark and clashed with the Vellum
-            // serif chrome; on Tahoe its placement also created a
-            // visible seam between the sidebar pane and detail pane.
-            //
-            // Vertical rhythm: 4pt base. Row height ~28pt. Section
-            // gaps 18pt (eyebrow padding-top 12 + padding-bottom 4 +
-            // breathing 2). Eyebrows are smallcaps serif at ink3.
-            LazyVStack(alignment: .leading, spacing: 0) {
-                sectionEyebrow("Workspaces", topPadding: DSSpace.xs.value)
-                pagesRow
-                capturesRow
-                webCaptureSetupRow
+        ScrollViewReader { proxy in
+            ScrollView {
+                // Sidebar starts directly with content — the brand mark
+                // lives in the detail toolbar's principal slot now (see
+                // `detailTitleLabel`). The previous sans-uppercase "LOOM"
+                // eyebrow doubled the wordmark and clashed with the Vellum
+                // serif chrome; on Tahoe its placement also created a
+                // visible seam between the sidebar pane and detail pane.
+                //
+                // Vertical rhythm: 4pt base. Row height ~28pt. Section
+                // gaps 18pt (eyebrow padding-top 12 + padding-bottom 4 +
+                // breathing 2). Eyebrows are smallcaps serif at ink3.
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    sectionEyebrow("Workspaces", topPadding: DSSpace.xs.value)
+                    pagesRow
+                    capturesRow
+                    webCaptureSetupRow
 
-                // 18pt section gap = DSSpace.md (16) + breathing 2pt;
-                // matches the compact sidebar rhythm in globals.css.
-                // No count badge per docs/loom.md §IV.B (interaction-grammar
-                // addendum 2026-05-12): counts in nav chrome violate
-                // Visual Grammar §7. If user needs the count, it appears
-                // in the detail view (Organize page top stats strip),
-                // not in the sidebar header.
-                sectionEyebrow("Folders", topPadding: DSSpace.md.value + 2)
-                folderList
+                    // 18pt section gap = DSSpace.md (16) + breathing 2pt.
+                    // §IV.B caret-collapse: the Folders eyebrow is the
+                    // only one of the three that varies in length, so it
+                    // becomes the clickable group header. Workspaces /
+                    // Tools stay static (fixed-shape sections). Count
+                    // badge intentionally absent per §IV.B MUST NOT.
+                    // (Supersedes the simpler eyebrow-with-no-count fix
+                    // from PR #26, which lives in main as squashed history.)
+                    foldersHeader()
+                    if foldersSectionExpanded {
+                        folderList
+                    }
 
-                sectionEyebrow("Tools", topPadding: DSSpace.md.value + 2)
-                creationRow
-                    .padding(.bottom, DSSpace.md.value - 4)
+                    sectionEyebrow("Tools", topPadding: DSSpace.md.value + 2)
+                    creationRow
+                        .padding(.bottom, DSSpace.md.value - 4)
+                }
+                .padding(.horizontal, DSSpace.sm.value)
+                .padding(.bottom, DSSpace.md.value - 4)
             }
-            .padding(.horizontal, DSSpace.sm.value)
-            .padding(.bottom, DSSpace.md.value - 4)
+            // §IV.A keyboard navigation: when the sidebar holds focus,
+            // ↑/↓ moves selection through the visible navigable rows.
+            // .focusable() makes the ScrollView a focus target; the
+            // .onKeyPress handlers fire on arrow keys at that scope.
+            .focusable()
+            .focused($sidebarFocused)
+            .onKeyPress(.upArrow) {
+                moveSidebarSelection(by: -1)
+                return .handled
+            }
+            .onKeyPress(.downArrow) {
+                moveSidebarSelection(by: 1)
+                return .handled
+            }
+            // Auto-scroll the newly-selected row into view (§IV.A:
+            // "焦点移出 viewport 时自动 scroll 该 item 入视").
+            .onChange(of: selection) { _, _ in
+                guard let id = currentNavigableRowID() else { return }
+                withAnimation(.easeOut(duration: DSMotion.normal.duration)) {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
         }
+    }
+
+    /// Clickable group header for the Folders section. Per §IV.B:
+    /// caret rotates 90° on toggle, body uses max-height (here: SwiftUI
+    /// implicit animation on the `if` containing folderList in the
+    /// caller). Visually parallels `sectionEyebrow` so the typographic
+    /// rhythm is consistent — only the leading caret + Button wrap
+    /// distinguish it.
+    @ViewBuilder
+    private func foldersHeader() -> some View {
+        Button {
+            withAnimation(.easeOut(duration: DSMotion.normal.duration)) {
+                foldersSectionExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: DSSpace.xs.value) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: DSType.eyebrow.size))
+                    .rotationEffect(.degrees(foldersSectionExpanded ? 90 : 0))
+                    .foregroundStyle(LoomTokens.dsInk3)
+                Text("Folders")
+                    .font(.custom("EB Garamond", size: DSType.eyebrow.size).weight(.medium).smallCaps())
+                    .tracking(DSType.eyebrow.tracking)
+                    .foregroundStyle(LoomTokens.dsInk3)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+            .padding(.top, DSSpace.md.value + 2)
+            .padding(.bottom, DSSpace.xs.value)
+            .padding(.horizontal, DSSpace.sm.value)
+        }
+        .buttonStyle(.plain)
     }
 
     /// Smallcaps serif section eyebrow. Mirrors `DSType.eyebrow` (11pt
@@ -685,6 +851,9 @@ struct LoomMinimalRootView: View {
         .onHover { hovering in
             hoveredSidebarRow = hovering ? rowID : nil
         }
+        // §IV.A scroll-into-view target: anchored ID lets the parent
+        // ScrollViewReader proxy.scrollTo(id) find this row.
+        .id(rowID)
     }
 
     @ViewBuilder
@@ -806,6 +975,8 @@ struct LoomMinimalRootView: View {
                 .onHover { hovering in
                     hoveredSidebarRow = hovering ? rowID : nil
                 }
+                // §IV.A scroll-into-view target.
+                .id(rowID)
             }
         }
         .contextMenu {
