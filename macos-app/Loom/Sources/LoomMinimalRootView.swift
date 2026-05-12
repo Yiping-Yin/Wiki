@@ -280,6 +280,9 @@ struct LoomMinimalRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .loomShowLibrary)) { _ in
             navigate(.library)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .loomBeginNewPage)) { _ in
+            startNewPage()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .loomOpenSourceFile)) { note in
             if let url = note.userInfo?["url"] as? URL {
                 navigate(.sourceFile(url))

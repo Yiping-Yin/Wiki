@@ -38,25 +38,30 @@ struct LoomLibraryView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Your pages")
-                .font(.system(size: 26, weight: .medium, design: .serif))
-                .italic()
-            Text("\(roots.count) page\(roots.count == 1 ? "" : "s")")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-        }
+        // Per docs/loom.md §VII.bis.2: no count badge in chrome.
+        // "N page(s)" subtitle removed — if user needs the count
+        // they can count the visible list.
+        Text("Your pages")
+            .font(.system(size: 26, weight: .medium, design: .serif))
+            .italic()
     }
 
     @ViewBuilder
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        // Per docs/loom.md §VII.bis.3 empty-corpus cold-start:
+        // 1-line prompt + 1 primary action. Replaces the previous
+        // two-line "use the sidebar" instructional copy.
+        VStack(alignment: .leading, spacing: 16) {
             Text("No pages yet.")
-                .font(.system(size: 14))
+                .font(.system(size: 16, design: .serif))
                 .foregroundStyle(.secondary)
-            Text("Use the sidebar's + Page or + Folder to start.")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
+            Button {
+                NotificationCenter.default.post(name: .loomBeginNewPage, object: nil)
+            } label: {
+                Label("New page", systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
         }
         .padding(.vertical, 32)
     }
@@ -125,4 +130,9 @@ extension Notification.Name {
     /// Posted by sidebar's "Sources" / library-entry click so
     /// ContentView shows `LoomLibraryView` in the main pane.
     static let loomShowLibrary = Notification.Name("loomShowLibrary")
+    /// Posted by LoomLibraryView's empty-state "New page" button
+    /// (docs/loom.md §VII.bis.3 cold-start primary action). Subscribed
+    /// by LoomMinimalRootView to invoke its existing startNewPage()
+    /// helper without duplicating the create-page flow.
+    static let loomBeginNewPage = Notification.Name("loomBeginNewPage")
 }
