@@ -598,6 +598,7 @@ struct LoomMinimalRootView: View {
             } label: {
                 HStack(spacing: DSSpace.sm.value - 2) {
                     Image(systemName: foldersExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: DSType.caption.size))
                         .frame(width: 18)
                         .foregroundStyle(isHovered ? LoomTokens.dsThread : LoomTokens.dsInk3)
                     Text(foldersExpanded ? "Show fewer" : "Show all (\(hidden) more)")
@@ -662,6 +663,7 @@ struct LoomMinimalRootView: View {
         Button(action: action) {
             HStack(spacing: DSSpace.sm.value - 2) {
                 Image(systemName: icon)
+                    .font(.system(size: DSType.caption.size))
                     .frame(width: 18)
                     .foregroundStyle(isSelected ? LoomTokens.dsInk1 : LoomTokens.dsInk3)
                 Text(title)
@@ -756,6 +758,7 @@ struct LoomMinimalRootView: View {
             if isRenaming {
                 HStack(spacing: DSSpace.sm.value - 2) {
                     Image(systemName: icon)
+                        .font(.system(size: DSType.caption.size))
                         .frame(width: 18)
                         .foregroundStyle(LoomTokens.dsInk3)
                     TextField("Name", text: $renameDraft)
@@ -778,6 +781,7 @@ struct LoomMinimalRootView: View {
                 } label: {
                     HStack(spacing: DSSpace.sm.value - 2) {
                         Image(systemName: icon)
+                            .font(.system(size: DSType.caption.size))
                             .frame(width: 18)
                             .foregroundStyle(isSelected ? LoomTokens.dsInk1 : LoomTokens.dsInk3)
                         Text(root.displayName)
@@ -818,6 +822,7 @@ struct LoomMinimalRootView: View {
         if isCreatingPage {
             HStack(spacing: DSSpace.sm.value - 2) {
                 Image(systemName: "doc.text")
+                    .font(.system(size: DSType.caption.size))
                     .frame(width: 18)
                     .foregroundStyle(LoomTokens.dsInk3)
                 TextField("Page name", text: $pageDraft)
@@ -874,6 +879,7 @@ struct LoomMinimalRootView: View {
         Button(action: action) {
             HStack(spacing: DSSpace.sm.value - 2) {
                 Image(systemName: icon)
+                    .font(.system(size: DSType.caption.size))
                     .frame(width: 18)
                     .foregroundStyle(isHovered ? LoomTokens.dsThread : LoomTokens.dsInk3)
                 Text(title)
