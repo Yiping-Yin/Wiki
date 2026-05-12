@@ -3,6 +3,8 @@
 **Status: current, operative design canon**  
 **Updated: 2026-04-15**
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** For **user-visible UI copy** the canonical naming source is now [`docs/loom.md`](../loom.md) §III.7 (直译 over metaphor) and Plate IV. The shipped UI uses plain action words (`Collect / Organize / Draft / Capture / Source / Question`), not the *kesi*-metaphor (`Shuttle / Interlace / weaver / panel`) used as section labels and section vocabulary below. Design intent and operative principles in this file remain authoritative; only surface naming has shifted. The "Epistemic Loom" / weaving framing immediately below is preserved as **origin storytelling** per §III.7's carve-out.
+
 Loom is an **Epistemic Loom**. It is not a dashboard, not a landing page, and not a chat shell. It is a reading-and-thinking environment where source-bound understanding is woven into memory.
 
 LOOM is not an acronym. It names a time structure:

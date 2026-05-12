@@ -3,6 +3,8 @@
 > **Read this BEFORE starting any work on Loom.**
 > This document captures the accumulated product decisions, hard vetoes, and design rules made over many design sessions with the product owner. It exists so any AI assistant (Codex, GPT, Gemini, etc.) — and any human collaborator — can pick up the work without re-litigating settled questions.
 >
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** For **user-visible UI copy** the canonical naming source is now [`docs/loom.md`](docs/loom.md) §III.7 (直译 over metaphor) and Plate IV. The shipped UI uses plain action words (`Collect / Organize / Draft / Capture / Source / Question`), not the *kesi* metaphor (`Shuttle / Weaves / Sōan / Pursuits / Patterns / weaver / panel`). V12 below has been amended to retract the prior grandfathering of `weave / panel`. Architecture and engineering protocol in this file remain authoritative; only feature-naming has shifted.
+>
 > **This is a living document.** Update it after every session in which a meaningful decision is made or a recurring feedback pattern emerges. Do not delete past entries; mark them superseded.
 >
 > **Maintained by:** the AI assistant currently working on Loom. The product owner approves substantive additions; small clarifications and decision-log entries can be added unilaterally.
@@ -60,7 +62,7 @@ These are absolute. If you find yourself building one of these, stop and re-read
 | V9 | **No `List + .listStyle(.sidebar)` for the sidebar.** | Use `ScrollView + LazyVStack` always. List eats button clicks after the first selection. |
 | V10 | **No automatic page-promotion thresholds.** | Promotion (note → standalone page) is always a deliberate one-click action. The system never decides for the user. |
 | V11 | **No duplicate UI for the same outcome.** | If a feature exists in the system right-click menu (Translate, Look Up, Speech), do not also add it as a Loom menu item. |
-| V12 | **No metaphor-laden feature names.** | Labels and status copy are literal. Canon metaphors (weave, panel) are grandfathered; new features get literal names. |
+| V12 | **No metaphor-laden feature names.** | Labels and status copy are literal. **Updated 2026-05-12 by `docs/loom.md` §III.7**: the prior grandfathering of `weave / panel` is **RETRACTED**. All *kesi*-metaphor vocabulary (`Shuttle / Weaves / Sōan / Pursuits / Patterns / weaver / panel`) is now deprecated for user-visible copy. Internal code module names (e.g. `InterlaceInstaller`) are unaffected. |
 
 ---
 

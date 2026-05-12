@@ -2,6 +2,8 @@
 
 > **READ THIS FIRST** if you are an AI assistant or human collaborator newly arrived on Loom. This is the canonical product document — what Loom is, why it exists, and how its parts fit together.
 >
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** For **user-visible UI copy** — surface names, button labels, menu items, status text — the canonical source is now [`docs/loom.md`](docs/loom.md) (v1.1 spec) Plate III §III.7 (直译 over metaphor) and Plate IV (current surface inventory). The shipped UI uses plain action words (`Collect / Organize / Draft / Capture / Source / Question / Folder / Recent Reading / Continue Writing`), **not** the *kesi*-metaphor names (`Shuttle / Weaves / Sōan / Pursuits / Patterns / weaver / panel`) that appear throughout this file. The product reasoning, architecture, and engineering decisions captured below remain valid; only the surface vocabulary has shifted. When this file disagrees with `docs/loom.md` on naming, `docs/loom.md` wins.
+>
 > **Status**: v4.1 filed 2026-05-02 (Option ε v2 — Loom as unimodal substrate with 3 AI surfaces by role: ⌘K quick-invocation, AskAIWindow threaded chat, background passes structural-only. Cursor-pattern adapted to prose. v4.0 "no panel anywhere" was over-推generalized — corrected per `tmp/loom-correction-log.md` entry-009/010/011.)
 >
 > **What changed in v4.1** (read this if you knew v4.0):
