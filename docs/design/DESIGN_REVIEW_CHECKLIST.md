@@ -3,7 +3,7 @@
 Status: active review checklist  
 Updated: 2026-04-15
 
-Use this checklist when reviewing UI, interaction, or AI-behavior changes.
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** References `panel / weave` in checklist items as if they're current surface names. Map these to v1.1 names per [`docs/loom.md`](../loom.md) Plate IV when running the checklist on new work. Checklist intent (state consistency / action grammar / no-silent-failure) remains authoritative.
 
 ## Product Identity
 

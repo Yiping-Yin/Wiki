@@ -2,6 +2,8 @@
 
 **Established 2026-04-20 after architecture audit.**
 
+> ⚠️ **Vocabulary status (2026-05-12 · v1.1 §III.7):** Uses `Panel` as a derivation/abstraction concept. v1.1 §III.7 deprecates `Panel` for user-visible UI copy; see [`docs/loom.md`](../loom.md) Plate IV for current names. Note-abstraction reasoning here remains valid.
+
 ## The claim vs the reality
 
 `lib/note/types.ts` declares:
