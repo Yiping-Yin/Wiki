@@ -80,45 +80,45 @@ export default function AboutClient() {
 
         <Divider ornament="✦" />
 
-        <section style={{ width: '100%', marginTop: '1rem' }}>
-          <div className="loom-smallcaps" style={eyebrowStyle}>Why Loom exists</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+        <section style={{ width: '100%', marginTop: '1rem' }} aria-labelledby="why-loom-exists-title">
+          <h2 id="why-loom-exists-title" className="loom-smallcaps" style={eyebrowStyle}>Why Loom exists</h2>
+          <ul style={aboutListStyle}>
             {WHY_LOOM_EXISTS.map((item) => (
-              <div key={item.title} style={{ textAlign: 'left' }}>
-                <div style={commitmentTitleStyle}>{item.title}</div>
-                <div style={commitmentTextStyle}>{item.text}</div>
-              </div>
+              <li key={item.title} style={aboutListItemStyle}>
+                <h3 style={commitmentTitleStyle}>{item.title}</h3>
+                <p style={commitmentTextStyle}>{item.text}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
 
         <Divider ornament="✦" />
 
         {/* Commitments */}
-        <section style={{ width: '100%', marginTop: '1rem' }}>
-          <div className="loom-smallcaps" style={eyebrowStyle}>Four Commitments</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+        <section style={{ width: '100%', marginTop: '1rem' }} aria-labelledby="four-commitments-title">
+          <h2 id="four-commitments-title" className="loom-smallcaps" style={eyebrowStyle}>Four Commitments</h2>
+          <ul style={aboutListStyle}>
             {COMMITMENTS.map((c) => (
-              <div key={c.title} style={{ textAlign: 'left' }}>
-                <div style={commitmentTitleStyle}>{c.title}</div>
-                <div style={commitmentTextStyle}>{c.text}</div>
-              </div>
+              <li key={c.title} style={aboutListItemStyle}>
+                <h3 style={commitmentTitleStyle}>{c.title}</h3>
+                <p style={commitmentTextStyle}>{c.text}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
 
         <Divider ornament="✦" />
 
-        <section style={{ width: '100%', marginTop: '1rem' }}>
-          <div className="loom-smallcaps" style={eyebrowStyle}>Narrative layers</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+        <section style={{ width: '100%', marginTop: '1rem' }} aria-labelledby="narrative-layers-title">
+          <h2 id="narrative-layers-title" className="loom-smallcaps" style={eyebrowStyle}>Narrative layers</h2>
+          <ul style={aboutListStyle}>
             {PERSONAL_PLATFORM_NARRATIVE_LAYERS.map((item) => (
-              <div key={item.title} style={{ textAlign: 'left' }}>
-                <div style={commitmentTitleStyle}>{item.title}</div>
-                <div style={commitmentTextStyle}>{item.text}</div>
-              </div>
+              <li key={item.title} style={aboutListItemStyle}>
+                <h3 style={commitmentTitleStyle}>{item.title}</h3>
+                <p style={commitmentTextStyle}>{item.text}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
 
         <p style={paragraphStyle}>
@@ -128,48 +128,48 @@ export default function AboutClient() {
 
         <Divider ornament="✦" />
 
-        <section style={{ width: '100%', marginTop: '1rem' }}>
-          <div className="loom-smallcaps" style={eyebrowStyle}>Product story</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+        <section style={{ width: '100%', marginTop: '1rem' }} aria-labelledby="product-story-title">
+          <h2 id="product-story-title" className="loom-smallcaps" style={eyebrowStyle}>Product story</h2>
+          <ol style={aboutListStyle}>
             {PERSONAL_PLATFORM_HISTORY.map((item) => (
-              <div key={item.date} style={{ textAlign: 'left' }}>
-                <div style={commitmentTitleStyle}>{item.date}</div>
-                <div style={commitmentTextStyle}>{item.text}</div>
-              </div>
+              <li key={item.date} style={aboutListItemStyle}>
+                <time style={commitmentTitleStyle}>{item.date}</time>
+                <p style={commitmentTextStyle}>{item.text}</p>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
 
         <Divider ornament="✦" />
 
-        <section style={{ width: '100%', marginTop: '1rem' }}>
-          <div className="loom-smallcaps" style={eyebrowStyle}>Positioning stack</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+        <section style={{ width: '100%', marginTop: '1rem' }} aria-labelledby="positioning-stack-title">
+          <h2 id="positioning-stack-title" className="loom-smallcaps" style={eyebrowStyle}>Positioning stack</h2>
+          <ul style={aboutListStyle}>
             {PERSONAL_PLATFORM_STACK.map((item) => (
-              <div key={item.title} style={{ textAlign: 'left' }}>
-                <div style={commitmentTitleStyle}>{item.title}</div>
-                <div style={commitmentTextStyle}>{item.text}</div>
-              </div>
+              <li key={item.title} style={aboutListItemStyle}>
+                <h3 style={commitmentTitleStyle}>{item.title}</h3>
+                <p style={commitmentTextStyle}>{item.text}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
 
         <Divider ornament="✦" />
 
         {/* LO · OM · LOOM brand decomposition */}
-        <section style={{ width: '100%' }}>
-          <div className="loom-smallcaps" style={eyebrowStyle}>The Name, Unwoven</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+        <section style={{ width: '100%' }} aria-labelledby="loom-name-title">
+          <h2 id="loom-name-title" className="loom-smallcaps" style={eyebrowStyle}>The Name, Unwoven</h2>
+          <ul style={{ ...aboutListStyle, gap: '1.5rem' }}>
             {LOOM_LETTERS.map((l) => (
-              <div key={l.letter} style={{ display: 'grid', gridTemplateColumns: '4rem 1fr', gap: '1rem', textAlign: 'left', alignItems: 'baseline' }}>
-                <div style={letterGlyphStyle}>{l.letter}</div>
+              <li key={l.letter} style={{ display: 'grid', gridTemplateColumns: '4rem 1fr', gap: '1rem', textAlign: 'left', alignItems: 'baseline' }}>
+                <span style={letterGlyphStyle}>{l.letter}</span>
                 <div>
-                  <div style={commitmentTitleStyle}>{l.title}</div>
-                  <div style={commitmentTextStyle}>{l.text}</div>
+                  <h3 style={commitmentTitleStyle}>{l.title}</h3>
+                  <p style={commitmentTextStyle}>{l.text}</p>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
 
         <Divider ornament="✦" />
@@ -277,13 +277,27 @@ const paragraphStyle: CSSProperties = {
   textWrap: 'balance',
 };
 
+const aboutListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '1.25rem',
+  listStyle: 'none',
+  margin: '1.5rem 0 0',
+  padding: 0,
+};
+
+const aboutListItemStyle: CSSProperties = {
+  textAlign: 'left',
+};
+
 const commitmentTitleStyle: CSSProperties = {
   fontFamily: 'var(--display, var(--serif))',
   fontStyle: 'italic',
   fontSize: '1.125rem',
   color: 'var(--fg)',
   lineHeight: 1.25,
-  marginBottom: '0.3rem',
+  display: 'block',
+  margin: '0 0 0.3rem',
 };
 
 const commitmentTextStyle: CSSProperties = {
@@ -291,6 +305,7 @@ const commitmentTextStyle: CSSProperties = {
   fontSize: '0.92rem',
   lineHeight: 1.55,
   color: 'var(--fg-secondary, var(--fg))',
+  margin: 0,
 };
 
 const letterGlyphStyle: CSSProperties = {

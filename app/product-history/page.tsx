@@ -73,7 +73,10 @@ const itemTextStyle = {
   margin: 0,
 } as const;
 
-const FIRST_REFERENCE_INSTANCE_LINE = "Yiping's Loom is the first reference instance";
+const FIRST_REFERENCE_INSTANCE_LINE = PERSONAL_PLATFORM_REFERENCE_INSTANCE.title.replace(
+  'Yiping is',
+  "Yiping's Loom is",
+);
 
 export default function ProductHistoryPage() {
   return (
