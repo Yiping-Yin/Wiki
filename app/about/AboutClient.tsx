@@ -1,6 +1,13 @@
 'use client';
 
 import type { CSSProperties } from 'react';
+import {
+  PERSONAL_PLATFORM_HISTORY,
+  PERSONAL_PLATFORM_NARRATIVE_LAYERS,
+  PERSONAL_PLATFORM_PRODUCT_THESIS,
+  PERSONAL_PLATFORM_REFERENCE_INSTANCE,
+  PERSONAL_PLATFORM_STACK,
+} from '../../lib/new-loom/personal-platform';
 
 /// Vellum About — distilled from the original 489-line dark marketing page.
 /// Preserved the load-bearing content (four Commitments + LO/OM/LOOM brand
@@ -12,6 +19,13 @@ const COMMITMENTS = [
   { title: 'Panels are earned.',       text: 'A panel is a settled judgment, not a decorative card. It arrives when a thought returns three times.' },
   { title: 'Relations are earned.',    text: 'A weave is a judged relation, not a loose backlink list. A thread has to have held weight.' },
   { title: 'Work begins from change.', text: 'The surface shows what is unresolved, not generic activity. A day is not a to-do list.' },
+];
+
+const WHY_LOOM_EXISTS = [
+  { title: 'Ordinary portfolios only show results.', text: 'They rarely show the sources, attempts, decisions, and revisions that made the work credible.' },
+  { title: 'Ordinary notes only help the owner.', text: 'They are useful privately, but they usually do not become an inspectable identity layer for other people.' },
+  { title: 'Ordinary chatbots do not know the person.', text: 'They answer from a prompt, not from the person\'s real archive, work, sources, and process.' },
+  { title: 'Loom connects identity, proof, and conversation.', text: PERSONAL_PLATFORM_PRODUCT_THESIS },
 ];
 
 const LOOM_LETTERS = [
@@ -48,16 +62,35 @@ export default function AboutClient() {
         <h1 style={titleStyle}>Loom</h1>
         <div style={versionStyle}>Vellum&nbsp;II&nbsp;·&nbsp;1.0.0&nbsp;·&nbsp;build&nbsp;42</div>
 
-        <p style={leadParagraphStyle}>A small room for slow reading.</p>
+        <p style={leadParagraphStyle}>A general product for source-backed identity.</p>
 
         <Divider />
 
         {/* Opening narrative */}
         <p style={paragraphStyle}>
-          Loom keeps books, margins, and the quiet phrases that return across
-          them. It replaces handwritten paper with a screen that does not
-          forget, but never crowds.
+          Loom helps anyone turn sources, learning paths, projects, drafts, and
+          AI conversations into a living knowledge identity. Yiping&apos;s Loom is
+          the first reference instance, not the product boundary.
         </p>
+        <p style={paragraphStyle}>
+          The gap is simple: ordinary portfolios only show results, ordinary
+          notes only help the owner, and ordinary chatbots do not know the
+          person behind the prompt.
+        </p>
+
+        <Divider ornament="✦" />
+
+        <section style={{ width: '100%', marginTop: '1rem' }}>
+          <div className="loom-smallcaps" style={eyebrowStyle}>Why Loom exists</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+            {WHY_LOOM_EXISTS.map((item) => (
+              <div key={item.title} style={{ textAlign: 'left' }}>
+                <div style={commitmentTitleStyle}>{item.title}</div>
+                <div style={commitmentTextStyle}>{item.text}</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <Divider ornament="✦" />
 
@@ -69,6 +102,53 @@ export default function AboutClient() {
               <div key={c.title} style={{ textAlign: 'left' }}>
                 <div style={commitmentTitleStyle}>{c.title}</div>
                 <div style={commitmentTextStyle}>{c.text}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <Divider ornament="✦" />
+
+        <section style={{ width: '100%', marginTop: '1rem' }}>
+          <div className="loom-smallcaps" style={eyebrowStyle}>Narrative layers</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+            {PERSONAL_PLATFORM_NARRATIVE_LAYERS.map((item) => (
+              <div key={item.title} style={{ textAlign: 'left' }}>
+                <div style={commitmentTitleStyle}>{item.title}</div>
+                <div style={commitmentTextStyle}>{item.text}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <p style={paragraphStyle}>
+          <strong>{PERSONAL_PLATFORM_REFERENCE_INSTANCE.title}.</strong>{' '}
+          {PERSONAL_PLATFORM_REFERENCE_INSTANCE.text}
+        </p>
+
+        <Divider ornament="✦" />
+
+        <section style={{ width: '100%', marginTop: '1rem' }}>
+          <div className="loom-smallcaps" style={eyebrowStyle}>Product story</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+            {PERSONAL_PLATFORM_HISTORY.map((item) => (
+              <div key={item.date} style={{ textAlign: 'left' }}>
+                <div style={commitmentTitleStyle}>{item.date}</div>
+                <div style={commitmentTextStyle}>{item.text}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <Divider ornament="✦" />
+
+        <section style={{ width: '100%', marginTop: '1rem' }}>
+          <div className="loom-smallcaps" style={eyebrowStyle}>Positioning stack</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+            {PERSONAL_PLATFORM_STACK.map((item) => (
+              <div key={item.title} style={{ textAlign: 'left' }}>
+                <div style={commitmentTitleStyle}>{item.title}</div>
+                <div style={commitmentTextStyle}>{item.text}</div>
               </div>
             ))}
           </div>
