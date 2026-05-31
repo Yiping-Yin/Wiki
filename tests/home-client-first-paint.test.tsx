@@ -20,5 +20,16 @@ test('HomeClient first paint is not a blank shell when client state has not hydr
   assert.match(html, /Portfolio with proof/i);
   assert.match(html, /Source to identity/i);
   assert.match(html, /AI persona/i);
+
+  for (const shelf of ['About', 'UNSW', 'Quantnet', 'WQU', 'Claude']) {
+    assert.match(html, new RegExp(shelf));
+  }
+
+  for (const model of ['Overview', 'Path', 'Sources', 'Process', 'Outputs']) {
+    assert.match(html, new RegExp(model));
+  }
+
+  assert.match(html, /Sources/);
+  assert.match(html, /Draft/);
   assert.doesNotMatch(html, />\s*&nbsp;\s*</i);
 });
