@@ -126,7 +126,7 @@ It is the discreteness that lets the picture be seen.
 - **Not a note app.** Notes are dead text. Thought-anchors are living structures linked to sources.
 - **Not a chat app.** Chats are linear and disposable. Loom anchors understanding to source.
 - **Not a wiki.** Wikis are read by everyone. Your pattern archive is woven by you.
-- **Not an AI assistant.** AI is the second weaver, never the first.
+- **Not a generic AI assistant.** AI is grounded in the user's sources and archive; it is the second weaver, never the first.
 - **Not a productivity tool.** Loom doesn't help you do more. It helps you understand more.
 
 ---

@@ -19,7 +19,7 @@ knowledge identity: a portfolio people can inspect, a knowledge base people can
 trust, and a personal AI people can talk to. Yiping's Loom is the first
 reference instance, not the product boundary.
 
-Loom is a macOS-native learning amplifier. It treats the **screen as a replacement for paper** for university-level study. The user picks folders or creates pages; Loom shows source files (PDFs, etc.) natively, lets the user select passages and respond in writing or via AI dialogue, and stores everything in portable Markdown the user owns. The app's job is to remove operation friction (no syncing, no organizing) and concept friction (AI summoned for explanation, translation, dialogue) so the user spends time *thinking* rather than *managing*.
+Loom is a macOS-native thinking surface that treats the **screen as a replacement for paper** wherever source-grounded work needs to become durable identity. University-level study is Yiping's first reference use case, not the product boundary. The user picks folders or creates pages; Loom shows source files (PDFs, etc.) natively, lets the user select passages and respond in writing or via AI dialogue, and stores everything in portable Markdown the user owns. The app's job is to remove operation friction (no syncing, no organizing) and concept friction (AI summoned for explanation, translation, dialogue) so the user spends time *thinking* rather than *managing*.
 
 Loom is **not** a Notion clone, Notability replacement, or research-management tool. It is a *thinking surface anchored to sources*.
 
