@@ -60,6 +60,22 @@ function formatActivity(count: number, singular: string, plural: string) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+export function formatNativeActivitySummary({
+  panelCount,
+  pursuitCount,
+  weaveCount,
+}: {
+  panelCount: number;
+  pursuitCount: number;
+  weaveCount: number;
+}) {
+  return [
+    `Draft: ${formatActivity(panelCount, 'item', 'items')}`,
+    `Process: ${formatActivity(pursuitCount, 'path', 'paths')}`,
+    `Sources: ${formatActivity(weaveCount, 'link', 'links')}`,
+  ].join(', ');
+}
+
 export function HomeClient() {
   const [ready, setReady] = useState(false);
   const [recent, setRecent] = useState<LoomRecentRecord | null>(null);
@@ -334,11 +350,7 @@ export function HomeClient() {
             <h3 style={moduleTitleStyle}>Native activity</h3>
             <p style={moduleTextStyle}>
               {ready
-                ? [
-                    formatActivity(panelCount, 'panel', 'panels'),
-                    formatActivity(pursuitCount, 'pursuit', 'pursuits'),
-                    formatActivity(weaveCount, 'weave', 'weaves'),
-                  ].join(', ')
+                ? formatNativeActivitySummary({ panelCount, pursuitCount, weaveCount })
                 : 'Recent Loom activity appears here once your workspace is ready.'}
             </p>
           </article>

@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 
-import { HomeClient } from '../app/HomeClient';
+import { HomeClient, formatNativeActivitySummary } from '../app/HomeClient';
+
+function visibleText(html: string) {
+  return html.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/\s+/g, ' ');
+}
 
 test('HomeClient first paint is not a blank shell when client state has not hydrated yet', () => {
   Object.assign(globalThis, { React });
@@ -11,6 +15,7 @@ test('HomeClient first paint is not a blank shell when client state has not hydr
   };
 
   const html = renderToStaticMarkup(<HomeClient />);
+  const text = visibleText(html);
 
   assert.match(html, /personal knowledge identity platform/i);
   assert.match(html, /portfolio people can inspect/i);
@@ -36,7 +41,21 @@ test('HomeClient first paint is not a blank shell when client state has not hydr
     assert.match(html, new RegExp(model));
   }
 
-  assert.match(html, /Sources/);
-  assert.match(html, /Draft/);
+  assert.match(text, /Sources/);
+  assert.match(text, /Draft/);
+  assert.doesNotMatch(text, /\b(?:panel|panels|pursuit|pursuits|weave|weaves)\b/i);
   assert.doesNotMatch(html, />\s*&nbsp;\s*</i);
+});
+
+test('HomeClient hydrated native activity uses Sources and Draft vocabulary', () => {
+  const text = formatNativeActivitySummary({
+    panelCount: 2,
+    pursuitCount: 1,
+    weaveCount: 3,
+  });
+
+  assert.equal(text, 'Draft: 2 items, Process: 1 path, Sources: 3 links');
+  assert.match(text, /Sources/);
+  assert.match(text, /Draft/);
+  assert.doesNotMatch(text, /\b(?:panel|panels|pursuit|pursuits|weave|weaves)\b/i);
 });

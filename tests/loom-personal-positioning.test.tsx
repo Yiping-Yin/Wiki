@@ -5,7 +5,7 @@ import test from 'node:test';
 import React from 'react';
 
 import AboutClient from '../app/about/AboutClient';
-import { HomeClient } from '../app/HomeClient';
+import { HomeClient, formatNativeActivitySummary } from '../app/HomeClient';
 import ProductHistoryPage from '../app/product-history/page';
 
 const repoRoot = path.resolve(__dirname, '..');
@@ -55,6 +55,11 @@ test('HomeClient renders the mature Loom personal platform positioning', () => {
 
   assert.match(html, /Sources/);
   assert.match(html, /Draft/);
+  assert.doesNotMatch(visibleText(html), /\b(?:panel|panels|pursuit|pursuits|weave|weaves)\b/i);
+  assert.doesNotMatch(
+    formatNativeActivitySummary({ panelCount: 1, pursuitCount: 2, weaveCount: 1 }),
+    /\b(?:panel|panels|pursuit|pursuits|weave|weaves)\b/i,
+  );
 });
 
 test('About and product history routes present the approved three-layer narrative', () => {
@@ -76,6 +81,10 @@ test('About and product history routes present the approved three-layer narrativ
   assert.match(aboutText, /Ordinary notes only help the owner/);
   assert.match(aboutText, /Ordinary chatbots do not know/);
   assert.match(aboutText, /Loom connects identity, proof, and conversation/);
+  assert.match(aboutText, /Draft is earned/);
+  assert.match(aboutText, /Relations are evidenced/);
+  assert.doesNotMatch(aboutText, /Panels are earned/i);
+  assert.doesNotMatch(aboutText, /\bweave\b/i);
   assert.match(productHistoryText, /Why Loom is called Loom\./);
   assert.match(productHistoryText, /Portfolio with proof/);
   assert.match(productHistoryText, /Source to identity/);

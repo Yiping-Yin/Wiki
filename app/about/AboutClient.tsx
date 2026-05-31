@@ -16,8 +16,8 @@ import {
 
 const COMMITMENTS = [
   { title: 'Source is sacred.',        text: 'The document is the first foreground object. Loom never rewrites the page you are reading.' },
-  { title: 'Panels are earned.',       text: 'A panel is a settled judgment, not a decorative card. It arrives when a thought returns three times.' },
-  { title: 'Relations are earned.',    text: 'A weave is a judged relation, not a loose backlink list. A thread has to have held weight.' },
+  { title: 'Draft is earned.',         text: 'A Draft is working judgment, not decorative output. It appears when source-backed thinking is ready to become usable writing.' },
+  { title: 'Relations are evidenced.', text: 'A relation is part of the source record, not a loose backlink list. It has to show why two pieces of work belong together.' },
   { title: 'Work begins from change.', text: 'The surface shows what is unresolved, not generic activity. A day is not a to-do list.' },
 ];
 
