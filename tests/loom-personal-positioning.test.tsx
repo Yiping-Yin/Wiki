@@ -95,6 +95,7 @@ test('About and product history routes present the approved three-layer narrativ
   assert.match(readme, /portfolio people can inspect/i);
   assert.match(readme, /knowledge base people can trust/i);
   assert.match(readme, /personal AI people can talk to/i);
+  assert.doesNotMatch(readme, /not an AI assistant/i);
   assert.match(productDefinition, /Yiping's Loom is the first reference instance/i);
   assert.match(productRules, /not the product boundary/i);
 });

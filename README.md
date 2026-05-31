@@ -20,7 +20,7 @@ Your files stay on your Mac. Bring your own API key for Anthropic or OpenAI, or 
 
 ## What this is
 
-Loom is a thinking tool. Not a note app, not a chat app, not an AI assistant — a **loom**: a tool that turns loose threads of thought into woven fabric.
+Loom is a thinking tool. Not a note app, not a chat app, not a generic AI assistant floating outside your sources — a **loom**: a tool that turns loose threads of thought into woven fabric.
 
 Its core jobs are to:
 
