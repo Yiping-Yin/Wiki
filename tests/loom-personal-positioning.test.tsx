@@ -108,3 +108,15 @@ test('About and product history routes present the approved three-layer narrativ
   assert.match(productDefinition, /Yiping's Loom is the first reference instance/i);
   assert.match(productRules, /not the product boundary/i);
 });
+
+test('canonical Loom docs publish Sources and Draft as current visible vocabulary', () => {
+  const productDefinition = readText('LOOM.md');
+  const productRules = readText('LOOM_RULES.md');
+  const loomDoc = readText('docs/loom.md');
+
+  assert.match(productDefinition, /Sources.*Draft|Draft.*Sources/is);
+  assert.match(productRules, /Sources.*Draft|Draft.*Sources/is);
+  assert.match(loomDoc, /Sources.*Draft|Draft.*Sources/is);
+  assert.doesNotMatch(loomDoc, /^.*shipped UI uses.*Collect \/ Organize \/ Draft.*$/im);
+  assert.doesNotMatch(loomDoc, /^.*Current shipped vocab.*Collect \/ Organize \/ Draft.*$/im);
+});

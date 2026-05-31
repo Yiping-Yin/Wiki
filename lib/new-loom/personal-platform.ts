@@ -315,7 +315,7 @@ export const PERSONAL_PLATFORM_HISTORY: PersonalPlatformHistoryItem[] = [
 
 export const PERSONAL_PLATFORM_PITCH_COPY: PersonalPlatformPitchCopy = {
   oneLine: 'Loom is a personal knowledge identity platform: a portfolio people can inspect, a knowledge base people can trust, and a personal AI people can talk to.',
-  applicationSummary500: 'Modern personal knowledge is scattered across sources, notes, projects, drafts, and AI chats. Loom weaves them into a living knowledge identity: portfolio with proof, source-backed knowledge base, and grounded personal AI. Yiping\'s Loom is the first reference instance; the product is for anyone who wants their learning, work, and thinking to be inspectable, traceable, and conversational.',
+  applicationSummary500: 'Modern personal knowledge is scattered across sources, notes, projects, drafts, and AI chats. Loom turns them into a living knowledge identity: portfolio with proof, source-backed knowledge base, and grounded personal AI. Yiping\'s Loom is the first reference instance; the product is for anyone who wants their learning, work, and thinking to be inspectable, traceable, and conversational.',
   problem: 'Existing tools split personal identity, source material, notes, AI conversations, drafts, and portfolio outputs, so people can show results but not the evidence and process behind them.',
   solution: 'Loom keeps profile context, sources, provenance, decisions, drafts, outputs, and AI conversations in one source-bound structure that can become a portfolio, knowledge base, and grounded personal AI.',
   customer: 'The first users are students, researchers, builders, creators, and knowledge workers who need a credible knowledge identity, not only a static portfolio.',

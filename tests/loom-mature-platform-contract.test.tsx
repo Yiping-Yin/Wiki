@@ -61,6 +61,10 @@ test('personal platform data keeps five sections and the mature section model', 
   assert.match(PERSONAL_PLATFORM_PITCH_COPY.problem, /show results but not the evidence/i);
   assert.match(PERSONAL_PLATFORM_PITCH_COPY.solution, /portfolio, knowledge base, and grounded personal AI/i);
   assert.match(PERSONAL_PLATFORM_PITCH_COPY.customer, /students, researchers, builders, creators/i);
+  assert.doesNotMatch(PERSONAL_PLATFORM_PITCH_COPY.applicationSummary500, /weaves them/i);
+  assert.match(PERSONAL_PLATFORM_PITCH_COPY.applicationSummary500, /portfolio with proof/i);
+  assert.match(PERSONAL_PLATFORM_PITCH_COPY.applicationSummary500, /source-backed knowledge base/i);
+  assert.match(PERSONAL_PLATFORM_PITCH_COPY.applicationSummary500, /grounded personal AI/i);
   assert.ok(
     Array.from(PERSONAL_PLATFORM_PITCH_COPY.applicationSummary500).length <= 500,
     'application summary should stay within a 500-character form field',
