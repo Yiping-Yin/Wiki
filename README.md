@@ -1,6 +1,8 @@
 # Loom
 
-**A screen that replaces paper.** A Mac app for slow reading, source-bound notes, and AI in the margin.
+**Loom is a personal knowledge identity platform.** It helps anyone turn scattered sources, learning paths, projects, drafts, and AI conversations into a living knowledge identity: a portfolio people can inspect, a knowledge base people can trust, and a personal AI people can talk to.
+
+Yiping's Loom is the first reference instance. About, UNSW, Quantnet, WQU, and Claude are real shelves from one user's archive; they prove the product model, but they are not the product boundary.
 
 ![Your library, as you arranged it.](docs/images/hero-library.jpg)
 
@@ -19,6 +21,14 @@ Your files stay on your Mac. Bring your own API key for Anthropic or OpenAI, or 
 ## What this is
 
 Loom is a thinking tool. Not a note app, not a chat app, not an AI assistant — a **loom**: a tool that turns loose threads of thought into woven fabric.
+
+Its core jobs are to:
+
+- show finished work as portfolio with proof;
+- keep the source material behind every learning path or project;
+- preserve decisions, notes, drafts, and process history;
+- let a grounded personal AI answer from the archive instead of from a generic prompt;
+- keep files, notes, references, and decisions owned by the user.
 
 In the AI era, two things matter that no chat tool gives you at the same time: **speed** (your brain never stops, ideas leap, you talk to AI continuously) and **permanence** (the trail of that thinking doesn't disappear when you close the tab). Loom gives you both.
 

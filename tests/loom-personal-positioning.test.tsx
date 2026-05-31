@@ -61,6 +61,9 @@ test('About and product history routes present the approved three-layer narrativ
   const aboutSource = readText('app/about/AboutClient.tsx');
   const productHistorySource = readText('app/product-history/page.tsx');
   const productHistoryDoc = readText('docs/product-history.md');
+  const readme = readText('README.md');
+  const productDefinition = readText('LOOM.md');
+  const productRules = readText('LOOM_RULES.md');
   Object.assign(globalThis, { React });
   const { renderToStaticMarkup } = require('react-dom/server') as {
     renderToStaticMarkup: (node: React.ReactElement) => string;
@@ -89,4 +92,9 @@ test('About and product history routes present the approved three-layer narrativ
   assert.match(productHistorySource, /Yiping's Loom is the first reference instance/i);
   assert.match(productHistoryDoc, /Three-Layer Product Narrative/i);
   assert.match(productHistoryDoc, /Yiping's Loom is the first reference instance, not the product boundary/i);
+  assert.match(readme, /portfolio people can inspect/i);
+  assert.match(readme, /knowledge base people can trust/i);
+  assert.match(readme, /personal AI people can talk to/i);
+  assert.match(productDefinition, /Yiping's Loom is the first reference instance/i);
+  assert.match(productRules, /not the product boundary/i);
 });
