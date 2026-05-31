@@ -58,6 +58,8 @@ test('HomeClient renders the mature Loom personal platform positioning', () => {
 });
 
 test('About and product history routes present the approved three-layer narrative', () => {
+  const aboutSource = readText('app/about/AboutClient.tsx');
+  const productHistorySource = readText('app/product-history/page.tsx');
   const productHistoryDoc = readText('docs/product-history.md');
   Object.assign(globalThis, { React });
   const { renderToStaticMarkup } = require('react-dom/server') as {
@@ -76,6 +78,15 @@ test('About and product history routes present the approved three-layer narrativ
   assert.match(productHistoryText, /Source to identity/);
   assert.match(productHistoryText, /AI persona/);
   assert.match(productHistoryText, /Yiping's Loom is the first reference instance/);
+
+  assert.match(aboutSource, /ordinary portfolios only show results/i);
+  assert.match(aboutSource, /ordinary notes only help the owner/i);
+  assert.match(aboutSource, /ordinary chatbots do not know/i);
+  assert.match(aboutSource, /Loom connects identity, proof, and conversation/i);
+  assert.match(productHistorySource, /Portfolio with proof/i);
+  assert.match(productHistorySource, /Source to identity/i);
+  assert.match(productHistorySource, /AI persona/i);
+  assert.match(productHistorySource, /Yiping's Loom is the first reference instance/i);
   assert.match(productHistoryDoc, /Three-Layer Product Narrative/i);
   assert.match(productHistoryDoc, /Yiping's Loom is the first reference instance, not the product boundary/i);
 });
