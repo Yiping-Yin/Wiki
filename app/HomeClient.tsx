@@ -210,7 +210,7 @@ export function HomeClient() {
         </div>
         <div style={shelfGridStyle}>
           {PERSONAL_PLATFORM_SECTIONS.map((section) => (
-            <article key={section.id} style={shelfCardStyle}>
+            <article key={section.id} className="new-loom-shell__shelf" style={shelfCardStyle}>
               <a href={section.href} style={shelfLinkStyle}>
                 {section.label}
               </a>
@@ -254,7 +254,7 @@ export function HomeClient() {
         </div>
         <div style={moduleGridStyle}>
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>Narrative layers</h2>
+            <h3 style={moduleTitleStyle}>Narrative layers</h3>
             <ul style={stackListStyle}>
               {PERSONAL_PLATFORM_NARRATIVE_LAYERS.map((item) => (
                 <li key={item.title} style={stackItemStyle}>
@@ -266,12 +266,12 @@ export function HomeClient() {
           </article>
 
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>{PERSONAL_PLATFORM_REFERENCE_INSTANCE.title}</h2>
+            <h3 style={moduleTitleStyle}>{PERSONAL_PLATFORM_REFERENCE_INSTANCE.title}</h3>
             <p style={moduleTextStyle}>{PERSONAL_PLATFORM_REFERENCE_INSTANCE.text}</p>
           </article>
 
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>Positioning stack</h2>
+            <h3 style={moduleTitleStyle}>Positioning stack</h3>
             <ul style={stackListStyle}>
               {PERSONAL_PLATFORM_STACK.map((item) => (
                 <li key={item.title} style={stackItemStyle}>
@@ -283,7 +283,7 @@ export function HomeClient() {
           </article>
 
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>Progress</h2>
+            <h3 style={moduleTitleStyle}>Progress</h3>
             <ul style={stackListStyle}>
               {PERSONAL_PLATFORM_PROGRESS.map((item) => (
                 <li key={item.title} style={stackItemStyle}>
@@ -295,7 +295,7 @@ export function HomeClient() {
           </article>
 
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>Story</h2>
+            <h3 style={moduleTitleStyle}>Story</h3>
             <ol style={stackListStyle}>
               {PERSONAL_PLATFORM_HISTORY.map((item) => (
                 <li key={item.date} style={stackItemStyle}>
@@ -307,7 +307,7 @@ export function HomeClient() {
           </article>
 
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>Process</h2>
+            <h3 style={moduleTitleStyle}>Process</h3>
             <ul style={stackListStyle}>
               {PERSONAL_PLATFORM_PROCESS.map((item) => (
                 <li key={item.title} style={stackItemStyle}>
@@ -319,7 +319,7 @@ export function HomeClient() {
           </article>
 
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>Outputs</h2>
+            <h3 style={moduleTitleStyle}>Outputs</h3>
             <ul style={stackListStyle}>
               {PERSONAL_PLATFORM_OUTPUTS.map((item) => (
                 <li key={item.title} style={stackItemStyle}>
@@ -331,7 +331,7 @@ export function HomeClient() {
           </article>
 
           <article className="new-loom-shell__module" style={moduleStyle}>
-            <h2 style={moduleTitleStyle}>Native activity</h2>
+            <h3 style={moduleTitleStyle}>Native activity</h3>
             <p style={moduleTextStyle}>
               {ready
                 ? [
@@ -339,7 +339,7 @@ export function HomeClient() {
                     formatActivity(pursuitCount, 'pursuit', 'pursuits'),
                     formatActivity(weaveCount, 'weave', 'weaves'),
                   ].join(', ')
-                : 'Native activity appears here after the local Loom shell hydrates.'}
+                : 'Recent Loom activity appears here once your workspace is ready.'}
             </p>
           </article>
         </div>

@@ -23,8 +23,15 @@ test('HomeClient renders the mature Loom personal platform positioning', () => {
   assert.match(html, /Source to identity/i);
   assert.match(html, /AI persona/i);
 
-  for (const label of ['About', 'UNSW', 'Quantnet', 'WQU', 'Claude']) {
-    assert.match(html, new RegExp(label));
+  assert.equal(html.match(/class="new-loom-shell__shelf"/g)?.length, 5);
+  for (const href of [
+    '/about',
+    '/knowledge/unsw',
+    '/knowledge/quantnet',
+    '/knowledge/wqu',
+    '/knowledge/claude',
+  ]) {
+    assert.match(html, new RegExp(`href="${href}"`));
   }
 
   for (const label of ['Overview', 'Path', 'Sources', 'Process', 'Outputs']) {
