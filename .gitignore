@@ -16,7 +16,6 @@ output/
 .idea/
 public/pagefind/
 .vercel
-next-env.d.ts
 knowledge/.cache
 knowledge/.cache/generated/
 knowledge/.cache/indexes/

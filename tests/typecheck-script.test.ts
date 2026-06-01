@@ -6,6 +6,18 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+test('Next environment declarations load styled-jsx globals for typecheck', () => {
+  const envPath = path.join(repoRoot, 'next-env.d.ts');
+  const gitignore = fs.readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
+
+  assert.ok(fs.existsSync(envPath), 'next-env.d.ts should exist for standalone tsc typecheck');
+  assert.doesNotMatch(gitignore, /^next-env\.d\.ts$/m, 'next-env.d.ts should be tracked with the typecheck contract');
+
+  const source = fs.readFileSync(envPath, 'utf8');
+  assert.match(source, /<reference types="next" \/>/);
+  assert.match(source, /<reference types="next\/image-types\/global" \/>/);
+});
+
 test('typecheck script falls back to npm when npm_execpath is unavailable', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'scripts/typecheck.mjs'), 'utf8');
 

@@ -36,6 +36,7 @@ a[class*="loom-"] {
   /* Art stack — reserved for chrome/identity. Cormorant italic is
      beautiful for "Persuasion before structure" panel titles but wrong
      for the body paragraph the user will later paste into an email. */
+  --font-cormorant: "Cormorant Garamond";
   --display: var(--font-cormorant), "Cormorant Garamond", "EB Garamond", "New York", "Iowan Old Style", "Songti SC", serif;
   --script: "Caveat", "Homemade Apple", "Segoe Print", "Kaiti SC", "STKaiti", cursive;
 

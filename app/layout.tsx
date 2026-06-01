@@ -1,15 +1,6 @@
 import './globals.css';
 import type { ReactNode } from 'react';
-import { Cormorant_Garamond } from 'next/font/google';
 import { FocusLayerProvider } from '../lib/focus-layer';
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  style: ['italic', 'normal'],
-  variable: '--font-cormorant',
-  display: 'swap',
-});
 import { CopyButtonInjector } from '../components/CopyButton';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 import { LinkPreview } from '../components/LinkPreview';
@@ -56,7 +47,7 @@ export const viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
-    <html lang="en" className={cormorant.variable} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

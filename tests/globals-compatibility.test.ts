@@ -5,6 +5,13 @@ import test from 'node:test';
 
 const repoRoot = path.resolve(__dirname, '..');
 const globalsCss = fs.readFileSync(path.join(repoRoot, 'app/globals.css'), 'utf8');
+const rootLayoutSource = fs.readFileSync(path.join(repoRoot, 'app/layout.tsx'), 'utf8');
+
+test('root typography is offline-safe for production builds', () => {
+  assert.doesNotMatch(rootLayoutSource, /next\/font\/google/);
+  assert.doesNotMatch(rootLayoutSource, /Cormorant_Garamond/);
+  assert.match(globalsCss, /--font-cormorant:\s*"Cormorant Garamond"/);
+});
 
 test('global CSS preserves shared compatibility contracts outside the home route', () => {
   const requiredContracts: Array<[label: string, pattern: RegExp]> = [
