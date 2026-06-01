@@ -80,3 +80,29 @@ test('personal platform data keeps five sections and the mature section model', 
     'application summary should stay within a 500-character form field',
   );
 });
+
+test('knowledge category route keeps first-reference shelves stable when nav is empty', () => {
+  const routeSource = require('node:fs').readFileSync(
+    require('node:path').join(__dirname, '..', 'app/knowledge/[category]/page.tsx'),
+    'utf8',
+  );
+
+  assert.deepEqual(
+    PERSONAL_PLATFORM_SECTIONS
+      .filter((section) => section.href.startsWith('/knowledge/'))
+      .map((section) => section.id),
+    ['unsw', 'quantnet', 'wqu', 'claude'],
+  );
+  assert.match(routeSource, /const REFERENCE_SHELF_CATEGORIES: KnowledgeCategory\[\] = PERSONAL_PLATFORM_SECTIONS/);
+  assert.match(routeSource, /function referenceShelfFallbackFor\(slug: string\): KnowledgeCategory \| null/);
+  assert.match(
+    routeSource,
+    /knowledgeCategories\.find\(\(item\) => item\.slug === slug\) \?\? referenceShelfFallbackFor\(slug\)/,
+  );
+  assert.match(routeSource, /if \(!cat\) notFound\(\)/);
+  assert.ok(
+    routeSource.indexOf('sourceLibraryCategoryFor(category, knowledgeCategories)') <
+      routeSource.indexOf('if (!cat) notFound()'),
+    'category route should check source-library category plus reference-shelf fallback before notFound()',
+  );
+});

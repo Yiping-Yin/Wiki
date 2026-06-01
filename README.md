@@ -42,7 +42,9 @@ In the AI era, two things matter that no chat tool gives you at the same time: *
 
 ---
 
-## Why it's called Loom
+## Historical origin: why it's called Loom
+
+This origin story explains the name and early design language. It is not the current product navigation model; current visible product language is Sources and Draft.
 
 Not because the interface draws warp and weft. Because the product **does what a loom does**.
 
@@ -71,7 +73,9 @@ Every action in Loom is a physical act of kesi:
 
 ---
 
-## Five irreducible principles
+## Historical origin: five design principles
+
+These principles record the original metaphor that shaped the product. Treat the metaphor as historical framing, not as current route names, shelf names, or UI vocabulary.
 
 ### 1. Loom is a loom
 
@@ -111,7 +115,9 @@ A kesi weaver's mind holds the entire pattern before the first thread is laid. L
 
 ---
 
-## The technique: 通经断纬
+## Historical technique: 通经断纬
+
+This technique section preserves the craft analogy behind the name. It is historical/origin context, not current product terminology.
 
 The Chinese silk-tapestry craft *kesi* has one defining technique: **continuous warp, broken weft**. The warp runs through the entire fabric unbroken — your sustained library of sources. The weft moves only within one color block — each thought has a clean boundary, never bleeding into the next.
 

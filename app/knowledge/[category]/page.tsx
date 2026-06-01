@@ -10,18 +10,44 @@ import {
   collectionOverrideFor,
 } from '../../../lib/knowledge-overrides';
 import { coworkRefsByDocId, listCoworksByCategory } from '../../../lib/coworks-store';
+import type { KnowledgeCategory } from '../../../lib/knowledge-types';
+import { PERSONAL_PLATFORM_SECTIONS } from '../../../lib/new-loom/personal-platform';
 import { CategoryLandingClient, type CategoryDocCard } from './CategoryLandingClient';
 
+const REFERENCE_SHELF_CATEGORIES: KnowledgeCategory[] = PERSONAL_PLATFORM_SECTIONS
+  .filter((section) => section.href.startsWith('/knowledge/'))
+  .map((section) => ({
+    slug: section.id,
+    label: section.label,
+    count: 0,
+    subs: [],
+    kind: 'source',
+  }));
+
+function referenceShelfFallbackFor(slug: string): KnowledgeCategory | null {
+  return REFERENCE_SHELF_CATEGORIES.find((category) => category.slug === slug) ?? null;
+}
+
+function sourceLibraryCategoryFor(
+  slug: string,
+  knowledgeCategories: KnowledgeCategory[],
+): KnowledgeCategory | null {
+  return knowledgeCategories.find((item) => item.slug === slug) ?? referenceShelfFallbackFor(slug);
+}
 
 export async function generateStaticParams() {
   const knowledgeCategories = await getSourceLibraryCategories();
-  return knowledgeCategories.map((c) => ({ category: c.slug }));
+  const slugs = new Set([
+    ...knowledgeCategories.map((category) => category.slug),
+    ...REFERENCE_SHELF_CATEGORIES.map((category) => category.slug),
+  ]);
+  return Array.from(slugs).map((category) => ({ category }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
   const knowledgeCategories = await getSourceLibraryCategories();
-  const cat = knowledgeCategories.find((item) => item.slug === category);
+  const cat = sourceLibraryCategoryFor(category, knowledgeCategories);
   return {
     title: cat ? `${cat.label} · Loom` : 'Sources · Loom',
   };
@@ -47,7 +73,7 @@ function toDocCard(doc: Awaited<ReturnType<typeof docsByCategory>>[number]): Cat
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
   const knowledgeCategories = await getSourceLibraryCategories();
-  const cat = knowledgeCategories.find((c) => c.slug === category);
+  const cat = sourceLibraryCategoryFor(category, knowledgeCategories);
   if (!cat) notFound();
 
   const docs = await docsByCategory(category);

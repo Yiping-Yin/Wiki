@@ -27,6 +27,26 @@ function readmeSection(readme: string, heading: string) {
   return match[1];
 }
 
+function activeReadmeBody(readme: string) {
+  const kept: string[] = [];
+  let skippingHistoricalSection = false;
+
+  for (const line of readme.split('\n')) {
+    if (/^## Historical (?:origin|technique):/i.test(line)) {
+      skippingHistoricalSection = true;
+      continue;
+    }
+
+    if (/^## (?!Historical (?:origin|technique):)/i.test(line) || /^# /i.test(line)) {
+      skippingHistoricalSection = false;
+    }
+
+    if (!skippingHistoricalSection) kept.push(line);
+  }
+
+  return kept.join('\n');
+}
+
 test('HomeClient renders the mature Loom personal platform positioning', () => {
   Object.assign(globalThis, { React });
   const { renderToStaticMarkup } = require('react-dom/server') as {
@@ -115,11 +135,20 @@ test('About and product history routes present the approved three-layer narrativ
   assert.match(readme, /personal AI people can talk to/i);
   assert.doesNotMatch(readme, /not an AI assistant/i);
 
+  const activeReadme = activeReadmeBody(readme);
   const currentSurfaces = readmeSection(readme, 'Current surfaces');
   const howItWorks = readmeSection(readme, 'How it works');
   const whatThisIsNot = readmeSection(readme, 'What this is not');
   const closingTagline = readme.match(/> \*.*\*\s*$/m)?.[0] ?? '';
 
+  assert.match(readme, /^## Historical origin: why it's called Loom$/m);
+  assert.match(readme, /^## Historical origin: five design principles$/m);
+  assert.match(readme, /^## Historical technique: 通经断纬$/m);
+  assert.doesNotMatch(activeReadme, /\/patterns/i);
+  assert.doesNotMatch(activeReadme, /\bPatterns\b/);
+  assert.doesNotMatch(activeReadme, /\bpanel\b/i);
+  assert.doesNotMatch(activeReadme, /\bweaver\b/i);
+  assert.doesNotMatch(activeReadme, /\bwoven\b/i);
   assert.doesNotMatch(currentSurfaces, /crystallized panels/i);
   assert.doesNotMatch(currentSurfaces, /\bpanel\b/i);
   assert.doesNotMatch(currentSurfaces, /\/patterns/i);
