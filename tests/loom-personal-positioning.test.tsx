@@ -19,6 +19,14 @@ function visibleText(html: string) {
   return html.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/\s+/g, ' ');
 }
 
+function readmeSection(readme: string, heading: string) {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`^## ${escaped}\\n([\\s\\S]*?)(?=\\n## |\\n# |(?![\\s\\S]))`, 'm');
+  const match = readme.match(pattern);
+  assert.ok(match, `README should include ${heading}`);
+  return match[1];
+}
+
 test('HomeClient renders the mature Loom personal platform positioning', () => {
   Object.assign(globalThis, { React });
   const { renderToStaticMarkup } = require('react-dom/server') as {
@@ -106,6 +114,19 @@ test('About and product history routes present the approved three-layer narrativ
   assert.match(readme, /knowledge base people can trust/i);
   assert.match(readme, /personal AI people can talk to/i);
   assert.doesNotMatch(readme, /not an AI assistant/i);
+
+  const currentSurfaces = readmeSection(readme, 'Current surfaces');
+  const howItWorks = readmeSection(readme, 'How it works');
+  const whatThisIsNot = readmeSection(readme, 'What this is not');
+
+  assert.doesNotMatch(currentSurfaces, /crystallized panels/i);
+  assert.doesNotMatch(currentSurfaces, /\bpanel\b/i);
+  assert.doesNotMatch(howItWorks, /Patterns archive/i);
+  assert.doesNotMatch(howItWorks, /\bpanel\b/i);
+  assert.doesNotMatch(howItWorks, /\bwoven\b/i);
+  assert.doesNotMatch(whatThisIsNot, /pattern archive is woven by you/i);
+  assert.doesNotMatch(whatThisIsNot, /second weaver/i);
+
   assert.match(productDefinition, /Yiping's Loom is the first reference instance/i);
   assert.match(productRules, /not the product boundary/i);
 });
@@ -125,4 +146,10 @@ test('canonical Loom docs publish Sources and Draft as current visible vocabular
   assert.doesNotMatch(loomDoc, /Collect\s*=/i);
   assert.doesNotMatch(loomDoc, /Organize\s*=/i);
   assert.doesNotMatch(loomDoc, /Collect\s*:/i);
+
+  const plateIvInventory = loomDoc.match(/## Plate IV[\s\S]*?(?=### Superseded historical entries)/)?.[0] ?? '';
+  assert.ok(plateIvInventory, 'Plate IV should expose a current inventory before historical notes');
+  assert.doesNotMatch(plateIvInventory, /^\| \*\*Pursuits\*\*/m);
+  assert.doesNotMatch(plateIvInventory, /^\| \*\*Shuttle\b/m);
+  assert.doesNotMatch(plateIvInventory, /^\| \*\*Interlace\b/m);
 });

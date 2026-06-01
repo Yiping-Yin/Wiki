@@ -117,7 +117,7 @@ export const PERSONAL_PLATFORM_SECTIONS: PersonalPlatformSection[] = [
       { title: 'Study sources', items: ['Lecture slides', 'Week notes', 'Problem sets'] },
     ],
     processItems: [
-      'Collect official source truth before summarizing.',
+      'Verify official source truth before summarizing.',
       'Turn each week into a path from source material to reusable study output.',
     ],
     outputs: [

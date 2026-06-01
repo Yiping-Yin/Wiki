@@ -11,7 +11,7 @@ Yiping's Loom is the first reference instance. About, UNSW, Quantnet, WQU, and C
 ## Install
 
 - **macOS 14 Sonoma or later**, Apple Silicon.
-- **Mac App Store** — coming soon. In the meantime, grab the signed + notarized Developer-ID build from the [Releases](https://github.com/Yiping-Yin/Wiki/releases) page: download the `.dmg`, drag *Loom.app* into *Applications*, open it, and press **⌘K** to meet the Shuttle.
+- **Mac App Store** — coming soon. In the meantime, grab the signed + notarized Developer-ID build from the [Releases](https://github.com/Yiping-Yin/Wiki/releases) page: download the `.dmg`, drag *Loom.app* into *Applications*, open it, and press **⌘K** to open the command menu.
 - **From source** — see the **Dev Flow** section below.
 
 Your files stay on your Mac. Bring your own API key for Anthropic or OpenAI, or point Loom at a local Ollama. Keys live in the macOS Keychain.
@@ -20,7 +20,7 @@ Your files stay on your Mac. Bring your own API key for Anthropic or OpenAI, or 
 
 ## What this is
 
-Loom is a thinking tool. Not a note app, not a chat app, not a generic AI assistant floating outside your sources — a **loom**: a tool that turns loose threads of thought into woven fabric.
+Loom is a thinking tool. Not a note app, not a chat app, not a generic AI assistant floating outside your sources — a source-backed workspace for turning scattered material into inspectable knowledge.
 
 Its core jobs are to:
 
@@ -37,7 +37,7 @@ In the AI era, two things matter that no chat tool gives you at the same time: *
 - `/` — Home. A single foreground workbench showing the next quiet move.
 - `/today` — the daily desk for returns, review, and active threads.
 - `/knowledge` — Atlas. Collection-level entry point into the library.
-- `/patterns` — the archive of crystallized panels and settled relations.
+- `/patterns` — source-backed portfolio output and process records linked to the archive.
 - `/wiki/*`, `/knowledge/<category>/<doc>`, `/uploads/*` — reading surfaces where capture, rehearsal, and examiner flows happen.
 
 ---
@@ -105,9 +105,9 @@ A kesi weaver's mind holds the entire pattern before the first thread is laid. L
 
 **Reviewing** — hover any `◆` to peek. Press `Cmd+/` to enter review mode: the source recedes, a centered glass **Live Note** becomes the main object of attention, and a companion **thought map** appears beside it.
 
-**Crystallizing** — when a document's thought map is complete, crystallize it. The panel — your structured understanding of that document — enters your Patterns archive.
+**Crystallizing** — when a document's thought map is complete, crystallize it. The Draft — your structured understanding of that document — becomes portfolio output linked to its source.
 
-**Living in your patterns** — open `/patterns` to see every panel you've ever woven. Each one is a complete piece of thinking, permanently linked to its source. Atlas at `/knowledge` stays collection-shaped; Patterns at `/patterns` stays work-shaped.
+**Living with your archive** — open `/patterns` to see source-backed outputs and process records. Each one is a complete piece of thinking, permanently linked to its source. Atlas at `/knowledge` stays collection-shaped; `/patterns` stays work-shaped.
 
 ---
 
@@ -125,8 +125,8 @@ It is the discreteness that lets the picture be seen.
 
 - **Not a note app.** Notes are dead text. Thought-anchors are living structures linked to sources.
 - **Not a chat app.** Chats are linear and disposable. Loom anchors understanding to source.
-- **Not a wiki.** Wikis are read by everyone. Your pattern archive is woven by you.
-- **Not a generic AI assistant.** AI is grounded in the user's sources and archive; it is the second weaver, never the first.
+- **Not a wiki.** Wikis are read by everyone. Your archive is built from your sources, notes, and draft decisions.
+- **Not a generic AI assistant.** AI is grounded in the user's sources and archive; it supports source-backed work instead of inventing the record.
 - **Not a productivity tool.** Loom doesn't help you do more. It helps you understand more.
 
 ---

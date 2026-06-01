@@ -293,9 +293,9 @@ Historical shipped vocab (2026-05-11 在 running app 现场验证, superseded):
 
 ---
 
-## Plate IV — 19 个 Surface 全景图
+## Plate IV — Current Surface Inventory
 
-设计语言（Vellum II → IX）累计命名了 19 个产品 surface。它们按三能力分组如下。
+设计语言（Vellum II → IX）累计命名了这些仍可作为当前产品解释的 surface。它们按三能力分组如下。
 
 ### 服务于「信息收集」
 
@@ -323,11 +323,8 @@ Historical shipped vocab (2026-05-11 在 running app 现场验证, superseded):
 |---|---|
 | **The Study** | "lamp, journal, pen, ink" —— 主写作面 |
 | **Atelier** | "four books tiled, one hand writing" —— 多 source 平铺工作模式 |
-| **Pursuits** | "eleven questions held at different weights" —— 长期问题的容器 |
 | **The Sealed Letter** | "what writing is, here" —— 你写给自己的私密文 |
 | **Reading hour** | "focus mode, no chrome" —— 专注模式 |
-| **Shuttle ⌘K** | "every verb in the loom, on one card" —— 命令面板 |
-| **Interlace ⌘/** | "summons the weaver" —— 跨 corpus 链接生成 |
 
 ### 身份与边界
 
@@ -339,7 +336,11 @@ Historical shipped vocab (2026-05-11 在 running app 现场验证, superseded):
 | **Working mode** | "the version you show someone" —— 公开版（屏蔽私密内容） |
 | **Specimen / Colophon** | 标本 + 版权页 —— Loom 给自己留的笔迹 |
 
-**关键事实**：本地文件**不需要新 surface**，全部 fits into 上面 19 个。只有 Cover 和 citation 渲染显示 origin 区别。
+**关键事实**：本地文件**不需要新 surface**，全部 fits into 上面的 current inventory。只有 Cover 和 citation 渲染显示 origin 区别。
+
+### Superseded historical entries (not current inventory)
+
+`Pursuits`, `Shuttle`, and `Interlace` are preserved as historical Plate IV names only. They must not be treated as current visible surfaces; current visible copy follows the `Sources / Draft` rule above.
 
 ---
 

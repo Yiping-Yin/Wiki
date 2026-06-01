@@ -41,6 +41,11 @@ test('personal platform data keeps five sections and the mature section model', 
     /Collect sources/i,
     'home process timeline should not expose stale Collect sources copy',
   );
+  assert.doesNotMatch(
+    PERSONAL_PLATFORM_SECTIONS.flatMap((section) => section.processItems).join('\n'),
+    /Collect official source truth/i,
+    'section process items should not expose stale Collect official source truth copy',
+  );
   assert.equal(PERSONAL_PLATFORM_OUTPUTS.length, 3, 'home output previews should have concrete items');
   assert.deepEqual(
     PERSONAL_PLATFORM_STACK.map((item) => item.title),
