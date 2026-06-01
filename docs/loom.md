@@ -553,9 +553,9 @@ Loom 不是 chrome-style SaaS dashboard。它的视觉宪法在 `Material Audit.
 
 参考样本：
 
-- ✅ Draft：foreground = textarea。右栏 Sources/Edit/Board = secondary。toolbar = chrome。
-- ❌ 当前 Collect：6 张同等视觉权重的卡片，foreground 答不出。
-- ❌ 当前 Organize：5 个 stats badges + 5 columns of cards，foreground 答不出。
+- ✅ Draft：foreground is the writing surface。右栏 Sources/Edit/Board = secondary。toolbar = chrome。
+- ❌ Superseded historical Collect surface：6 张同等视觉权重的卡片，foreground 答不出。
+- ❌ Superseded historical Organize surface：5 个 stats badges + 5 columns of cards，foreground 答不出。
 
 #### §VII.bis.2 反面规则 — Subtraction
 
@@ -572,18 +572,16 @@ Loom 不是 chrome-style SaaS dashboard。它的视觉宪法在 `Material Audit.
 #### §VII.bis.3 Cold-start 与 First-run
 
 - **First-run**（用户第一次打开 Loom）：一次性 welcome overlay 覆盖主 pane，dismiss 后**永不再现**。
-- **Cold-start with non-empty corpus**：surface resume 到上次状态：
-  - Draft = last draft
-  - Collect = last viewed capture（或 inbox top）
-  - Organize = 当前 active Question（或最近一条 unorganized capture）
-- **Cold-start with empty corpus**：每个 surface 显示 1-line prompt + 1 primary action，不分卡片。例如：
-  - Collect: "Drop a file or click L on a webpage." [Add files]
-  - Organize: "Captures get organized here once you have them." [Capture]
-  - Draft: textarea 直接打开，无 helper text
+- **Cold-start with non-empty corpus**：current surfaces resume 到上次状态：
+  - Draft opens the last draft.
+  - Sources opens the last viewed source（或 source list top）。
+- **Cold-start with empty corpus**：每个 current surface 显示 1-line prompt + 1 primary action，不分卡片。例如：
+  - Sources shows "Drop a file or click L on a webpage." with [Add files].
+  - Draft opens the writing surface directly, with no helper text.
 
 #### §VII.bis.4 Per-surface 迁移清单（codebase-grounded, 2026-05-13 投影）
 
-**LoomLibraryView (Sources / Organize 类似面)** — 接近合规但需小修：
+**LoomLibraryView (Sources library surface)** — 接近合规但需小修：
 
 - foreground = `rootGrid` list ✅
 - header 上的 "N page(s)" count → 删除（违 §VII.bis.2 count badge in chrome）

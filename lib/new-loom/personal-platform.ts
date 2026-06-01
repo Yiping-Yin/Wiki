@@ -222,7 +222,7 @@ export const PERSONAL_PLATFORM_PROGRESS: PersonalPlatformProgressItem[] = [
 
 export const PERSONAL_PLATFORM_PROCESS: PersonalPlatformProcessItem[] = [
   {
-    title: 'Collect sources',
+    title: 'Add sources',
     text: 'Bring in official material, local notes, project traces, and AI conversations without losing provenance.',
   },
   {

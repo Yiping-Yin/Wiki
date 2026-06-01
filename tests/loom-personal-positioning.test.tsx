@@ -55,6 +55,7 @@ test('HomeClient renders the mature Loom personal platform positioning', () => {
 
   assert.match(html, /Sources/);
   assert.match(html, /Draft/);
+  assert.doesNotMatch(visibleText(html), /Collect sources/i);
   assert.doesNotMatch(visibleText(html), /\b(?:panel|panels|pursuit|pursuits|weave|weaves)\b/i);
   assert.doesNotMatch(
     formatNativeActivitySummary({ panelCount: 1, pursuitCount: 2, weaveCount: 1 }),
@@ -119,4 +120,9 @@ test('canonical Loom docs publish Sources and Draft as current visible vocabular
   assert.match(loomDoc, /Sources.*Draft|Draft.*Sources/is);
   assert.doesNotMatch(loomDoc, /^.*shipped UI uses.*Collect \/ Organize \/ Draft.*$/im);
   assert.doesNotMatch(loomDoc, /^.*Current shipped vocab.*Collect \/ Organize \/ Draft.*$/im);
+  assert.doesNotMatch(loomDoc, /当前\s+Collect/i);
+  assert.doesNotMatch(loomDoc, /当前\s+Organize/i);
+  assert.doesNotMatch(loomDoc, /Collect\s*=/i);
+  assert.doesNotMatch(loomDoc, /Organize\s*=/i);
+  assert.doesNotMatch(loomDoc, /Collect\s*:/i);
 });

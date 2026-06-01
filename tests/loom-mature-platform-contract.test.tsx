@@ -36,6 +36,11 @@ test('personal platform data keeps five sections and the mature section model', 
   assert.equal(PERSONAL_PLATFORM_PROGRESS.length, 3, 'home progress strip should have concrete items');
   assert.equal(PERSONAL_PLATFORM_HISTORY.length, 4, 'product history should keep the Loom story visible');
   assert.equal(PERSONAL_PLATFORM_PROCESS.length, 3, 'home process timeline should have concrete items');
+  assert.doesNotMatch(
+    PERSONAL_PLATFORM_PROCESS.map((item) => item.title).join('\n'),
+    /Collect sources/i,
+    'home process timeline should not expose stale Collect sources copy',
+  );
   assert.equal(PERSONAL_PLATFORM_OUTPUTS.length, 3, 'home output previews should have concrete items');
   assert.deepEqual(
     PERSONAL_PLATFORM_STACK.map((item) => item.title),
