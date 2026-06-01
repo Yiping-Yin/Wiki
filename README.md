@@ -36,9 +36,9 @@ In the AI era, two things matter that no chat tool gives you at the same time: *
 
 - `/` — Home. A single foreground workbench showing the next quiet move.
 - `/today` — the daily desk for returns, review, and active threads.
-- `/knowledge` — Atlas. Collection-level entry point into the library.
-- `/patterns` — source-backed portfolio output and process records linked to the archive.
-- `/wiki/*`, `/knowledge/<category>/<doc>`, `/uploads/*` — reading surfaces where capture, rehearsal, and examiner flows happen.
+- `/knowledge` — Sources. Collection-level entry point into the user's local library.
+- `Draft` — source-backed portfolio output, process records, and decisions linked to the archive.
+- `/wiki/*`, `/knowledge/<category>/<doc>`, `/uploads/*` — reading surfaces where source capture, review, and grounded questions happen.
 
 ---
 
@@ -105,9 +105,9 @@ A kesi weaver's mind holds the entire pattern before the first thread is laid. L
 
 **Reviewing** — hover any `◆` to peek. Press `Cmd+/` to enter review mode: the source recedes, a centered glass **Live Note** becomes the main object of attention, and a companion **thought map** appears beside it.
 
-**Crystallizing** — when a document's thought map is complete, crystallize it. The Draft — your structured understanding of that document — becomes portfolio output linked to its source.
+**Publishing** — when a document's thought map is complete, the Draft — your structured understanding of that document — becomes portfolio output linked to its source.
 
-**Living with your archive** — open `/patterns` to see source-backed outputs and process records. Each one is a complete piece of thinking, permanently linked to its source. Atlas at `/knowledge` stays collection-shaped; `/patterns` stays work-shaped.
+**Living with your archive** — open Sources at `/knowledge` to return to the library, then continue in Draft where source-backed outputs, process records, and decisions stay linked to their evidence.
 
 ---
 
@@ -170,4 +170,4 @@ rename the fork.
 
 ---
 
-> *Think on the Loom. Live in your Patterns.*
+> *Think from Sources. Build in Draft.*

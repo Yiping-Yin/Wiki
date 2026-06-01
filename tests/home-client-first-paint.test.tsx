@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import React from 'react';
 
 import { HomeClient, formatNativeActivitySummary } from '../app/HomeClient';
+
+const repoRoot = path.resolve(__dirname, '..');
 
 function visibleText(html: string) {
   return html.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/\s+/g, ' ');
@@ -58,4 +62,16 @@ test('HomeClient hydrated native activity uses Sources and Draft vocabulary', ()
   assert.match(text, /Sources/);
   assert.match(text, /Draft/);
   assert.doesNotMatch(text, /\b(?:panel|panels|pursuit|pursuits|weave|weaves)\b/i);
+});
+
+test('HomeClient Open Sources uses literal Sources navigation, not Shuttle', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'app/HomeClient.tsx'), 'utf8');
+  const openSourcesMatch = source.match(/const handleOpenSources = \(\) => \{[\s\S]*?\n  \};/);
+
+  assert.ok(openSourcesMatch, 'HomeClient should define handleOpenSources');
+  assert.doesNotMatch(source, /import\s+\{\s*openShuttle\s*\}/);
+  assert.doesNotMatch(openSourcesMatch[0], /\bopenShuttle\s*\(/);
+  assert.match(openSourcesMatch[0], /const href = '\/knowledge'/);
+  assert.match(openSourcesMatch[0], /callNativeBridge\('navigate', \{ href \}\)/);
+  assert.match(openSourcesMatch[0], /window\.location\.href = href/);
 });

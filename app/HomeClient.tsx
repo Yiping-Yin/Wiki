@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { openShuttle } from '../lib/shuttle';
 import { subscribeLoomMirror } from '../lib/loom-mirror-store';
 import { loadPanelRecords, PANEL_RECORDS_KEY } from '../lib/loom-panel-records';
 import { loadPursuitRecords, PURSUIT_RECORDS_KEY } from '../lib/loom-pursuit-records';
@@ -150,7 +149,9 @@ export function HomeClient() {
   }, []);
 
   const handleOpenSources = () => {
-    openShuttle();
+    const href = '/knowledge';
+    if (callNativeBridge('navigate', { href })) return;
+    window.location.href = href;
   };
 
   const handleOpenRecent = () => {

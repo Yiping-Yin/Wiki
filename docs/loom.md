@@ -595,7 +595,7 @@ Loom 不是 chrome-style SaaS dashboard。它的视觉宪法在 `Material Audit.
 - 1 张配置卡 (storageCard) + 1 张状态卡 (pipelineStatusCard) → Settings 第 4 个 tab "Capture" (`CaptureSettingsView`)
 - WebCaptureSetupView 本体 struct + sidebar `Web Capture` entry 删除
 
-**Draft surface** — 当前 codebase **不存在**。先前 spec (2026-05-13 早版) 误把概念稿截图当作 shipped 代码。该 surface 留待 Phase X 设计 + 实现，标记为 §VII.bis.7 待补章节。建成时按 §VII.bis.1 (single foreground = textarea) + §VII.bis.3 (cold-start = last draft) 设计，作为 Plate VII-bis 的样板。
+**Draft vocabulary / implementation maturity** — 当前 visible model 已使用 **Sources / Draft**：Draft 是写作、延续、编辑、source grounding、Board context 的可见词。先前 spec (2026-05-13 早版) 误把概念稿截图当作完整 shipped editor；这里改为实现成熟度说明，而不是否认 Draft。接下来的工程应把现有 Draft copy 和 source-backed output 逐步收敛到 §VII.bis.1 (single foreground = textarea) + §VII.bis.3 (cold-start = last draft) 的成熟写作 surface。
 
 **其余 16 个 Plate IV surface** — 每个 PR 单独按 §VII.bis.1–3 declare，本计划不覆盖。
 
@@ -633,7 +633,7 @@ Loom 不是 chrome-style SaaS dashboard。它的视觉宪法在 `Material Audit.
 - ✅ Synthesize themes · per-capture + cross-capture（雏形）
 - ✅ Copy quote as markdown
 - ✅ pivot / tag / search 状态持久化
-- ❌ 一切草稿层（持久空白页 / `@cite` / inline ⌘K / Pursuits 容器 / 本地文件 import）
+- ❌ 草稿实现成熟度仍未完成（持久空白页 / `@cite` / inline ⌘K / long-running process 容器 / 本地文件 import）
 
 #### Codex（收集层架构重写）
 - ✅ InteractiveArtifact 契约定义
@@ -656,11 +656,11 @@ Loom 不是 chrome-style SaaS dashboard。它的视觉宪法在 `Material Audit.
 5. **`/draft from #tag`** streaming
 6. **Drag-to-import**：PDF / PPT / MD / 图片 入库（P0 格式）
 
-#### Phase 7 —— Pursuits 容器
+#### Phase 7 —— Process / long-running questions 容器
 
-1. `pursuits/<slug>/` 目录结构
+1. `process/<slug>/` 目录结构
    ```
-   pursuits/
+   process/
      2026-flipdisc-display/
        Loom.md           # the draft
        Loom-cites.json   # 引用的 capture / quote / artifact

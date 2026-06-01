@@ -118,12 +118,25 @@ test('About and product history routes present the approved three-layer narrativ
   const currentSurfaces = readmeSection(readme, 'Current surfaces');
   const howItWorks = readmeSection(readme, 'How it works');
   const whatThisIsNot = readmeSection(readme, 'What this is not');
+  const closingTagline = readme.match(/> \*.*\*\s*$/m)?.[0] ?? '';
 
   assert.doesNotMatch(currentSurfaces, /crystallized panels/i);
   assert.doesNotMatch(currentSurfaces, /\bpanel\b/i);
+  assert.doesNotMatch(currentSurfaces, /\/patterns/i);
+  assert.doesNotMatch(currentSurfaces, /\bPatterns\b/);
+  assert.doesNotMatch(currentSurfaces, /\bweaver\b/i);
+  assert.doesNotMatch(currentSurfaces, /\bwoven\b/i);
   assert.doesNotMatch(howItWorks, /Patterns archive/i);
+  assert.doesNotMatch(howItWorks, /\/patterns/i);
+  assert.doesNotMatch(howItWorks, /\bPatterns\b/);
   assert.doesNotMatch(howItWorks, /\bpanel\b/i);
+  assert.doesNotMatch(howItWorks, /\bweaver\b/i);
   assert.doesNotMatch(howItWorks, /\bwoven\b/i);
+  assert.doesNotMatch(closingTagline, /\/patterns/i);
+  assert.doesNotMatch(closingTagline, /\bPatterns\b/);
+  assert.doesNotMatch(closingTagline, /\bpanel\b/i);
+  assert.doesNotMatch(closingTagline, /\bweaver\b/i);
+  assert.doesNotMatch(closingTagline, /\bwoven\b/i);
   assert.doesNotMatch(whatThisIsNot, /pattern archive is woven by you/i);
   assert.doesNotMatch(whatThisIsNot, /second weaver/i);
 
@@ -146,6 +159,8 @@ test('canonical Loom docs publish Sources and Draft as current visible vocabular
   assert.doesNotMatch(loomDoc, /Collect\s*=/i);
   assert.doesNotMatch(loomDoc, /Organize\s*=/i);
   assert.doesNotMatch(loomDoc, /Collect\s*:/i);
+  assert.doesNotMatch(loomDoc, /Draft surface.*不存在/is);
+  assert.doesNotMatch(loomDoc, /^####\s+Phase 7.*Pursuits/im);
 
   const plateIvInventory = loomDoc.match(/## Plate IV[\s\S]*?(?=### Superseded historical entries)/)?.[0] ?? '';
   assert.ok(plateIvInventory, 'Plate IV should expose a current inventory before historical notes');
